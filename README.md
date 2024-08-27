@@ -17,8 +17,8 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 |        YVR 1/2        |                                      :heavy_check_mark:                                      |
 |        Lynx R1        |                                      :heavy_check_mark:                                      |
 |   Apple Vision Pro    |       :heavy_check_mark: ([store link](https://apps.apple.com/app/alvr/id6479728026))        |
-|      Smartphone       | :heavy_check_mark: * (Check [PhoneVR](https://github.com/PhoneVR-Developers/PhoneVR) Client) |
-|        Monado         |                                         :warning: *                                          |
+| PhoneVR (smartphone)  | :heavy_check_mark: * (Check [PhoneVR](https://github.com/PhoneVR-Developers/PhoneVR) Client) |
+|    Android/Monado     |                                         :warning: *                                          |
 |        GearVR         |                                    :construction: (maybe)                                    |
 |       Oculus Go       |                                            :x: **                                            |
 

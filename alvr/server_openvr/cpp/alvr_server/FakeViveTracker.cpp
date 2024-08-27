@@ -1,6 +1,7 @@
 #include "FakeViveTracker.h"
 #include "Settings.h"
 
+#include "Logger.h"
 #include "Utils.h"
 #include "bindings.h"
 #include <cassert>
@@ -13,6 +14,8 @@ FakeViveTracker::FakeViveTracker(std::string name)
 vr::DriverPose_t FakeViveTracker::GetPose() { return m_pose; }
 
 vr::EVRInitError FakeViveTracker::Activate(vr::TrackedDeviceIndex_t unObjectId) {
+    Debug("FakeViveTracker::Activate");
+
     auto vr_properties = vr::VRProperties();
 
     m_unObjectId = unObjectId;

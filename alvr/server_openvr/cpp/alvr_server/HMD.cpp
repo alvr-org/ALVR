@@ -35,6 +35,8 @@ Hmd::Hmd()
     : TrackedDevice(HEAD_ID)
     , m_baseComponentsInitialized(false)
     , m_streamComponentsInitialized(false) {
+    Debug("Hmd::constructor");
+
     auto dummy_fov = FfiFov { -1.0, 1.0, 1.0, -1.0 };
 
     this->views_config = FfiViewsConfig {};
@@ -66,12 +68,10 @@ Hmd::Hmd()
             Warn("Failed to register Vive tracker");
         }
     }
-
-    Debug("CRemoteHmd successfully initialized.\n");
 }
 
 Hmd::~Hmd() {
-    // ShutdownRuntime();
+    Debug("Hmd::destructor");
 
     if (m_encoder) {
         Debug("Hmd::~Hmd(): Stopping encoder...\n");
@@ -88,7 +88,7 @@ Hmd::~Hmd() {
 }
 
 vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
-    Debug("CRemoteHmd Activate %d\n", unObjectId);
+    Debug("Hmd::Activate");
 
     auto vr_properties = vr::VRProperties();
 
@@ -182,11 +182,15 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
 }
 
 void Hmd::Deactivate() {
+    Debug("Hmd::Deactivate");
+
     this->object_id = vr::k_unTrackedDeviceIndexInvalid;
     this->prop_container = vr::k_ulInvalidPropertyContainer;
 }
 
 void* Hmd::GetComponent(const char* component_name_and_version) {
+    Debug("Hmd::GetComponent %s", component_name_and_version);
+
     // NB: "this" pointer needs to be statically cast to point to the correct vtable
 
     auto name_and_vers = std::string(component_name_and_version);
@@ -206,6 +210,8 @@ void* Hmd::GetComponent(const char* component_name_and_version) {
 vr::DriverPose_t Hmd::GetPose() { return m_pose; }
 
 void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
+    Debug("Hmd::OnPoseUpdated");
+
     if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
         return;
     }
@@ -251,6 +257,8 @@ void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
 }
 
 void Hmd::StartStreaming() {
+    Debug("Hmd::StartStreaming");
+
     vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, true, 0.0);
 
     if (m_streamComponentsInitialized) {
@@ -288,9 +296,15 @@ void Hmd::StartStreaming() {
     m_streamComponentsInitialized = true;
 }
 
-void Hmd::StopStreaming() { vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, false, 0.0); }
+void Hmd::StopStreaming() {
+    Debug("Hmd::StopStreaming");
+
+    vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, false, 0.0);
+}
 
 void Hmd::SetViewsConfig(FfiViewsConfig config) {
+    Debug("Hmd::SetViewsConfig");
+
     this->views_config = config;
 
     auto left_transform = MATRIX_IDENTITY;
@@ -312,12 +326,13 @@ void Hmd::SetViewsConfig(FfiViewsConfig config) {
 
 void Hmd::GetWindowBounds(int32_t* pnX, int32_t* pnY, uint32_t* pnWidth, uint32_t* pnHeight) {
     Debug(
-        "GetWindowBounds %dx%d - %dx%d\n",
+        "Hmd::GetWindowBounds %dx%d - %dx%d\n",
         0,
         0,
         Settings::Instance().m_renderWidth,
         Settings::Instance().m_renderHeight
     );
+
     *pnX = 0;
     *pnY = 0;
     *pnWidth = Settings::Instance().m_renderWidth;
@@ -335,7 +350,7 @@ bool Hmd::IsDisplayRealDisplay() {
 void Hmd::GetRecommendedRenderTargetSize(uint32_t* pnWidth, uint32_t* pnHeight) {
     *pnWidth = Settings::Instance().m_recommendedTargetWidth / 2;
     *pnHeight = Settings::Instance().m_recommendedTargetHeight;
-    Debug("GetRecommendedRenderTargetSize %dx%d\n", *pnWidth, *pnHeight);
+    Debug("Hmd::GetRecommendedRenderTargetSize %dx%d\n", *pnWidth, *pnHeight);
 }
 
 void Hmd::GetEyeOutputViewport(
@@ -350,7 +365,8 @@ void Hmd::GetEyeOutputViewport(
     } else {
         *pnX = Settings::Instance().m_renderWidth / 2;
     }
-    Debug("GetEyeOutputViewport Eye=%d %dx%d %dx%d\n", eEye, *pnX, *pnY, *pnWidth, *pnHeight);
+
+    Debug("Hmd::GetEyeOutputViewport Eye=%d %dx%d %dx%d\n", eEye, *pnX, *pnY, *pnWidth, *pnHeight);
 }
 
 void Hmd::GetProjectionRaw(vr::EVREye eye, float* left, float* right, float* top, float* bottom) {
@@ -359,6 +375,8 @@ void Hmd::GetProjectionRaw(vr::EVREye eye, float* left, float* right, float* top
     *right = proj.vBottomRight.v[0];
     *top = proj.vTopLeft.v[1];
     *bottom = proj.vBottomRight.v[1];
+
+    Debug("Hmd::GetProjectionRaw Eye=%d %f %f %f %f\n", eye, *left, *right, *top, *bottom);
 }
 
 vr::DistortionCoordinates_t Hmd::ComputeDistortion(vr::EVREye, float u, float v) {

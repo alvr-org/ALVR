@@ -38,59 +38,37 @@ impl LogsTab {
     }
 
     pub fn push_event(&mut self, event: Event) {
-        match event.event_type {
-            EventType::Log(log_event) => {
-                let color;
-                let ty;
-                match log_event.severity {
-                    LogSeverity::Error => {
-                        color = log_colors::ERROR_LIGHT;
-                        ty = "ERROR";
-                    }
-                    LogSeverity::Warning => {
-                        color = log_colors::WARNING_LIGHT;
-                        ty = "WARN";
-                    }
-                    LogSeverity::Info => {
-                        color = log_colors::INFO_LIGHT;
-                        ty = "INFO";
-                    }
-                    LogSeverity::Debug => {
-                        color = log_colors::DEBUG_LIGHT;
-                        ty = "DEBUG";
-                    }
-                };
+        let color = if let EventType::Log(entry) = &event.event_type {
+            Some(match entry.severity {
+                LogSeverity::Error => log_colors::ERROR_LIGHT,
+                LogSeverity::Warning => log_colors::WARNING_LIGHT,
+                LogSeverity::Info => log_colors::INFO_LIGHT,
+                LogSeverity::Debug => log_colors::DEBUG_LIGHT,
+            })
+        } else if let Switch::Enabled(config) = &self.raw_events_config {
+            (!config.hide_spammy_events
+                || !matches!(
+                    event.event_type,
+                    EventType::StatisticsSummary(_)
+                        | EventType::GraphStatistics(_)
+                        | EventType::Tracking(_)
+                ))
+            .then_some(log_colors::EVENT_LIGHT)
+        } else {
+            None
+        };
 
-                self.entries.push_back(Entry {
-                    color,
-                    timestamp: event.timestamp,
-                    ty: ty.into(),
-                    message: log_event.content,
-                });
-            }
-            event_type => {
-                if let Switch::Enabled(config) = &self.raw_events_config {
-                    if !config.hide_spammy_events
-                        || !matches!(
-                            event_type,
-                            EventType::StatisticsSummary(_)
-                                | EventType::GraphStatistics(_)
-                                | EventType::Tracking(_)
-                        )
-                    {
-                        self.entries.push_back(Entry {
-                            color: log_colors::EVENT_LIGHT,
-                            timestamp: event.timestamp,
-                            ty: "EVENT".into(),
-                            message: format!("{event_type:?}"),
-                        });
-                    }
-                }
-            }
-        }
+        if let Some(color) = color {
+            self.entries.push_back(Entry {
+                color,
+                timestamp: event.timestamp.clone(),
+                ty: event.event_type_string(),
+                message: event.message(),
+            });
 
-        if self.entries.len() > self.log_limit {
-            self.entries.pop_front();
+            if self.entries.len() > self.log_limit {
+                self.entries.pop_front();
+            }
         }
     }
 

@@ -1,4 +1,4 @@
-use alvr_common::{info, DeviceMotion, LogEntry, Pose};
+use alvr_common::{info, DeviceMotion, LogEntry, LogSeverity, Pose};
 use alvr_packets::{AudioDevicesList, ButtonValue};
 use alvr_session::SessionConfig;
 use serde::{Deserialize, Serialize};
@@ -79,6 +79,7 @@ pub struct HapticsEvent {
 #[serde(tag = "id", content = "data")]
 pub enum EventType {
     Log(LogEntry),
+    DebugGroup { group: String, message: String },
     Session(Box<SessionConfig>),
     StatisticsSummary(StatisticsSummary),
     GraphStatistics(GraphStatistics),
@@ -94,6 +95,45 @@ pub enum EventType {
 pub struct Event {
     pub timestamp: String,
     pub event_type: EventType,
+}
+
+impl Event {
+    pub fn event_type_string(&self) -> String {
+        match &self.event_type {
+            EventType::Log(entry) => match entry.severity {
+                LogSeverity::Error => "ERROR".into(),
+                LogSeverity::Warning => "WARNING".into(),
+                LogSeverity::Info => "INFO".into(),
+                LogSeverity::Debug => "DEBUG".into(),
+            },
+            EventType::DebugGroup { group, .. } => group.clone(),
+            EventType::Session(_) => "SESSION".to_string(),
+            EventType::StatisticsSummary(_) => "STATS".to_string(),
+            EventType::GraphStatistics(_) => "GRAPH".to_string(),
+            EventType::Tracking(_) => "TRACKING".to_string(),
+            EventType::Buttons(_) => "BUTTONS".to_string(),
+            EventType::Haptics(_) => "HAPTICS".to_string(),
+            EventType::AudioDevices(_) => "AUDIO DEV".to_string(),
+            EventType::DriversList(_) => "DRV LIST".to_string(),
+            EventType::ServerRequestsSelfRestart => "RESTART".to_string(),
+        }
+    }
+
+    pub fn message(&self) -> String {
+        match &self.event_type {
+            EventType::Log(log_entry) => log_entry.content.clone(),
+            EventType::DebugGroup { message, .. } => message.clone(),
+            EventType::Session(_) => "Updated".into(),
+            EventType::StatisticsSummary(_) => "".into(),
+            EventType::GraphStatistics(_) => "".into(),
+            EventType::Tracking(tracking) => serde_json::to_string(tracking).unwrap(),
+            EventType::Buttons(buttons) => serde_json::to_string(buttons).unwrap(),
+            EventType::Haptics(haptics) => serde_json::to_string(haptics).unwrap(),
+            EventType::AudioDevices(devices) => serde_json::to_string(devices).unwrap(),
+            EventType::DriversList(drivers) => serde_json::to_string(drivers).unwrap(),
+            EventType::ServerRequestsSelfRestart => "Request for server restart".into(),
+        }
+    }
 }
 
 pub fn send_event(event_type: EventType) {

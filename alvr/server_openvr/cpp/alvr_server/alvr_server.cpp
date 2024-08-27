@@ -88,6 +88,8 @@ public:
     std::map<uint64_t, TrackedDevice*> tracked_devices;
 
     virtual vr::EVRInitError Init(vr::IVRDriverContext* pContext) override {
+        Debug("DriverProvider::Init");
+
         VR_INIT_SERVER_DRIVER_CONTEXT(pContext);
         InitDriverLog(vr::VRDriverLog());
 
@@ -246,6 +248,8 @@ public:
         return vr::VRInitError_None;
     }
     virtual void Cleanup() override {
+        Debug("DriverProvider::Cleanup");
+
         this->left_hand_tracker.reset();
         this->right_hand_tracker.reset();
         this->left_controller.reset();
@@ -264,6 +268,8 @@ public:
         vr::VREvent_t event;
         while (vr::VRServerDriverHost()->PollNextEvent(&event, sizeof(vr::VREvent_t))) {
             if (event.eventType == vr::VREvent_Input_HapticVibration) {
+                Debug("DriverProvider: Received HapticVibration event");
+
                 vr::VREvent_HapticVibration_t haptics = event.data.hapticVibration;
 
                 uint64_t id = 0;
@@ -296,13 +302,15 @@ public:
 #endif
         }
         if (vr::VRServerDriverHost()->IsExiting() && !shutdown_called) {
+            Debug("DriverProvider: Received shutdown event");
+
             shutdown_called = true;
             ShutdownRuntime();
         }
     }
     virtual bool ShouldBlockStandbyMode() override { return false; }
-    virtual void EnterStandby() override { }
-    virtual void LeaveStandby() override { }
+    virtual void EnterStandby() override { Debug("DriverProvider::EnterStandby"); }
+    virtual void LeaveStandby() override { Debug("DriverProvider::LeaveStandby"); }
 } g_driver_provider;
 
 // bindigs for Rust

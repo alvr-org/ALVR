@@ -5,12 +5,15 @@
 [![badge-discord][]][link-discord] [![badge-matrix][]][link-matrix] [![badge-opencollective][]][link-opencollective]
 
 Stream VR games from your PC to your headset via Wi-Fi.  
-ALVR uses technologies like [Asynchronous Timewarp](https://developer.oculus.com/documentation/native/android/mobile-timewarp-overview) and [Fixed Foveated Rendering](https://developer.oculus.com/documentation/native/android/mobile-ffr) for a smoother experience.  
-Most of the games that run on SteamVR or Oculus Software (using Revive) should work with ALVR.  
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
+### Direct download the lastest version:
+### [Windows Launcher](https://github.com/alvr-org/ALVR/releases/latest/download/alvr_launcher_windows.zip) | [Linux Launcher](https://github.com/alvr-org/ALVR/releases/latest/download/alvr_launcher_linux.tar.gz)
+
+## Compatibility
+
 |      VR Headset       |                                           Support                                            |
-|:---------------------:|:--------------------------------------------------------------------------------------------:|
+| :-------------------: | :------------------------------------------------------------------------------------------: |
 |    Quest 1/2/3/Pro    |     :heavy_check_mark: ([store link](https://www.meta.com/experiences/7674846229245715))     |
 |     Pico 4/Neo 3      |                                      :heavy_check_mark:                                      |
 | Vive Focus 3/XR Elite |                                      :heavy_check_mark:                                      |
@@ -34,7 +37,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
 \*** : Please check the wiki for compatibility info
 
-## Requirements
+### Requirements
 
 -   A supported standalone VR headset (see compatibility table above)
 

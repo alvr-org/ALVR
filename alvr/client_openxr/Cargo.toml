@@ -15,8 +15,7 @@ alvr_client_core.workspace = true
 alvr_packets.workspace = true
 alvr_session.workspace = true
 
-openxr = { git = "https://github.com/alvr-org/openxrs", rev = "f1f47ff" }
-# openxr = { path = "../../../../openxrs/openxr" }
+openxr = { git = "https://github.com/Ralith/openxrs" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android-activity = { version = "0.6", features = ["native-activity"] }
@@ -25,7 +24,7 @@ libc = "0.2"
 ndk-context = "0.1"
 
 [package.metadata.android]
-package = "alvr.client.dev" # Changed for Meta Store
+package = "alvr.client.dev"                # Changed for Meta Store
 install_location = "auto"
 build_targets = ["aarch64-linux-android"]
 runtime_libs = "../../deps/android_openxr"
@@ -125,7 +124,7 @@ value = "vr_only"
 name = "com.oculus.supportedDevices"
 # Note: value is changed for the Meta store, which requires an explicit list of platforms.
 # "all" is required to support Quest 1 which doesn't have newer platform names registered.
-value = "all" 
+value = "all"
 [[package.metadata.android.application.meta_data]]
 name = "com.oculus.vr.focusaware"
 value = "true"

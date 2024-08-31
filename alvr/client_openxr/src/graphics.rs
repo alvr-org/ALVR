@@ -27,6 +27,7 @@ pub fn swapchain_format(
     graphics::choose_swapchain_format(&formats, enable_hdr)
 }
 
+#[allow(unused_variables)]
 pub fn create_swapchain(
     session: &xr::Session<xr::OpenGlEs>,
     gfx_ctx: &GraphicsContext,
@@ -48,20 +49,7 @@ pub fn create_swapchain(
         mip_count: 1,
     };
 
-    if let Some(foveation) = foveation {
-        let swapchain = session
-            .create_swapchain_with_foveation(
-                &swapchain_info,
-                xr::SwapchainCreateFoveationFlagsFB::SCALED_BIN,
-            )
-            .unwrap();
-
-        swapchain.update_foveation(foveation).unwrap();
-
-        swapchain
-    } else {
-        session.create_swapchain(&swapchain_info).unwrap()
-    }
+    session.create_swapchain(&swapchain_info).unwrap()
 }
 
 // This is needed to work around lifetime limitations

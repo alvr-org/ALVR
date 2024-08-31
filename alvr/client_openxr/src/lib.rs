@@ -1,4 +1,5 @@
 mod c_api;
+mod extra_extensions;
 mod graphics;
 mod interaction;
 mod lobby;
@@ -13,6 +14,7 @@ use alvr_common::{
     glam::{Quat, UVec2, Vec3},
     info, Fov, Pose, HAND_LEFT_ID,
 };
+use extra_extensions::{ExtraExtensions, META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME};
 use lobby::Lobby;
 use openxr as xr;
 use std::{
@@ -93,6 +95,7 @@ pub struct XrContext {
     instance: xr::Instance,
     system: xr::SystemId,
     session: xr::Session<xr::OpenGlEs>,
+    extra_extensions: ExtraExtensions,
 }
 
 fn default_view() -> xr::View {
@@ -150,7 +153,6 @@ pub fn entry_point() {
     exts.fb_eye_tracking_social = available_extensions.fb_eye_tracking_social;
     exts.fb_face_tracking2 = available_extensions.fb_face_tracking2;
     exts.fb_body_tracking = available_extensions.fb_body_tracking;
-    exts.meta_body_tracking_full_body = available_extensions.meta_body_tracking_full_body;
     exts.fb_foveation = available_extensions.fb_foveation;
     exts.fb_foveation_configuration = available_extensions.fb_foveation_configuration;
     exts.fb_swapchain_update_state = available_extensions.fb_swapchain_update_state;
@@ -163,6 +165,11 @@ pub fn entry_point() {
     }
     exts.khr_convert_timespec_time = true;
     exts.khr_opengl_es_enable = true;
+    exts.other = available_extensions
+        .other
+        .into_iter()
+        .filter(|ext| [META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME].contains(&ext.as_str()))
+        .collect();
 
     let available_layers = xr_entry.enumerate_layers().unwrap();
     alvr_common::info!("OpenXR available layers: {available_layers:#?}");
@@ -174,6 +181,7 @@ pub fn entry_point() {
                 application_version: 0,
                 engine_name: "ALVR",
                 engine_version: 0,
+                api_version: xr::Version::new(1, 0, 0),
             },
             &exts,
             &[],
@@ -205,6 +213,7 @@ pub fn entry_point() {
             instance: xr_instance.clone(),
             system: xr_system,
             session: xr_session.clone(),
+            extra_extensions: ExtraExtensions::new(&xr_instance),
         };
 
         let views_config = xr_instance
@@ -351,19 +360,18 @@ pub fn entry_point() {
                             stream_config = Some(new_config);
 
                             xr_session.request_exit().ok();
-                            continue;
+                        } else {
+                            stream_context = Some(StreamContext::new(
+                                Arc::clone(&core_context),
+                                xr_context.clone(),
+                                Rc::clone(&graphics_context),
+                                Arc::clone(&interaction_context),
+                                platform,
+                                &new_config,
+                            ));
+
+                            stream_config = Some(new_config);
                         }
-
-                        stream_context = Some(StreamContext::new(
-                            Arc::clone(&core_context),
-                            xr_context.clone(),
-                            Rc::clone(&graphics_context),
-                            Arc::clone(&interaction_context),
-                            platform,
-                            &new_config,
-                        ));
-
-                        stream_config = Some(new_config);
                     }
                     ClientCoreEvent::StreamingStopped => {
                         stream_context = None;

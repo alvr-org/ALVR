@@ -94,33 +94,6 @@ impl StreamContext {
                 .request_display_refresh_rate(config.refresh_rate_hint)
                 .unwrap();
         }
-        // todo: check which permissions are needed for htc
-        #[cfg(target_os = "android")]
-        if let Some(config) = &config.face_sources_config {
-            if (config.combined_eye_gaze || config.eye_tracking_fb)
-                && matches!(platform, Platform::Quest3 | Platform::QuestPro)
-            {
-                alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING")
-            }
-            if config.combined_eye_gaze && matches!(platform, Platform::Pico4 | Platform::PicoNeo3)
-            {
-                alvr_client_core::try_get_permission("com.picovr.permission.EYE_TRACKING")
-            }
-            if config.face_tracking_fb && matches!(platform, Platform::Quest3 | Platform::QuestPro)
-            {
-                alvr_client_core::try_get_permission("android.permission.RECORD_AUDIO");
-                alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING")
-            }
-        }
-
-        #[cfg(target_os = "android")]
-        if let Some(config) = &config.body_sources_config {
-            if (config.body_tracking_full_body_meta.enabled())
-                && matches!(platform, Platform::Quest3 | Platform::QuestPro)
-            {
-                alvr_client_core::try_get_permission("com.oculus.permission.BODY_TRACKING")
-            }
-        }
 
         let foveation_profile = if let Some(config) = &config.clientside_foveation_config {
             if xr_ctx.instance.exts().fb_swapchain_update_state.is_some()
@@ -487,14 +460,12 @@ fn stream_input_loop(
             htc_lip_expression: interaction::get_htc_lip_expression(&interaction_ctx.face_sources),
         };
 
-        if let Some(body_tracker_full_body_meta) =
-            &interaction_ctx.body_sources.body_tracker_full_body_meta
-        {
-            device_motions.append(&mut interaction::get_meta_body_tracking_full_body_points(
+        if let Some((tracker, joint_count)) = &interaction_ctx.body_sources.body_tracker_fb {
+            device_motions.append(&mut interaction::get_fb_body_tracking_points(
                 &reference_space,
                 crate::to_xr_time(now),
-                body_tracker_full_body_meta,
-                interaction_ctx.body_sources.enable_full_body,
+                tracker,
+                *joint_count,
             ));
         }
 

@@ -38,6 +38,7 @@ pub struct StreamConfig {
     pub encoder_config: EncoderConfig,
     pub face_sources_config: Option<FaceTrackingSourcesConfig>,
     pub body_sources_config: Option<BodyTrackingSourcesConfig>,
+    pub prefers_multimodal_input: bool,
 }
 
 impl StreamConfig {
@@ -61,6 +62,12 @@ impl StreamConfig {
                 .body_tracking
                 .as_option()
                 .map(|c| c.sources.clone()),
+            prefers_multimodal_input: settings
+                .headset
+                .controllers
+                .as_option()
+                .map(|c| c.multimodal_tracking)
+                .unwrap_or(false),
         }
     }
 }
@@ -438,11 +445,17 @@ fn stream_input_loop(
             &mut last_hand_positions[1],
         );
 
-        if let Some(motion) = left_hand_motion {
-            device_motions.push((*HAND_LEFT_ID, motion));
+        // Note: When multimodal input is enabled, we are sure that when free hands are used
+        // (not holding controllers) the controller data is None.
+        if interaction_ctx.uses_multimodal_hands || left_hand_skeleton.is_none() {
+            if let Some(motion) = left_hand_motion {
+                device_motions.push((*HAND_LEFT_ID, motion));
+            }
         }
-        if let Some(motion) = right_hand_motion {
-            device_motions.push((*HAND_RIGHT_ID, motion));
+        if interaction_ctx.uses_multimodal_hands || right_hand_skeleton.is_none() {
+            if let Some(motion) = right_hand_motion {
+                device_motions.push((*HAND_RIGHT_ID, motion));
+            }
         }
 
         let face_data = FaceData {

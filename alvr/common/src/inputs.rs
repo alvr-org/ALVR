@@ -54,6 +54,8 @@ devices! {
     (BODY_LEFT_FOOT, "/user/body/left_foot"),
     (BODY_RIGHT_KNEE, "/user/body/right_knee"),
     (BODY_RIGHT_FOOT, "/user/body/right_foot"),
+    (DETACHED_CONTROLLER_LEFT, "/user/detached_controller_meta/left"),
+    (DETACHED_CONTROLLER_RIGHT, "/user/detached_controller_meta/right"),
 }
 
 pub enum ButtonType {

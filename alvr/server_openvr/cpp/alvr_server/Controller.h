@@ -37,12 +37,7 @@ public:
 
     void SetButton(uint64_t id, FfiButtonValue value);
 
-    bool onPoseUpdate(
-        float predictionS,
-        FfiDeviceMotion motion,
-        const FfiHandSkeleton* hand,
-        unsigned int controllersTracked
-    );
+    bool onPoseUpdate(float predictionS, FfiHandData handData);
 
     void GetBoneTransform(bool withController, vr::VRBoneTransform_t outBoneTransform[]);
 

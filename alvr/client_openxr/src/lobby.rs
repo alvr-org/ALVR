@@ -129,6 +129,20 @@ impl Lobby {
             &mut Vec3::new(0.0, 0.0, 0.0),
         );
 
+        let body_skeleton_fb = self
+            .interaction_ctx
+            .body_sources
+            .body_tracker_fb
+            .as_ref()
+            .and_then(|(tracker, joint_count)| {
+                interaction::get_fb_body_skeleton(
+                    &self.reference_space,
+                    predicted_display_time,
+                    tracker,
+                    *joint_count,
+                )
+            });
+
         let left_swapchain_idx = self.swapchains[0].acquire_image().unwrap();
         let right_swapchain_idx = self.swapchains[1].acquire_image().unwrap();
 
@@ -156,6 +170,7 @@ impl Lobby {
                 (left_hand_data.0.map(|dm| dm.pose), left_hand_data.1),
                 (right_hand_data.0.map(|dm| dm.pose), right_hand_data.1),
             ],
+            body_skeleton_fb,
         );
 
         self.swapchains[0].release_image().unwrap();

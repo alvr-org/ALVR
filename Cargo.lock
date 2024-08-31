@@ -4089,8 +4089,8 @@ dependencies = [
 
 [[package]]
 name = "openxr"
-version = "0.17.1"
-source = "git+https://github.com/alvr-org/openxrs?rev=f1f47ff#f1f47ff8509801bf28d44538cd4a379dc1b686cf"
+version = "0.19.0"
+source = "git+https://github.com/Ralith/openxrs#d8ea5553d52c4bbaefe2537b8d70b8752f73694d"
 dependencies = [
  "libc",
  "libloading 0.8.4",
@@ -4100,8 +4100,8 @@ dependencies = [
 
 [[package]]
 name = "openxr-sys"
-version = "0.9.3"
-source = "git+https://github.com/alvr-org/openxrs?rev=f1f47ff#f1f47ff8509801bf28d44538cd4a379dc1b686cf"
+version = "0.11.0"
+source = "git+https://github.com/Ralith/openxrs#d8ea5553d52c4bbaefe2537b8d70b8752f73694d"
 dependencies = [
  "libc",
 ]

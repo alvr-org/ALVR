@@ -1,6 +1,6 @@
 use super::{GraphicsContext, SDR_FORMAT};
 use alvr_common::{
-    glam::{Mat4, UVec2, Vec3, Vec4},
+    glam::{Mat4, Quat, UVec2, Vec3, Vec4},
     Fov, Pose,
 };
 use glyph_brush_layout::{
@@ -51,6 +51,44 @@ const HAND_SKELETON_BONES: [(usize, usize); 19] = [
     (22, 23),
     (23, 24),
     (24, 25),
+];
+
+const BODY_SKELETON_BONES_FB: [(usize, usize); 30] = [
+    // Spine
+    (1, 2),
+    (2, 3),
+    (3, 4),
+    (4, 5),
+    (5, 6),
+    (6, 7),
+    // Left arm
+    (5, 8),
+    (8, 9),
+    (9, 10),
+    (10, 11),
+    (11, 12),
+    // Right arm
+    (5, 13),
+    (13, 14),
+    (14, 15),
+    (15, 16),
+    (16, 17),
+    // Left leg
+    (1, 70),
+    (70, 71),
+    (71, 72),
+    (72, 73),
+    (73, 74),
+    (74, 75),
+    (75, 76),
+    // Right leg
+    (1, 77),
+    (77, 78),
+    (78, 79),
+    (79, 80),
+    (80, 81),
+    (81, 82),
+    (82, 83),
 ];
 
 fn projection_from_fov(fov: Fov) -> Mat4 {
@@ -306,7 +344,8 @@ impl LobbyRenderer {
     pub fn render(
         &self,
         view_inputs: [RenderViewInput; 2],
-        hand_poses: [(Option<Pose>, Option<[Pose; 26]>); 2],
+        hand_data: [(Option<Pose>, Option<[Pose; 26]>); 2],
+        body_skeleton_fb: Option<Vec<Option<Pose>>>,
     ) {
         let mut encoder = self
             .context
@@ -376,7 +415,7 @@ impl LobbyRenderer {
 
             // Bind line pipeline and render hands
             pass.set_pipeline(&self.line_pipeline);
-            for (maybe_pose, maybe_skeleton) in &hand_poses {
+            for (maybe_pose, maybe_skeleton) in &hand_data {
                 if let Some(skeleton) = maybe_skeleton {
                     for (joint1_idx, joint2_idx) in HAND_SKELETON_BONES {
                         let j1_pose = skeleton[joint1_idx];
@@ -406,6 +445,23 @@ impl LobbyRenderer {
                             * *rot
                             * Mat4::from_scale(Vec3::ONE * 0.5)
                             * Mat4::from_translation(Vec3::Z * 0.5);
+                        transform_draw(&mut pass, view_proj * transform, 2);
+                    }
+                }
+            }
+            if let Some(skeleton) = &body_skeleton_fb {
+                for (joint1_idx, joint2_idx) in BODY_SKELETON_BONES_FB {
+                    if let (Some(Some(j1_pose)), Some(Some(j2_pose))) =
+                        (skeleton.get(joint1_idx), skeleton.get(joint2_idx))
+                    {
+                        let transform = Mat4::from_scale_rotation_translation(
+                            Vec3::ONE * Vec3::distance(j1_pose.position, j2_pose.position),
+                            Quat::from_rotation_arc(
+                                -Vec3::Z,
+                                (j2_pose.position - j1_pose.position).normalize(),
+                            ),
+                            j1_pose.position,
+                        );
                         transform_draw(&mut pass, view_proj * transform, 2);
                     }
                 }

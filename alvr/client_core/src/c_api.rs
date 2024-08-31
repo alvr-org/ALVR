@@ -812,7 +812,7 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(view_inputs: *const AlvrViewIn
 
     LOBBY_RENDERER.with_borrow(|renderer| {
         if let Some(renderer) = renderer {
-            renderer.render(view_inputs, [(None, None), (None, None)]);
+            renderer.render(view_inputs, [(None, None), (None, None)], None);
         }
     });
 }

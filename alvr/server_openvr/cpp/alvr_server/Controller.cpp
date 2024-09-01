@@ -230,9 +230,11 @@ bool Controller::onPoseUpdate(float predictionS, FfiHandData handData) {
 
     bool enabled = handData.tracked
         && ((handData.useHandTracker
-             && (device_id == HAND_TRACKER_LEFT_ID || device_id == HAND_TRACKER_RIGHT_ID))
+             && (device_id == HAND_TRACKER_LEFT_ID || device_id == HAND_TRACKER_RIGHT_ID)
+             && handData.controllerMotion == nullptr)
             || (!handData.useHandTracker
-                && (device_id == HAND_LEFT_ID || device_id == HAND_RIGHT_ID)));
+                && (device_id == HAND_LEFT_ID || device_id == HAND_RIGHT_ID)
+                && handData.controllerMotion != nullptr));
 
     Debug(
         "%s %s: enabled: %d, ctrl: %d, hand: %d",
@@ -299,11 +301,9 @@ bool Controller::onPoseUpdate(float predictionS, FfiHandData handData) {
     );
 
     // Early return to skip updating the skeleton
-    if (!this->isEnabled()) {
+    if (!enabled) {
         return false;
-    }
-
-    if (handSkeleton != nullptr) {
+    } else if (handSkeleton != nullptr) {
         vr::VRBoneTransform_t boneTransform[SKELETON_BONE_COUNT] = {};
 
         // NB: start from index 1 to skip the root bone

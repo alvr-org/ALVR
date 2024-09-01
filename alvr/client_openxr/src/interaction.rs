@@ -450,7 +450,8 @@ pub fn get_hand_data(
     reference_space: &xr::Space,
     time: xr::Time,
     hand_source: &HandInteraction,
-    last_position: &mut Vec3,
+    last_controller_pose: &mut Pose,
+    last_palm_pose: &mut Pose,
 ) -> (Option<DeviceMotion>, Option<[Pose; 26]>) {
     let controller_motion = if hand_source
         .grip_action
@@ -462,24 +463,21 @@ pub fn get_hand_data(
                 .location_flags
                 .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
             {
-                if location
-                    .location_flags
-                    .contains(xr::SpaceLocationFlags::POSITION_VALID)
-                {
-                    *last_position = crate::from_xr_vec3(location.pose.position);
-                }
-
-                Some(DeviceMotion {
-                    pose: Pose {
-                        orientation: crate::from_xr_quat(location.pose.orientation),
-                        position: *last_position,
-                    },
-                    linear_velocity: crate::from_xr_vec3(velocity.linear_velocity),
-                    angular_velocity: crate::from_xr_vec3(velocity.angular_velocity),
-                })
-            } else {
-                None
+                last_controller_pose.orientation = crate::from_xr_quat(location.pose.orientation);
             }
+
+            if location
+                .location_flags
+                .contains(xr::SpaceLocationFlags::POSITION_VALID)
+            {
+                last_controller_pose.position = crate::from_xr_vec3(location.pose.position);
+            }
+
+            Some(DeviceMotion {
+                pose: *last_controller_pose,
+                linear_velocity: crate::from_xr_vec3(velocity.linear_velocity),
+                angular_velocity: crate::from_xr_vec3(velocity.angular_velocity),
+            })
         } else {
             None
         }
@@ -495,17 +493,27 @@ pub fn get_hand_data(
         {
             if joint_locations[0]
                 .location_flags
-                .contains(xr::SpaceLocationFlags::POSITION_VALID)
+                .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
             {
-                *last_position = crate::from_xr_vec3(joint_locations[0].pose.position);
+                last_palm_pose.orientation =
+                    crate::from_xr_quat(joint_locations[0].pose.orientation);
             }
 
-            let joints = joint_locations
+            if joint_locations[0]
+                .location_flags
+                .contains(xr::SpaceLocationFlags::POSITION_VALID)
+            {
+                last_palm_pose.position = crate::from_xr_vec3(joint_locations[0].pose.position);
+            }
+
+            let mut joints: [_; 26] = joint_locations
                 .iter()
                 .map(|j| crate::from_xr_pose(j.pose))
                 .collect::<Vec<_>>()
                 .try_into()
                 .unwrap();
+
+            joints[0] = *last_palm_pose;
 
             Some(joints)
         } else {

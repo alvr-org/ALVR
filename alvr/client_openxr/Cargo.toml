@@ -129,9 +129,6 @@ value = "all"
 name = "com.oculus.vr.focusaware"
 value = "true"
 [[package.metadata.android.application.meta_data]]
-name = "com.oculus.handtracking.frequency"
-value = "HIGH"
-[[package.metadata.android.application.meta_data]]
 name = "com.oculus.handtracking.version"
 value = "V2.0"
 

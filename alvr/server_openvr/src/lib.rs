@@ -153,13 +153,13 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                         && tracking
                             .device_motions
                             .iter()
-                            .all(|(id, _)| *id != *HAND_TRACKER_LEFT_ID);
+                            .all(|(id, _)| *id != *HAND_LEFT_ID);
                     let use_right_hand_tracker = use_separate_hand_trackers
                         && tracking.hand_skeletons[1].is_some()
                         && tracking
                             .device_motions
                             .iter()
-                            .all(|(id, _)| *id != *HAND_TRACKER_RIGHT_ID);
+                            .all(|(id, _)| *id != *HAND_RIGHT_ID);
 
                     let ffi_head_motion = tracking
                         .device_motions

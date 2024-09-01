@@ -37,24 +37,19 @@ impl super::ExtraExtensions {
     pub fn supports_simultaneous_hands_and_controllers(
         &self,
         instance: &xr::Instance,
-        system_id: xr::SystemId,
+        system: xr::SystemId,
     ) -> bool {
-        unsafe {
-            let mut properties = SystemSymultaneousHandsAndControllersPropertiesMETA {
+        self.get_props(
+            instance,
+            system,
+            SystemSymultaneousHandsAndControllersPropertiesMETA {
                 ty: *TYPE_SYSTEM_SIMULTANEOUS_HANDS_AND_CONTROLLERS_PROPERTIES_META,
                 next: std::ptr::null(),
                 supports_simultaneous_hands_and_controllers: xr::sys::FALSE,
-            };
-
-            let result = (self.base_function_ptrs.get_system_properties)(
-                instance.as_raw(),
-                system_id,
-                &mut properties as *mut _ as *mut xr::sys::SystemProperties,
-            );
-
-            result == xr::sys::Result::SUCCESS
-                && properties.supports_simultaneous_hands_and_controllers == xr::sys::TRUE
-        }
+            },
+        )
+        .map(|props| props.supports_simultaneous_hands_and_controllers.into())
+        .unwrap_or(false)
     }
 
     pub fn resume_simultaneous_hands_and_controllers_tracking(

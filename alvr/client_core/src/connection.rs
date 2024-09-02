@@ -14,7 +14,7 @@ use alvr_common::{
     dbg_connection, debug, error, info,
     parking_lot::{Condvar, Mutex, RwLock},
     wait_rwlock, warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState,
-    ALVR_VERSION,
+    RelaxedAtomic, ALVR_VERSION,
 };
 use alvr_packets::{
     ClientConnectionResult, ClientControlPacket, ClientStatistics, Haptics, ServerControlPacket,
@@ -69,6 +69,7 @@ pub struct ConnectionContext {
     // todo: the server is supposed to receive and send view configs for each frame
     pub view_params_queue: RwLock<VecDeque<(Duration, [ViewParams; 2])>>,
     pub last_good_view_params: RwLock<[ViewParams; 2]>,
+    pub uses_multimodal_protocol: RelaxedAtomic,
 }
 
 fn set_hud_message(event_queue: &Mutex<VecDeque<ClientCoreEvent>>, message: &str) {
@@ -179,6 +180,7 @@ fn connection_pipeline(
                     encoder_high_profile: capabilities.encoder_high_profile,
                     encoder_10_bits: capabilities.encoder_10_bits,
                     encoder_av1: capabilities.encoder_av1,
+                    multimodal_protocol: true,
                 })
                 .to_con()?,
             ),
@@ -190,6 +192,9 @@ fn connection_pipeline(
 
     let (settings, negotiated_config) =
         alvr_packets::decode_stream_config(&config_packet).to_con()?;
+
+    ctx.uses_multimodal_protocol
+        .set(negotiated_config.use_multimodal_protocol);
 
     let streaming_start_event = ClientCoreEvent::StreamingStarted {
         settings: Box::new(settings.clone()),

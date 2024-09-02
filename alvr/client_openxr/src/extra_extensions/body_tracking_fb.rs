@@ -5,9 +5,9 @@ use openxr::{self as xr, raw, sys};
 use std::ptr;
 
 pub const META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME: &str = "XR_META_body_tracking_full_body";
-pub const TYPE_SYSTEM_PROPERTIES_BODY_TRACKING_FULL_BODY_META: Lazy<xr::StructureType> =
+static TYPE_SYSTEM_PROPERTIES_BODY_TRACKING_FULL_BODY_META: Lazy<xr::StructureType> =
     Lazy::new(|| xr::StructureType::from_raw(1000274000));
-pub const BODY_JOINT_SET_FULL_BODY_META: Lazy<xr::BodyJointSetFB> =
+pub static BODY_JOINT_SET_FULL_BODY_META: Lazy<xr::BodyJointSetFB> =
     Lazy::new(|| xr::BodyJointSetFB::from_raw(1000274000));
 
 pub const FULL_BODY_JOINT_LEFT_UPPER_LEG_META: usize = 70;

@@ -4,7 +4,7 @@ use crate::{
     XrContext,
 };
 use alvr_client_core::graphics::{GraphicsContext, LobbyRenderer, RenderViewInput, SDR_FORMAT_GL};
-use alvr_common::glam::{UVec2, Vec3};
+use alvr_common::{glam::UVec2, Pose};
 use openxr as xr;
 use std::{rc::Rc, sync::Arc};
 
@@ -119,14 +119,16 @@ impl Lobby {
             &self.reference_space,
             predicted_display_time,
             &self.interaction_ctx.hands_interaction[0],
-            &mut Vec3::new(0.0, 0.0, 0.0),
+            &mut Pose::default(),
+            &mut Pose::default(),
         );
         let right_hand_data = interaction::get_hand_data(
             &self.xr_session,
             &self.reference_space,
             predicted_display_time,
             &self.interaction_ctx.hands_interaction[1],
-            &mut Vec3::new(0.0, 0.0, 0.0),
+            &mut Pose::default(),
+            &mut Pose::default(),
         );
 
         let body_skeleton_fb = self

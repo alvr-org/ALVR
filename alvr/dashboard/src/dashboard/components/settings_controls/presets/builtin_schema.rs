@@ -321,7 +321,7 @@ pub fn microphone_schema(devices: Vec<String>) -> PresetSchemaNode {
 
 pub fn hand_tracking_interaction_schema() -> PresetSchemaNode {
     const HELP: &str = r"Disabled: hands cannot emulate buttons. Useful for using Joy-Cons or other non-native controllers.
-Separate trackers: create separate SteamVR devices for hand tracking. This is used for VRChat.
+SteamVR Input 2.0: create separate SteamVR devices for hand tracking.
 ALVR bindings: use ALVR hand tracking button bindings. Check the wiki for help.
 ";
 
@@ -337,7 +337,7 @@ ALVR bindings: use ALVR hand tracking button bindings. Check the wiki for help.
                 modifiers: vec![
                     bool_modifier("session_settings.headset.controllers.enabled", true),
                     bool_modifier(
-                        &format!("{PREFIX}.hand_skeleton.content.use_separate_trackers"),
+                        &format!("{PREFIX}.hand_skeleton.content.steamvr_input_2_0"),
                         false,
                     ),
                     bool_modifier(
@@ -348,12 +348,12 @@ ALVR bindings: use ALVR hand tracking button bindings. Check the wiki for help.
                 content: None,
             },
             HigherOrderChoiceOption {
-                display_name: "Separate trackers".into(),
+                display_name: "SteamVR Input 2.0".into(),
                 modifiers: vec![
                     bool_modifier("session_settings.headset.controllers.enabled", true),
                     bool_modifier(&format!("{PREFIX}.hand_skeleton.enabled"), true),
                     bool_modifier(
-                        &format!("{PREFIX}.hand_skeleton.content.use_separate_trackers"),
+                        &format!("{PREFIX}.hand_skeleton.content.steamvr_input_2_0"),
                         true,
                     ),
                     bool_modifier(
@@ -368,7 +368,7 @@ ALVR bindings: use ALVR hand tracking button bindings. Check the wiki for help.
                 modifiers: vec![
                     bool_modifier("session_settings.headset.controllers.enabled", true),
                     bool_modifier(
-                        &format!("{PREFIX}.hand_skeleton.content.use_separate_trackers"),
+                        &format!("{PREFIX}.hand_skeleton.content.steamvr_input_2_0"),
                         false,
                     ),
                     bool_modifier(&format!("{PREFIX}.hand_tracking_interaction.enabled"), true),

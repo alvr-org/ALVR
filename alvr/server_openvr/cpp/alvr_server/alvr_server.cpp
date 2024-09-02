@@ -406,57 +406,34 @@ void RequestIDR() {
 void SetTracking(
     unsigned long long targetTimestampNs,
     float controllerPoseTimeOffsetS,
-    const FfiDeviceMotion* deviceMotions,
-    int motionsCount,
-    unsigned int controllersTracked,
-    bool useLeftHandTracker,
-    bool useRightHandTracker,
-    const FfiHandSkeleton* leftHandSkeleton,
-    const FfiHandSkeleton* rightHandSkeleton,
+    FfiDeviceMotion headMotion,
+    FfiHandData leftHandData,
+    FfiHandData rightHandData,
     const FfiBodyTracker* bodyTrackers,
     int bodyTrackersCount
 ) {
-    for (int i = 0; i < motionsCount; i++) {
-        if (deviceMotions[i].deviceID == HEAD_ID && g_driver_provider.hmd) {
-            g_driver_provider.hmd->OnPoseUpdated(targetTimestampNs, deviceMotions[i]);
-        } else {
-            if (deviceMotions[i].deviceID == HAND_LEFT_ID) {
-                if (g_driver_provider.left_controller) {
-                    g_driver_provider.left_controller->onPoseUpdate(
-                        controllerPoseTimeOffsetS,
-                        deviceMotions[i],
-                        leftHandSkeleton,
-                        controllersTracked && !useLeftHandTracker
-                    );
-                }
-                if (g_driver_provider.left_hand_tracker) {
-                    g_driver_provider.left_hand_tracker->onPoseUpdate(
-                        controllerPoseTimeOffsetS,
-                        deviceMotions[i],
-                        leftHandSkeleton,
-                        controllersTracked && useLeftHandTracker
-                    );
-                }
-            } else if (deviceMotions[i].deviceID == HAND_RIGHT_ID) {
-                if (g_driver_provider.right_controller) {
-                    g_driver_provider.right_controller->onPoseUpdate(
-                        controllerPoseTimeOffsetS,
-                        deviceMotions[i],
-                        rightHandSkeleton,
-                        controllersTracked && !useRightHandTracker
-                    );
-                }
-                if (g_driver_provider.right_hand_tracker) {
-                    g_driver_provider.right_hand_tracker->onPoseUpdate(
-                        controllerPoseTimeOffsetS,
-                        deviceMotions[i],
-                        rightHandSkeleton,
-                        controllersTracked && useRightHandTracker
-                    );
-                }
-            }
-        }
+    if (g_driver_provider.hmd) {
+        g_driver_provider.hmd->OnPoseUpdated(targetTimestampNs, headMotion);
     }
+
+    if (g_driver_provider.left_hand_tracker) {
+        g_driver_provider.left_hand_tracker->onPoseUpdate(controllerPoseTimeOffsetS, leftHandData);
+    }
+
+    if (g_driver_provider.left_controller) {
+        g_driver_provider.left_controller->onPoseUpdate(controllerPoseTimeOffsetS, leftHandData);
+    }
+
+    if (g_driver_provider.right_hand_tracker) {
+        g_driver_provider.right_hand_tracker->onPoseUpdate(
+            controllerPoseTimeOffsetS, rightHandData
+        );
+    }
+
+    if (g_driver_provider.right_controller) {
+        g_driver_provider.right_controller->onPoseUpdate(controllerPoseTimeOffsetS, rightHandData);
+    }
+
     if (Settings::Instance().m_enableBodyTrackingFakeVive) {
         for (int i = 0; i < bodyTrackersCount; i++) {
             g_driver_provider.generic_trackers.at(bodyTrackers[i].trackerID)

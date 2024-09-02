@@ -231,7 +231,7 @@ pub fn initialize_interaction(
             .unwrap();
 
         let space = action
-            .create_space(&xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+            .create_space(&xr_ctx.session, xr::Path::NULL, xr::Posef::IDENTITY)
             .unwrap();
 
         (action, space)
@@ -240,17 +240,17 @@ pub fn initialize_interaction(
     xr_ctx.session.attach_action_sets(&[&action_set]).unwrap();
 
     let left_grip_space = left_grip_action
-        .create_space(&xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+        .create_space(&xr_ctx.session, xr::Path::NULL, xr::Posef::IDENTITY)
         .unwrap();
     let right_grip_space = right_grip_action
-        .create_space(&xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+        .create_space(&xr_ctx.session, xr::Path::NULL, xr::Posef::IDENTITY)
         .unwrap();
 
     let left_aim_space = left_aim_action
-        .create_space(&xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+        .create_space(&xr_ctx.session, xr::Path::NULL, xr::Posef::IDENTITY)
         .unwrap();
     let right_aim_space = right_aim_action
-        .create_space(&xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+        .create_space(&xr_ctx.session, xr::Path::NULL, xr::Posef::IDENTITY)
         .unwrap();
 
     let (left_hand_tracker, right_hand_tracker) =
@@ -278,7 +278,7 @@ pub fn initialize_interaction(
     .then(|| {
         xr_ctx
             .extra_extensions
-            .create_eye_tracker_social(xr_ctx.session.clone())
+            .create_eye_tracker_social(&xr_ctx.session)
             .unwrap()
     });
 

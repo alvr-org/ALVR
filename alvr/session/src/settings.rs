@@ -683,6 +683,10 @@ pub struct FaceTrackingConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BodyTrackingSourcesConfig {
     pub body_tracking_fb: Switch<BodyTrackingFBConfig>,
+    // todo:
+    // pub detached_controllers_as_feet: bool,
+    // unfortunately multimodal is incompatible with body tracking. To make this usable we need to
+    // at least add support for an android client as 3dof waist tracker.
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
@@ -871,7 +875,7 @@ pub struct HandSkeletonConfig {
     #[schema(strings(
         help = r"Enabling this will use separate tracker objects with the full skeletal tracking level when hand tracking is detected. This is required for VRChat hand tracking."
     ))]
-    pub use_separate_trackers: bool,
+    pub steamvr_input_2_0: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -886,6 +890,12 @@ pub struct ControllersConfig {
         help = "Enabling this passes skeletal hand data (finger tracking) to SteamVR."
     ))]
     pub hand_skeleton: Switch<HandSkeletonConfig>,
+
+    #[schema(strings(
+        help = r"Track hand skeleton while holding controllers. This will reduce hand tracking frequency to 30Hz.
+Because of runtime limitations, this option is ignored when body tracking is active."
+    ))]
+    pub multimodal_tracking: bool,
 
     #[schema(flag = "real-time")]
     #[schema(strings(
@@ -1532,9 +1542,10 @@ pub fn session_settings_default() -> SettingsDefault {
                     hand_skeleton: SwitchDefault {
                         enabled: true,
                         content: HandSkeletonConfigDefault {
-                            use_separate_trackers: true,
+                            steamvr_input_2_0: true,
                         },
                     },
+                    multimodal_tracking: false,
                     emulation_mode: ControllersEmulationModeDefault {
                         Custom: ControllersEmulationModeCustomDefault {
                             serial_number: "ALVR Controller".into(),

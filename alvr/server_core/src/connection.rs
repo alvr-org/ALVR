@@ -88,7 +88,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         use_separate_hand_trackers = config
             .hand_skeleton
             .as_option()
-            .map(|c| c.use_separate_trackers)
+            .map(|c| c.steamvr_input_2_0)
             .unwrap_or(false);
 
         true
@@ -632,6 +632,7 @@ fn connection_pipeline(
             refresh_rate_hint: fps,
             game_audio_sample_rate,
             enable_foveated_encoding,
+            use_multimodal_protocol: streaming_caps.multimodal_protocol,
         },
     )
     .to_con()?;
@@ -896,9 +897,23 @@ fn connection_pipeline(
                     Err(ConnectionError::TryAgain(_)) => continue,
                     Err(ConnectionError::Other(_)) => return,
                 };
-                let Ok(tracking) = data.get_header() else {
+                let Ok(mut tracking) = data.get_header() else {
                     return;
                 };
+
+                if !streaming_caps.multimodal_protocol {
+                    if tracking.hand_skeletons[0].is_some() {
+                        tracking
+                            .device_motions
+                            .retain(|(id, _)| *id != *HAND_LEFT_ID);
+                    }
+
+                    if tracking.hand_skeletons[1].is_some() {
+                        tracking
+                            .device_motions
+                            .retain(|(id, _)| *id != *HAND_RIGHT_ID);
+                    }
+                }
 
                 let controllers_config = {
                     let data_lock = SESSION_MANAGER.read();
@@ -917,14 +932,8 @@ fn connection_pipeline(
                     let session_manager_lock = SESSION_MANAGER.read();
                     let headset_config = &session_manager_lock.settings().headset;
 
-                    motions = tracking_manager_lock.transform_motions(
-                        headset_config,
-                        &tracking.device_motions,
-                        [
-                            tracking.hand_skeletons[0].is_some(),
-                            tracking.hand_skeletons[1].is_some(),
-                        ],
-                    );
+                    motions = tracking_manager_lock
+                        .transform_motions(headset_config, &tracking.device_motions);
 
                     hand_skeletons = [
                         tracking.hand_skeletons[0]

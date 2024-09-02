@@ -45,6 +45,7 @@ pub struct InteractionContext {
     pub action_set: xr::ActionSet,
     pub button_actions: HashMap<u64, ButtonAction>,
     pub hands_interaction: [HandInteraction; 2],
+    pub uses_multimodal_hands: bool,
     pub face_sources: FaceSources,
     pub body_sources: BodySources,
 }
@@ -52,6 +53,7 @@ pub struct InteractionContext {
 pub fn initialize_interaction(
     xr_ctx: &XrContext,
     platform: Platform,
+    prefer_multimodal_input: bool,
     face_tracking_sources: Option<FaceTrackingSourcesConfig>,
     body_tracking_sources: Option<BodyTrackingSourcesConfig>,
 ) -> InteractionContext {
@@ -194,6 +196,54 @@ pub fn initialize_interaction(
         &right_vibration_action,
         "/user/hand/right/output/haptic",
     ));
+
+    // Note: We cannot enable multimodal if fb body tracking is active. It would result in a
+    // ERROR_RUNTIME_FAILURE crash.
+    let uses_multimodal_hands = prefer_multimodal_input
+        && xr_ctx
+            .extra_extensions
+            .supports_simultaneous_hands_and_controllers(&xr_ctx.instance, xr_ctx.system)
+        && !body_tracking_sources
+            .as_ref()
+            .map(|s| s.body_tracking_fb.enabled())
+            .unwrap_or(false);
+
+    let left_detached_controller_pose_action;
+    let right_detached_controller_pose_action;
+    if uses_multimodal_hands {
+        xr_ctx
+            .extra_extensions
+            .resume_simultaneous_hands_and_controllers_tracking(&xr_ctx.session)
+            .ok();
+
+        // Note: when multimodal input is enabled, both controllers and hands will always be active.
+        // To be able to detect when controllers are actually held, we have to register detached
+        // controllers pose; the controller pose will be diverted to the detached controllers when
+        // they are not held. Currently the detached controllers pose is ignored
+        left_detached_controller_pose_action = action_set
+            .create_action::<xr::Posef>(
+                "left_detached_controller_pose",
+                "Left detached controller pose",
+                &[],
+            )
+            .unwrap();
+        right_detached_controller_pose_action = action_set
+            .create_action::<xr::Posef>(
+                "right_detached_controller_pose",
+                "Right detached controller pose",
+                &[],
+            )
+            .unwrap();
+
+        bindings.push(binding(
+            &left_detached_controller_pose_action,
+            "/user/detached_controller_meta/left/input/grip/pose",
+        ));
+        bindings.push(binding(
+            &right_detached_controller_pose_action,
+            "/user/detached_controller_meta/right/input/grip/pose",
+        ));
+    }
 
     // Apply bindings:
     xr_ctx
@@ -380,6 +430,7 @@ pub fn initialize_interaction(
                 skeleton_tracker: right_hand_tracker,
             },
         ],
+        uses_multimodal_hands,
         face_sources: FaceSources {
             combined_eyes_source,
             eye_tracker_fb,
@@ -405,9 +456,42 @@ pub fn get_hand_data(
     reference_space: &xr::Space,
     time: xr::Time,
     hand_source: &HandInteraction,
-    last_position: &mut Vec3,
+    last_controller_pose: &mut Pose,
+    last_palm_pose: &mut Pose,
 ) -> (Option<DeviceMotion>, Option<[Pose; 26]>) {
-    if let Some(tracker) = &hand_source.skeleton_tracker {
+    let controller_motion = if hand_source
+        .grip_action
+        .is_active(xr_session, xr::Path::NULL)
+        .unwrap_or(false)
+    {
+        if let Ok((location, velocity)) = hand_source.grip_space.relate(reference_space, time) {
+            if location
+                .location_flags
+                .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
+            {
+                last_controller_pose.orientation = crate::from_xr_quat(location.pose.orientation);
+            }
+
+            if location
+                .location_flags
+                .contains(xr::SpaceLocationFlags::POSITION_VALID)
+            {
+                last_controller_pose.position = crate::from_xr_vec3(location.pose.position);
+            }
+
+            Some(DeviceMotion {
+                pose: *last_controller_pose,
+                linear_velocity: crate::from_xr_vec3(velocity.linear_velocity),
+                angular_velocity: crate::from_xr_vec3(velocity.angular_velocity),
+            })
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let hand_joints = if let Some(tracker) = &hand_source.skeleton_tracker {
         if let Some(joint_locations) = reference_space
             .locate_hand_joints(tracker, time)
             .ok()
@@ -415,67 +499,37 @@ pub fn get_hand_data(
         {
             if joint_locations[0]
                 .location_flags
-                .contains(xr::SpaceLocationFlags::POSITION_VALID)
+                .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
             {
-                *last_position = crate::from_xr_vec3(joint_locations[0].pose.position);
+                last_palm_pose.orientation =
+                    crate::from_xr_quat(joint_locations[0].pose.orientation);
             }
 
-            let root_motion = DeviceMotion {
-                pose: Pose {
-                    orientation: crate::from_xr_quat(joint_locations[0].pose.orientation),
-                    position: *last_position,
-                },
-                linear_velocity: Vec3::ZERO,
-                angular_velocity: Vec3::ZERO,
-            };
+            if joint_locations[0]
+                .location_flags
+                .contains(xr::SpaceLocationFlags::POSITION_VALID)
+            {
+                last_palm_pose.position = crate::from_xr_vec3(joint_locations[0].pose.position);
+            }
 
-            let joints = joint_locations
+            let mut joints: [_; 26] = joint_locations
                 .iter()
                 .map(|j| crate::from_xr_pose(j.pose))
                 .collect::<Vec<_>>()
                 .try_into()
                 .unwrap();
 
-            return (Some(root_motion), Some(joints));
+            joints[0] = *last_palm_pose;
+
+            Some(joints)
+        } else {
+            None
         }
-    }
-
-    if !hand_source
-        .grip_action
-        .is_active(xr_session, xr::Path::NULL)
-        .unwrap_or(false)
-    {
-        return (None, None);
-    }
-
-    let Ok((location, velocity)) = hand_source.grip_space.relate(reference_space, time) else {
-        return (None, None);
+    } else {
+        None
     };
 
-    if !location
-        .location_flags
-        .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
-    {
-        return (None, None);
-    }
-
-    if location
-        .location_flags
-        .contains(xr::SpaceLocationFlags::POSITION_VALID)
-    {
-        *last_position = crate::from_xr_vec3(location.pose.position);
-    }
-
-    let hand_motion = DeviceMotion {
-        pose: Pose {
-            orientation: crate::from_xr_quat(location.pose.orientation),
-            position: *last_position,
-        },
-        linear_velocity: crate::from_xr_vec3(velocity.linear_velocity),
-        angular_velocity: crate::from_xr_vec3(velocity.angular_velocity),
-    };
-
-    (Some(hand_motion), None)
+    (controller_motion, hand_joints)
 }
 
 pub fn update_buttons(

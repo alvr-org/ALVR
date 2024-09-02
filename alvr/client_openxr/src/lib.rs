@@ -14,7 +14,11 @@ use alvr_common::{
     glam::{Quat, UVec2, Vec3},
     info, Fov, Pose, HAND_LEFT_ID,
 };
-use extra_extensions::{ExtraExtensions, META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME};
+use extra_extensions::{
+    ExtraExtensions, META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
+    META_DETACHED_CONTROLLERS_EXTENSION_NAME,
+    META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,
+};
 use lobby::Lobby;
 use openxr as xr;
 use std::{
@@ -25,7 +29,6 @@ use std::{
     time::{Duration, Instant},
 };
 use stream::StreamContext;
-use xr::ColorSpaceFB;
 
 const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 
@@ -168,7 +171,14 @@ pub fn entry_point() {
     exts.other = available_extensions
         .other
         .into_iter()
-        .filter(|ext| [META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME].contains(&ext.as_str()))
+        .filter(|ext| {
+            [
+                META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
+                META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,
+                META_DETACHED_CONTROLLERS_EXTENSION_NAME,
+            ]
+            .contains(&ext.as_str())
+        })
         .collect();
 
     let available_layers = xr_entry.enumerate_layers().unwrap();
@@ -236,7 +246,7 @@ pub fn entry_point() {
         };
 
         if exts.fb_color_space {
-            xr_session.set_color_space(ColorSpaceFB::P3).unwrap();
+            xr_session.set_color_space(xr::ColorSpaceFB::P3).unwrap();
         }
 
         let capabilities = ClientCapabilities {
@@ -253,6 +263,10 @@ pub fn entry_point() {
         let interaction_context = Arc::new(interaction::initialize_interaction(
             &xr_context,
             platform,
+            stream_config
+                .as_ref()
+                .map(|c| c.prefers_multimodal_input)
+                .unwrap_or(false),
             stream_config
                 .as_ref()
                 .and_then(|c| c.face_sources_config.clone()),

@@ -10,8 +10,8 @@ use alvr_client_core::{
 };
 use alvr_common::{
     error,
-    glam::{UVec2, Vec2, Vec3},
-    RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID,
+    glam::{UVec2, Vec2},
+    Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID,
 };
 use alvr_packets::{FaceData, NegotiatedStreamingConfig, ViewParams};
 use alvr_session::{
@@ -38,6 +38,7 @@ pub struct StreamConfig {
     pub encoder_config: EncoderConfig,
     pub face_sources_config: Option<FaceTrackingSourcesConfig>,
     pub body_sources_config: Option<BodyTrackingSourcesConfig>,
+    pub prefers_multimodal_input: bool,
 }
 
 impl StreamConfig {
@@ -61,6 +62,12 @@ impl StreamConfig {
                 .body_tracking
                 .as_option()
                 .map(|c| c.sources.clone()),
+            prefers_multimodal_input: settings
+                .headset
+                .controllers
+                .as_option()
+                .map(|c| c.multimodal_tracking)
+                .unwrap_or(false),
         }
     }
 }
@@ -368,7 +375,8 @@ fn stream_input_loop(
     refresh_rate: f32,
     running: Arc<RelaxedAtomic>,
 ) {
-    let mut last_hand_positions = [Vec3::ZERO; 2];
+    let mut last_controller_poses = [Pose::default(); 2];
+    let mut last_palm_poses = [Pose::default(); 2];
 
     let mut deadline = Instant::now();
     let frame_interval = Duration::from_secs_f32(1.0 / refresh_rate);
@@ -428,21 +436,29 @@ fn stream_input_loop(
             &reference_space,
             tracker_time,
             &interaction_ctx.hands_interaction[0],
-            &mut last_hand_positions[0],
+            &mut last_controller_poses[0],
+            &mut last_palm_poses[0],
         );
         let (right_hand_motion, right_hand_skeleton) = crate::interaction::get_hand_data(
             &xr_ctx.session,
             &reference_space,
             tracker_time,
             &interaction_ctx.hands_interaction[1],
-            &mut last_hand_positions[1],
+            &mut last_controller_poses[1],
+            &mut last_palm_poses[1],
         );
 
-        if let Some(motion) = left_hand_motion {
-            device_motions.push((*HAND_LEFT_ID, motion));
+        // Note: When multimodal input is enabled, we are sure that when free hands are used
+        // (not holding controllers) the controller data is None.
+        if interaction_ctx.uses_multimodal_hands || left_hand_skeleton.is_none() {
+            if let Some(motion) = left_hand_motion {
+                device_motions.push((*HAND_LEFT_ID, motion));
+            }
         }
-        if let Some(motion) = right_hand_motion {
-            device_motions.push((*HAND_RIGHT_ID, motion));
+        if interaction_ctx.uses_multimodal_hands || right_hand_skeleton.is_none() {
+            if let Some(motion) = right_hand_motion {
+                device_motions.push((*HAND_RIGHT_ID, motion));
+            }
         }
 
         let face_data = FaceData {

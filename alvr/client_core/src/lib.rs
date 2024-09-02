@@ -23,7 +23,8 @@ use alvr_common::{
     dbg_client_core, error,
     glam::{UVec2, Vec2, Vec3},
     parking_lot::{Mutex, RwLock},
-    warn, ConnectionState, DeviceMotion, LifecycleState, Pose, HEAD_ID,
+    warn, ConnectionState, DeviceMotion, LifecycleState, Pose, HAND_LEFT_ID, HAND_RIGHT_ID,
+    HEAD_ID,
 };
 use alvr_packets::{
     BatteryInfo, ButtonEntry, ClientControlPacket, FaceData, NegotiatedStreamingConfig,
@@ -270,6 +271,32 @@ impl ClientCoreContext {
                         }))
                         .ok();
                 }
+            }
+        }
+
+        // send_tracking() expects hand data in the multimodal protocol. In case multimodal protocol
+        // is not supported, convert back to legacy protocol.
+        if !self.connection_context.uses_multimodal_protocol.value() {
+            if hand_skeletons[0].is_some() {
+                device_motions.push((
+                    *HAND_LEFT_ID,
+                    DeviceMotion {
+                        pose: hand_skeletons[0].unwrap()[0],
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ));
+            }
+
+            if hand_skeletons[1].is_some() {
+                device_motions.push((
+                    *HAND_RIGHT_ID,
+                    DeviceMotion {
+                        pose: hand_skeletons[1].unwrap()[0],
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ));
             }
         }
 

@@ -35,6 +35,7 @@ pub const fn lazy_mut_none<T>() -> OptLazy<T> {
 
 // Simple wrapper for AtomicBool when using Ordering::Relaxed. Deref cannot be implemented (cannot
 // return local reference)
+#[derive(Default)]
 pub struct RelaxedAtomic(AtomicBool);
 
 impl RelaxedAtomic {

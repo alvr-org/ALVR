@@ -17,7 +17,7 @@ impl super::ExtraExtensions {
 
     pub fn create_eye_tracker_social<G>(
         &self,
-        session: xr::Session<G>,
+        session: &xr::Session<G>,
     ) -> Result<EyeTrackerSocial> {
         let ext_fns = self.ext_functions_ptrs.fb_eye_tracking_social.to_any()?;
 

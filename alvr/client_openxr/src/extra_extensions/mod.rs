@@ -10,10 +10,7 @@ pub use face_tracking2_fb::*;
 pub use facial_tracking_htc::*;
 pub use multimodal_input::*;
 
-use alvr_common::{
-    anyhow::{anyhow, Result},
-    error,
-};
+use alvr_common::anyhow::{anyhow, Result};
 use openxr::{self as xr, sys};
 use std::{mem, ptr};
 
@@ -46,11 +43,6 @@ impl ExtraExtensions {
             resume_simultaneous_hands_and_controllers_tracking_meta
                 .map(|f| mem::transmute::<_, ResumeSimultaneousHandsAndControllersTrackingMETA>(f))
         };
-
-        error!(
-            "resume_simultaneous_hands_and_controllers_tracking_meta: {:?}",
-            resume_simultaneous_hands_and_controllers_tracking_meta.is_some()
-        );
 
         Self {
             base_function_ptrs: instance.fp().clone(),

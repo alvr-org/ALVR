@@ -892,7 +892,8 @@ pub struct ControllersConfig {
     pub hand_skeleton: Switch<HandSkeletonConfig>,
 
     #[schema(strings(
-        help = "Track hand skeleton while holding controllers. This will reduce hand tracking frequency to 30Hz."
+        help = r"Track hand skeleton while holding controllers. This will reduce hand tracking frequency to 30Hz.
+Because of runtime limitations, this option is ignored when body tracking is active."
     ))]
     pub multimodal_tracking: bool,
 

@@ -197,10 +197,16 @@ pub fn initialize_interaction(
         "/user/hand/right/output/haptic",
     ));
 
+    // Note: We cannot enable multimodal if fb body tracking is active. It would result in a
+    // ERROR_RUNTIME_FAILURE crash.
     let uses_multimodal_hands = prefer_multimodal_input
         && xr_ctx
             .extra_extensions
-            .supports_simultaneous_hands_and_controllers(&xr_ctx.instance, xr_ctx.system);
+            .supports_simultaneous_hands_and_controllers(&xr_ctx.instance, xr_ctx.system)
+        && !body_tracking_sources
+            .as_ref()
+            .map(|s| s.body_tracking_fb.enabled())
+            .unwrap_or(false);
 
     let left_detached_controller_pose_action;
     let right_detached_controller_pose_action;

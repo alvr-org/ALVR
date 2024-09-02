@@ -14,7 +14,6 @@ mod web_server;
 
 pub use c_api::*;
 pub use logging_backend::init_logging;
-pub use tracking::get_hand_skeleton_offsets;
 
 use crate::connection::VideoPacket;
 use alvr_common::{

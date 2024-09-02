@@ -38,6 +38,7 @@ pub struct VideoStreamingCapabilities {
     pub encoder_high_profile: bool,
     pub encoder_10_bits: bool,
     pub encoder_av1: bool,
+    pub multimodal_protocol: bool,
 }
 
 // Nasty workaround to make the packet extensible, pushing the limits of protocol compatibility
@@ -92,6 +93,7 @@ pub fn decode_video_streaming_capabilities(
         encoder_high_profile: caps_json["encoder_high_profile"].as_bool().unwrap_or(true),
         encoder_10_bits: caps_json["encoder_10_bits"].as_bool().unwrap_or(true),
         encoder_av1: caps_json["encoder_av1"].as_bool().unwrap_or(true),
+        multimodal_protocol: caps_json["multimodal_protocol"].as_bool().unwrap_or(false),
     })
 }
 
@@ -113,6 +115,9 @@ pub struct NegotiatedStreamingConfig {
     pub refresh_rate_hint: f32,
     pub game_audio_sample_rate: u32,
     pub enable_foveated_encoding: bool,
+    // This is needed to detect when to use SteamVR hand trackers. This does NOT imply if multimodal
+    // input is supported
+    pub use_multimodal_protocol: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -147,6 +152,8 @@ pub fn decode_stream_config(
     let enable_foveated_encoding =
         json::from_value(negotiated_json["enable_foveated_encoding"].clone())
             .unwrap_or_else(|_| settings.video.foveated_encoding.enabled());
+    let use_multimodal_protocol =
+        json::from_value(negotiated_json["use_multimodal_protocol"].clone()).unwrap_or(false);
 
     Ok((
         settings,
@@ -155,6 +162,7 @@ pub fn decode_stream_config(
             refresh_rate_hint,
             game_audio_sample_rate,
             enable_foveated_encoding,
+            use_multimodal_protocol,
         },
     ))
 }

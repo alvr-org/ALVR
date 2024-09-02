@@ -11,39 +11,6 @@ use std::{collections::HashMap, f32::consts::PI};
 
 const DEG_TO_RAD: f32 = PI / 180.0;
 
-pub fn get_hand_skeleton_offsets(config: &HeadsetConfig) -> (Pose, Pose) {
-    let left_offset;
-    let right_offset;
-    if let Switch::Enabled(controllers) = &config.controllers {
-        let t = controllers.left_hand_tracking_position_offset;
-        let r = controllers.left_hand_tracking_rotation_offset;
-
-        left_offset = Pose {
-            orientation: Quat::from_euler(
-                EulerRot::XYZ,
-                r[0] * DEG_TO_RAD,
-                r[1] * DEG_TO_RAD,
-                r[2] * DEG_TO_RAD,
-            ),
-            position: Vec3::new(t[0], t[1], t[2]),
-        };
-        right_offset = Pose {
-            orientation: Quat::from_euler(
-                EulerRot::XYZ,
-                r[0] * DEG_TO_RAD,
-                -r[1] * DEG_TO_RAD,
-                -r[2] * DEG_TO_RAD,
-            ),
-            position: Vec3::new(-t[0], t[1], t[2]),
-        };
-    } else {
-        left_offset = Pose::default();
-        right_offset = Pose::default();
-    }
-
-    (left_offset, right_offset)
-}
-
 // todo: Move this struct to Settings and use it for every tracked device
 #[derive(Default)]
 struct MotionConfig {
@@ -114,7 +81,6 @@ impl TrackingManager {
         &mut self,
         config: &HeadsetConfig,
         device_motions: &[(u64, DeviceMotion)],
-        hand_skeletons_enabled: [bool; 2],
     ) -> Vec<(u64, DeviceMotion)> {
         let mut device_motion_configs = HashMap::new();
         device_motion_configs.insert(*HEAD_ID, MotionConfig::default());
@@ -168,9 +134,6 @@ impl TrackingManager {
             );
         }
 
-        let (left_hand_skeleton_offset, right_hand_skeleton_offset) =
-            get_hand_skeleton_offsets(config);
-
         let mut transformed_motions = vec![];
         for &(device_id, mut motion) in device_motions {
             if device_id == *HEAD_ID {
@@ -186,19 +149,12 @@ impl TrackingManager {
                 motion.angular_velocity = inverse_origin_orientation * motion.angular_velocity;
 
                 // Apply custom transform
-                let pose_offset = if device_id == *HAND_LEFT_ID && hand_skeletons_enabled[0] {
-                    left_hand_skeleton_offset
-                } else if device_id == *HAND_RIGHT_ID && hand_skeletons_enabled[1] {
-                    right_hand_skeleton_offset
-                } else {
-                    config.pose_offset
-                };
-                motion.pose.orientation *= pose_offset.orientation;
-                motion.pose.position += motion.pose.orientation * pose_offset.position;
+                motion.pose.orientation *= config.pose_offset.orientation;
+                motion.pose.position += motion.pose.orientation * config.pose_offset.position;
 
                 motion.linear_velocity += motion
                     .angular_velocity
-                    .cross(motion.pose.orientation * pose_offset.position);
+                    .cross(motion.pose.orientation * config.pose_offset.position);
                 motion.angular_velocity =
                     motion.pose.orientation.conjugate() * motion.angular_velocity;
 
@@ -210,18 +166,10 @@ impl TrackingManager {
                     }
                 }
 
-                if (device_id == *HAND_LEFT_ID && hand_skeletons_enabled[0])
-                    || (device_id == *HAND_RIGHT_ID && hand_skeletons_enabled[1])
-                {
-                    // On hand tracking, velocities seem to make hands overly jittery
-                    motion.linear_velocity = Vec3::ZERO;
-                    motion.angular_velocity = Vec3::ZERO;
-                } else {
-                    motion.linear_velocity =
-                        cutoff(motion.linear_velocity, config.linear_velocity_cutoff);
-                    motion.angular_velocity =
-                        cutoff(motion.angular_velocity, config.angular_velocity_cutoff);
-                }
+                motion.linear_velocity =
+                    cutoff(motion.linear_velocity, config.linear_velocity_cutoff);
+                motion.angular_velocity =
+                    cutoff(motion.angular_velocity, config.angular_velocity_cutoff);
 
                 transformed_motions.push((device_id, motion));
             }

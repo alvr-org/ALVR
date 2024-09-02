@@ -220,45 +220,78 @@ void Controller::SetButton(uint64_t id, FfiButtonValue value) {
     }
 }
 
-bool Controller::onPoseUpdate(
-    float predictionS,
-    FfiDeviceMotion motion,
-    const FfiHandSkeleton* handSkeleton,
-    unsigned int controllersTracked
-) {
+bool Controller::onPoseUpdate(float predictionS, FfiHandData handData) {
     if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
         return false;
     }
 
+    auto controllerMotion = handData.controllerMotion;
+    auto handSkeleton = handData.handSkeleton;
+
+    // Note: following the multimodal protocol, to make sure we want to use hand trackers we need to
+    // check controllerMotion == nullptr. handSkeleton != nullptr is not enough.
+    bool enabledAsHandTracker = handData.useHandTracker
+        && (device_id == HAND_TRACKER_LEFT_ID || device_id == HAND_TRACKER_RIGHT_ID)
+        && controllerMotion == nullptr;
+    bool enabledAsController = !handData.useHandTracker
+        && (device_id == HAND_LEFT_ID || device_id == HAND_RIGHT_ID) && controllerMotion != nullptr;
+    bool enabled = handData.tracked && (enabledAsHandTracker || enabledAsController);
+
+    Debug(
+        "%s %s: enabled: %d, ctrl: %d, hand: %d",
+        (device_id == HAND_TRACKER_LEFT_ID || device_id == HAND_TRACKER_RIGHT_ID) ? "hand tracker"
+                                                                                  : "controller",
+        (device_id == HAND_TRACKER_LEFT_ID || device_id == HAND_LEFT_ID) ? "left" : "right",
+        enabled,
+        handData.controllerMotion != nullptr,
+        handData.handSkeleton != nullptr
+    );
+
     auto vr_driver_input = vr::VRDriverInput();
 
     auto pose = vr::DriverPose_t {};
-    pose.poseIsValid = controllersTracked;
-    pose.deviceIsConnected = controllersTracked;
-    pose.result
-        = controllersTracked ? vr::TrackingResult_Running_OK : vr::TrackingResult_Uninitialized;
+    pose.poseIsValid = enabled;
+    pose.deviceIsConnected = enabled;
+    pose.result = enabled ? vr::TrackingResult_Running_OK : vr::TrackingResult_Uninitialized;
 
     pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
     pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-    pose.qRotation = HmdQuaternion_Init(
-        motion.orientation.w,
-        motion.orientation.x,
-        motion.orientation.y,
-        motion.orientation.z
-    ); // controllerRotation;
+    if (controllerMotion != nullptr) {
+        auto m = controllerMotion;
 
-    pose.vecPosition[0] = motion.position[0];
-    pose.vecPosition[1] = motion.position[1];
-    pose.vecPosition[2] = motion.position[2];
+        pose.qRotation = HmdQuaternion_Init(
+            m->orientation.w, m->orientation.x, m->orientation.y, m->orientation.z
+        );
 
-    pose.vecVelocity[0] = motion.linearVelocity[0];
-    pose.vecVelocity[1] = motion.linearVelocity[1];
-    pose.vecVelocity[2] = motion.linearVelocity[2];
+        pose.vecPosition[0] = m->position[0];
+        pose.vecPosition[1] = m->position[1];
+        pose.vecPosition[2] = m->position[2];
 
-    pose.vecAngularVelocity[0] = motion.angularVelocity[0];
-    pose.vecAngularVelocity[1] = motion.angularVelocity[1];
-    pose.vecAngularVelocity[2] = motion.angularVelocity[2];
+        pose.vecVelocity[0] = m->linearVelocity[0];
+        pose.vecVelocity[1] = m->linearVelocity[1];
+        pose.vecVelocity[2] = m->linearVelocity[2];
+
+        pose.vecAngularVelocity[0] = m->angularVelocity[0];
+        pose.vecAngularVelocity[1] = m->angularVelocity[1];
+        pose.vecAngularVelocity[2] = m->angularVelocity[2];
+    } else if (handSkeleton != nullptr) {
+        auto r = handSkeleton->jointRotations[0];
+        pose.qRotation = HmdQuaternion_Init(r.w, r.x, r.y, r.z);
+
+        auto p = handSkeleton->jointPositions[0];
+        pose.vecPosition[0] = p[0];
+        pose.vecPosition[1] = p[1];
+        pose.vecPosition[2] = p[2];
+
+        pose.vecVelocity[0] = 0;
+        pose.vecVelocity[1] = 0;
+        pose.vecVelocity[2] = 0;
+
+        pose.vecAngularVelocity[0] = 0;
+        pose.vecAngularVelocity[1] = 0;
+        pose.vecAngularVelocity[2] = 0;
+    }
 
     pose.poseTimeOffset = predictionS;
 
@@ -269,13 +302,13 @@ bool Controller::onPoseUpdate(
     );
 
     // Early return to skip updating the skeleton
-    if (!this->isEnabled()) {
+    if (!enabled) {
         return false;
-    }
-
-    if (handSkeleton != nullptr) {
+    } else if (handSkeleton != nullptr) {
         vr::VRBoneTransform_t boneTransform[SKELETON_BONE_COUNT] = {};
-        for (int j = 0; j < 31; j++) {
+
+        // NB: start from index 1 to skip the root bone
+        for (int j = 1; j < 31; j++) {
             boneTransform[j].orientation.w = handSkeleton->jointRotations[j].w;
             boneTransform[j].orientation.x = handSkeleton->jointRotations[j].x;
             boneTransform[j].orientation.y = handSkeleton->jointRotations[j].y;
@@ -328,7 +361,7 @@ bool Controller::onPoseUpdate(
         vr_driver_input->UpdateScalarComponent(
             m_buttonHandles[ALVR_INPUT_FINGER_PINKY], rotPinky, 0.0
         );
-    } else {
+    } else if (controllerMotion != nullptr) {
         if (m_lastThumbTouch != m_currentThumbTouch) {
             m_thumbTouchAnimationProgress += 1.f / ANIMATION_FRAME_COUNT;
             if (m_thumbTouchAnimationProgress > 1.f) {

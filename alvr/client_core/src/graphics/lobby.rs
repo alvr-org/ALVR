@@ -428,7 +428,9 @@ impl LobbyRenderer {
                         );
                         transform_draw(&mut pass, view_proj * transform, 2);
                     }
-                } else if let Some(pose) = maybe_pose {
+                }
+
+                if let Some(pose) = maybe_pose {
                     let hand_transform = Mat4::from_scale_rotation_translation(
                         Vec3::ONE * 0.2,
                         pose.orientation,

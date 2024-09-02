@@ -27,6 +27,13 @@ struct FfiDeviceMotion {
     float angularVelocity[3];
 };
 
+struct FfiHandData {
+    unsigned int tracked;
+    const FfiDeviceMotion* controllerMotion;
+    const FfiHandSkeleton* handSkeleton;
+    bool useHandTracker;
+};
+
 struct FfiBodyTracker {
     unsigned int trackerID;
     FfiQuat orientation;
@@ -142,13 +149,9 @@ extern "C" void RequestIDR();
 extern "C" void SetTracking(
     unsigned long long targetTimestampNs,
     float controllerPoseTimeOffsetS,
-    const FfiDeviceMotion* deviceMotions,
-    int motionsCount,
-    unsigned int controllersTracked,
-    bool useLeftHandTracker,
-    bool useRightHandTracker,
-    const FfiHandSkeleton* leftHand,
-    const FfiHandSkeleton* rightHand,
+    FfiDeviceMotion headMotion,
+    FfiHandData leftHandData,
+    FfiHandData rightHandData,
     const FfiBodyTracker* bodyTrackers,
     int bodyTrackersCount
 );

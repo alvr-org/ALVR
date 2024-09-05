@@ -1,4 +1,4 @@
-use alvr_common::{anyhow::Result, debug, error, parking_lot::Mutex};
+use alvr_common::{anyhow::Result, debug, error, parking_lot::Mutex, ConnectionError};
 use alvr_session::AudioBufferingConfig;
 use alvr_sockets::{StreamReceiver, StreamSender};
 use pipewire::{
@@ -71,6 +71,15 @@ pub fn play_microphone_loop_pipewire(
             average_buffer_frames_count,
         )
         .ok();
+
+        // if we end up here then no consumer is currently connected to the output,
+        // so discard audio packets to not cause a buildup
+        if matches!(
+            receiver.recv(Duration::from_millis(500)),
+            Err(ConnectionError::Other(_))
+        ) {
+            break;
+        };
     }
 
     if pw_sender.send(Terminate).is_err() {

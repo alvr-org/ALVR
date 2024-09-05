@@ -9,7 +9,7 @@ use alvr_common::{
     log,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
-    Fov, Pose,
+    Fov, Pose, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
 use alvr_packets::{ButtonEntry, ButtonValue, Haptics, ViewParams};
 use alvr_session::CodecType;
@@ -59,6 +59,13 @@ impl Default for AlvrQuat {
             w: 1.0,
         }
     }
+}
+
+#[repr(C)]
+pub struct AlvrDeviceIds {
+    pub head: u64,
+    pub hand_left: u64,
+    pub hand_right: u64,
 }
 
 #[repr(u8)]
@@ -132,7 +139,7 @@ pub enum AlvrHandType {
 #[repr(C)]
 pub union AlvrButtonValue {
     pub scalar: bool,
-    pub float: f32,
+    pub floatp: f32,
 }
 
 // the profile is implied
@@ -213,6 +220,15 @@ pub unsafe extern "C" fn alvr_get_time_ns() -> u64 {
 #[no_mangle]
 pub unsafe extern "C" fn alvr_path_to_id(path_string: *const c_char) -> u64 {
     alvr_common::hash_string(CStr::from_ptr(path_string).to_str().unwrap())
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_get_ids() -> AlvrDeviceIds {
+    AlvrDeviceIds {
+        head: *HEAD_ID,
+        hand_left: *HAND_LEFT_ID,
+        hand_right: *HAND_RIGHT_ID,
+    }
 }
 
 #[no_mangle]
@@ -466,7 +482,7 @@ pub unsafe extern "C" fn alvr_get_buttons(out_entries: *mut AlvrButtonEntry) -> 
             out_entry.id = entry.path_id;
             match entry.value {
                 ButtonValue::Binary(value) => out_entry.value.scalar = value,
-                ButtonValue::Scalar(value) => out_entry.value.float = value,
+                ButtonValue::Scalar(value) => out_entry.value.floatp = value,
             }
         }
 

@@ -75,9 +75,10 @@ impl StreamRenderer {
             let device = &context.device;
             let gl = &context.gl_context;
 
+            let staging_resolution = UVec2::new(view_resolution.x * 2, view_resolution.y);
             let target_format = super::gl_format_to_wgpu(target_format);
 
-            let staging_texture = super::create_texture(device, view_resolution, target_format);
+            let staging_texture = super::create_texture(device, staging_resolution, target_format);
 
             let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
                 label: None,
@@ -203,7 +204,7 @@ impl StreamRenderer {
             };
 
             let staging_renderer =
-                StagingRenderer::new(Rc::clone(&context), staging_texture_gl, view_resolution);
+                StagingRenderer::new(Rc::clone(&context), staging_texture_gl, staging_resolution);
 
             Self {
                 context,

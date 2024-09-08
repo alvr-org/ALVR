@@ -307,6 +307,15 @@ bool Controller::onPoseUpdate(float predictionS, FfiHandData handData) {
     } else if (handSkeleton != nullptr) {
         vr::VRBoneTransform_t boneTransform[SKELETON_BONE_COUNT] = {};
 
+        boneTransform[0].orientation.w = 1.0;
+        boneTransform[0].orientation.x = 0.0;
+        boneTransform[0].orientation.y = 0.0;
+        boneTransform[0].orientation.z = 0.0;
+        boneTransform[0].position.v[0] = 0.0;
+        boneTransform[0].position.v[1] = 0.0;
+        boneTransform[0].position.v[2] = 0.0;
+        boneTransform[0].position.v[3] = 1.0;
+
         // NB: start from index 1 to skip the root bone
         for (int j = 1; j < 31; j++) {
             boneTransform[j].orientation.w = handSkeleton->jointRotations[j].w;

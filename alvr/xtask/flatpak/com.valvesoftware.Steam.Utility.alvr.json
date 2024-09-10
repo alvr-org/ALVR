@@ -2,13 +2,20 @@
   "id": "com.valvesoftware.Steam.Utility.alvr",
   "branch": "stable",
   "sdk": "org.freedesktop.Sdk//23.08",
+  "sdk-extensions": [
+    "org.freedesktop.Sdk.Extension.llvm16",
+    "org.freedesktop.Sdk.Extension.rust-stable"
+  ],
   "runtime": "com.valvesoftware.Steam",
   "runtime-version": "stable",
   "appstream-compose": false,
   "separate-locales": false,
   "build-extension": true,
   "build-options": {
-    "build-args": [ "--share=network", "--filesystem=xdg-data" ]
+    "append-path": "/usr/lib/sdk/llvm16/bin:/usr/lib/sdk/rust-stable/bin",
+    "build-args": [ "--share=network", "--filesystem=xdg-data" ],
+    "strip": true,
+    "env": { "RUST_BACKTRACE": "full" }
   },
   "finish-args": [
     "--share=ipc",
@@ -22,21 +29,15 @@
       "name": "alvr",
       "buildsystem": "simple",
       "build-commands": [
-        "mkdir -p /app/utils/alvr/bin && mkdir -p /app/utils/alvr/share/applications",
-        "mv '/run/build/alvr/ALVR Launcher' /app/utils/alvr/bin/alvr_launcher",
-        " # get read-only errors from following lines - because this is an extension - so leave as comments",
+        "mkdir -p /app/utils/alvr/bin",
+        "cd alvr/launcher",
+        "cargo xtask build-launcher",
+        "mv '/run/build/alvr/build/alvr_launcher_linux/ALVR Launcher' /app/utils/alvr/bin/alvr_launcher",
+        " # get read-only errors from following lines - because this is an extension - so leave as comments until someone figures this out",
         " # install -D dashboard.ico /app/share/icons/alvr_launcher.ico",
         " # install -D com.valvesoftware.Steam.Utility.alvr.desktop /app/share/applications/com.valvesoftware.Steam.Utility.alvr.desktop"
       ],
-      "sources": [
-        {
-          "type": "archive",
-          "url": "https://github.com/alvr-org/ALVR/releases/download/v20.9.1/alvr_launcher_linux.tar.gz",
-          "sha256": "736201b3fb52d42bdfdb43e0f3d24eda36ea345e45f0a3ec466652d3f8670e2a"
-        },
-        { "type": "file", "path": "com.valvesoftware.Steam.Utility.alvr.desktop" },
-        { "type": "file", "path": "../../dashboard/resources/dashboard.ico" }
-      ]
+      "sources": [ { "type": "dir", "path": "../../../" } ]
     }
   ]
 }

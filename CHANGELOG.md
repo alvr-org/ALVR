@@ -1,5 +1,30 @@
 # Changelog
 
+## v20.11.0
+
+* Add flatpak launcher (by @failboat78 #2207)
+* Fix Linux/Nvenc error popups (by @failboat78 #2338)
+* Add debug groups (by @zarik5 #2332)
+* Fix black screen on Focus 3 (by @zarik5 #2346)
+* Fix launcher installation popup (by @zarik5 #2356)
+* Fix crash on invalid haptics (by @zarik5 #2355)
+* Rework logging (by @zarik5 #2351)
+* Disable "Adapt to framerate" by default (by @zarik5)
+* Show body skeleton in lobby (by @zarik5 #2366)
+* Add multimodal input (by @zarik5 #2367)
+* Fix high CPU usage on Linux (by @The-personified-devil #2372 #2375)
+* Fix stream being half width resolution (by @zarik5 #2378)
+
+## v20.10.0
+
+* Internal refactors of the client graphics (wgpu) and server code architecture (by @zarik5)
+* Fix Quest 3 not supporting 120Hz (by @The-personified-devil)
+* Tracking timing jitter (by @zarik5 #2285)
+* Support VRChat hand tracking (by @ReinaS-64892 @AdalynBlack @zarik5 #2295, @zarik5 #2313 #2323)
+* Fix crash with some games (by @szneqz #2309)
+* Fix crash when shutting down launcher (by @zarik5 #2320)
+* Fix crash with vibration on Focus 3 (by @zarik5 #2324)
+
 ### v20.9.1 (2024-07-06)
 
 * Fix performance issues on lobby room.

@@ -264,12 +264,10 @@ fn client_thread(
                 ClientCoreEvent::UpdateHudMessage(message) => {
                     window_output.hud_message = message;
                 }
-                ClientCoreEvent::StreamingStarted {
-                    negotiated_config, ..
-                } => {
-                    window_output.fps = negotiated_config.refresh_rate_hint;
+                ClientCoreEvent::StreamingStarted(config) => {
+                    window_output.fps = config.negotiated_config.refresh_rate_hint;
                     window_output.connected = true;
-                    window_output.resolution = negotiated_config.view_resolution;
+                    window_output.resolution = config.negotiated_config.view_resolution;
 
                     let context = Arc::clone(&client_core_context);
                     let streaming = Arc::clone(&streaming);
@@ -278,7 +276,7 @@ fn client_thread(
                         tracking_thread(
                             context,
                             streaming,
-                            negotiated_config.refresh_rate_hint,
+                            config.negotiated_config.refresh_rate_hint,
                             input,
                         )
                     }));

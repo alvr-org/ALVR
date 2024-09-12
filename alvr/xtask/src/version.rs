@@ -57,7 +57,7 @@ pub fn check_msrv() {
 
     cmd!(
         sh,
-        "cargo install cargo-msrv --git https://github.com/foresterre/cargo-msrv"
+        "cargo install cargo-msrv --git https://github.com/foresterre/cargo-msrv --rev 14097beaa5fa770aabd66170572cb04f1dac87c2"
     )
     .run()
     .unwrap();

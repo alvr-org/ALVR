@@ -2,17 +2,23 @@ use alvr_common::{anyhow::Result, ToAny};
 use openxr::{self as xr, raw, sys};
 use std::ptr;
 
+const DEFAULT_PROPS: sys::SystemFacialTrackingPropertiesHTC =
+    sys::SystemFacialTrackingPropertiesHTC {
+        ty: sys::SystemFacialTrackingPropertiesHTC::TYPE,
+        next: ptr::null_mut(),
+        support_eye_facial_tracking: sys::FALSE,
+        support_lip_facial_tracking: sys::FALSE,
+    };
+
 impl super::ExtraExtensions {
     pub fn supports_htc_eye_facial_tracking(
         &self,
         instance: &xr::Instance,
         system: xr::SystemId,
     ) -> bool {
-        self.get_props(instance, system, unsafe {
-            sys::SystemFacialTrackingPropertiesHTC::out(ptr::null_mut()).assume_init()
-        })
-        .map(|props| props.support_eye_facial_tracking.into())
-        .unwrap_or(false)
+        self.get_props(instance, system, DEFAULT_PROPS)
+            .map(|props| props.support_eye_facial_tracking.into())
+            .unwrap_or(false)
     }
 
     pub fn supports_htc_lip_facial_tracking(
@@ -20,11 +26,9 @@ impl super::ExtraExtensions {
         instance: &xr::Instance,
         system: xr::SystemId,
     ) -> bool {
-        self.get_props(instance, system, unsafe {
-            sys::SystemFacialTrackingPropertiesHTC::out(ptr::null_mut()).assume_init()
-        })
-        .map(|props| props.support_lip_facial_tracking.into())
-        .unwrap_or(false)
+        self.get_props(instance, system, DEFAULT_PROPS)
+            .map(|props| props.support_lip_facial_tracking.into())
+            .unwrap_or(false)
     }
 
     pub fn create_facial_tracker_htc<G>(

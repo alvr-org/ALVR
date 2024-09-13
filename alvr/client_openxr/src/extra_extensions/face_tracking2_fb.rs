@@ -2,17 +2,22 @@ use alvr_common::{anyhow::Result, ToAny};
 use openxr::{self as xr, raw, sys};
 use std::ptr;
 
+const DEFAULT_PROPS: sys::SystemFaceTrackingProperties2FB = sys::SystemFaceTrackingProperties2FB {
+    ty: sys::SystemFaceTrackingProperties2FB::TYPE,
+    next: ptr::null_mut(),
+    supports_visual_face_tracking: sys::FALSE,
+    supports_audio_face_tracking: sys::FALSE,
+};
+
 impl super::ExtraExtensions {
     pub fn supports_fb_visual_face_tracking(
         &self,
         instance: &xr::Instance,
         system: xr::SystemId,
     ) -> bool {
-        self.get_props(instance, system, unsafe {
-            sys::SystemFaceTrackingProperties2FB::out(ptr::null_mut()).assume_init()
-        })
-        .map(|props| props.supports_visual_face_tracking.into())
-        .unwrap_or(false)
+        self.get_props(instance, system, DEFAULT_PROPS)
+            .map(|props| props.supports_visual_face_tracking.into())
+            .unwrap_or(false)
     }
 
     pub fn supports_fb_audio_face_tracking(
@@ -20,11 +25,9 @@ impl super::ExtraExtensions {
         instance: &xr::Instance,
         system: xr::SystemId,
     ) -> bool {
-        self.get_props(instance, system, unsafe {
-            sys::SystemFaceTrackingProperties2FB::out(ptr::null_mut()).assume_init()
-        })
-        .map(|props| props.supports_audio_face_tracking.into())
-        .unwrap_or(false)
+        self.get_props(instance, system, DEFAULT_PROPS)
+            .map(|props| props.supports_audio_face_tracking.into())
+            .unwrap_or(false)
     }
 
     pub fn create_face_tracker2_fb<G>(

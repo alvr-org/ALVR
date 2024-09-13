@@ -1,6 +1,7 @@
 use alvr_common::{
     anyhow::Result,
     glam::{UVec2, Vec2},
+    semver::Version,
     ConnectionState, DeviceMotion, Fov, LogEntry, LogSeverity, Pose, ToAny,
 };
 use alvr_session::{CodecType, SessionConfig, Settings};
@@ -136,9 +137,14 @@ pub fn encode_stream_config(
     })
 }
 
-pub fn decode_stream_config(
-    packet: &StreamConfigPacket,
-) -> Result<(Settings, NegotiatedStreamingConfig)> {
+#[derive(Serialize, Deserialize, Clone)]
+pub struct StreamConfig {
+    pub server_version: Version,
+    pub settings: Settings,
+    pub negotiated_config: NegotiatedStreamingConfig,
+}
+
+pub fn decode_stream_config(packet: &StreamConfigPacket) -> Result<StreamConfig> {
     let mut session_config = SessionConfig::default();
     session_config.merge_from_json(&json::from_str(&packet.session)?)?;
     let settings = session_config.to_settings();
@@ -155,16 +161,17 @@ pub fn decode_stream_config(
     let use_multimodal_protocol =
         json::from_value(negotiated_json["use_multimodal_protocol"].clone()).unwrap_or(false);
 
-    Ok((
+    Ok(StreamConfig {
+        server_version: session_config.server_version,
         settings,
-        NegotiatedStreamingConfig {
+        negotiated_config: NegotiatedStreamingConfig {
             view_resolution,
             refresh_rate_hint,
             game_audio_sample_rate,
             enable_foveated_encoding,
             use_multimodal_protocol,
         },
-    ))
+    })
 }
 
 #[derive(Serialize, Deserialize, Clone)]

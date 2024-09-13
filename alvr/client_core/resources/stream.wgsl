@@ -12,8 +12,6 @@ override FIX_LIMITED_RANGE: bool;
 override ENABLE_SRGB_CORRECTION: bool;
 override ENCODING_GAMMA: f32;
 
-var<push_constant> view_idx: u32;
-
 struct VertexOutput {
     @builtin(position) position: vec4f,
     @location(0) uv: vec2f,
@@ -27,8 +25,8 @@ fn vertex_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     var result: VertexOutput;
 
     let screen_uv = vec2f(f32(vertex_index & 1), f32(vertex_index >> 1));
-    result.position = vec4f((screen_uv - vec2f(0.5, 0.5)) * 2.0, 0.0, 1.0);
-    result.uv = vec2f((screen_uv.x + f32(view_idx)) / 2.0, screen_uv.y);
+    result.position = vec4f((screen_uv - 0.5) * 2.0, 0.0, 1.0);
+    result.uv = vec2f(screen_uv.x, screen_uv.y);
 
     return result;
 }

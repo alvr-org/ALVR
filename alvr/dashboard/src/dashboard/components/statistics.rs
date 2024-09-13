@@ -84,6 +84,11 @@ impl StatisticsTab {
 
             let painter = ui.painter().with_clip_rect(canvas_rect);
 
+            if max == min {
+                // Drawing using a 0 sized rectangle causes a crash
+                return data_rect;
+            }
+
             graph_content(&painter, to_screen);
 
             ui.painter().text(

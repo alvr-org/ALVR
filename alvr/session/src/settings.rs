@@ -1011,7 +1011,7 @@ Tilted: the world gets tilted when long pressing the oculus button. This is usef
     pub body_tracking: Switch<BodyTrackingConfig>,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
 #[schema(gui = "button_group")]
 pub enum SocketProtocol {
     #[schema(strings(display_name = "UDP"))]
@@ -1028,7 +1028,7 @@ pub struct DiscoveryConfig {
     pub auto_trust_clients: bool,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
 pub enum SocketBufferSize {
     Default,
     Maximum,
@@ -1099,7 +1099,7 @@ This could happen on TCP. A IDR frame is requested in this case."#
     pub dscp: Option<DscpTos>,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
 #[repr(u8)]
 #[schema(gui = "button_group")]
 pub enum DropProbability {
@@ -1108,7 +1108,7 @@ pub enum DropProbability {
     High = 0x11,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
 pub enum DscpTos {
     BestEffort,
 

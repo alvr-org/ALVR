@@ -5,7 +5,7 @@ mod interaction;
 mod lobby;
 mod stream;
 
-use crate::stream::StreamConfig;
+use crate::stream::ParsedStreamConfig;
 use alvr_client_core::{
     graphics::GraphicsContext, ClientCapabilities, ClientCoreContext, ClientCoreEvent, Platform,
 };
@@ -201,7 +201,7 @@ pub fn entry_point() {
     let graphics_context = Rc::new(GraphicsContext::new_gl());
 
     let mut last_lobby_message = String::new();
-    let mut stream_config = None::<StreamConfig>;
+    let mut parsed_stream_config = None::<ParsedStreamConfig>;
 
     'session_loop: loop {
         let xr_system = xr_instance
@@ -263,14 +263,14 @@ pub fn entry_point() {
         let interaction_context = Arc::new(interaction::initialize_interaction(
             &xr_context,
             platform,
-            stream_config
+            parsed_stream_config
                 .as_ref()
                 .map(|c| c.prefers_multimodal_input)
                 .unwrap_or(false),
-            stream_config
+            parsed_stream_config
                 .as_ref()
                 .and_then(|c| c.face_sources_config.clone()),
-            stream_config
+            parsed_stream_config
                 .as_ref()
                 .and_then(|c| c.body_sources_config.clone()),
         ));
@@ -356,22 +356,19 @@ pub fn entry_point() {
                         last_lobby_message.clone_from(&message);
                         lobby.update_hud_message(&message);
                     }
-                    ClientCoreEvent::StreamingStarted {
-                        settings,
-                        negotiated_config,
-                    } => {
-                        let new_config = StreamConfig::new(&settings, negotiated_config);
+                    ClientCoreEvent::StreamingStarted(config) => {
+                        let new_config = ParsedStreamConfig::new(&*config);
 
                         // combined_eye_gaze is a setting that needs to be enabled at session
                         // creation. Since HTC headsets don't support session reinitialization, skip
                         // all elements that need it, that is face and eye tracking.
-                        if stream_config.as_ref() != Some(&new_config)
+                        if parsed_stream_config.as_ref() != Some(&new_config)
                             && !matches!(
                                 platform,
                                 Platform::Focus3 | Platform::XRElite | Platform::ViveUnknown
                             )
                         {
-                            stream_config = Some(new_config);
+                            parsed_stream_config = Some(new_config);
 
                             xr_session.request_exit().ok();
                         } else {
@@ -384,7 +381,7 @@ pub fn entry_point() {
                                 &new_config,
                             ));
 
-                            stream_config = Some(new_config);
+                            parsed_stream_config = Some(new_config);
                         }
                     }
                     ClientCoreEvent::StreamingStopped => {

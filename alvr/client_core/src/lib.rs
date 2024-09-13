@@ -27,10 +27,10 @@ use alvr_common::{
     HEAD_ID,
 };
 use alvr_packets::{
-    BatteryInfo, ButtonEntry, ClientControlPacket, FaceData, NegotiatedStreamingConfig,
-    ReservedClientControlPacket, Tracking, ViewParams, ViewsConfig,
+    BatteryInfo, ButtonEntry, ClientControlPacket, FaceData, ReservedClientControlPacket,
+    StreamConfig, Tracking, ViewParams, ViewsConfig,
 };
-use alvr_session::{CodecType, Settings};
+use alvr_session::CodecType;
 use connection::ConnectionContext;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -56,10 +56,7 @@ pub fn platform() -> Platform {
 #[derive(Serialize, Deserialize)]
 pub enum ClientCoreEvent {
     UpdateHudMessage(String),
-    StreamingStarted {
-        settings: Box<Settings>,
-        negotiated_config: NegotiatedStreamingConfig,
-    },
+    StreamingStarted(Box<StreamConfig>),
     StreamingStopped,
     Haptics {
         device_id: u64,

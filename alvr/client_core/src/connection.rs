@@ -190,16 +190,15 @@ fn connection_pipeline(
         proto_control_socket.recv::<StreamConfigPacket>(HANDSHAKE_ACTION_TIMEOUT)?;
     dbg_connection!("connection_pipeline: stream config received");
 
-    let (settings, negotiated_config) =
-        alvr_packets::decode_stream_config(&config_packet).to_con()?;
+    let stream_config = alvr_packets::decode_stream_config(&config_packet).to_con()?;
 
     ctx.uses_multimodal_protocol
-        .set(negotiated_config.use_multimodal_protocol);
+        .set(stream_config.negotiated_config.use_multimodal_protocol);
 
-    let streaming_start_event = ClientCoreEvent::StreamingStarted {
-        settings: Box::new(settings.clone()),
-        negotiated_config: negotiated_config.clone(),
-    };
+    let streaming_start_event = ClientCoreEvent::StreamingStarted(Box::new(stream_config.clone()));
+
+    let settings = stream_config.settings;
+    let negotiated_config = stream_config.negotiated_config;
 
     *ctx.statistics_manager.lock() = Some(StatisticsManager::new(
         settings.connection.statistics_history_size,

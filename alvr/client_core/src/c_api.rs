@@ -25,6 +25,7 @@ use std::{
 static CLIENT_CORE_CONTEXT: OptLazy<ClientCoreContext> = alvr_common::lazy_mut_none();
 static HUD_MESSAGE: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
 static SETTINGS: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
+static SERVER_VERSION: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
 #[allow(clippy::type_complexity)]
 static NAL_QUEUE: Lazy<Mutex<VecDeque<(u64, [ViewParams; 2], Vec<u8>)>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));
@@ -310,17 +311,17 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
 
                     AlvrEvent::HudMessageUpdated
                 }
-                ClientCoreEvent::StreamingStarted {
-                    settings,
-                    negotiated_config,
-                } => {
-                    *SETTINGS.lock() = serde_json::to_string(&settings).unwrap();
+                ClientCoreEvent::StreamingStarted(stream_config) => {
+                    *SETTINGS.lock() = serde_json::to_string(&stream_config.settings).unwrap();
+                    *SERVER_VERSION.lock() = stream_config.server_version.to_string();
 
                     AlvrEvent::StreamingStarted {
-                        view_width: negotiated_config.view_resolution.x,
-                        view_height: negotiated_config.view_resolution.y,
-                        refresh_rate_hint: negotiated_config.refresh_rate_hint,
-                        enable_foveated_encoding: negotiated_config.enable_foveated_encoding,
+                        view_width: stream_config.negotiated_config.view_resolution.x,
+                        view_height: stream_config.negotiated_config.view_resolution.y,
+                        refresh_rate_hint: stream_config.negotiated_config.refresh_rate_hint,
+                        enable_foveated_encoding: stream_config
+                            .negotiated_config
+                            .enable_foveated_encoding,
                     }
                 }
                 ClientCoreEvent::StreamingStopped => AlvrEvent::StreamingStopped,
@@ -376,6 +377,12 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
 #[no_mangle]
 pub extern "C" fn alvr_get_settings_json(buffer: *mut c_char) -> u64 {
     string_to_c_str(buffer, &SETTINGS.lock())
+}
+
+/// Will be updated after receiving StreamingStarted event
+#[no_mangle]
+pub extern "C" fn alvr_get_server_version(buffer: *mut c_char) -> u64 {
+    string_to_c_str(buffer, &SERVER_VERSION.lock())
 }
 
 /// Call only with external decoder

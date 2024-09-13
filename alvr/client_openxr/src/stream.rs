@@ -13,10 +13,10 @@ use alvr_common::{
     glam::{UVec2, Vec2},
     Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID,
 };
-use alvr_packets::{FaceData, NegotiatedStreamingConfig, ViewParams};
+use alvr_packets::{FaceData, StreamConfig, ViewParams};
 use alvr_session::{
     BodyTrackingSourcesConfig, ClientsideFoveationConfig, ClientsideFoveationMode, EncoderConfig,
-    FaceTrackingSourcesConfig, FoveatedEncodingConfig, Settings,
+    FaceTrackingSourcesConfig, FoveatedEncodingConfig,
 };
 use openxr as xr;
 use std::{
@@ -30,7 +30,7 @@ use std::{
 const MAX_PREDICTION: Duration = Duration::from_millis(70);
 
 #[derive(PartialEq)]
-pub struct StreamConfig {
+pub struct ParsedStreamConfig {
     pub view_resolution: UVec2,
     pub refresh_rate_hint: f32,
     pub foveated_encoding_config: Option<FoveatedEncodingConfig>,
@@ -41,28 +41,37 @@ pub struct StreamConfig {
     pub prefers_multimodal_input: bool,
 }
 
-impl StreamConfig {
-    pub fn new(settings: &Settings, negotiated_config: NegotiatedStreamingConfig) -> StreamConfig {
-        StreamConfig {
-            view_resolution: negotiated_config.view_resolution,
-            refresh_rate_hint: negotiated_config.refresh_rate_hint,
-            foveated_encoding_config: negotiated_config
+impl ParsedStreamConfig {
+    pub fn new(config: &StreamConfig) -> ParsedStreamConfig {
+        ParsedStreamConfig {
+            view_resolution: config.negotiated_config.view_resolution,
+            refresh_rate_hint: config.negotiated_config.refresh_rate_hint,
+            foveated_encoding_config: config
+                .negotiated_config
                 .enable_foveated_encoding
-                .then(|| settings.video.foveated_encoding.as_option().cloned())
+                .then(|| config.settings.video.foveated_encoding.as_option().cloned())
                 .flatten(),
-            clientside_foveation_config: settings.video.clientside_foveation.as_option().cloned(),
-            encoder_config: settings.video.encoder_config.clone(),
-            face_sources_config: settings
+            clientside_foveation_config: config
+                .settings
+                .video
+                .clientside_foveation
+                .as_option()
+                .cloned(),
+            encoder_config: config.settings.video.encoder_config.clone(),
+            face_sources_config: config
+                .settings
                 .headset
                 .face_tracking
                 .as_option()
                 .map(|c| c.sources.clone()),
-            body_sources_config: settings
+            body_sources_config: config
+                .settings
                 .headset
                 .body_tracking
                 .as_option()
                 .map(|c| c.sources.clone()),
-            prefers_multimodal_input: settings
+            prefers_multimodal_input: config
+                .settings
                 .headset
                 .controllers
                 .as_option()
@@ -93,7 +102,7 @@ impl StreamContext {
         gfx_ctx: Rc<GraphicsContext>,
         interaction_ctx: Arc<InteractionContext>,
         platform: Platform,
-        config: &StreamConfig,
+        config: &ParsedStreamConfig,
     ) -> StreamContext {
         if xr_ctx.instance.exts().fb_display_refresh_rate.is_some() {
             xr_ctx

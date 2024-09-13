@@ -8,9 +8,15 @@ impl super::ExtraExtensions {
         instance: &xr::Instance,
         system: xr::SystemId,
     ) -> bool {
-        self.get_props(instance, system, unsafe {
-            sys::SystemEyeTrackingPropertiesFB::out(ptr::null_mut()).assume_init()
-        })
+        self.get_props(
+            instance,
+            system,
+            sys::SystemEyeTrackingPropertiesFB {
+                ty: sys::SystemEyeTrackingPropertiesFB::TYPE,
+                next: ptr::null_mut(),
+                supports_eye_tracking: sys::FALSE,
+            },
+        )
         .map(|props| props.supports_eye_tracking.into())
         .unwrap_or(false)
     }

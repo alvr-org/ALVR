@@ -3,7 +3,7 @@
 
 use alvr_common::{anyhow::Result, once_cell::sync::Lazy, ToAny};
 use openxr::{self as xr, sys};
-use std::ffi::c_void;
+use std::{ffi::c_void, ptr};
 
 pub const META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME: &str =
     "XR_META_simultaneous_hands_and_controllers";
@@ -44,7 +44,7 @@ impl super::ExtraExtensions {
             system,
             SystemSymultaneousHandsAndControllersPropertiesMETA {
                 ty: *TYPE_SYSTEM_SIMULTANEOUS_HANDS_AND_CONTROLLERS_PROPERTIES_META,
-                next: std::ptr::null(),
+                next: ptr::null(),
                 supports_simultaneous_hands_and_controllers: xr::sys::FALSE,
             },
         )
@@ -58,7 +58,7 @@ impl super::ExtraExtensions {
     ) -> Result<()> {
         let resume_info = SimultaneousHandsAndControllersTrackingResumeInfoMETA {
             ty: *TYPE_SIMULTANEOUS_HANDS_AND_CONTROLLERS_TRACKING_RESUME_INFO_META,
-            next: std::ptr::null(),
+            next: ptr::null(),
         };
 
         unsafe {

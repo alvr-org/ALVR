@@ -7,6 +7,7 @@ fn main() {
     let target_dir = out_dir.join("../../..");
 
     let sh = Shell::new().unwrap();
+    // g++ because this build wants __builtin_apply_args and friends
     let command = format!("g++ -shared -fPIC $(pkg-config --cflags libdrm) drm-lease-shim.cpp -o {}/alvr_drm_lease_shim.so", target_dir.display());
     cmd!(sh, "bash -c {command}").run().unwrap();
 }

@@ -99,14 +99,30 @@ This can be a problem if you have modified this variable globally to force usage
 You can fix this by setting the variable passed to steamvr
 Example custom launch options for steamvr - including both QT_QPA_PLATFORM and vrmonitor fixes:
 
-```sh
+```
 QT_QPA_PLATFORM=xcb ~/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%
+```
+
+### Hybrid graphics 
+If using desktop it's recommended to disable igpu - makes things simpler. 
+If using laptop then must pass extra options to ensure dgpu is used. These options are in addition to the others already mentioned.
+
+#### Amd/Intel integrated gpu + Amd/Intel discrete gpu
+Put DRI_PRIME=1 %command% into SteamVR's commandline options and in those of all VR games you intend to play with ALVR.
+```
+DRI_PRIME=1 QT_QPA_PLATFORM=xcb ~/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%
+```
+
+#### Amd/Intel integrated gpu + Nvidia discrete gpu
+Put __NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only __GLX_VENDOR_LIBRARY_NAME=nvidia %command% into SteamVR's commandline options and in those of all VR games you intend to play with ALVR. Again - in addition to other options.
+```
+__NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only __GLX_VENDOR_LIBRARY_NAME=nvidia QT_QPA_PLATFORM=xcb ~/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%
 ```
 
 ### Other Applications
 
 The support for other applications that are not launched via Steam is non-existent due to the Flatpak sandbox.
 
-Various SteamVR utilities such as [WlxOverlay](https://github.com/galister/WlxOverlay) and [OpenVR-AdvancedSettings](https://github.com/OpenVR-Advanced-Settings/OpenVR-AdvancedSettings) cannot run within the Flatpak sandbox due to their usage of AppImage. However, unpacking the supplied AppImage or buildi  ng the utilities from source and running their binaries from within the sandbox similiarly to `alvr_dashboard` could work, but there is no guarantee that they will work properly.
+Various SteamVR utilities such as [WlxOverlay](https://github.com/galister/WlxOverlay) and [OpenVR-AdvancedSettings](https://github.com/OpenVR-Advanced-Settings/OpenVR-AdvancedSettings) cannot run within the Flatpak sandbox due to their usage of AppImage. However, unpacking the supplied AppImage or building the utilities from source and running their binaries from within the sandbox similiarly to `alvr_dashboard` could work, but there is no guarantee that they will work properly.
 
 Some applications such as [Godot](https://godotengine.org) support OpenXR. However, unless they are launched within the Steam Flatpak sandbox, they will not work with the Steam Flatpak. See [here](https://github.com/flathub/com.valvesoftware.Steam/issues/1010) for more details.

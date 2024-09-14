@@ -7,17 +7,21 @@ use wgpu::{
     include_wgsl, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, ColorTargetState, ColorWrites,
     FragmentState, LoadOp, PipelineCompilationOptions, PipelineLayoutDescriptor, PrimitiveState,
-    PrimitiveTopology, PushConstantRange, RenderPassColorAttachment, RenderPassDescriptor,
-    RenderPipeline, RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages,
-    StoreOp, TextureSampleType, TextureView, TextureViewDescriptor, TextureViewDimension,
-    VertexState,
+    PrimitiveTopology, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
+    RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages, StoreOp,
+    TextureSampleType, TextureView, TextureViewDescriptor, TextureViewDimension, VertexState,
 };
+
+#[derive(Debug)]
+struct ViewObjects {
+    bind_group: BindGroup,
+    render_target: Vec<TextureView>,
+}
 
 struct RenderObjects {
     staging_renderer: StagingRenderer,
     pipeline: RenderPipeline,
-    bind_group: BindGroup,
-    render_targets: [Vec<TextureView>; 2],
+    views_objects: [ViewObjects; 2],
 }
 
 pub struct StreamRenderer {
@@ -73,12 +77,8 @@ impl StreamRenderer {
             }
         } else {
             let device = &context.device;
-            let gl = &context.gl_context;
 
-            let staging_resolution = UVec2::new(view_resolution.x * 2, view_resolution.y);
             let target_format = super::gl_format_to_wgpu(target_format);
-
-            let staging_texture = super::create_texture(device, staging_resolution, target_format);
 
             let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
                 label: None,
@@ -120,10 +120,7 @@ impl StreamRenderer {
                 layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
                     label: None,
                     bind_group_layouts: &[&bind_group_layout],
-                    push_constant_ranges: &[PushConstantRange {
-                        stages: ShaderStages::VERTEX_FRAGMENT,
-                        range: 0..4,
-                    }],
+                    push_constant_ranges: &[],
                 })),
                 vertex: VertexState {
                     module: &shader_module,
@@ -156,63 +153,70 @@ impl StreamRenderer {
                 multiview: None,
             });
 
-            let bind_group = device.create_bind_group(&BindGroupDescriptor {
-                label: None,
-                layout: &bind_group_layout,
-                entries: &[
-                    BindGroupEntry {
-                        binding: 0,
-                        resource: BindingResource::TextureView(
-                            &staging_texture.create_view(&TextureViewDescriptor::default()),
-                        ),
-                    },
-                    BindGroupEntry {
-                        binding: 1,
-                        resource: BindingResource::Sampler(&device.create_sampler(
-                            &SamplerDescriptor {
-                                mag_filter: wgpu::FilterMode::Linear,
-                                min_filter: wgpu::FilterMode::Linear,
-                                ..Default::default()
-                            },
-                        )),
-                    },
-                ],
+            let sampler = device.create_sampler(&SamplerDescriptor {
+                mag_filter: wgpu::FilterMode::Linear,
+                min_filter: wgpu::FilterMode::Linear,
+                ..Default::default()
             });
 
-            let render_targets = [
-                super::create_gl_swapchain(
+            let mut view_objects = vec![];
+            let mut staging_textures_gl = vec![];
+            for i in 0..2 {
+                let staging_texture =
+                    super::create_texture(&device, view_resolution, target_format);
+
+                let staging_texture_gl = unsafe {
+                    staging_texture.as_hal::<api::Gles, _, _>(|tex| {
+                        let gles::TextureInner::Texture { raw, .. } = tex.unwrap().inner else {
+                            panic!("invalid texture type");
+                        };
+                        raw
+                    })
+                };
+
+                let bind_group = device.create_bind_group(&BindGroupDescriptor {
+                    label: None,
+                    layout: &bind_group_layout,
+                    entries: &[
+                        BindGroupEntry {
+                            binding: 0,
+                            resource: BindingResource::TextureView(
+                                &staging_texture.create_view(&TextureViewDescriptor::default()),
+                            ),
+                        },
+                        BindGroupEntry {
+                            binding: 1,
+                            resource: BindingResource::Sampler(&sampler),
+                        },
+                    ],
+                });
+
+                let render_target = super::create_gl_swapchain(
                     device,
-                    &swapchain_textures[0],
+                    &swapchain_textures[i],
                     view_resolution,
                     target_format,
-                ),
-                super::create_gl_swapchain(
-                    device,
-                    &swapchain_textures[1],
-                    view_resolution,
-                    target_format,
-                ),
-            ];
+                );
 
-            let staging_texture_gl = unsafe {
-                staging_texture.as_hal::<api::Gles, _, _>(|tex| {
-                    let gles::TextureInner::Texture { raw, .. } = tex.unwrap().inner else {
-                        panic!("invalid texture type");
-                    };
-                    raw
-                })
-            };
+                view_objects.push(ViewObjects {
+                    bind_group,
+                    render_target,
+                });
+                staging_textures_gl.push(staging_texture_gl);
+            }
 
-            let staging_renderer =
-                StagingRenderer::new(Rc::clone(&context), staging_texture_gl, staging_resolution);
+            let staging_renderer = StagingRenderer::new(
+                Rc::clone(&context),
+                staging_textures_gl.try_into().unwrap(),
+                view_resolution,
+            );
 
             Self {
                 context,
                 render_objects: Some(RenderObjects {
                     staging_renderer,
                     pipeline,
-                    bind_group,
-                    render_targets,
+                    views_objects: view_objects.try_into().unwrap(),
                 }),
             }
         }
@@ -235,7 +239,7 @@ impl StreamRenderer {
                 let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                     label: None,
                     color_attachments: &[Some(RenderPassColorAttachment {
-                        view: &self.render_objects.as_ref().unwrap().render_targets[view_idx]
+                        view: &render_objects.views_objects[view_idx].render_target
                             [*swapchain_idx as usize],
                         resolve_target: None,
                         ops: wgpu::Operations {
@@ -246,16 +250,11 @@ impl StreamRenderer {
                     ..Default::default()
                 });
 
-                render_pass.set_pipeline(&self.render_objects.as_ref().unwrap().pipeline);
+                render_pass.set_pipeline(&render_objects.pipeline);
                 render_pass.set_bind_group(
                     0,
-                    &self.render_objects.as_ref().unwrap().bind_group,
+                    &render_objects.views_objects[view_idx].bind_group,
                     &[],
-                );
-                render_pass.set_push_constants(
-                    ShaderStages::VERTEX_FRAGMENT,
-                    0,
-                    &(view_idx as u32).to_le_bytes(),
                 );
                 render_pass.draw(0..4, 0..1);
             }

@@ -10,7 +10,7 @@
 
 5. Sometimes, a new instance of Steam will launch when launching the dashboard. To fix this, close both ALVR and Steam then launch Steam. As soon as Steam opens to the storefront, launch the ALVR dashboard.
 
-6. User must setup xdg shortcut themselves - see below. Without an xdg entry the launcher can be run manually like so:
+6. User must setup xdg shortcut themselves - see below. Without an xdg entry the launcher has to be run from terminal.
 
 ```sh
 flatpak run --command=alvr_launcher com.valvesoftware.Steam
@@ -24,7 +24,7 @@ First, flatpak must be installed from your distro's repositories. Refer to [this
 
 ## Setup
 
-Install SteamVR via the Steam Flatpak. After installing SteamVR, run the following command:
+Flatpak steam needs extra step compared to native steam. After installing SteamVR, run the following command:
 
 ```sh
 sudo setcap CAP_SYS_NICE+eip ~/.var/app/com.valvesoftware.Steam/data/Steam/steamapps/common/SteamVR/bin/linux64/vrcompositor-launcher
@@ -33,10 +33,16 @@ sudo setcap CAP_SYS_NICE+eip ~/.var/app/com.valvesoftware.Steam/data/Steam/steam
 This command is normally run by SteamVR, but due to the lack of sudo access within the Flatpak sandbox, it must be run outside of the Flatpak sandbox. After running the command, run SteamVR once then close it.
 
 ### steamvr custom launch options
-At the time of writing steamvr needs special options to work on linux - this applies to both the flatpak version and native. The flatpak uses a slightly different path is the only difference:
+At the time of writing steamvr needs special options to work on linux - this applies to both the flatpak version and native. The flatpak uses a slightly different path is the only difference. Paths below assume steam has been installed in the "normal" location - if your steam is in a different place then adjust paths as appropriate.
 
+For flatpak steam
 ```
 ~/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%
+```
+
+For native steam
+```
+~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%
 ```
 
 ### failed to create pipewire errors
@@ -56,7 +62,7 @@ flatpak install --user com.valvesoftware.Steam.Utility.alvr.flatpak
 
 ### Running the launcher
 
-It's recommended that user sets up an xdg shortcut - but the launcher can be run from terminal via the following command:
+It's recommended that user sets up an xdg shortcut - but the launcher can also be run from terminal via the following command:
 ```sh
 flatpak run --command=alvr_launcher com.valvesoftware.Steam
 ```

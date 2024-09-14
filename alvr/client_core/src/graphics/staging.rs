@@ -51,16 +51,17 @@ fn create_program(
 pub struct StagingRenderer {
     context: Rc<GraphicsContext>,
     program: gl::Program,
+    view_idx_uloc: gl::UniformLocation,
     surface_texture: gl::Texture,
-    framebuffer: gl::Framebuffer,
+    framebuffers: [gl::Framebuffer; 2],
     viewport_size: IVec2,
 }
 
 impl StagingRenderer {
     pub fn new(
         context: Rc<GraphicsContext>,
-        staging_texture: gl::Texture,
-        resolution: UVec2,
+        staging_textures: [gl::Texture; 2],
+        view_resolution: UVec2,
     ) -> Self {
         let gl = &context.gl_context;
         context.make_current();
@@ -75,23 +76,32 @@ impl StagingRenderer {
             // This is an external surface and storage should not be initialized
             let surface_texture = ck!(gl.create_texture().unwrap());
 
-            let framebuffer = ck!(gl.create_framebuffer().unwrap());
-            ck!(gl.bind_framebuffer(gl::DRAW_FRAMEBUFFER, Some(framebuffer)));
-            ck!(gl.framebuffer_texture_2d(
-                gl::DRAW_FRAMEBUFFER,
-                gl::COLOR_ATTACHMENT0,
-                gl::TEXTURE_2D,
-                Some(staging_texture),
-                0,
-            ));
+            let mut framebuffers = vec![];
+            for tex in staging_textures {
+                let framebuffer = ck!(gl.create_framebuffer().unwrap());
+                ck!(gl.bind_framebuffer(gl::DRAW_FRAMEBUFFER, Some(framebuffer)));
+                ck!(gl.framebuffer_texture_2d(
+                    gl::DRAW_FRAMEBUFFER,
+                    gl::COLOR_ATTACHMENT0,
+                    gl::TEXTURE_2D,
+                    Some(tex),
+                    0,
+                ));
+
+                framebuffers.push(framebuffer);
+            }
+
             ck!(gl.bind_framebuffer(gl::FRAMEBUFFER, None));
+
+            let view_idx_uloc = ck!(gl.get_uniform_location(program, "view_idx")).unwrap();
 
             Self {
                 context,
                 program,
                 surface_texture,
-                framebuffer,
-                viewport_size: resolution.as_ivec2(),
+                view_idx_uloc,
+                framebuffers: framebuffers.try_into().unwrap(),
+                viewport_size: view_resolution.as_ivec2(),
             }
         }
     }
@@ -109,12 +119,15 @@ impl StagingRenderer {
 
                 ck!(gl.viewport(0, 0, self.viewport_size.x, self.viewport_size.y));
 
-                ck!(gl.bind_framebuffer(gl::DRAW_FRAMEBUFFER, Some(self.framebuffer)));
+                for (i, framebuffer) in self.framebuffers.iter().enumerate() {
+                    ck!(gl.bind_framebuffer(gl::DRAW_FRAMEBUFFER, Some(*framebuffer)));
 
-                ck!(gl.active_texture(gl::TEXTURE0));
-                ck!(gl.bind_texture(GL_TEXTURE_EXTERNAL_OES, Some(self.surface_texture)));
-                ck!(gl.bind_sampler(0, None));
-                ck!(gl.draw_arrays(gl::TRIANGLE_STRIP, 0, 4));
+                    ck!(gl.active_texture(gl::TEXTURE0));
+                    ck!(gl.bind_texture(GL_TEXTURE_EXTERNAL_OES, Some(self.surface_texture)));
+                    ck!(gl.bind_sampler(0, None));
+                    ck!(gl.uniform_1_i32(Some(&self.view_idx_uloc), i as i32));
+                    ck!(gl.draw_arrays(gl::TRIANGLE_STRIP, 0, 4));
+                }
             },
         );
     }
@@ -128,7 +141,9 @@ impl Drop for StagingRenderer {
         unsafe {
             ck!(gl.delete_program(self.program));
             ck!(gl.delete_texture(self.surface_texture));
-            ck!(gl.delete_framebuffer(self.framebuffer));
+            for framebuffer in &self.framebuffers {
+                ck!(gl.delete_framebuffer(*framebuffer));
+            }
         }
     }
 }

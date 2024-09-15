@@ -2,41 +2,14 @@ use alvr_common::{anyhow::Result, ToAny};
 use openxr::{self as xr, raw, sys};
 use std::ptr;
 
-const DEFAULT_PROPS: sys::SystemFaceTrackingProperties2FB = sys::SystemFaceTrackingProperties2FB {
-    ty: sys::SystemFaceTrackingProperties2FB::TYPE,
-    next: ptr::null_mut(),
-    supports_visual_face_tracking: sys::FALSE,
-    supports_audio_face_tracking: sys::FALSE,
-};
+pub struct FaceTracker2FB {
+    handle: sys::FaceTracker2FB,
+    ext_fns: raw::FaceTracking2FB,
+}
 
-impl super::ExtraExtensions {
-    pub fn supports_fb_visual_face_tracking(
-        &self,
-        instance: &xr::Instance,
-        system: xr::SystemId,
-    ) -> bool {
-        self.get_props(instance, system, DEFAULT_PROPS)
-            .map(|props| props.supports_visual_face_tracking.into())
-            .unwrap_or(false)
-    }
-
-    pub fn supports_fb_audio_face_tracking(
-        &self,
-        instance: &xr::Instance,
-        system: xr::SystemId,
-    ) -> bool {
-        self.get_props(instance, system, DEFAULT_PROPS)
-            .map(|props| props.supports_audio_face_tracking.into())
-            .unwrap_or(false)
-    }
-
-    pub fn create_face_tracker2_fb<G>(
-        &self,
-        session: &xr::Session<G>,
-        visual: bool,
-        audio: bool,
-    ) -> Result<FaceTracker2FB> {
-        let ext_fns = self.ext_functions_ptrs.fb_face_tracking2.to_any()?;
+impl FaceTracker2FB {
+    pub fn new<G>(session: &xr::Session<G>, visual: bool, audio: bool) -> Result<Self> {
+        let ext_fns = session.instance().exts().fb_face_tracking2.to_any()?;
 
         let mut requested_data_sources = vec![];
         if visual {
@@ -55,23 +28,16 @@ impl super::ExtraExtensions {
             requested_data_sources: requested_data_sources.as_mut_ptr(),
         };
         unsafe {
-            super::to_any((ext_fns.create_face_tracker2)(
+            super::xr_to_any((ext_fns.create_face_tracker2)(
                 session.as_raw(),
                 &info,
                 &mut handle,
             ))?
         };
 
-        Ok(FaceTracker2FB { handle, ext_fns })
+        Ok(Self { handle, ext_fns })
     }
-}
 
-pub struct FaceTracker2FB {
-    handle: sys::FaceTracker2FB,
-    ext_fns: raw::FaceTracking2FB,
-}
-
-impl FaceTracker2FB {
     pub fn get_face_expression_weights(&self, time: xr::Time) -> Result<Option<Vec<f32>>> {
         let expression_info = sys::FaceExpressionInfo2FB {
             ty: sys::FaceExpressionInfo2FB::TYPE,
@@ -99,7 +65,7 @@ impl FaceTracker2FB {
         };
 
         unsafe {
-            super::to_any((self.ext_fns.get_face_expression_weights2)(
+            super::xr_to_any((self.ext_fns.get_face_expression_weights2)(
                 self.handle,
                 &expression_info,
                 &mut expression_weights,

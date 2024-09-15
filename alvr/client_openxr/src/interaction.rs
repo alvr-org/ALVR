@@ -1,6 +1,6 @@
 use crate::{
     extra_extensions::{
-        BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB, FacialTrackerHTC,
+        self, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB, FacialTrackerHTC,
         BODY_JOINT_SET_FULL_BODY_META, FULL_BODY_JOINT_COUNT_META,
         FULL_BODY_JOINT_LEFT_FOOT_BALL_META, FULL_BODY_JOINT_LEFT_LOWER_LEG_META,
         FULL_BODY_JOINT_RIGHT_FOOT_BALL_META, FULL_BODY_JOINT_RIGHT_LOWER_LEG_META,
@@ -200,22 +200,16 @@ pub fn initialize_interaction(
     // Note: We cannot enable multimodal if fb body tracking is active. It would result in a
     // ERROR_RUNTIME_FAILURE crash.
     let uses_multimodal_hands = prefer_multimodal_input
-        && xr_ctx
-            .extra_extensions
-            .supports_simultaneous_hands_and_controllers(&xr_ctx.instance, xr_ctx.system)
         && !body_tracking_sources
             .as_ref()
             .map(|s| s.body_tracking_fb.enabled())
-            .unwrap_or(false);
+            .unwrap_or(false)
+        && extra_extensions::resume_simultaneous_hands_and_controllers_tracking(&xr_ctx.session)
+            .is_ok();
 
     let left_detached_controller_pose_action;
     let right_detached_controller_pose_action;
     if uses_multimodal_hands {
-        xr_ctx
-            .extra_extensions
-            .resume_simultaneous_hands_and_controllers_tracking(&xr_ctx.session)
-            .ok();
-
         // Note: when multimodal input is enabled, both controllers and hands will always be active.
         // To be able to detect when controllers are actually held, we have to register detached
         // controllers pose; the controller pose will be diverted to the detached controllers when
@@ -257,35 +251,33 @@ pub fn initialize_interaction(
         )
         .unwrap();
 
-    let combined_eyes_source = (face_tracking_sources
+    let combined_eyes_source = face_tracking_sources
         .as_ref()
         .map(|s| s.combined_eye_gaze)
         .unwrap_or(false)
-        && xr_ctx
-            .extra_extensions
-            .supports_eye_gaze_interaction(&xr_ctx.instance, xr_ctx.system))
-    .then(|| {
-        let action = action_set
-            .create_action("combined_eye_gaze", "Combined eye gaze", &[])
-            .unwrap();
+        .then(|| {
+            let action = action_set
+                .create_action("combined_eye_gaze", "Combined eye gaze", &[])
+                .unwrap();
 
-        xr_ctx
-            .instance
-            .suggest_interaction_profile_bindings(
-                xr_ctx
-                    .instance
-                    .string_to_path("/interaction_profiles/ext/eye_gaze_interaction")
-                    .unwrap(),
-                &[binding(&action, "/user/eyes_ext/input/gaze_ext/pose")],
-            )
-            .unwrap();
+            xr_ctx
+                .instance
+                .suggest_interaction_profile_bindings(
+                    xr_ctx
+                        .instance
+                        .string_to_path("/interaction_profiles/ext/eye_gaze_interaction")
+                        .unwrap(),
+                    &[binding(&action, "/user/eyes_ext/input/gaze_ext/pose")],
+                )
+                .ok()?;
 
-        let space = action
-            .create_space(&xr_ctx.session, xr::Path::NULL, xr::Posef::IDENTITY)
-            .unwrap();
+            let space = action
+                .create_space(&xr_ctx.session, xr::Path::NULL, xr::Posef::IDENTITY)
+                .unwrap();
 
-        (action, space)
-    });
+            Some((action, space))
+        })
+        .flatten();
 
     xr_ctx.session.attach_action_sets(&[&action_set]).unwrap();
 
@@ -303,106 +295,56 @@ pub fn initialize_interaction(
         .create_space(&xr_ctx.session, xr::Path::NULL, xr::Posef::IDENTITY)
         .unwrap();
 
-    let (left_hand_tracker, right_hand_tracker) =
-        if xr_ctx.instance.exts().ext_hand_tracking.is_some()
-            && xr_ctx
-                .instance
-                .supports_hand_tracking(xr_ctx.system)
-                .unwrap()
-        {
-            (
-                Some(xr_ctx.session.create_hand_tracker(xr::Hand::LEFT).unwrap()),
-                Some(xr_ctx.session.create_hand_tracker(xr::Hand::RIGHT).unwrap()),
-            )
-        } else {
-            (None, None)
-        };
+    let left_hand_tracker = xr_ctx.session.create_hand_tracker(xr::Hand::LEFT).ok();
+    let right_hand_tracker = xr_ctx.session.create_hand_tracker(xr::Hand::RIGHT).ok();
 
-    let eye_tracker_fb = (face_tracking_sources
+    let eye_tracker_fb = face_tracking_sources
         .as_ref()
         .map(|s| s.eye_tracking_fb)
         .unwrap_or(false)
-        && xr_ctx
-            .extra_extensions
-            .supports_social_eye_tracking(&xr_ctx.instance, xr_ctx.system))
-    .then(|| {
-        xr_ctx
-            .extra_extensions
-            .create_eye_tracker_social(&xr_ctx.session)
-            .unwrap()
-    });
+        .then(|| EyeTrackerSocial::new(&xr_ctx.session).ok())
+        .flatten();
 
-    let face_tracker_fb = (face_tracking_sources
+    let face_tracker_fb = face_tracking_sources
         .as_ref()
         .map(|s| s.face_tracking_fb)
         .unwrap_or(false)
-        && xr_ctx
-            .extra_extensions
-            .supports_fb_visual_face_tracking(&xr_ctx.instance, xr_ctx.system)
-        && xr_ctx
-            .extra_extensions
-            .supports_fb_audio_face_tracking(&xr_ctx.instance, xr_ctx.system))
-    .then(|| {
-        xr_ctx
-            .extra_extensions
-            .create_face_tracker2_fb(&xr_ctx.session, true, true)
-            .unwrap()
-    });
+        .then(|| FaceTracker2FB::new(&xr_ctx.session, true, true).ok())
+        .flatten();
 
-    let eye_tracker_htc = (face_tracking_sources
+    let eye_tracker_htc = face_tracking_sources
         .as_ref()
         .map(|s| s.eye_expressions_htc)
         .unwrap_or(false)
-        && xr_ctx
-            .extra_extensions
-            .supports_htc_eye_facial_tracking(&xr_ctx.instance, xr_ctx.system))
-    .then(|| {
-        xr_ctx
-            .extra_extensions
-            .create_facial_tracker_htc(&xr_ctx.session, xr::FacialTrackingTypeHTC::EYE_DEFAULT)
-            .unwrap()
-    });
+        .then(|| {
+            FacialTrackerHTC::new(&xr_ctx.session, xr::FacialTrackingTypeHTC::EYE_DEFAULT).ok()
+        })
+        .flatten();
 
-    let lip_tracker_htc = (face_tracking_sources
+    let lip_tracker_htc = face_tracking_sources
         .map(|s| s.lip_expressions_htc)
         .unwrap_or(false)
-        && xr_ctx
-            .extra_extensions
-            .supports_htc_lip_facial_tracking(&xr_ctx.instance, xr_ctx.system))
-    .then(|| {
-        xr_ctx
-            .extra_extensions
-            .create_facial_tracker_htc(&xr_ctx.session, xr::FacialTrackingTypeHTC::LIP_DEFAULT)
-            .unwrap()
-    });
+        .then(|| {
+            FacialTrackerHTC::new(&xr_ctx.session, xr::FacialTrackingTypeHTC::LIP_DEFAULT).ok()
+        })
+        .flatten();
 
     let body_tracker_fb = if let Some(body_tracking_fb) =
         body_tracking_sources.and_then(|s| s.body_tracking_fb.into_option())
     {
-        if body_tracking_fb.full_body
-            && xr_ctx
-                .extra_extensions
-                .supports_full_body_tracking_meta(&xr_ctx.instance, xr_ctx.system)
-        {
-            let tracker = xr_ctx
-                .extra_extensions
-                .create_body_tracker_fb(&xr_ctx.session, *BODY_JOINT_SET_FULL_BODY_META)
-                .unwrap();
-
-            Some((tracker, FULL_BODY_JOINT_COUNT_META))
-        } else if xr_ctx
-            .extra_extensions
-            .supports_body_tracking_fb(&xr_ctx.instance, xr_ctx.system)
-        {
-            let tracker = xr_ctx
-                .extra_extensions
-                .create_body_tracker_fb(&xr_ctx.session, xr::BodyJointSetFB::DEFAULT)
-                .unwrap();
-
-            Some((tracker, xr::BodyJointFB::COUNT.into_raw() as usize))
-        } else {
-            None
-        }
+        body_tracking_fb
+            .full_body
+            .then(|| {
+                BodyTrackerFB::new(&xr_ctx.session, *BODY_JOINT_SET_FULL_BODY_META)
+                    .ok()
+                    .map(|tracker| (tracker, FULL_BODY_JOINT_COUNT_META))
+            })
+            .flatten()
+            .or_else(|| {
+                BodyTrackerFB::new(&xr_ctx.session, xr::BodyJointSetFB::DEFAULT)
+                    .ok()
+                    .map(|tracker| (tracker, xr::BodyJointFB::COUNT.into_raw() as usize))
+            })
     } else {
         None
     };

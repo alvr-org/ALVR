@@ -105,7 +105,7 @@ void Settings::Load() {
         m_nvencEnableWeightedPrediction
             = config.get("nvenc_enable_weighted_prediction").get<bool>();
 
-        m_aggressiveKeyframeResend = config.get("aggressive_keyframe_resend").get<bool>();
+        m_minimumIdrIntervalMs = config.get("minimum_idr_interval_ms").get<int64_t>();
 
         m_enableViveTrackerProxy = config.get("enable_vive_tracker_proxy").get<bool>();
         m_TrackingRefOnly = config.get("tracking_ref_only").get<bool>();

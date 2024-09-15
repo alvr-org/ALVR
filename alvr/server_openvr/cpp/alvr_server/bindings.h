@@ -28,10 +28,9 @@ struct FfiDeviceMotion {
 };
 
 struct FfiHandData {
-    unsigned int tracked;
     const FfiDeviceMotion* controllerMotion;
     const FfiHandSkeleton* handSkeleton;
-    bool useHandTracker;
+    bool isHandTracker;
 };
 
 struct FfiBodyTracker {

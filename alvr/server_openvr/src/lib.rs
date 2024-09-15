@@ -118,17 +118,28 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                     let controllers_config = headset_config.controllers.clone().into_option();
                     let track_body = headset_config.body_tracking.enabled();
 
-                    let track_controllers = controllers_config
+                    let tracked = controllers_config
                         .as_ref()
                         .map(|c| c.tracked)
                         .unwrap_or(false);
 
-                    let left_openvr_hand_skeleton = tracking.hand_skeletons[0].map(|s| {
-                        tracking::to_openvr_hand_skeleton(headset_config, *HAND_LEFT_ID, s)
-                    });
-                    let right_openvr_hand_skeleton = tracking.hand_skeletons[1].map(|s| {
-                        tracking::to_openvr_hand_skeleton(headset_config, *HAND_RIGHT_ID, s)
-                    });
+                    let ffi_head_motion = tracking
+                        .device_motions
+                        .iter()
+                        .find_map(|(id, motion)| {
+                            (*id == *HEAD_ID).then(|| tracking::to_ffi_motion(*HEAD_ID, *motion))
+                        })
+                        .unwrap_or_else(FfiDeviceMotion::default);
+                    let ffi_left_controller_motion =
+                        tracking.device_motions.iter().find_map(|(id, motion)| {
+                            (*id == *HAND_LEFT_ID && tracked)
+                                .then(|| tracking::to_ffi_motion(*HAND_LEFT_ID, *motion))
+                        });
+                    let ffi_right_controller_motion =
+                        tracking.device_motions.iter().find_map(|(id, motion)| {
+                            (*id == *HAND_RIGHT_ID && tracked)
+                                .then(|| tracking::to_ffi_motion(*HAND_RIGHT_ID, *motion))
+                        });
 
                     let (
                         use_separate_hand_trackers,
@@ -141,46 +152,32 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                     {
                         (
                             hand_skeleton_config.steamvr_input_2_0,
-                            left_openvr_hand_skeleton.map(tracking::to_ffi_skeleton),
-                            right_openvr_hand_skeleton.map(tracking::to_ffi_skeleton),
+                            tracked
+                                .then_some(tracking.hand_skeletons[0])
+                                .flatten()
+                                .map(|s| {
+                                    tracking::to_ffi_skeleton(tracking::to_openvr_hand_skeleton(
+                                        headset_config,
+                                        *HAND_LEFT_ID,
+                                        s,
+                                    ))
+                                }),
+                            tracked
+                                .then_some(tracking.hand_skeletons[1])
+                                .flatten()
+                                .map(|s| {
+                                    tracking::to_ffi_skeleton(tracking::to_openvr_hand_skeleton(
+                                        headset_config,
+                                        *HAND_RIGHT_ID,
+                                        s,
+                                    ))
+                                }),
                         )
                     } else {
                         (false, None, None)
                     };
 
-                    let use_left_hand_tracker = use_separate_hand_trackers
-                        && tracking.hand_skeletons[0].is_some()
-                        && tracking
-                            .device_motions
-                            .iter()
-                            .all(|(id, _)| *id != *HAND_LEFT_ID);
-                    let use_right_hand_tracker = use_separate_hand_trackers
-                        && tracking.hand_skeletons[1].is_some()
-                        && tracking
-                            .device_motions
-                            .iter()
-                            .all(|(id, _)| *id != *HAND_RIGHT_ID);
-
-                    let ffi_head_motion = tracking
-                        .device_motions
-                        .iter()
-                        .find_map(|(id, motion)| {
-                            (*id == *HEAD_ID).then(|| tracking::to_ffi_motion(*HEAD_ID, *motion))
-                        })
-                        .unwrap_or_else(FfiDeviceMotion::default);
-                    let ffi_left_controller_motion =
-                        tracking.device_motions.iter().find_map(|(id, motion)| {
-                            (*id == *HAND_LEFT_ID)
-                                .then(|| tracking::to_ffi_motion(*HAND_LEFT_ID, *motion))
-                        });
-                    let ffi_right_controller_motion =
-                        tracking.device_motions.iter().find_map(|(id, motion)| {
-                            (*id == *HAND_RIGHT_ID)
-                                .then(|| tracking::to_ffi_motion(*HAND_RIGHT_ID, *motion))
-                        });
-
                     let left_hand_data = FfiHandData {
-                        tracked: track_controllers.into(),
                         controllerMotion: if let Some(motion) = &ffi_left_controller_motion {
                             motion
                         } else {
@@ -191,10 +188,11 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                         } else {
                             ptr::null()
                         },
-                        useHandTracker: use_left_hand_tracker,
+                        isHandTracker: use_separate_hand_trackers
+                            && ffi_left_controller_motion.is_none()
+                            && ffi_left_hand_skeleton.is_some(),
                     };
                     let right_hand_data = FfiHandData {
-                        tracked: track_controllers.into(),
                         controllerMotion: if let Some(motion) = &ffi_right_controller_motion {
                             motion
                         } else {
@@ -205,7 +203,9 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                         } else {
                             ptr::null()
                         },
-                        useHandTracker: use_right_hand_tracker,
+                        isHandTracker: use_separate_hand_trackers
+                            && ffi_right_controller_motion.is_none()
+                            && ffi_right_hand_skeleton.is_some(),
                     };
 
                     let ffi_body_trackers =

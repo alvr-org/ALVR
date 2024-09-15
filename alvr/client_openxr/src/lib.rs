@@ -15,8 +15,7 @@ use alvr_common::{
     info, Fov, Pose, HAND_LEFT_ID,
 };
 use extra_extensions::{
-    ExtraExtensions, META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
-    META_DETACHED_CONTROLLERS_EXTENSION_NAME,
+    META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME, META_DETACHED_CONTROLLERS_EXTENSION_NAME,
     META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,
 };
 use lobby::Lobby;
@@ -98,7 +97,6 @@ pub struct XrContext {
     instance: xr::Instance,
     system: xr::SystemId,
     session: xr::Session<xr::OpenGlEs>,
-    extra_extensions: ExtraExtensions,
 }
 
 fn default_view() -> xr::View {
@@ -223,7 +221,6 @@ pub fn entry_point() {
             instance: xr_instance.clone(),
             system: xr_system,
             session: xr_session.clone(),
-            extra_extensions: ExtraExtensions::new(&xr_instance),
         };
 
         let views_config = xr_instance

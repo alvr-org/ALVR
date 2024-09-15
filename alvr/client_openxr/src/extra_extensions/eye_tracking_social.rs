@@ -2,30 +2,14 @@ use alvr_common::{anyhow::Result, ToAny};
 use openxr::{self as xr, raw, sys};
 use std::ptr;
 
-impl super::ExtraExtensions {
-    pub fn supports_social_eye_tracking(
-        &self,
-        instance: &xr::Instance,
-        system: xr::SystemId,
-    ) -> bool {
-        self.get_props(
-            instance,
-            system,
-            sys::SystemEyeTrackingPropertiesFB {
-                ty: sys::SystemEyeTrackingPropertiesFB::TYPE,
-                next: ptr::null_mut(),
-                supports_eye_tracking: sys::FALSE,
-            },
-        )
-        .map(|props| props.supports_eye_tracking.into())
-        .unwrap_or(false)
-    }
+pub struct EyeTrackerSocial {
+    handle: sys::EyeTrackerFB,
+    ext_fns: raw::EyeTrackingSocialFB,
+}
 
-    pub fn create_eye_tracker_social<G>(
-        &self,
-        session: &xr::Session<G>,
-    ) -> Result<EyeTrackerSocial> {
-        let ext_fns = self.ext_functions_ptrs.fb_eye_tracking_social.to_any()?;
+impl EyeTrackerSocial {
+    pub fn new<G>(session: &xr::Session<G>) -> Result<Self> {
+        let ext_fns = session.instance().exts().fb_eye_tracking_social.to_any()?;
 
         let mut handle = sys::EyeTrackerFB::NULL;
         let info = sys::EyeTrackerCreateInfoFB {
@@ -33,23 +17,16 @@ impl super::ExtraExtensions {
             next: ptr::null(),
         };
         unsafe {
-            super::to_any((ext_fns.create_eye_tracker)(
+            super::xr_to_any((ext_fns.create_eye_tracker)(
                 session.as_raw(),
                 &info,
                 &mut handle,
             ))?
         };
 
-        Ok(EyeTrackerSocial { handle, ext_fns })
+        Ok(Self { handle, ext_fns })
     }
-}
 
-pub struct EyeTrackerSocial {
-    handle: sys::EyeTrackerFB,
-    ext_fns: raw::EyeTrackingSocialFB,
-}
-
-impl EyeTrackerSocial {
     pub fn get_eye_gazes(
         &self,
         base: &xr::Space,
@@ -65,7 +42,7 @@ impl EyeTrackerSocial {
         let mut eye_gazes = sys::EyeGazesFB::out(ptr::null_mut());
 
         let eye_gazes = unsafe {
-            super::to_any((self.ext_fns.get_eye_gazes)(
+            super::xr_to_any((self.ext_fns.get_eye_gazes)(
                 self.handle,
                 &gaze_info,
                 eye_gazes.as_mut_ptr(),

@@ -5,8 +5,6 @@ use openxr::{self as xr, raw, sys};
 use std::ptr;
 
 pub const META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME: &str = "XR_META_body_tracking_full_body";
-static TYPE_SYSTEM_PROPERTIES_BODY_TRACKING_FULL_BODY_META: Lazy<xr::StructureType> =
-    Lazy::new(|| xr::StructureType::from_raw(1000274000));
 pub static BODY_JOINT_SET_FULL_BODY_META: Lazy<xr::BodyJointSetFB> =
     Lazy::new(|| xr::BodyJointSetFB::from_raw(1000274000));
 
@@ -33,45 +31,14 @@ struct SystemPropertiesBodyTrackingFullBodyMETA {
     supports_full_body_tracking: sys::Bool32,
 }
 
-impl super::ExtraExtensions {
-    pub fn supports_body_tracking_fb(&self, instance: &xr::Instance, system: xr::SystemId) -> bool {
-        self.get_props(
-            instance,
-            system,
-            sys::SystemBodyTrackingPropertiesFB {
-                ty: sys::SystemBodyTrackingPropertiesFB::TYPE,
-                next: ptr::null_mut(),
-                supports_body_tracking: sys::FALSE,
-            },
-        )
-        .map(|props| props.supports_body_tracking.into())
-        .unwrap_or(false)
-    }
+pub struct BodyTrackerFB {
+    handle: sys::BodyTrackerFB,
+    ext_fns: raw::BodyTrackingFB,
+}
 
-    pub fn supports_full_body_tracking_meta(
-        &self,
-        instance: &xr::Instance,
-        system: xr::SystemId,
-    ) -> bool {
-        self.get_props(
-            instance,
-            system,
-            SystemPropertiesBodyTrackingFullBodyMETA {
-                ty: *TYPE_SYSTEM_PROPERTIES_BODY_TRACKING_FULL_BODY_META,
-                next: ptr::null_mut(),
-                supports_full_body_tracking: sys::FALSE,
-            },
-        )
-        .map(|props| props.supports_full_body_tracking.into())
-        .unwrap_or(false)
-    }
-
-    pub fn create_body_tracker_fb<G>(
-        &self,
-        session: &xr::Session<G>,
-        body_joint_set: xr::BodyJointSetFB,
-    ) -> Result<BodyTrackerFB> {
-        let ext_fns = self.ext_functions_ptrs.fb_body_tracking.to_any()?;
+impl BodyTrackerFB {
+    pub fn new<G>(session: &xr::Session<G>, body_joint_set: xr::BodyJointSetFB) -> Result<Self> {
+        let ext_fns = session.instance().exts().fb_body_tracking.to_any()?;
 
         let mut handle = sys::BodyTrackerFB::NULL;
         let info = sys::BodyTrackerCreateInfoFB {
@@ -80,23 +47,16 @@ impl super::ExtraExtensions {
             body_joint_set,
         };
         unsafe {
-            super::to_any((ext_fns.create_body_tracker)(
+            super::xr_to_any((ext_fns.create_body_tracker)(
                 session.as_raw(),
                 &info,
                 &mut handle,
             ))?
         };
 
-        Ok(BodyTrackerFB { handle, ext_fns })
+        Ok(Self { handle, ext_fns })
     }
-}
 
-pub struct BodyTrackerFB {
-    handle: sys::BodyTrackerFB,
-    ext_fns: raw::BodyTrackingFB,
-}
-
-impl BodyTrackerFB {
     pub fn locate_body_joints(
         &self,
         time: xr::Time,
@@ -121,7 +81,7 @@ impl BodyTrackerFB {
             time: xr::Time::from_nanos(0),
         };
         unsafe {
-            super::to_any((self.ext_fns.locate_body_joints)(
+            super::xr_to_any((self.ext_fns.locate_body_joints)(
                 self.handle,
                 &locate_info,
                 &mut location_info,

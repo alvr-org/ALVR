@@ -26,6 +26,7 @@ private:
     x264_nal_t* nal = nullptr;
     int nal_size = 0;
     int64_t pts = 0;
+    bool is_idr = false;
     FormatConverter* rgbtoyuv = nullptr;
 };
 }

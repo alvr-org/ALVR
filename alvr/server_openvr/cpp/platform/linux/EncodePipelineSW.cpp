@@ -104,6 +104,7 @@ void alvr::EncodePipelineSW::PushFrame(uint64_t targetTimestampNs, bool idr) {
 
     picture.i_type = idr ? X264_TYPE_IDR : X264_TYPE_AUTO;
     pts = picture.i_pts = targetTimestampNs;
+    is_idr = idr;
 
     int nnal = 0;
     nal_size = x264_encoder_encode(enc, &nal, &nnal, &picture, &picture_out);
@@ -119,6 +120,7 @@ bool alvr::EncodePipelineSW::GetEncoded(FramePacket& packet) {
     packet.size = nal_size;
     packet.data = nal[0].p_payload;
     packet.pts = pts;
+    packet.isIDR = is_idr;
     return packet.size > 0;
 }
 

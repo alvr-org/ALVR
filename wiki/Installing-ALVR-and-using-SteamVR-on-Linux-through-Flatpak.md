@@ -125,4 +125,15 @@ The support for other applications that are not launched via Steam is non-existe
 
 Various SteamVR utilities such as [WlxOverlay](https://github.com/galister/WlxOverlay) and [OpenVR-AdvancedSettings](https://github.com/OpenVR-Advanced-Settings/OpenVR-AdvancedSettings) cannot run within the Flatpak sandbox due to their usage of AppImage. However, unpacking the supplied AppImage or building the utilities from source and running their binaries from within the sandbox similiarly to `alvr_dashboard` could work, but there is no guarantee that they will work properly.
 
+(at time of writing it does work properly)
+Download wlx-overlay-s appimage. 
+Make it executable (chmod +x Wlx-Overlay-xxx.Appimage). 
+Extract it (./Wlx-Overlay-xxx.Appimage --app-image-extract)
+Use flatseal or terminal to expose a folder to the steam flatpak (e.g. ~/test, should be in same section as the pipewire fix from above)
+Copy the extracted files into the exposed folder.
+Test it from terminal: flatpak run --command=bash com.valvesoftware.Steam (cd ~/test/squasroot-fs && ./Apprun)
+To make a desktop shortcut, use a command like flatpak run --command=~/test/squashroot-fs/Apprun com.valvesoftware.Steam
+
+
+
 Some applications such as [Godot](https://godotengine.org) support OpenXR. However, unless they are launched within the Steam Flatpak sandbox, they will not work with the Steam Flatpak. See [here](https://github.com/flathub/com.valvesoftware.Steam/issues/1010) for more details.

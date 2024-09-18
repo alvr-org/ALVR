@@ -353,7 +353,7 @@ pub fn entry_point() {
                         lobby.update_hud_message(&message);
                     }
                     ClientCoreEvent::StreamingStarted(config) => {
-                        let new_config = ParsedStreamConfig::new(&*config);
+                        let new_config = ParsedStreamConfig::new(&config);
 
                         // combined_eye_gaze is a setting that needs to be enabled at session
                         // creation. Since HTC headsets don't support session reinitialization, skip

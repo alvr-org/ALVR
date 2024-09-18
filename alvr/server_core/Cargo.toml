@@ -53,4 +53,4 @@ tokio-tungstenite = "0.20"
 tokio-util = { version = "0.7", features = ["codec"] }
 serde = "1"
 serde_json = "1"
-sysinfo = { version = "0.30", default-features = false }
+sysinfo = "0.31"

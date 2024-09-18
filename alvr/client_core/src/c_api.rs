@@ -490,9 +490,11 @@ pub extern "C" fn alvr_send_button(path_id: u64, value: AlvrButtonValue) {
 
 /// view_params:
 /// * array of 2;
+///
 /// hand_skeleton:
 /// * outer ptr: array of 2 (can be null);
 /// * inner ptr: array of 26 (can be null if hand is absent)
+///
 /// eye_gazes:
 /// * outer ptr: array of 2 (can be null);
 /// * inner ptr: pose (can be null if eye gaze is absent)

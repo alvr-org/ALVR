@@ -589,6 +589,7 @@ fn connection_pipeline(
         settings.video.preferred_codec
     };
 
+    #[cfg_attr(target_os = "linux", allow(unused_variables))]
     let game_audio_sample_rate =
         if let Switch::Enabled(game_audio_config) = &settings.audio.game_audio {
             #[cfg(not(target_os = "linux"))]
@@ -731,6 +732,7 @@ fn connection_pipeline(
         }
     });
 
+    #[cfg_attr(target_os = "linux", allow(unused_variables))]
     let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
         #[cfg(windows)]
         let ctx = Arc::clone(&ctx);

@@ -228,8 +228,6 @@ bool Controller::onPoseUpdate(float predictionS, FfiHandData handData) {
     auto controllerMotion = handData.controllerMotion;
     auto handSkeleton = handData.handSkeleton;
 
-    // Note: following the multimodal protocol, to make sure we want to use hand trackers we need to
-    // check controllerMotion == nullptr. handSkeleton != nullptr is not enough.
     bool enabledAsHandTracker = handData.isHandTracker
         && (device_id == HAND_TRACKER_LEFT_ID || device_id == HAND_TRACKER_RIGHT_ID);
     bool enabledAsController

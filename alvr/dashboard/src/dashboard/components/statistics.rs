@@ -168,7 +168,7 @@ impl StatisticsTab {
                 Grid::new("latency_tooltip").num_columns(2).show(ui, |ui| {
                     fn label(ui: &mut Ui, text: &str, value_s: f32, color: Color32) {
                         ui.colored_label(color, text);
-                        ui.colored_label(color, &format!("{:.2}ms", value_s * 1000.0));
+                        ui.colored_label(color, format!("{:.2}ms", value_s * 1000.0));
                         ui.end_row();
                     }
 
@@ -326,7 +326,7 @@ impl StatisticsTab {
                     color: Color32,
                 ) {
                     if let Some(value) = maybe_value_bps {
-                        ui.colored_label(color, &format!("{text}: {:.2} Mbps", value / 1e6));
+                        ui.colored_label(color, format!("{text}: {:.2} Mbps", value / 1e6));
                     }
                 }
 
@@ -374,43 +374,43 @@ impl StatisticsTab {
 
         ui.columns(2, |ui| {
             ui[0].label("Total packets:");
-            ui[1].label(&format!(
+            ui[1].label(format!(
                 "{} packets ({} packets/s)",
                 statistics.video_packets_total, statistics.video_packets_per_sec
             ));
 
             ui[0].label("Total sent:");
-            ui[1].label(&format!("{} MB", statistics.video_mbytes_total));
+            ui[1].label(format!("{} MB", statistics.video_mbytes_total));
 
             ui[0].label("Bitrate:");
-            ui[1].label(&format!("{:.1} Mbps", statistics.video_mbits_per_sec));
+            ui[1].label(format!("{:.1} Mbps", statistics.video_mbits_per_sec));
 
             ui[0].label("Total latency:");
-            ui[1].label(&format!("{:.0} ms", statistics.total_latency_ms));
+            ui[1].label(format!("{:.0} ms", statistics.total_latency_ms));
 
             ui[0].label("Encoder latency:");
-            ui[1].label(&format!("{:.2} ms", statistics.encode_latency_ms));
+            ui[1].label(format!("{:.2} ms", statistics.encode_latency_ms));
 
             ui[0].label("Transport latency:");
-            ui[1].label(&format!("{:.2} ms", statistics.network_latency_ms));
+            ui[1].label(format!("{:.2} ms", statistics.network_latency_ms));
 
             ui[0].label("Decoder latency:");
-            ui[1].label(&format!("{:.2} ms", statistics.decode_latency_ms));
+            ui[1].label(format!("{:.2} ms", statistics.decode_latency_ms));
 
             ui[0].label("Total packets lost:");
-            ui[1].label(&format!(
+            ui[1].label(format!(
                 "{} packets ({} packets/s)",
                 statistics.packets_lost_total, statistics.packets_lost_per_sec
             ));
 
             ui[0].label("Client FPS:");
-            ui[1].label(&format!("{} FPS", statistics.client_fps));
+            ui[1].label(format!("{} FPS", statistics.client_fps));
 
             ui[0].label("Streamer FPS:");
-            ui[1].label(&format!("{} FPS", statistics.server_fps));
+            ui[1].label(format!("{} FPS", statistics.server_fps));
 
             ui[0].label("Headset battery");
-            ui[1].label(&format!(
+            ui[1].label(format!(
                 "{}% ({})",
                 statistics.battery_hmd,
                 if statistics.hmd_plugged {

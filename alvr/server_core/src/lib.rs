@@ -38,6 +38,7 @@ use statistics::StatisticsManager;
 use std::{
     collections::HashSet,
     env,
+    ffi::OsStr,
     fs::File,
     io::Write,
     sync::{
@@ -48,7 +49,7 @@ use std::{
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
-use sysinfo::{ProcessRefreshKind, RefreshKind};
+use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, RefreshKind};
 use tokio::{runtime::Runtime, sync::broadcast};
 
 static FILESYSTEM_LAYOUT: OnceLock<afs::Layout> = OnceLock::new();
@@ -145,10 +146,10 @@ pub fn notify_restart_driver() {
     let mut system = sysinfo::System::new_with_specifics(
         RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
     );
-    system.refresh_processes();
+    system.refresh_processes(ProcessesToUpdate::All);
 
     if system
-        .processes_by_name(afs::dashboard_fname())
+        .processes_by_name(OsStr::new(&afs::dashboard_fname()))
         .next()
         .is_some()
     {

@@ -161,9 +161,8 @@ impl StreamRenderer {
 
             let mut view_objects = vec![];
             let mut staging_textures_gl = vec![];
-            for i in 0..2 {
-                let staging_texture =
-                    super::create_texture(&device, view_resolution, target_format);
+            for target_swapchain in &swapchain_textures {
+                let staging_texture = super::create_texture(device, view_resolution, target_format);
 
                 let staging_texture_gl = unsafe {
                     staging_texture.as_hal::<api::Gles, _, _>(|tex| {
@@ -193,7 +192,7 @@ impl StreamRenderer {
 
                 let render_target = super::create_gl_swapchain(
                     device,
-                    &swapchain_textures[i],
+                    target_swapchain,
                     view_resolution,
                     target_format,
                 );

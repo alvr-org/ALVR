@@ -2,7 +2,10 @@
 // https://github.com/meta-quest/Meta-OpenXR-SDK/blob/main/OpenXR/meta_openxr_preview/meta_simultaneous_hands_and_controllers.h
 
 use alvr_common::{anyhow::Result, once_cell::sync::Lazy, ToAny};
-use openxr::{self as xr, sys};
+use openxr::{
+    self as xr,
+    sys::{self, pfn::VoidFunction},
+};
 use std::{ffi::c_void, mem, ptr};
 
 pub const META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME: &str =
@@ -35,7 +38,7 @@ pub fn resume_simultaneous_hands_and_controllers_tracking<G>(
             &mut resume_simultaneous_hands_and_controllers_tracking_meta,
         );
 
-        mem::transmute::<_, ResumeSimultaneousHandsAndControllersTrackingMETA>(
+        mem::transmute::<VoidFunction, ResumeSimultaneousHandsAndControllersTrackingMETA>(
             resume_simultaneous_hands_and_controllers_tracking_meta.to_any()?,
         )
     };

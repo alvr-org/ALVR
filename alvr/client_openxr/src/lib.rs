@@ -189,7 +189,6 @@ pub fn entry_point() {
                 application_version: 0,
                 engine_name: "ALVR",
                 engine_version: 0,
-                api_version: xr::Version::new(1, 0, 0),
             },
             &exts,
             &[],

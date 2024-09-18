@@ -22,7 +22,7 @@ alvr_session.workspace = true
 
 [build-dependencies]
 alvr_filesystem = { path = "../filesystem" }
-bindgen = "0.69"
+bindgen = "0.70"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"
 

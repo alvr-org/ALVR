@@ -9,11 +9,12 @@ use alvr_filesystem as afs;
 use alvr_session::{DriverLaunchAction, DriversBackup};
 use std::{
     env,
+    ffi::OsStr,
     marker::PhantomData,
     thread,
     time::{Duration, Instant},
 };
-use sysinfo::{ProcessRefreshKind, RefreshKind, System};
+use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, RefreshKind, System};
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -21,10 +22,10 @@ pub fn is_steamvr_running() -> bool {
     let mut system = System::new_with_specifics(
         RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
     );
-    system.refresh_processes();
+    system.refresh_processes(ProcessesToUpdate::All);
 
     system
-        .processes_by_name(&afs::exec_fname("vrserver"))
+        .processes_by_name(OsStr::new(&afs::exec_fname("vrserver")))
         .count()
         != 0
 }
@@ -33,12 +34,12 @@ pub fn maybe_kill_steamvr() {
     let mut system = System::new_with_specifics(
         RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
     );
-    system.refresh_processes();
+    system.refresh_processes(ProcessesToUpdate::All);
 
     // first kill vrmonitor, then kill vrserver if it is hung.
 
     #[allow(unused_variables)]
-    for process in system.processes_by_name(&afs::exec_fname("vrmonitor")) {
+    for process in system.processes_by_name(OsStr::new(&afs::exec_fname("vrmonitor"))) {
         debug!("Killing vrmonitor");
 
         #[cfg(target_os = "linux")]
@@ -49,10 +50,10 @@ pub fn maybe_kill_steamvr() {
         thread::sleep(Duration::from_secs(1));
     }
 
-    system.refresh_processes();
+    system.refresh_processes(ProcessesToUpdate::All);
 
     #[allow(unused_variables)]
-    for process in system.processes_by_name(&afs::exec_fname("vrserver")) {
+    for process in system.processes_by_name(OsStr::new(&afs::exec_fname("vrserver"))) {
         debug!("Killing vrserver");
 
         #[cfg(target_os = "linux")]

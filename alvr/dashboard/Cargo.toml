@@ -27,22 +27,13 @@ statrs = "0.17"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 alvr_server_io.workspace = true
-sysinfo = { version = "0.30", default-features = false }
-tungstenite = "0.23"
+sysinfo = "0.31"
+tungstenite = "0.24"
 ureq = { version = "2", features = ["json"] }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-console_error_panic_hook = "0.1"
-ewebsock = "0.5"
-futures = "0.3"
-gloo-net = "0.5"
-instant = { version = "0.1", features = ["wasm-bindgen"] }
-wasm-bindgen-futures = "0.4"
-wasm-logger = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 wgpu = "0.20"
-libva = { package = "cros-libva", version = "0.0.6" }
+libva = { package = "cros-libva", version = "0.0.7" }
 nvml-wrapper = "0.10.0"
 
 [target.'cfg(windows)'.build-dependencies]

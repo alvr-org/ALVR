@@ -1,4 +1,3 @@
-use alvr_common::{anyhow::Result, ToAny};
 use openxr::{self as xr, raw, sys};
 use std::ptr;
 
@@ -8,8 +7,12 @@ pub struct FaceTracker2FB {
 }
 
 impl FaceTracker2FB {
-    pub fn new<G>(session: &xr::Session<G>, visual: bool, audio: bool) -> Result<Self> {
-        let ext_fns = session.instance().exts().fb_face_tracking2.to_any()?;
+    pub fn new<G>(session: &xr::Session<G>, visual: bool, audio: bool) -> xr::Result<Self> {
+        let ext_fns = session
+            .instance()
+            .exts()
+            .fb_face_tracking2
+            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
 
         let mut requested_data_sources = vec![];
         if visual {
@@ -28,7 +31,7 @@ impl FaceTracker2FB {
             requested_data_sources: requested_data_sources.as_mut_ptr(),
         };
         unsafe {
-            super::xr_to_any((ext_fns.create_face_tracker2)(
+            super::xr_res((ext_fns.create_face_tracker2)(
                 session.as_raw(),
                 &info,
                 &mut handle,
@@ -38,7 +41,7 @@ impl FaceTracker2FB {
         Ok(Self { handle, ext_fns })
     }
 
-    pub fn get_face_expression_weights(&self, time: xr::Time) -> Result<Option<Vec<f32>>> {
+    pub fn get_face_expression_weights(&self, time: xr::Time) -> xr::Result<Option<Vec<f32>>> {
         let expression_info = sys::FaceExpressionInfo2FB {
             ty: sys::FaceExpressionInfo2FB::TYPE,
             next: ptr::null(),
@@ -65,7 +68,7 @@ impl FaceTracker2FB {
         };
 
         unsafe {
-            super::xr_to_any((self.ext_fns.get_face_expression_weights2)(
+            super::xr_res((self.ext_fns.get_face_expression_weights2)(
                 self.handle,
                 &expression_info,
                 &mut expression_weights,

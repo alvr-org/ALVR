@@ -10,13 +10,12 @@ pub use face_tracking2_fb::*;
 pub use facial_tracking_htc::*;
 pub use multimodal_input::*;
 
-use alvr_common::anyhow::{anyhow, Result};
-use openxr::sys;
+use openxr::{self as xr, sys};
 
-fn xr_to_any(result: sys::Result) -> Result<()> {
+fn xr_res(result: sys::Result) -> xr::Result<()> {
     if result.into_raw() >= 0 {
         Ok(())
     } else {
-        Err(anyhow!("OpenXR error: {:?}", result))
+        Err(result)
     }
 }

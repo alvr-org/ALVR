@@ -260,16 +260,16 @@ pub fn initialize_interaction(
                 .create_action("combined_eye_gaze", "Combined eye gaze", &[])
                 .unwrap();
 
-            xr_ctx
-                .instance
-                .suggest_interaction_profile_bindings(
-                    xr_ctx
-                        .instance
-                        .string_to_path("/interaction_profiles/ext/eye_gaze_interaction")
-                        .unwrap(),
-                    &[binding(&action, "/user/eyes_ext/input/gaze_ext/pose")],
-                )
-                .ok()?;
+            let res = xr_ctx.instance.suggest_interaction_profile_bindings(
+                xr_ctx
+                    .instance
+                    .string_to_path("/interaction_profiles/ext/eye_gaze_interaction")
+                    .unwrap(),
+                &[binding(&action, "/user/eyes_ext/input/gaze_ext/pose")],
+            );
+            if res.is_err() {
+                warn!("Failed to register combined eye gaze input: {res:?}");
+            }
 
             let space = action
                 .create_space(xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
@@ -295,59 +295,80 @@ pub fn initialize_interaction(
         .create_space(xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
         .unwrap();
 
-    let left_hand_tracker = xr_ctx.session.create_hand_tracker(xr::Hand::LEFT).ok();
-    let right_hand_tracker = xr_ctx.session.create_hand_tracker(xr::Hand::RIGHT).ok();
-
-    let eye_tracker_fb = face_tracking_sources
-        .as_ref()
-        .map(|s| s.eye_tracking_fb)
-        .unwrap_or(false)
-        .then(|| EyeTrackerSocial::new(&xr_ctx.session).ok())
-        .flatten();
-
-    let face_tracker_fb = face_tracking_sources
-        .as_ref()
-        .map(|s| s.face_tracking_fb)
-        .unwrap_or(false)
-        .then(|| FaceTracker2FB::new(&xr_ctx.session, true, true).ok())
-        .flatten();
-
-    let eye_tracker_htc = face_tracking_sources
-        .as_ref()
-        .map(|s| s.eye_expressions_htc)
-        .unwrap_or(false)
-        .then(|| {
-            FacialTrackerHTC::new(&xr_ctx.session, xr::FacialTrackingTypeHTC::EYE_DEFAULT).ok()
-        })
-        .flatten();
-
-    let lip_tracker_htc = face_tracking_sources
-        .map(|s| s.lip_expressions_htc)
-        .unwrap_or(false)
-        .then(|| {
-            FacialTrackerHTC::new(&xr_ctx.session, xr::FacialTrackingTypeHTC::LIP_DEFAULT).ok()
-        })
-        .flatten();
-
-    let body_tracker_fb = if let Some(body_tracking_fb) =
-        body_tracking_sources.and_then(|s| s.body_tracking_fb.into_option())
-    {
-        body_tracking_fb
-            .full_body
-            .then(|| {
-                BodyTrackerFB::new(&xr_ctx.session, *BODY_JOINT_SET_FULL_BODY_META)
-                    .ok()
-                    .map(|tracker| (tracker, FULL_BODY_JOINT_COUNT_META))
+    fn create_ext_object<T>(
+        name: &str,
+        enabled: Option<bool>,
+        create_cb: impl FnOnce() -> xr::Result<T>,
+    ) -> Option<T> {
+        enabled
+            .unwrap_or(false)
+            .then(|| match create_cb() {
+                Ok(obj) => Some(obj),
+                Err(xr::sys::Result::ERROR_FEATURE_UNSUPPORTED) => {
+                    warn!("Cannot create unsupported {name}");
+                    None
+                }
+                Err(xr::sys::Result::ERROR_EXTENSION_NOT_PRESENT) => None,
+                Err(e) => {
+                    warn!("Failed to create {name}: {e}");
+                    None
+                }
             })
             .flatten()
-            .or_else(|| {
-                BodyTrackerFB::new(&xr_ctx.session, xr::BodyJointSetFB::DEFAULT)
-                    .ok()
-                    .map(|tracker| (tracker, xr::BodyJointFB::COUNT.into_raw() as usize))
-            })
-    } else {
-        None
-    };
+    }
+
+    let left_hand_tracker = create_ext_object("HandTracker (left)", Some(true), || {
+        xr_ctx.session.create_hand_tracker(xr::Hand::LEFT)
+    });
+    let right_hand_tracker = create_ext_object("HandTracker (right)", Some(true), || {
+        xr_ctx.session.create_hand_tracker(xr::Hand::RIGHT)
+    });
+
+    let eye_tracker_fb = create_ext_object(
+        "EyeTrackerSocial",
+        face_tracking_sources.as_ref().map(|s| s.eye_tracking_fb),
+        || EyeTrackerSocial::new(&xr_ctx.session),
+    );
+
+    let face_tracker_fb = create_ext_object(
+        "FaceTracker2FB",
+        face_tracking_sources.as_ref().map(|s| s.face_tracking_fb),
+        || FaceTracker2FB::new(&xr_ctx.session, true, true),
+    );
+
+    let eye_tracker_htc = create_ext_object(
+        "FacialTrackerHTC (eyes)",
+        face_tracking_sources
+            .as_ref()
+            .map(|s| s.eye_expressions_htc),
+        || FacialTrackerHTC::new(&xr_ctx.session, xr::FacialTrackingTypeHTC::EYE_DEFAULT),
+    );
+
+    let lip_tracker_htc = create_ext_object(
+        "FacialTrackerHTC (lips)",
+        face_tracking_sources
+            .as_ref()
+            .map(|s| s.lip_expressions_htc),
+        || FacialTrackerHTC::new(&xr_ctx.session, xr::FacialTrackingTypeHTC::LIP_DEFAULT),
+    );
+
+    let body_tracker_fb = create_ext_object(
+        "BodyTrackerFB (full set)",
+        body_tracking_sources
+            .clone()
+            .and_then(|s| s.body_tracking_fb.into_option())
+            .map(|c| c.full_body),
+        || BodyTrackerFB::new(&xr_ctx.session, *BODY_JOINT_SET_FULL_BODY_META),
+    )
+    .map(|tracker| (tracker, FULL_BODY_JOINT_COUNT_META))
+    .or_else(|| {
+        create_ext_object(
+            "BodyTrackerFB (default set)",
+            body_tracking_sources.map(|s| s.body_tracking_fb.enabled()),
+            || BodyTrackerFB::new(&xr_ctx.session, xr::BodyJointSetFB::DEFAULT),
+        )
+        .map(|tracker| (tracker, xr::BodyJointFB::COUNT.into_raw() as usize))
+    });
 
     InteractionContext {
         action_set,

@@ -7,7 +7,7 @@ authors.workspace = true
 license.workspace = true
 
 [lib]
-crate_type = ["rlib", "staticlib", "cdylib"]
+crate-type = ["rlib", "staticlib", "cdylib"]
 
 [features]
 link-stdcpp-shared = []

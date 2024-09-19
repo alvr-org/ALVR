@@ -244,14 +244,25 @@ pub fn to_ffi_body_trackers(
     });
 
     let mut trackers = vec![];
-
-    for (id, motion) in device_motions {
-        if BODY_TRACKER_ID_MAP.contains_key(id) {
+    for i in 0..8 {
+        if let Some((id, motion)) = device_motions.iter().find(|(id, _)| {
+            BODY_TRACKER_ID_MAP
+                .get(id)
+                .map(|id| *id == i)
+                .unwrap_or(false)
+        }) {
             trackers.push(FfiBodyTracker {
                 trackerID: *BODY_TRACKER_ID_MAP.get(id).unwrap(),
                 orientation: to_ffi_quat(motion.pose.orientation),
                 position: motion.pose.position.to_array(),
                 tracking: tracking.into(),
+            });
+        } else {
+            trackers.push(FfiBodyTracker {
+                trackerID: i,
+                orientation: to_ffi_quat(Quat::IDENTITY),
+                position: [0_f32; 3],
+                tracking: 0,
             });
         }
     }

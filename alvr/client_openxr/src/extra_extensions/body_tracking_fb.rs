@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use alvr_common::{anyhow::Result, once_cell::sync::Lazy, ToAny};
+use alvr_common::once_cell::sync::Lazy;
 use openxr::{self as xr, raw, sys};
 use std::ptr;
 
@@ -37,8 +37,15 @@ pub struct BodyTrackerFB {
 }
 
 impl BodyTrackerFB {
-    pub fn new<G>(session: &xr::Session<G>, body_joint_set: xr::BodyJointSetFB) -> Result<Self> {
-        let ext_fns = session.instance().exts().fb_body_tracking.to_any()?;
+    pub fn new<G>(
+        session: &xr::Session<G>,
+        body_joint_set: xr::BodyJointSetFB,
+    ) -> xr::Result<Self> {
+        let ext_fns = session
+            .instance()
+            .exts()
+            .fb_body_tracking
+            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
 
         let mut handle = sys::BodyTrackerFB::NULL;
         let info = sys::BodyTrackerCreateInfoFB {
@@ -47,11 +54,11 @@ impl BodyTrackerFB {
             body_joint_set,
         };
         unsafe {
-            super::xr_to_any((ext_fns.create_body_tracker)(
+            super::xr_res((ext_fns.create_body_tracker)(
                 session.as_raw(),
                 &info,
                 &mut handle,
-            ))?
+            ))?;
         };
 
         Ok(Self { handle, ext_fns })
@@ -62,7 +69,7 @@ impl BodyTrackerFB {
         time: xr::Time,
         reference_space: &xr::Space,
         joint_count: usize,
-    ) -> Result<Option<Vec<xr::BodyJointLocationFB>>> {
+    ) -> xr::Result<Option<Vec<xr::BodyJointLocationFB>>> {
         let locate_info = sys::BodyJointsLocateInfoFB {
             ty: sys::BodyJointsLocateInfoFB::TYPE,
             next: ptr::null(),
@@ -81,7 +88,7 @@ impl BodyTrackerFB {
             time: xr::Time::from_nanos(0),
         };
         unsafe {
-            super::xr_to_any((self.ext_fns.locate_body_joints)(
+            super::xr_res((self.ext_fns.locate_body_joints)(
                 self.handle,
                 &locate_info,
                 &mut location_info,

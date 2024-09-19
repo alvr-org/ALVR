@@ -7,7 +7,7 @@ authors.workspace = true
 license.workspace = true
 
 [lib]
-crate_type = ["cdylib"]
+crate-type = ["cdylib"]
 
 [dependencies]
 alvr_common.workspace = true

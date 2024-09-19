@@ -1,4 +1,3 @@
-use alvr_common::{anyhow::Result, ToAny};
 use openxr::{self as xr, raw, sys};
 use std::ptr;
 
@@ -8,8 +7,12 @@ pub struct EyeTrackerSocial {
 }
 
 impl EyeTrackerSocial {
-    pub fn new<G>(session: &xr::Session<G>) -> Result<Self> {
-        let ext_fns = session.instance().exts().fb_eye_tracking_social.to_any()?;
+    pub fn new<G>(session: &xr::Session<G>) -> xr::Result<Self> {
+        let ext_fns = session
+            .instance()
+            .exts()
+            .fb_eye_tracking_social
+            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
 
         let mut handle = sys::EyeTrackerFB::NULL;
         let info = sys::EyeTrackerCreateInfoFB {
@@ -17,7 +20,7 @@ impl EyeTrackerSocial {
             next: ptr::null(),
         };
         unsafe {
-            super::xr_to_any((ext_fns.create_eye_tracker)(
+            super::xr_res((ext_fns.create_eye_tracker)(
                 session.as_raw(),
                 &info,
                 &mut handle,
@@ -31,7 +34,7 @@ impl EyeTrackerSocial {
         &self,
         base: &xr::Space,
         time: xr::Time,
-    ) -> Result<[Option<xr::Posef>; 2]> {
+    ) -> xr::Result<[Option<xr::Posef>; 2]> {
         let gaze_info = sys::EyeGazesInfoFB {
             ty: sys::EyeGazesInfoFB::TYPE,
             next: ptr::null(),
@@ -42,7 +45,7 @@ impl EyeTrackerSocial {
         let mut eye_gazes = sys::EyeGazesFB::out(ptr::null_mut());
 
         let eye_gazes = unsafe {
-            super::xr_to_any((self.ext_fns.get_eye_gazes)(
+            super::xr_res((self.ext_fns.get_eye_gazes)(
                 self.handle,
                 &gaze_info,
                 eye_gazes.as_mut_ptr(),

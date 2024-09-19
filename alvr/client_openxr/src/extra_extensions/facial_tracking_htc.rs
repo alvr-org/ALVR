@@ -1,4 +1,3 @@
-use alvr_common::{anyhow::Result, ToAny};
 use openxr::{self as xr, raw, sys};
 use std::ptr;
 
@@ -12,8 +11,12 @@ impl FacialTrackerHTC {
     pub fn new<G>(
         session: &xr::Session<G>,
         facial_tracking_type: xr::FacialTrackingTypeHTC,
-    ) -> Result<Self> {
-        let ext_fns = session.instance().exts().htc_facial_tracking.to_any()?;
+    ) -> xr::Result<Self> {
+        let ext_fns = session
+            .instance()
+            .exts()
+            .htc_facial_tracking
+            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
 
         let mut handle = sys::FacialTrackerHTC::NULL;
         let info = sys::FacialTrackerCreateInfoHTC {
@@ -22,7 +25,7 @@ impl FacialTrackerHTC {
             facial_tracking_type,
         };
         unsafe {
-            super::xr_to_any((ext_fns.create_facial_tracker)(
+            super::xr_res((ext_fns.create_facial_tracker)(
                 session.as_raw(),
                 &info,
                 &mut handle,
@@ -42,7 +45,7 @@ impl FacialTrackerHTC {
         })
     }
 
-    pub fn get_facial_expressions(&self) -> Result<Option<Vec<f32>>> {
+    pub fn get_facial_expressions(&self) -> xr::Result<Option<Vec<f32>>> {
         let mut weights = Vec::with_capacity(self.expression_count);
 
         let mut facial_expressions = sys::FacialExpressionsHTC {
@@ -55,7 +58,7 @@ impl FacialTrackerHTC {
         };
 
         unsafe {
-            super::xr_to_any((self.ext_fns.get_facial_expressions)(
+            super::xr_res((self.ext_fns.get_facial_expressions)(
                 self.handle,
                 &mut facial_expressions,
             ))?;

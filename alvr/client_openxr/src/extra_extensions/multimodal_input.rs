@@ -1,7 +1,7 @@
 // Code taken from:
 // https://github.com/meta-quest/Meta-OpenXR-SDK/blob/main/OpenXR/meta_openxr_preview/meta_simultaneous_hands_and_controllers.h
 
-use alvr_common::{anyhow::Result, once_cell::sync::Lazy, ToAny};
+use alvr_common::once_cell::sync::Lazy;
 use openxr::{
     self as xr,
     sys::{self, pfn::VoidFunction},
@@ -29,7 +29,7 @@ pub type ResumeSimultaneousHandsAndControllersTrackingMETA =
 
 pub fn resume_simultaneous_hands_and_controllers_tracking<G>(
     session: &xr::Session<G>,
-) -> Result<()> {
+) -> xr::Result<()> {
     let resume_simultaneous_hands_and_controllers_tracking_meta = unsafe {
         let mut resume_simultaneous_hands_and_controllers_tracking_meta = None;
         let _ = (session.instance().fp().get_instance_proc_addr)(
@@ -38,10 +38,11 @@ pub fn resume_simultaneous_hands_and_controllers_tracking<G>(
             &mut resume_simultaneous_hands_and_controllers_tracking_meta,
         );
 
-        mem::transmute::<VoidFunction, ResumeSimultaneousHandsAndControllersTrackingMETA>(
-            resume_simultaneous_hands_and_controllers_tracking_meta.to_any()?,
-        )
-    };
+        resume_simultaneous_hands_and_controllers_tracking_meta.map(|pfn| {
+            mem::transmute::<VoidFunction, ResumeSimultaneousHandsAndControllersTrackingMETA>(pfn)
+        })
+    }
+    .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
 
     let resume_info = SimultaneousHandsAndControllersTrackingResumeInfoMETA {
         ty: *TYPE_SIMULTANEOUS_HANDS_AND_CONTROLLERS_TRACKING_RESUME_INFO_META,
@@ -49,7 +50,7 @@ pub fn resume_simultaneous_hands_and_controllers_tracking<G>(
     };
 
     unsafe {
-        super::xr_to_any(resume_simultaneous_hands_and_controllers_tracking_meta(
+        super::xr_res(resume_simultaneous_hands_and_controllers_tracking_meta(
             session.as_raw(),
             &resume_info,
         ))?;

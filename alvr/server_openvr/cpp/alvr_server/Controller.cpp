@@ -5,6 +5,7 @@
 #include "Utils.h"
 #include "include/openvr_math.h"
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <string_view>
 
@@ -220,7 +221,7 @@ void Controller::SetButton(uint64_t id, FfiButtonValue value) {
     }
 }
 
-bool Controller::onPoseUpdate(float predictionS, FfiHandData handData) {
+bool Controller::onPoseUpdate(uint64_t targetTimestampNs, float predictionS, FfiHandData handData) {
     if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
         return false;
     }
@@ -284,18 +285,38 @@ bool Controller::onPoseUpdate(float predictionS, FfiHandData handData) {
         pose.vecPosition[1] = p[1];
         pose.vecPosition[2] = p[2];
 
-        pose.vecVelocity[0] = 0;
-        pose.vecVelocity[1] = 0;
-        pose.vecVelocity[2] = 0;
+        // If possible, use the last stored m_pose and timestamp
+        // to calculate the velocities of the current pose.
+        double calcLinearVelocity[3] = {0.0, 0.0, 0.0};
+        vr::HmdVector3d_t calcAngularVelocity = {0.0, 0.0, 0.0};
 
-        pose.vecAngularVelocity[0] = 0;
-        pose.vecAngularVelocity[1] = 0;
-        pose.vecAngularVelocity[2] = 0;
+        if (m_pose.poseIsValid) {
+            auto start = std::chrono::nanoseconds(m_poseTargetTimestampNs);
+            auto end = std::chrono::nanoseconds(targetTimestampNs);
+            auto duration = end - start;
+            double dt = std::chrono::duration<double>(duration).count();
+
+            if (dt > 0.0) {
+                calcLinearVelocity[0] = (pose.vecPosition[0] - m_pose.vecPosition[0]) / dt;
+                calcLinearVelocity[1] = (pose.vecPosition[1] - m_pose.vecPosition[1]) / dt;
+                calcLinearVelocity[2] = (pose.vecPosition[2] - m_pose.vecPosition[2]) / dt;
+                calcAngularVelocity = AngularVelocityBetweenQuats(m_pose.qRotation, pose.qRotation, dt);
+            }
+        }
+
+        pose.vecVelocity[0] = calcLinearVelocity[0];
+        pose.vecVelocity[1] = calcLinearVelocity[1];
+        pose.vecVelocity[2] = calcLinearVelocity[2];
+
+        pose.vecAngularVelocity[0] = calcAngularVelocity.v[0];
+        pose.vecAngularVelocity[1] = calcAngularVelocity.v[1];
+        pose.vecAngularVelocity[2] = calcAngularVelocity.v[2];
     }
 
     pose.poseTimeOffset = predictionS;
 
     m_pose = pose;
+    m_poseTargetTimestampNs = targetTimestampNs;
 
     vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
         this->object_id, pose, sizeof(vr::DriverPose_t)

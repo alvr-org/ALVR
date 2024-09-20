@@ -27,6 +27,7 @@
 #include "openvr_driver.h"
 
 const float DEG_TO_RAD = (float)(M_PI / 180.);
+const double NS_PER_S = 1000000000.0;
 
 // Get elapsed time in us from Unix Epoch
 inline uint64_t GetTimestampUs() {

@@ -5,7 +5,6 @@
 #include "Utils.h"
 #include "include/openvr_math.h"
 #include <algorithm>
-#include <chrono>
 #include <cstring>
 #include <string_view>
 
@@ -287,31 +286,27 @@ bool Controller::onPoseUpdate(uint64_t targetTimestampNs, float predictionS, Ffi
 
         // If possible, use the last stored m_pose and timestamp
         // to calculate the velocities of the current pose.
-        double calcLinearVelocity[3] = { 0.0, 0.0, 0.0 };
-        vr::HmdVector3d_t calcAngularVelocity = { 0.0, 0.0, 0.0 };
+        double linearVelocity[3] = { 0.0, 0.0, 0.0 };
+        vr::HmdVector3d_t angularVelocity = { 0.0, 0.0, 0.0 };
 
         if (m_pose.poseIsValid) {
-            auto start = std::chrono::nanoseconds(m_poseTargetTimestampNs);
-            auto end = std::chrono::nanoseconds(targetTimestampNs);
-            auto duration = end - start;
-            double dt = std::chrono::duration<double>(duration).count();
+            double dt = (double)(targetTimestampNs - m_poseTargetTimestampNs) / NS_PER_S;
 
             if (dt > 0.0) {
-                calcLinearVelocity[0] = (pose.vecPosition[0] - m_pose.vecPosition[0]) / dt;
-                calcLinearVelocity[1] = (pose.vecPosition[1] - m_pose.vecPosition[1]) / dt;
-                calcLinearVelocity[2] = (pose.vecPosition[2] - m_pose.vecPosition[2]) / dt;
-                calcAngularVelocity
-                    = AngularVelocityBetweenQuats(m_pose.qRotation, pose.qRotation, dt);
+                linearVelocity[0] = (pose.vecPosition[0] - m_pose.vecPosition[0]) / dt;
+                linearVelocity[1] = (pose.vecPosition[1] - m_pose.vecPosition[1]) / dt;
+                linearVelocity[2] = (pose.vecPosition[2] - m_pose.vecPosition[2]) / dt;
+                angularVelocity = AngularVelocityBetweenQuats(m_pose.qRotation, pose.qRotation, dt);
             }
         }
 
-        pose.vecVelocity[0] = calcLinearVelocity[0];
-        pose.vecVelocity[1] = calcLinearVelocity[1];
-        pose.vecVelocity[2] = calcLinearVelocity[2];
+        pose.vecVelocity[0] = linearVelocity[0];
+        pose.vecVelocity[1] = linearVelocity[1];
+        pose.vecVelocity[2] = linearVelocity[2];
 
-        pose.vecAngularVelocity[0] = calcAngularVelocity.v[0];
-        pose.vecAngularVelocity[1] = calcAngularVelocity.v[1];
-        pose.vecAngularVelocity[2] = calcAngularVelocity.v[2];
+        pose.vecAngularVelocity[0] = angularVelocity.v[0];
+        pose.vecAngularVelocity[1] = angularVelocity.v[1];
+        pose.vecAngularVelocity[2] = angularVelocity.v[2];
     }
 
     pose.poseTimeOffset = predictionS;

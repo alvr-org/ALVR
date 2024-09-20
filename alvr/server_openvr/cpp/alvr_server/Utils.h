@@ -164,6 +164,7 @@ Slerp(vr::HmdQuaternionf_t& q1, vr::HmdQuaternionf_t& q2, double lambda) {
     }
 }
 
+// Sourced from https://mariogc.com/post/angular-velocity-quaternions/
 inline vr::HmdVector3d_t AngularVelocityBetweenQuats(
     const vr::HmdQuaternion_t& q1, const vr::HmdQuaternion_t& q2, double dt
 ) {

@@ -290,7 +290,7 @@ bool Controller::onPoseUpdate(uint64_t targetTimestampNs, float predictionS, Ffi
         vr::HmdVector3d_t angularVelocity = { 0.0, 0.0, 0.0 };
 
         if (m_pose.poseIsValid) {
-            double dt = (double)(targetTimestampNs - m_poseTargetTimestampNs) / NS_PER_S;
+            double dt = ((double)targetTimestampNs - (double)m_poseTargetTimestampNs) / NS_PER_S;
 
             if (dt > 0.0) {
                 linearVelocity[0] = (pose.vecPosition[0] - m_pose.vecPosition[0]) / dt;

@@ -163,13 +163,13 @@ Slerp(vr::HmdQuaternionf_t& q1, vr::HmdQuaternionf_t& q2, double lambda) {
     }
 }
 
-inline vr::HmdVector3d_t AngularVelocityBetweenQuats(const vr::HmdQuaternion_t& q1, const vr::HmdQuaternion_t& q2, double dt) {
+inline vr::HmdVector3d_t AngularVelocityBetweenQuats(
+    const vr::HmdQuaternion_t& q1, const vr::HmdQuaternion_t& q2, double dt
+) {
     double r = (2.0f / dt);
-    return {
-        (q1.w*q2.x - q1.x*q2.w - q1.y*q2.z + q1.z*q2.y) * r,
-        (q1.w*q2.y + q1.x*q2.z - q1.y*q2.w - q1.z*q2.x) * r,
-        (q1.w*q2.z - q1.x*q2.y + q1.y*q2.x - q1.z*q2.w) * r
-    };
+    return { (q1.w * q2.x - q1.x * q2.w - q1.y * q2.z + q1.z * q2.y) * r,
+             (q1.w * q2.y + q1.x * q2.z - q1.y * q2.w - q1.z * q2.x) * r,
+             (q1.w * q2.z - q1.x * q2.y + q1.y * q2.x - q1.z * q2.w) * r };
 }
 
 #ifdef _WIN32

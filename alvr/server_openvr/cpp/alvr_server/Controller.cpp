@@ -287,8 +287,8 @@ bool Controller::onPoseUpdate(uint64_t targetTimestampNs, float predictionS, Ffi
 
         // If possible, use the last stored m_pose and timestamp
         // to calculate the velocities of the current pose.
-        double calcLinearVelocity[3] = {0.0, 0.0, 0.0};
-        vr::HmdVector3d_t calcAngularVelocity = {0.0, 0.0, 0.0};
+        double calcLinearVelocity[3] = { 0.0, 0.0, 0.0 };
+        vr::HmdVector3d_t calcAngularVelocity = { 0.0, 0.0, 0.0 };
 
         if (m_pose.poseIsValid) {
             auto start = std::chrono::nanoseconds(m_poseTargetTimestampNs);
@@ -300,7 +300,8 @@ bool Controller::onPoseUpdate(uint64_t targetTimestampNs, float predictionS, Ffi
                 calcLinearVelocity[0] = (pose.vecPosition[0] - m_pose.vecPosition[0]) / dt;
                 calcLinearVelocity[1] = (pose.vecPosition[1] - m_pose.vecPosition[1]) / dt;
                 calcLinearVelocity[2] = (pose.vecPosition[2] - m_pose.vecPosition[2]) / dt;
-                calcAngularVelocity = AngularVelocityBetweenQuats(m_pose.qRotation, pose.qRotation, dt);
+                calcAngularVelocity
+                    = AngularVelocityBetweenQuats(m_pose.qRotation, pose.qRotation, dt);
             }
         }
 

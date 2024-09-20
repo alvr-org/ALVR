@@ -417,21 +417,27 @@ void SetTracking(
     }
 
     if (g_driver_provider.left_hand_tracker) {
-        g_driver_provider.left_hand_tracker->onPoseUpdate(controllerPoseTimeOffsetS, leftHandData);
+        g_driver_provider.left_hand_tracker->onPoseUpdate(
+            targetTimestampNs, controllerPoseTimeOffsetS, leftHandData
+        );
     }
 
     if (g_driver_provider.left_controller) {
-        g_driver_provider.left_controller->onPoseUpdate(controllerPoseTimeOffsetS, leftHandData);
+        g_driver_provider.left_controller->onPoseUpdate(
+            targetTimestampNs, controllerPoseTimeOffsetS, leftHandData
+        );
     }
 
     if (g_driver_provider.right_hand_tracker) {
         g_driver_provider.right_hand_tracker->onPoseUpdate(
-            controllerPoseTimeOffsetS, rightHandData
+            targetTimestampNs, controllerPoseTimeOffsetS, rightHandData
         );
     }
 
     if (g_driver_provider.right_controller) {
-        g_driver_provider.right_controller->onPoseUpdate(controllerPoseTimeOffsetS, rightHandData);
+        g_driver_provider.right_controller->onPoseUpdate(
+            targetTimestampNs, controllerPoseTimeOffsetS, rightHandData
+        );
     }
 
     if (Settings::Instance().m_enableBodyTrackingFakeVive) {

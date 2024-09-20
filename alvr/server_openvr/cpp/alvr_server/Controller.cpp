@@ -220,7 +220,7 @@ void Controller::SetButton(uint64_t id, FfiButtonValue value) {
     }
 }
 
-bool Controller::onPoseUpdate(float predictionS, FfiHandData handData) {
+bool Controller::onPoseUpdate(uint64_t targetTimestampNs, float predictionS, FfiHandData handData) {
     if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
         return false;
     }
@@ -282,18 +282,35 @@ bool Controller::onPoseUpdate(float predictionS, FfiHandData handData) {
         pose.vecPosition[1] = p[1];
         pose.vecPosition[2] = p[2];
 
-        pose.vecVelocity[0] = 0;
-        pose.vecVelocity[1] = 0;
-        pose.vecVelocity[2] = 0;
+        // If possible, use the last stored m_pose and timestamp
+        // to calculate the velocities of the current pose.
+        double linearVelocity[3] = { 0.0, 0.0, 0.0 };
+        vr::HmdVector3d_t angularVelocity = { 0.0, 0.0, 0.0 };
 
-        pose.vecAngularVelocity[0] = 0;
-        pose.vecAngularVelocity[1] = 0;
-        pose.vecAngularVelocity[2] = 0;
+        if (m_pose.poseIsValid) {
+            double dt = ((double)targetTimestampNs - (double)m_poseTargetTimestampNs) / NS_PER_S;
+
+            if (dt > 0.0) {
+                linearVelocity[0] = (pose.vecPosition[0] - m_pose.vecPosition[0]) / dt;
+                linearVelocity[1] = (pose.vecPosition[1] - m_pose.vecPosition[1]) / dt;
+                linearVelocity[2] = (pose.vecPosition[2] - m_pose.vecPosition[2]) / dt;
+                angularVelocity = AngularVelocityBetweenQuats(m_pose.qRotation, pose.qRotation, dt);
+            }
+        }
+
+        pose.vecVelocity[0] = linearVelocity[0];
+        pose.vecVelocity[1] = linearVelocity[1];
+        pose.vecVelocity[2] = linearVelocity[2];
+
+        pose.vecAngularVelocity[0] = angularVelocity.v[0];
+        pose.vecAngularVelocity[1] = angularVelocity.v[1];
+        pose.vecAngularVelocity[2] = angularVelocity.v[2];
     }
 
     pose.poseTimeOffset = predictionS;
 
     m_pose = pose;
+    m_poseTargetTimestampNs = targetTimestampNs;
 
     vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
         this->object_id, pose, sizeof(vr::DriverPose_t)

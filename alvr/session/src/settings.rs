@@ -276,7 +276,7 @@ CABAC produces better compression but it's significantly slower and may lead to 
     pub software: SoftwareEncodingConfig,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum MediacodecDataType {
     Float(f32),
     Int32(i32),

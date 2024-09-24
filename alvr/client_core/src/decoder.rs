@@ -37,13 +37,13 @@ pub struct DecoderSource {
 
 impl DecoderSource {
     /// If a frame is available, return the timestamp and the AHardwareBuffer.
-    pub fn get_frame(&mut self) -> Result<Option<(Duration, *mut std::ffi::c_void)>> {
+    pub fn get_frame(&mut self) -> Option<(Duration, *mut std::ffi::c_void)> {
         #[cfg(target_os = "android")]
         {
             self.inner.dequeue_frame()
         }
         #[cfg(not(target_os = "android"))]
-        alvr_common::anyhow::bail!("Not implemented");
+        None
     }
 }
 
@@ -51,7 +51,7 @@ impl DecoderSource {
 #[allow(unused_variables)]
 pub fn create_decoder(
     config: DecoderConfig,
-    report_frame_decoded: impl Fn(Duration) + Send + 'static,
+    report_frame_decoded: impl Fn(Result<Duration>) + Send + Sync + 'static,
 ) -> (DecoderSink, DecoderSource) {
     #[cfg(target_os = "android")]
     {

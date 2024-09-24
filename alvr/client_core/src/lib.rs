@@ -7,7 +7,6 @@
 
 mod c_api;
 mod connection;
-mod decoder;
 mod logging_backend;
 mod platform;
 mod sockets;
@@ -17,6 +16,7 @@ mod storage;
 #[cfg(target_os = "android")]
 mod audio;
 
+pub mod decoder;
 pub mod graphics;
 
 use alvr_common::{
@@ -67,24 +67,12 @@ pub enum ClientCoreEvent {
         codec: CodecType,
         config_nal: Vec<u8>,
     },
-    FrameReady {
-        timestamp: Duration,
-        view_params: [ViewParams; 2],
-        nal: Vec<u8>,
-    },
-}
-
-pub struct DecodedFrame {
-    pub timestamp: Duration,
-    pub view_params: [ViewParams; 2],
-    pub buffer_ptr: *mut std::ffi::c_void,
 }
 
 // Note: this struct may change without breaking network protocol changes
 #[derive(Clone)]
 pub struct ClientCapabilities {
     pub default_view_resolution: UVec2,
-    pub external_decoder: bool,
     pub refresh_rates: Vec<f32>,
     pub foveated_encoding: bool,
     pub encoder_high_profile: bool,
@@ -329,31 +317,41 @@ impl ClientCoreContext {
         }
     }
 
-    pub fn get_frame(&self) -> Option<DecodedFrame> {
-        dbg_client_core!("get_frame");
+    /// The callback should return true if the frame was successfully submitted to the decoder
+    pub fn set_decoder_input_callback(
+        &self,
+        callback: Box<dyn FnMut(Duration, &[u8]) -> bool + Send>,
+    ) {
+        dbg_client_core!("set_decoder_input_callback");
 
-        let mut decoder_source_lock = self.connection_context.decoder_source.lock();
-        let decoder_source = decoder_source_lock.as_mut()?;
+        *self.connection_context.decoder_callback.lock() = Some(callback);
+    }
 
-        let (frame_timestamp, buffer_ptr) = match decoder_source.get_frame() {
-            Ok(maybe_pair) => maybe_pair?,
-            Err(e) => {
-                error!("Error getting frame, restarting connection: {}", e);
-
-                // The connection loop observes changes on this value
-                *self.connection_context.state.write() = ConnectionState::Disconnecting;
-
-                return None;
-            }
-        };
+    pub fn report_frame_decoded(&self, timestamp: Duration) {
+        dbg_client_core!("report_frame_decoded");
 
         if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
-            stats.report_compositor_start(frame_timestamp);
+            stats.report_frame_decoded(timestamp);
+        }
+    }
+
+    pub fn report_fatal_decoder_error(&self, error: &str) {
+        error!("Fatal decoder error, restarting connection: {error}");
+
+        // The connection loop observes changes on this value
+        *self.connection_context.state.write() = ConnectionState::Disconnecting;
+    }
+
+    pub fn report_compositor_start(&self, timestamp: Duration) -> [ViewParams; 2] {
+        dbg_client_core!("report_compositor_start");
+
+        if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
+            stats.report_compositor_start(timestamp);
         }
 
         let mut head_pose = *self.connection_context.last_good_head_pose.read();
-        for (timestamp, pose) in &*self.connection_context.head_pose_queue.read() {
-            if *timestamp == frame_timestamp {
+        for (ts, pose) in &*self.connection_context.head_pose_queue.read() {
+            if *ts == timestamp {
                 head_pose = *pose;
                 break;
             }
@@ -370,48 +368,17 @@ impl ClientCoreContext {
             },
         ];
 
-        Some(DecodedFrame {
-            timestamp: frame_timestamp,
-            view_params,
-            buffer_ptr,
-        })
+        view_params
     }
 
-    /// Call only with external decoder
-    pub fn request_idr(&self) {
-        dbg_client_core!("request_idr");
-
-        if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
-            sender.send(&ClientControlPacket::RequestIdr).ok();
-        }
-    }
-
-    /// Call only with external decoder
-    pub fn report_frame_decoded(&self, target_timestamp: Duration) {
-        dbg_client_core!("report_frame_decoded");
-
-        if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
-            stats.report_frame_decoded(target_timestamp);
-        }
-    }
-
-    /// Call only with external decoder
-    pub fn report_compositor_start(&self, target_timestamp: Duration) {
-        dbg_client_core!("report_compositor_start");
-
-        if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
-            stats.report_compositor_start(target_timestamp);
-        }
-    }
-
-    pub fn report_submit(&self, target_timestamp: Duration, vsync_queue: Duration) {
+    pub fn report_submit(&self, timestamp: Duration, vsync_queue: Duration) {
         dbg_client_core!("report_submit");
 
         if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
-            stats.report_submit(target_timestamp, vsync_queue);
+            stats.report_submit(timestamp, vsync_queue);
 
             if let Some(sender) = &mut *self.connection_context.statistics_sender.lock() {
-                if let Some(stats) = stats.summary(target_timestamp) {
+                if let Some(stats) = stats.summary(timestamp) {
                     sender.send_header(&stats).ok();
                 } else {
                     warn!("Statistics summary not ready!");

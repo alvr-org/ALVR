@@ -273,7 +273,7 @@ fn connection_pipeline(
     let video_receive_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
         move || {
-            let mut stream_corrupted = false;
+            let mut stream_corrupted = true;
             while is_streaming(&ctx) {
                 let data = match video_receiver.recv(STREAMING_RECV_TIMEOUT) {
                     Ok(data) => data,

@@ -16,6 +16,8 @@ If you are on Linux, install these additional packages:
 
 * **Arch**
   
+  Note: At time of writing Arch gcc is too new to be compatible with nvcc. This means there is no neat way to compile an nvidia compatible build. Recommended workarounds are to build in some kind of containerised environment. This has been done successfully with both nixos and flatpak - but are not documented yet.
+
   ```bash
   sudo pacman -S clang curl nasm pkgconf yasm vulkan-headers libva-mesa-driver unzip ffmpeg libpipewire
   ```

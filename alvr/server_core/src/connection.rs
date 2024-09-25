@@ -502,7 +502,7 @@ fn connection_pipeline(
             }
         };
 
-        UVec2::new(align16(res.x), align16(res.y))
+        UVec2::new(align16(res.x), align32(res.y))
     }
 
     let stream_view_resolution = get_view_res(

@@ -24,14 +24,14 @@ pub struct StatisticsSummary {
 
 // Bitrate statistics minus the empirical output value
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-pub struct NominalBitrateStats {
-    pub scaled_calculated_bps: Option<f32>,
+pub struct BitrateDirectives {
+    pub scaled_calculated_throughput_bps: Option<f32>,
     pub decoder_latency_limiter_bps: Option<f32>,
     pub network_latency_limiter_bps: Option<f32>,
     pub encoder_latency_limiter_bps: Option<f32>,
-    pub manual_max_bps: Option<f32>,
-    pub manual_min_bps: Option<f32>,
-    pub requested_bps: f32,
+    pub manual_max_throughput_bps: Option<f32>,
+    pub manual_min_throughput_bps: Option<f32>,
+    pub requested_bitrate_bps: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -47,8 +47,9 @@ pub struct GraphStatistics {
     pub vsync_queue_s: f32,
     pub client_fps: f32,
     pub server_fps: f32,
-    pub nominal_bitrate: NominalBitrateStats,
-    pub actual_bitrate_bps: f32,
+    pub bitrate_directives: BitrateDirectives,
+    pub throughput_bps: f32,
+    pub bitrate_bps: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

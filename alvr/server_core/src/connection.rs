@@ -53,6 +53,9 @@ pub struct VideoPacket {
     pub payload: Vec<u8>,
 }
 
+fn align16(value: f32) -> u32 {
+    ((value / 16.).floor() * 16.) as u32
+}
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
 }
@@ -499,7 +502,7 @@ fn connection_pipeline(
             }
         };
 
-        UVec2::new(align32(res.x), align32(res.y))
+        UVec2::new(align16(res.x), align16(res.y))
     }
 
     let stream_view_resolution = get_view_res(

@@ -97,7 +97,7 @@ jobs:
           java-version: '17'
       - uses: android-actions/setup-android@v3
         with:
-          packages: 'platforms;android-29'
+          packages: 'platforms;android-32'
       - uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:

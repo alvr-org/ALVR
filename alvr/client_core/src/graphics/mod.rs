@@ -181,7 +181,7 @@ pub struct GraphicsContext {
 impl GraphicsContext {
     #[cfg(not(windows))]
     pub fn new_gl() -> Self {
-        use wgpu::{Backends, DeviceDescriptor, Features, Limits};
+        use wgpu::{Backends, DeviceDescriptor, Features, Limits, MemoryHints};
 
         const CREATE_IMAGE_FN_STR: &str = "eglCreateImageKHR";
         const DESTROY_IMAGE_FN_STR: &str = "eglDestroyImageKHR";
@@ -210,6 +210,7 @@ impl GraphicsContext {
                     max_push_constant_size: 72,
                     ..adapter.limits()
                 },
+                memory_hints: MemoryHints::Performance,
             },
             None,
         ))

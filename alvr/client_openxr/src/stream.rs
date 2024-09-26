@@ -338,7 +338,7 @@ impl StreamContext {
         if let Some(source) = self.decoder_source.as_mut() {
             while frame_result.is_none() && Instant::now() < frame_poll_deadline {
                 frame_result = source.get_frame();
-                thread::yield_now();
+                thread::sleep(Duration::from_micros(500));
             }
         }
 

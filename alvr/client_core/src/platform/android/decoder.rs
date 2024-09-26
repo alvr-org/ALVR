@@ -304,7 +304,7 @@ fn decoder_lifecycle(
                     error!("Decoder dequeue error: {e}");
                 }
             }
-            Ok(DequeuedOutputBufferInfoResult::TryAgainLater) => thread::yield_now(),
+            Ok(DequeuedOutputBufferInfoResult::TryAgainLater) => continue,
             Ok(i) => info!("Decoder dequeue event: {i:?}"),
             Err(e) => {
                 error!("Decoder dequeue error: {e}");

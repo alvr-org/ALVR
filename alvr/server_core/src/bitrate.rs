@@ -249,7 +249,7 @@ impl BitrateManager {
         Some((
             DynamicEncoderParams {
                 bitrate_bps,
-                framerate: 1.0 / frame_interval.as_secs_f32().min(1.0),
+                framerate: 1.0 / f32::min(frame_interval.as_secs_f32(), 1.0),
             },
             bitrate_directives,
         ))

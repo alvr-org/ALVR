@@ -7,6 +7,7 @@ use std::{
 };
 
 const FULL_REPORT_INTERVAL: Duration = Duration::from_millis(500);
+const EPS_INTERVAL: Duration = Duration::from_micros(1);
 
 pub struct HistoryFrame {
     target_timestamp: Duration,
@@ -218,16 +219,10 @@ impl StatisticsManager {
                     + client_stats.vsync_queue,
             );
 
-            let client_fps = 1.0
-                / client_stats
-                    .frame_interval
-                    .max(Duration::from_millis(1))
-                    .as_secs_f32();
-            let server_fps = 1.0
-                / self
-                    .last_frame_present_interval
-                    .max(Duration::from_millis(1))
-                    .as_secs_f32();
+            let client_fps =
+                1.0 / Duration::max(client_stats.frame_interval, EPS_INTERVAL).as_secs_f32();
+            let server_fps =
+                1.0 / Duration::max(self.last_frame_present_interval, EPS_INTERVAL).as_secs_f32();
 
             if self.last_full_report_instant + FULL_REPORT_INTERVAL < Instant::now() {
                 self.last_full_report_instant += FULL_REPORT_INTERVAL;
@@ -272,13 +267,10 @@ impl StatisticsManager {
             }
 
             let packet_bits = frame.video_packet_bytes as f32 * 8.0;
-            let throughput_bps = packet_bits
-                / Duration::max(network_latency, Duration::from_millis(1)).as_secs_f32();
+            let throughput_bps =
+                packet_bits / Duration::max(network_latency, EPS_INTERVAL).as_secs_f32();
             let bitrate_bps = packet_bits
-                / self
-                    .last_frame_present_interval
-                    .max(Duration::from_millis(1))
-                    .as_secs_f32();
+                / Duration::max(self.last_frame_present_interval, EPS_INTERVAL).as_secs_f32();
 
             // todo: use target timestamp in nanoseconds. the dashboard needs to use the first
             // timestamp as the graph time origin.

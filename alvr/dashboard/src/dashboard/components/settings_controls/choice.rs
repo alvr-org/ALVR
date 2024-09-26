@@ -126,7 +126,7 @@ impl Control {
                     request = get_request(&self.nesting_info, variant_mut);
                 }
             } else if let Some(mut index) = self.variant_indices.get(variant_mut).cloned() {
-                let response = ComboBox::from_id_source(self.combobox_id).show_index(
+                let response = ComboBox::from_id_salt(self.combobox_id).show_index(
                     ui,
                     &mut index,
                     self.variant_labels.len(),
@@ -142,7 +142,7 @@ impl Control {
                 }
             } else {
                 let mut index = 0;
-                let response = ComboBox::from_id_source(self.combobox_id).show_index(
+                let response = ComboBox::from_id_salt(self.combobox_id).show_index(
                     ui,
                     &mut index,
                     self.variant_labels.len() + 1,

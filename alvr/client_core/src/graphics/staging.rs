@@ -118,6 +118,8 @@ impl StagingRenderer {
                 ck!(gl.use_program(Some(self.program)));
 
                 ck!(gl.viewport(0, 0, self.viewport_size.x, self.viewport_size.y));
+                ck!(gl.disable(gl::SCISSOR_TEST));
+                ck!(gl.disable(gl::STENCIL_TEST));
 
                 for (i, framebuffer) in self.framebuffers.iter().enumerate() {
                     ck!(gl.bind_framebuffer(gl::DRAW_FRAMEBUFFER, Some(*framebuffer)));

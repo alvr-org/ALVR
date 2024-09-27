@@ -7,14 +7,14 @@
 Stream VR games from your PC to your headset via Wi-Fi.  
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
-### Direct download the lastest version:
+### Direct download to the lastest version:
 ### [Windows Launcher](https://github.com/alvr-org/ALVR/releases/latest/download/alvr_launcher_windows.zip) | [Linux Launcher](https://github.com/alvr-org/ALVR/releases/latest/download/alvr_launcher_linux.tar.gz)
 
 ## Compatibility
 
 |      VR Headset       |                                           Support                                            |
 | :-------------------: | :------------------------------------------------------------------------------------------: |
-|    Quest 1/2/3/Pro    |     :heavy_check_mark: ([store link](https://www.meta.com/experiences/7674846229245715))     |
+|  Quest 1/2/3/3S/Pro   |     :heavy_check_mark: ([store link](https://www.meta.com/experiences/7674846229245715))     |
 |     Pico 4/Neo 3      |                                      :heavy_check_mark:                                      |
 | Vive Focus 3/XR Elite |                                      :heavy_check_mark:                                      |
 |        YVR 1/2        |                                      :heavy_check_mark:                                      |

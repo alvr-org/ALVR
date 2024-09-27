@@ -349,7 +349,7 @@ extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
         if let Some(params) = context.get_dynamic_encoder_params() {
             FfiDynamicEncoderParams {
                 updated: 1,
-                bitrate_bps: params.bitrate_bps,
+                bitrate_bps: params.bitrate_bps as u64,
                 framerate: params.framerate,
             }
         } else {

@@ -339,12 +339,12 @@ pub enum BitrateMode {
         #[schema(strings(display_name = "Maximum bitrate"))]
         #[schema(flag = "real-time")]
         #[schema(gui(slider(min = 1, max = 1000, logarithmic)), suffix = "Mbps")]
-        max_bitrate_mbps: Switch<u64>,
+        max_throughput_mbps: Switch<u64>,
 
         #[schema(strings(display_name = "Minimum bitrate"))]
         #[schema(flag = "real-time")]
         #[schema(gui(slider(min = 1, max = 100, logarithmic)), suffix = "Mbps")]
-        min_bitrate_mbps: Switch<u64>,
+        min_throughput_mbps: Switch<u64>,
 
         #[schema(strings(display_name = "Maximum network latency"))]
         #[schema(flag = "real-time")]
@@ -1278,11 +1278,11 @@ pub fn session_settings_default() -> SettingsDefault {
                     Adaptive: BitrateModeAdaptiveDefault {
                         gui_collapsed: true,
                         saturation_multiplier: 0.95,
-                        max_bitrate_mbps: SwitchDefault {
+                        max_throughput_mbps: SwitchDefault {
                             enabled: false,
                             content: 100,
                         },
-                        min_bitrate_mbps: SwitchDefault {
+                        min_throughput_mbps: SwitchDefault {
                             enabled: false,
                             content: 5,
                         },

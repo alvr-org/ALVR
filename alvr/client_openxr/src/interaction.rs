@@ -61,14 +61,14 @@ pub fn initialize_interaction(
     #[cfg(target_os = "android")]
     if let Some(config) = &face_tracking_sources {
         if (config.combined_eye_gaze || config.eye_tracking_fb)
-            && matches!(platform, Platform::Quest3 | Platform::QuestPro)
+            && matches!(platform, Platform::QuestPro)
         {
             alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING")
         }
         if config.combined_eye_gaze && matches!(platform, Platform::Pico4 | Platform::PicoNeo3) {
             alvr_client_core::try_get_permission("com.picovr.permission.EYE_TRACKING")
         }
-        if config.face_tracking_fb && matches!(platform, Platform::Quest3 | Platform::QuestPro) {
+        if config.face_tracking_fb && matches!(platform, Platform::QuestPro) {
             alvr_client_core::try_get_permission("android.permission.RECORD_AUDIO");
             alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING")
         }
@@ -77,7 +77,10 @@ pub fn initialize_interaction(
     #[cfg(target_os = "android")]
     if let Some(config) = &body_tracking_sources {
         if (config.body_tracking_fb.enabled())
-            && matches!(platform, Platform::Quest3 | Platform::QuestPro)
+            && matches!(
+                platform,
+                Platform::Quest2 | Platform::Quest3 | Platform::Quest3S | Platform::QuestPro
+            )
         {
             alvr_client_core::try_get_permission("com.oculus.permission.BODY_TRACKING")
         }
@@ -98,6 +101,7 @@ pub fn initialize_interaction(
         Platform::Quest1
         | Platform::Quest2
         | Platform::Quest3
+        | Platform::Quest3S
         | Platform::QuestPro
         | Platform::QuestUnknown => QUEST_CONTROLLER_PROFILE_PATH, // todo: create new controller profile for quest pro and 3
         Platform::PicoNeo3 => PICO_NEO3_CONTROLLER_PROFILE_PATH,

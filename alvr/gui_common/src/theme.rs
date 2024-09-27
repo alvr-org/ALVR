@@ -35,6 +35,14 @@ pub mod graph_colors {
 
     pub const SERVER_FPS: Color32 = Color32::LIGHT_BLUE;
     pub const CLIENT_FPS: Color32 = Color32::KHAKI;
+
+    pub const INITIAL_CALCULATED_THROUGHPUT: Color32 = Color32::GRAY;
+    pub const ENCODER_DECODER_LATENCY_LIMITER: Color32 = TRANSCODE;
+    pub const NETWORK_LATENCY_LIMITER: Color32 = NETWORK;
+    pub const MIN_MAX_LATENCY_THROUGHPUT: Color32 = Color32::RED;
+    pub const REQUESTED_BITRATE: Color32 = Color32::GREEN;
+    pub const RECORDED_THROUGHPUT: Color32 = Color32::KHAKI;
+    pub const RECORDED_BITRATE: Color32 = super::FG;
 }
 
 pub fn set_theme(ctx: &Context) {

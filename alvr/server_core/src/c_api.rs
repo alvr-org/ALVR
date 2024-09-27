@@ -149,7 +149,7 @@ pub struct AlvrDeviceConfig {
 
 #[repr(C)]
 pub struct AlvrDynamicEncoderParams {
-    bitrate_bps: u64,
+    bitrate_bps: f32,
     framerate: f32,
 }
 

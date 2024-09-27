@@ -1,5 +1,5 @@
 use alvr_common::SlidingWindowAverage;
-use alvr_events::NominalBitrateStats;
+use alvr_events::BitrateDirectives;
 use alvr_session::{
     settings_schema::Switch, BitrateAdaptiveFramerateConfig, BitrateConfig, BitrateMode,
 };
@@ -11,7 +11,7 @@ use std::{
 const UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
 pub struct DynamicEncoderParams {
-    pub bitrate_bps: u64,
+    pub bitrate_bps: f32,
     pub framerate: f32,
 }
 
@@ -20,14 +20,14 @@ pub struct BitrateManager {
     frame_interval_average: SlidingWindowAverage<Duration>,
     // note: why packet_sizes_bits_history is a queue and not a sliding average? Because some
     // network samples will be dropped but not any packet size sample
-    packet_sizes_bits_history: VecDeque<(Duration, usize)>,
-    encoder_latency_average: SlidingWindowAverage<Duration>,
+    packet_bytes_history: VecDeque<(Duration, usize)>,
+    packet_bytes_average: SlidingWindowAverage<f32>,
     network_latency_average: SlidingWindowAverage<Duration>,
-    bitrate_average: SlidingWindowAverage<f32>,
+    encoder_latency_average: SlidingWindowAverage<Duration>,
     decoder_latency_overstep_count: usize,
     last_frame_instant: Instant,
     last_update_instant: Instant,
-    dynamic_max_bitrate: f32,
+    dynamic_decoder_max_bytes_per_frame: f32,
     previous_config: Option<BitrateConfig>,
     update_needed: bool,
 }
@@ -40,20 +40,20 @@ impl BitrateManager {
                 Duration::from_millis(16),
                 max_history_size,
             ),
-            packet_sizes_bits_history: VecDeque::new(),
-            encoder_latency_average: SlidingWindowAverage::new(
-                Duration::from_millis(5),
-                max_history_size,
-            ),
+            packet_bytes_history: VecDeque::new(),
+            packet_bytes_average: SlidingWindowAverage::new(50000.0, max_history_size),
             network_latency_average: SlidingWindowAverage::new(
                 Duration::from_millis(5),
                 max_history_size,
             ),
-            bitrate_average: SlidingWindowAverage::new(30_000_000.0, max_history_size),
+            encoder_latency_average: SlidingWindowAverage::new(
+                Duration::from_millis(5),
+                max_history_size,
+            ),
             decoder_latency_overstep_count: 0,
             last_frame_instant: Instant::now(),
             last_update_instant: Instant::now(),
-            dynamic_max_bitrate: f32::MAX,
+            dynamic_decoder_max_bytes_per_frame: f32::MAX,
             previous_config: None,
             update_needed: true,
         }
@@ -91,8 +91,7 @@ impl BitrateManager {
     ) {
         self.encoder_latency_average.submit_sample(encoder_latency);
 
-        self.packet_sizes_bits_history
-            .push_back((timestamp, size_bytes * 8));
+        self.packet_bytes_history.push_back((timestamp, size_bytes));
     }
 
     // decoder_latency is used to learn a suitable maximum bitrate bound to avoid decoder runaway
@@ -108,18 +107,16 @@ impl BitrateManager {
             return;
         }
 
-        self.network_latency_average.submit_sample(network_latency);
+        while let Some(&(history_timestamp, size_bytes)) = self.packet_bytes_history.front() {
+            if history_timestamp == timestamp {
+                self.packet_bytes_average.submit_sample(size_bytes as f32);
+                self.network_latency_average.submit_sample(network_latency);
 
-        while let Some(&(timestamp_, size_bits)) = self.packet_sizes_bits_history.front() {
-            if timestamp_ == timestamp {
-                self.bitrate_average
-                    .submit_sample(size_bits as f32 / network_latency.as_secs_f32());
-
-                self.packet_sizes_bits_history.pop_front();
+                self.packet_bytes_history.pop_front();
 
                 break;
             } else {
-                self.packet_sizes_bits_history.pop_front();
+                self.packet_bytes_history.pop_front();
             }
         }
 
@@ -132,9 +129,11 @@ impl BitrateManager {
                 self.decoder_latency_overstep_count += 1;
 
                 if self.decoder_latency_overstep_count == config.latency_overstep_frames {
-                    self.dynamic_max_bitrate =
-                        f32::min(self.bitrate_average.get_average(), self.dynamic_max_bitrate)
-                            * config.latency_overstep_multiplier;
+                    self.dynamic_decoder_max_bytes_per_frame = f32::min(
+                        self.packet_bytes_average.get_average() as f32,
+                        self.dynamic_decoder_max_bytes_per_frame,
+                    ) * config
+                        .latency_overstep_multiplier;
 
                     self.update_needed = true;
 
@@ -149,7 +148,7 @@ impl BitrateManager {
     pub fn get_encoder_params(
         &mut self,
         config: &BitrateConfig,
-    ) -> Option<(DynamicEncoderParams, NominalBitrateStats)> {
+    ) -> Option<(DynamicEncoderParams, BitrateDirectives)> {
         let now = Instant::now();
 
         if self
@@ -170,79 +169,89 @@ impl BitrateManager {
         self.last_update_instant = now;
         self.update_needed = false;
 
-        let mut stats = NominalBitrateStats::default();
-
-        let bitrate_bps = match &config.mode {
-            BitrateMode::ConstantMbps(bitrate_mbps) => *bitrate_mbps as f32 * 1e6,
-            BitrateMode::Adaptive {
-                saturation_multiplier,
-                max_bitrate_mbps,
-                min_bitrate_mbps,
-                max_network_latency_ms,
-                encoder_latency_limiter,
-                ..
-            } => {
-                let initial_bitrate_average_bps = self.bitrate_average.get_average();
-
-                let mut bitrate_bps = initial_bitrate_average_bps * saturation_multiplier;
-                stats.scaled_calculated_bps = Some(bitrate_bps);
-
-                bitrate_bps = f32::min(bitrate_bps, self.dynamic_max_bitrate);
-                stats.decoder_latency_limiter_bps = Some(self.dynamic_max_bitrate);
-
-                if let Switch::Enabled(max_ms) = max_network_latency_ms {
-                    let max = initial_bitrate_average_bps * (*max_ms as f32 / 1000.0)
-                        / self.network_latency_average.get_average().as_secs_f32();
-                    bitrate_bps = f32::min(bitrate_bps, max);
-
-                    stats.network_latency_limiter_bps = Some(max);
-                }
-
-                if let Switch::Enabled(config) = encoder_latency_limiter {
-                    let saturation = self.encoder_latency_average.get_average().as_secs_f32()
-                        / self.nominal_frame_interval.as_secs_f32();
-                    let max =
-                        initial_bitrate_average_bps * config.max_saturation_multiplier / saturation;
-                    stats.encoder_latency_limiter_bps = Some(max);
-
-                    if saturation > config.max_saturation_multiplier {
-                        // Note: this assumes linear relationship between bitrate and encoder
-                        // latency but this may not be the case
-                        bitrate_bps = f32::min(bitrate_bps, max);
-                    }
-                }
-
-                if let Switch::Enabled(max) = max_bitrate_mbps {
-                    let max = *max as f32 * 1e6;
-                    bitrate_bps = f32::min(bitrate_bps, max);
-
-                    stats.manual_max_bps = Some(max);
-                }
-                if let Switch::Enabled(min) = min_bitrate_mbps {
-                    let min = *min as f32 * 1e6;
-                    bitrate_bps = f32::max(bitrate_bps, min);
-
-                    stats.manual_min_bps = Some(min);
-                }
-
-                bitrate_bps
-            }
-        };
-
-        stats.requested_bps = bitrate_bps;
-
         let frame_interval = if config.adapt_to_framerate.enabled() {
             self.frame_interval_average.get_average()
         } else {
             self.nominal_frame_interval
         };
 
+        let mut bitrate_directives = BitrateDirectives::default();
+
+        let bitrate_bps = match &config.mode {
+            BitrateMode::ConstantMbps(bitrate_mbps) => *bitrate_mbps as f32 * 1e6,
+            BitrateMode::Adaptive {
+                saturation_multiplier,
+                max_throughput_mbps,
+                min_throughput_mbps,
+                max_network_latency_ms,
+                encoder_latency_limiter,
+                decoder_latency_limiter,
+            } => {
+                let packet_bytes_average = self.packet_bytes_average.get_average();
+                let network_latency_average_s =
+                    self.network_latency_average.get_average().as_secs_f32();
+
+                let mut throughput_bps =
+                    packet_bytes_average * 8.0 * saturation_multiplier / network_latency_average_s;
+                bitrate_directives.scaled_calculated_throughput_bps = Some(throughput_bps);
+
+                if decoder_latency_limiter.enabled() {
+                    throughput_bps =
+                        f32::min(throughput_bps, self.dynamic_decoder_max_bytes_per_frame);
+                    bitrate_directives.decoder_latency_limiter_bps =
+                        Some(self.dynamic_decoder_max_bytes_per_frame);
+                }
+
+                if let Switch::Enabled(max_ms) = max_network_latency_ms {
+                    let max_bps =
+                        throughput_bps * (*max_ms as f32 / 1000.0) / network_latency_average_s;
+                    throughput_bps = f32::min(throughput_bps, max_bps);
+
+                    bitrate_directives.network_latency_limiter_bps = Some(max_bps);
+                }
+
+                if let Switch::Enabled(config) = encoder_latency_limiter {
+                    // Note: this assumes linear relationship between bitrate and encoder latency
+                    // but this may not be the case
+                    let saturation = self.encoder_latency_average.get_average().as_secs_f32()
+                        / self.nominal_frame_interval.as_secs_f32();
+                    let max_bps = throughput_bps * config.max_saturation_multiplier / saturation;
+                    bitrate_directives.encoder_latency_limiter_bps = Some(max_bps);
+
+                    if saturation > config.max_saturation_multiplier {
+                        throughput_bps = f32::min(throughput_bps, max_bps);
+                    }
+                }
+
+                if let Switch::Enabled(max) = max_throughput_mbps {
+                    let max_bps = *max as f32 * 1e6;
+                    throughput_bps = f32::min(throughput_bps, max_bps);
+
+                    bitrate_directives.manual_max_throughput_bps = Some(max_bps);
+                }
+                if let Switch::Enabled(min) = min_throughput_mbps {
+                    let min_bps = *min as f32 * 1e6;
+                    throughput_bps = f32::max(throughput_bps, min_bps);
+
+                    bitrate_directives.manual_min_throughput_bps = Some(min_bps);
+                }
+
+                // NB: Here we assign the calculated throughput to the requested bitrate. This is
+                // crucial for the working of the adaptive bitrate algorithm. The goal is to
+                // optimally occupy the available bandwidth, which is when the bitrate corresponds
+                // to the throughput.
+                throughput_bps
+            }
+        };
+
+        bitrate_directives.requested_bitrate_bps = bitrate_bps;
+
         Some((
             DynamicEncoderParams {
-                bitrate_bps: bitrate_bps as u64,
-                framerate: 1.0 / frame_interval.as_secs_f32().min(1.0),
+                bitrate_bps,
+                framerate: 1.0 / f32::min(frame_interval.as_secs_f32(), 1.0),
             },
-            stats,
+            bitrate_directives,
         ))
     }
 }

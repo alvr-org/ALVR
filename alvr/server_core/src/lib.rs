@@ -395,7 +395,7 @@ impl ServerCoreContext {
 
         if let Some((params, stats)) = pair {
             if let Some(stats_manager) = &mut *self.connection_context.statistics_manager.lock() {
-                stats_manager.report_nominal_bitrate_stats(stats);
+                stats_manager.report_throughput_stats(stats);
             }
 
             Some(params)

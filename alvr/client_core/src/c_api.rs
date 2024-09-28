@@ -488,9 +488,26 @@ pub extern "C" fn alvr_send_button(path_id: u64, value: AlvrButtonValue) {
     }
 }
 
-/// view_params:
-/// * array of 2;
-///
+/// The view poses need to be in local space, as if the head is at the origin.
+/// view_params: array of 2
+#[no_mangle]
+pub extern "C" fn alvr_send_view_params(view_params: *const AlvrViewParams) {
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.send_view_params(unsafe {
+            [
+                ViewParams {
+                    pose: from_capi_pose((*view_params).pose),
+                    fov: from_capi_fov((*view_params).fov),
+                },
+                ViewParams {
+                    pose: from_capi_pose((*view_params.offset(1)).pose),
+                    fov: from_capi_fov((*view_params.offset(1)).fov),
+                },
+            ]
+        });
+    }
+}
+
 /// hand_skeleton:
 /// * outer ptr: array of 2 (can be null);
 /// * inner ptr: array of 26 (can be null if hand is absent)
@@ -501,25 +518,11 @@ pub extern "C" fn alvr_send_button(path_id: u64, value: AlvrButtonValue) {
 #[no_mangle]
 pub extern "C" fn alvr_send_tracking(
     target_timestamp_ns: u64,
-    view_params: *const AlvrViewParams,
     device_motions: *const AlvrDeviceMotion,
     device_motions_count: u64,
     hand_skeletons: *const *const AlvrPose,
     eye_gazes: *const *const AlvrPose,
 ) {
-    let view_params = unsafe {
-        [
-            ViewParams {
-                pose: from_capi_pose((*view_params).pose),
-                fov: from_capi_fov((*view_params).fov),
-            },
-            ViewParams {
-                pose: from_capi_pose((*view_params.offset(1)).pose),
-                fov: from_capi_fov((*view_params.offset(1)).fov),
-            },
-        ]
-    };
-
     let mut raw_motions = vec![AlvrDeviceMotion::default(); device_motions_count as _];
     unsafe {
         ptr::copy_nonoverlapping(
@@ -597,7 +600,6 @@ pub extern "C" fn alvr_send_tracking(
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
         context.send_tracking(
             Duration::from_nanos(target_timestamp_ns),
-            view_params,
             device_motions,
             hand_skeletons,
             FaceData {

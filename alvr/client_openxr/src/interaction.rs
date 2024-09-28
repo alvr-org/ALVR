@@ -8,11 +8,13 @@ use crate::{
     Platform, XrContext,
 };
 use alvr_common::{glam::Vec3, *};
-use alvr_packets::{ButtonEntry, ButtonValue};
+use alvr_packets::{ButtonEntry, ButtonValue, ViewParams};
 use alvr_session::{BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 use xr::SpaceLocationFlags;
+
+const IPD_CHANGE_EPS: f32 = 0.001;
 
 pub enum ButtonAction {
     Binary(xr::Action<bool>),
@@ -416,6 +418,76 @@ pub fn get_reference_space(
     xr_session
         .create_reference_space(ty, xr::Posef::IDENTITY)
         .unwrap()
+}
+
+pub fn get_head_data(
+    xr_session: &xr::Session<xr::OpenGlEs>,
+    reference_space: &xr::Space,
+    target_timestamp: Duration,
+    last_ipd_m: &mut f32,
+) -> Option<(DeviceMotion, Option<[ViewParams; 2]>)> {
+    let (head_location, head_velocity) = xr_session
+        .create_reference_space(xr::ReferenceSpaceType::VIEW, xr::Posef::IDENTITY)
+        .ok()?
+        .relate(&reference_space, crate::to_xr_time(target_timestamp))
+        .ok()?;
+
+    if !head_location
+        .location_flags
+        .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
+    {
+        return None;
+    }
+
+    let (view_flags, views) = xr_session
+        .locate_views(
+            xr::ViewConfigurationType::PRIMARY_STEREO,
+            crate::to_xr_time(target_timestamp),
+            &reference_space,
+        )
+        .ok()?;
+
+    if !view_flags.contains(xr::ViewStateFlags::POSITION_VALID)
+        || !view_flags.contains(xr::ViewStateFlags::ORIENTATION_VALID)
+    {
+        return None;
+    }
+
+    let motion = DeviceMotion {
+        pose: crate::from_xr_pose(head_location.pose),
+        linear_velocity: head_velocity
+            .velocity_flags
+            .contains(xr::SpaceVelocityFlags::LINEAR_VALID)
+            .then(|| crate::from_xr_vec3(head_velocity.linear_velocity))
+            .unwrap_or_default(),
+        angular_velocity: head_velocity
+            .velocity_flags
+            .contains(xr::SpaceVelocityFlags::ANGULAR_VALID)
+            .then(|| crate::from_xr_vec3(head_velocity.angular_velocity))
+            .unwrap_or_default(),
+    };
+
+    let ipd_m = (crate::from_xr_vec3(views[1].pose.position)
+        - crate::from_xr_vec3(views[0].pose.position))
+    .length();
+    let view_params = if f32::abs(ipd_m - *last_ipd_m) > IPD_CHANGE_EPS {
+        *last_ipd_m = ipd_m;
+
+        Some([
+            ViewParams {
+                pose: motion.pose.inverse() * crate::from_xr_pose(views[0].pose),
+                fov: crate::from_xr_fov(views[0].fov),
+            },
+            ViewParams {
+                pose: motion.pose.inverse() * crate::from_xr_pose(views[1].pose),
+                fov: crate::from_xr_fov(views[1].fov),
+            },
+        ])
+    } else {
+        None
+    };
+
+    Some((motion, view_params))
 }
 
 pub fn get_hand_data(

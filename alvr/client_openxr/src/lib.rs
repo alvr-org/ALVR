@@ -126,7 +126,7 @@ pub fn entry_point() {
 
     let loader_suffix = match platform {
         Platform::Quest1 => "_quest1",
-        Platform::PicoNeo3 | Platform::Pico4 => "_pico",
+        p if p.is_pico() => "_pico",
         Platform::Yvr => "_yvr",
         Platform::Lynx => "_lynx",
         _ => "",
@@ -358,11 +358,7 @@ pub fn entry_point() {
                         // combined_eye_gaze is a setting that needs to be enabled at session
                         // creation. Since HTC headsets don't support session reinitialization, skip
                         // all elements that need it, that is face and eye tracking.
-                        if parsed_stream_config.as_ref() != Some(&new_config)
-                            && !matches!(
-                                platform,
-                                Platform::Focus3 | Platform::XRElite | Platform::ViveUnknown
-                            )
+                        if parsed_stream_config.as_ref() != Some(&new_config) && !platform.is_vive()
                         {
                             parsed_stream_config = Some(new_config);
 

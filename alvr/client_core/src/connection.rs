@@ -1,7 +1,6 @@
 #![allow(clippy::if_same_then_else)]
 
 use crate::{
-    decoder::{self, DecoderConfig, DecoderSink, DecoderSource},
     logging_backend::{LogMirrorData, LOG_CHANNEL_SENDER},
     platform,
     sockets::AnnouncerSocket,
@@ -64,8 +63,7 @@ pub struct ConnectionContext {
     pub tracking_sender: Mutex<Option<StreamSender<Tracking>>>,
     pub statistics_sender: Mutex<Option<StreamSender<ClientStatistics>>>,
     pub statistics_manager: Mutex<Option<StatisticsManager>>,
-    pub decoder_sink: Mutex<Option<DecoderSink>>,
-    pub decoder_source: Mutex<Option<DecoderSource>>,
+    pub decoder_callback: Mutex<Option<Box<dyn FnMut(Duration, &[u8]) -> bool + Send>>>,
     pub head_pose_queue: RwLock<VecDeque<(Duration, Pose)>>,
     pub last_good_head_pose: RwLock<Pose>,
     pub view_params: RwLock<[ViewParams; 2]>,
@@ -274,9 +272,8 @@ fn connection_pipeline(
 
     let video_receive_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
-        let event_queue = Arc::clone(&event_queue);
         move || {
-            let mut stream_corrupted = false;
+            let mut stream_corrupted = true;
             while is_streaming(&ctx) {
                 let data = match video_receiver.recv(STREAMING_RECV_TIMEOUT) {
                     Ok(data) => data,
@@ -302,37 +299,14 @@ fn connection_pipeline(
                 }
 
                 if !stream_corrupted || !settings.connection.avoid_video_glitching {
-                    if capabilities.external_decoder {
-                        let mut head_pose = *ctx.last_good_head_pose.read();
-                        for (timestamp, pose) in &*ctx.head_pose_queue.read() {
-                            if *timestamp == header.timestamp {
-                                head_pose = *pose;
-                                break;
-                            }
-                        }
-
-                        let view_params = &ctx.view_params.read();
-                        event_queue.lock().push_back(ClientCoreEvent::FrameReady {
-                            timestamp: header.timestamp,
-                            view_params: [
-                                ViewParams {
-                                    pose: head_pose * view_params[0].pose,
-                                    fov: view_params[0].fov,
-                                },
-                                ViewParams {
-                                    pose: head_pose * view_params[1].pose,
-                                    fov: view_params[1].fov,
-                                },
-                            ],
-                            nal: nal.to_vec(),
-                        });
-                    } else if !ctx
-                        .decoder_sink
+                    let submitted = ctx
+                        .decoder_callback
                         .lock()
                         .as_mut()
-                        .map(|sink| sink.push_nal(header.timestamp, nal))
-                        .unwrap_or(false)
-                    {
+                        .map(|callback| callback(header.timestamp, nal))
+                        .unwrap_or(false);
+
+                    if !submitted {
                         stream_corrupted = true;
                         if let Some(sender) = &mut *ctx.control_sender.lock() {
                             sender.send(&ClientControlPacket::RequestIdr).ok();
@@ -490,39 +464,12 @@ fn connection_pipeline(
 
                 match maybe_packet {
                     Ok(ServerControlPacket::DecoderConfig(config)) => {
-                        if capabilities.external_decoder {
-                            event_queue
-                                .lock()
-                                .push_back(ClientCoreEvent::DecoderConfig {
-                                    codec: config.codec,
-                                    config_nal: config.config_buffer,
-                                });
-                        } else if ctx.decoder_sink.lock().is_none() {
-                            let config = DecoderConfig {
+                        event_queue
+                            .lock()
+                            .push_back(ClientCoreEvent::DecoderConfig {
                                 codec: config.codec,
-                                force_software_decoder: settings.video.force_software_decoder,
-                                max_buffering_frames: settings.video.max_buffering_frames,
-                                buffering_history_weight: settings.video.buffering_history_weight,
-                                options: settings.video.mediacodec_extra_options.clone(),
-                                config_buffer: config.config_buffer,
-                            };
-
-                            let (sink, source) = decoder::create_decoder(config, {
-                                let ctx = Arc::clone(&ctx);
-                                move |target_timestamp| {
-                                    if let Some(stats) = &mut *ctx.statistics_manager.lock() {
-                                        stats.report_frame_decoded(target_timestamp);
-                                    }
-                                }
+                                config_nal: config.config_buffer,
                             });
-
-                            *ctx.decoder_sink.lock() = Some(sink);
-                            *ctx.decoder_source.lock() = Some(source);
-
-                            if let Some(sender) = &mut *ctx.control_sender.lock() {
-                                sender.send(&ClientControlPacket::RequestIdr).ok();
-                            }
-                        }
                     }
                     Ok(ServerControlPacket::Restarting) => {
                         info!("{SERVER_RESTART_MESSAGE}");
@@ -599,9 +546,6 @@ fn connection_pipeline(
     event_queue
         .lock()
         .push_back(ClientCoreEvent::StreamingStopped);
-
-    *ctx.decoder_sink.lock() = None;
-    *ctx.decoder_source.lock() = None;
 
     // Remove lock to allow threads to properly exit:
     drop(connection_state_lock);

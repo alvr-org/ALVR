@@ -20,7 +20,7 @@ use std::{
     ffi::c_void,
     ops::Deref,
     ptr,
-    sync::Arc,
+    sync::{Arc, Weak},
     thread::{self, JoinHandle},
     time::Duration,
 };
@@ -88,7 +88,6 @@ unsafe impl Send for QueuedImage {}
 // Access the image queue synchronously.
 pub struct VideoDecoderSource {
     running: Arc<RelaxedAtomic>,
-    error: Arc<Mutex<Option<alvr_common::anyhow::Error>>>,
     dequeue_thread: Option<JoinHandle<()>>,
     image_queue: Arc<Mutex<VecDeque<QueuedImage>>>,
     config: DecoderConfig,
@@ -99,11 +98,7 @@ unsafe impl Send for VideoDecoderSource {}
 
 impl VideoDecoderSource {
     // The application MUST finish using the returned buffer before calling this function again
-    pub fn dequeue_frame(&mut self) -> Result<Option<(Duration, *mut c_void)>> {
-        if let Some(error) = self.error.lock().take() {
-            return Err(anyhow!(error));
-        }
-
+    pub fn dequeue_frame(&mut self) -> Option<(Duration, *mut c_void)> {
         let mut image_queue_lock = self.image_queue.lock();
 
         if let Some(queued_image) = image_queue_lock.front() {
@@ -124,7 +119,7 @@ impl VideoDecoderSource {
         if let Some(queued_image) = image_queue_lock.front_mut() {
             queued_image.in_use = true;
 
-            Ok(Some((
+            Some((
                 queued_image.timestamp,
                 queued_image
                     .image
@@ -132,11 +127,11 @@ impl VideoDecoderSource {
                     .unwrap()
                     .as_ptr()
                     .cast(),
-            )))
+            ))
         } else {
             // TODO: add back when implementing proper phase sync
             //warn!("Video frame queue underflow!");
-            Ok(None)
+            None
         }
     }
 }
@@ -193,10 +188,12 @@ fn decoder_attempt_setup(
     Ok(decoder)
 }
 
+// Since we leak the ImageReader, and we pass frame_result_callback to it which contains a reference
+// to ClientCoreContext, to avoid circular references we need to use a Weak reference.
 fn decoder_lifecycle(
     config: DecoderConfig,
     csd_0: Vec<u8>,
-    dequeued_frame_callback: impl Fn(Duration) + Send + 'static,
+    frame_result_callback: Weak<impl Fn(Result<Duration>) + Send + Sync + 'static>,
     running: Arc<RelaxedAtomic>,
     decoder_sink: Arc<Mutex<Option<SharedMediaCodec>>>,
     decoder_ready_notifier: Arc<Condvar>,
@@ -220,7 +217,9 @@ fn decoder_lifecycle(
                 Ok(AcquireResult::Image(image)) => {
                     let timestamp = Duration::from_nanos(image.timestamp().unwrap() as u64);
 
-                    dequeued_frame_callback(timestamp);
+                    if let Some(callback) = frame_result_callback.upgrade() {
+                        callback(Ok(timestamp));
+                    }
 
                     image_queue_lock.push_back(QueuedImage {
                         timestamp,
@@ -305,7 +304,7 @@ fn decoder_lifecycle(
                     error!("Decoder dequeue error: {e}");
                 }
             }
-            Ok(DequeuedOutputBufferInfoResult::TryAgainLater) => thread::yield_now(),
+            Ok(DequeuedOutputBufferInfoResult::TryAgainLater) => continue,
             Ok(i) => info!("Decoder dequeue event: {i:?}"),
             Err(e) => {
                 error!("Decoder dequeue error: {e}");
@@ -337,10 +336,9 @@ fn decoder_lifecycle(
 pub fn video_decoder_split(
     config: DecoderConfig,
     csd_0: Vec<u8>,
-    dequeued_frame_callback: impl Fn(Duration) + Send + 'static,
+    frame_result_callback: impl Fn(Result<Duration>) + Send + Sync + 'static,
 ) -> Result<(VideoDecoderSink, VideoDecoderSource)> {
     let running = Arc::new(RelaxedAtomic::new(true));
-    let error = Arc::new(Mutex::new(None));
     let decoder_sink = Arc::new(Mutex::new(None::<SharedMediaCodec>));
     let decoder_ready_notifier = Arc::new(Condvar::new());
     let image_queue = Arc::new(Mutex::new(VecDeque::<QueuedImage>::new()));
@@ -348,7 +346,6 @@ pub fn video_decoder_split(
     let dequeue_thread = thread::spawn({
         let config = config.clone();
         let running = Arc::clone(&running);
-        let error = Arc::clone(&error);
         let decoder_sink = Arc::clone(&decoder_sink);
         let decoder_ready_notifier = Arc::clone(&decoder_ready_notifier);
         let image_queue = Arc::clone(&image_queue);
@@ -363,22 +360,24 @@ pub fn video_decoder_split(
             ) {
                 Ok(reader) => reader,
                 Err(e) => {
-                    *error.lock() = Some(anyhow!("{e}"));
+                    frame_result_callback(Err(anyhow!("{e}")));
                     return;
                 }
             };
 
+            let frame_result_callback = Arc::new(frame_result_callback);
+
             if let Err(e) = decoder_lifecycle(
                 config,
                 csd_0,
-                dequeued_frame_callback,
+                Arc::downgrade(&frame_result_callback),
                 running,
                 decoder_sink,
                 decoder_ready_notifier,
                 Arc::clone(&image_queue),
                 &mut image_reader,
             ) {
-                *error.lock() = Some(e);
+                frame_result_callback(Err(e));
             }
 
             image_queue.lock().clear();
@@ -403,7 +402,6 @@ pub fn video_decoder_split(
     };
     let source = VideoDecoderSource {
         running,
-        error,
         dequeue_thread: Some(dequeue_thread),
         image_queue,
         config,

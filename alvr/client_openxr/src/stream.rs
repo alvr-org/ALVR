@@ -1,8 +1,7 @@
 use crate::{
-    from_xr_pose,
     graphics::{self, CompositionLayerBuilder},
     interaction::{self, InteractionContext},
-    to_xr_fov, to_xr_pose, XrContext,
+    XrContext,
 };
 use alvr_client_core::{
     graphics::{GraphicsContext, StreamRenderer},
@@ -11,7 +10,7 @@ use alvr_client_core::{
 use alvr_common::{
     error,
     glam::{UVec2, Vec2},
-    Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID,
+    Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
 use alvr_packets::{FaceData, StreamConfig, ViewParams};
 use alvr_session::{
@@ -347,8 +346,8 @@ impl StreamContext {
             &self.reference_space,
             [
                 xr::CompositionLayerProjectionView::new()
-                    .pose(to_xr_pose(view_params[0].pose))
-                    .fov(to_xr_fov(view_params[0].fov))
+                    .pose(crate::to_xr_pose(view_params[0].pose))
+                    .fov(crate::to_xr_fov(view_params[0].fov))
                     .sub_image(
                         xr::SwapchainSubImage::new()
                             .swapchain(&self.swapchains[0])
@@ -356,8 +355,8 @@ impl StreamContext {
                             .image_rect(rect),
                     ),
                 xr::CompositionLayerProjectionView::new()
-                    .pose(to_xr_pose(view_params[1].pose))
-                    .fov(to_xr_fov(view_params[1].fov))
+                    .pose(crate::to_xr_pose(view_params[1].pose))
+                    .fov(crate::to_xr_fov(view_params[1].fov))
                     .sub_image(
                         xr::SwapchainSubImage::new()
                             .swapchain(&self.swapchains[1])
@@ -386,6 +385,7 @@ fn stream_input_loop(
 ) {
     let mut last_controller_poses = [Pose::default(); 2];
     let mut last_palm_poses = [Pose::default(); 2];
+    let mut last_ipd = 0.0;
 
     let mut deadline = Instant::now();
     let frame_interval = Duration::from_secs_f32(1.0 / refresh_rate);
@@ -408,33 +408,22 @@ fn stream_input_loop(
         let target_timestamp =
             now + Duration::min(core_ctx.get_head_prediction_offset(), MAX_PREDICTION);
 
-        let Ok((view_flags, views)) = xr_ctx.session.locate_views(
-            xr::ViewConfigurationType::PRIMARY_STEREO,
-            crate::to_xr_time(target_timestamp),
+        let mut device_motions = Vec::with_capacity(3);
+
+        let Some((head_motion, local_views)) = interaction::get_head_data(
+            &xr_ctx.session,
             &reference_space,
+            target_timestamp,
+            &mut last_ipd,
         ) else {
-            error!("Cannot locate views");
             continue;
         };
 
-        if !view_flags.contains(xr::ViewStateFlags::POSITION_VALID)
-            || !view_flags.contains(xr::ViewStateFlags::ORIENTATION_VALID)
-        {
-            continue;
+        device_motions.push((*HEAD_ID, head_motion));
+
+        if let Some(views) = local_views {
+            core_ctx.send_view_params(views);
         }
-
-        let view_params = [
-            ViewParams {
-                pose: from_xr_pose(views[0].pose),
-                fov: crate::from_xr_fov(views[0].fov),
-            },
-            ViewParams {
-                pose: from_xr_pose(views[1].pose),
-                fov: crate::from_xr_fov(views[1].fov),
-            },
-        ];
-
-        let mut device_motions = Vec::with_capacity(3);
 
         let tracker_time = crate::to_xr_time(
             now + Duration::min(core_ctx.get_tracker_prediction_offset(), MAX_PREDICTION),
@@ -496,7 +485,6 @@ fn stream_input_loop(
 
         core_ctx.send_tracking(
             target_timestamp,
-            view_params,
             device_motions,
             [left_hand_skeleton, right_hand_skeleton],
             face_data,

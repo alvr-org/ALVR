@@ -47,8 +47,6 @@ pub use platform::Platform;
 #[cfg(target_os = "android")]
 pub use platform::try_get_permission;
 
-const IPD_CHANGE_EPS: f32 = 0.001;
-
 pub fn platform() -> Platform {
     platform::platform()
 }
@@ -229,46 +227,44 @@ impl ClientCoreContext {
         }
     }
 
+    // These must be in its local space, as if the head pose is in the origin.
+    pub fn send_view_params(&self, views: [ViewParams; 2]) {
+        dbg_client_core!("send_view_params");
+
+        *self.connection_context.view_params.write() = views;
+
+        if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
+            sender
+                .send(&ClientControlPacket::ViewsConfig(ViewsConfig {
+                    fov: [views[0].fov, views[1].fov],
+                    ipd_m: (views[0].pose.position - views[1].pose.position).length(),
+                }))
+                .ok();
+        }
+    }
+
     pub fn send_tracking(
         &self,
         target_timestamp: Duration,
-        views: [ViewParams; 2],
         mut device_motions: Vec<(u64, DeviceMotion)>,
         hand_skeletons: [Option<[Pose; 26]>; 2],
         face_data: FaceData,
     ) {
         dbg_client_core!("send_tracking");
 
-        let last_ipd = {
-            let mut view_params_queue_lock = self.connection_context.view_params_queue.write();
+        if let Some((_, motion)) = device_motions.iter_mut().find(|(id, _)| *id == *HEAD_ID) {
+            let mut head_pose_queue = self.connection_context.head_pose_queue.write();
 
-            let last_ipd = if let Some((_, params)) = view_params_queue_lock.front() {
-                (params[0].pose.position - params[1].pose.position).length()
-            } else {
-                0.0
-            };
+            head_pose_queue.push_back((target_timestamp, motion.pose));
 
-            view_params_queue_lock.push_back((target_timestamp, views));
-
-            while view_params_queue_lock.len() > 1024 {
-                view_params_queue_lock.pop_front();
+            while head_pose_queue.len() > 1024 {
+                head_pose_queue.pop_front();
             }
 
-            last_ipd
-        };
-
-        {
-            let ipd = (views[0].pose.position - views[1].pose.position).length();
-            if f32::abs(last_ipd - ipd) > IPD_CHANGE_EPS {
-                if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
-                    sender
-                        .send(&ClientControlPacket::ViewsConfig(ViewsConfig {
-                            fov: [views[0].fov, views[1].fov],
-                            ipd_m: ipd,
-                        }))
-                        .ok();
-                }
-            }
+            // This is done for backward compatibiity for the v20 protocol. Will be removed with the
+            // tracking rewrite protocol extension.
+            motion.linear_velocity = Vec3::ZERO;
+            motion.angular_velocity = Vec3::ZERO;
         }
 
         // send_tracking() expects hand data in the multimodal protocol. In case multimodal protocol
@@ -298,19 +294,6 @@ impl ClientCoreContext {
         }
 
         if let Some(sender) = &mut *self.connection_context.tracking_sender.lock() {
-            device_motions.push((
-                *HEAD_ID,
-                DeviceMotion {
-                    pose: Pose {
-                        orientation: views[0].pose.orientation,
-                        position: views[0].pose.position
-                            + (views[1].pose.position - views[0].pose.position) / 2.0,
-                    },
-                    linear_velocity: Vec3::ZERO,
-                    angular_velocity: Vec3::ZERO,
-                },
-            ));
-
             sender
                 .send_header(&Tracking {
                     target_timestamp,
@@ -368,13 +351,24 @@ impl ClientCoreContext {
             stats.report_compositor_start(frame_timestamp);
         }
 
-        let mut view_params = *self.connection_context.last_good_view_params.read();
-        for (timestamp, views) in &*self.connection_context.view_params_queue.read() {
+        let mut head_pose = *self.connection_context.last_good_head_pose.read();
+        for (timestamp, pose) in &*self.connection_context.head_pose_queue.read() {
             if *timestamp == frame_timestamp {
-                view_params = *views;
+                head_pose = *pose;
                 break;
             }
         }
+        let view_params = self.connection_context.view_params.read();
+        let view_params = [
+            ViewParams {
+                pose: head_pose * view_params[0].pose,
+                fov: view_params[0].fov,
+            },
+            ViewParams {
+                pose: head_pose * view_params[1].pose,
+                fov: view_params[1].fov,
+            },
+        ];
 
         Some(DecodedFrame {
             timestamp: frame_timestamp,

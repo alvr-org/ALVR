@@ -125,3 +125,52 @@ This issue is caused by SteamVR's webserver spamming requests that stall the chr
 ### Fix
 
 Apply the following patch: `https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide/blob/main/patch_bindings_spam.sh`
+
+## Vulkan Conflicts with Multiple GPUs (Intel + NVIDIA)
+
+**Problem**: Black screen on headset when running ALVR with an **NVIDIA discrete GPU** alongside an **Intel integrated GPU**. This occurs because Vulkan may try to initialize drivers for both GPUs, leading to conflicts that cause issues like black screens or improper GPU selection.
+
+### Fix
+
+Rename the **Intel** and **Virtio ICD files** to prevent Vulkan from attempting to load the wrong GPU driver:
+
+1. **Locate the Vulkan ICD Files**:
+   The ICD files are typically found in `/usr/share/vulkan/icd.d/`. To list all the files, run:
+
+    ```sh
+    ls /usr/share/vulkan/icd.d/
+    ```
+
+2. **Rename the Intel and Virtio ICD Files**:
+   Rename these ICD files to ensure Vulkan uses only the **NVIDIA** GPU:
+
+    ```sh
+    # Directory where the ICD files are located
+    ICD_DIR="/usr/share/vulkan/icd.d/"
+
+    # File patterns to rename
+    PATTERNS=("intel_icd*" "virtio_icd*")
+
+    # Loop through each pattern and rename matching files
+    for pattern in "${PATTERNS[@]}"; do
+      for file in "$ICD_DIR"$pattern; do
+          # Check if the file exists to avoid errors with non-matching patterns
+          if [ -e "$file" ]; then
+              sudo mv "$file" "$file.bak"
+              echo "Renamed $file to $file.bak"
+          fi
+      done
+    done
+    ```
+
+3. **Verify the Fix**:
+   After renaming, run `vulkaninfo | grep deviceName` to ensure only the **NVIDIA GPU** and possibly **llvmpipe** are listed, without any warnings related to **Intel** or **Virtio** ICDs.
+
+4. **Update SteamVR Launch Options**:
+   You still need to add the following to **SteamVR's command line options** to avoid runtime conflicts, as described in the [Black screen even when SteamVR shows movement](#black-screen-even-when-steamvr-shows-movement) section:
+
+    ```sh
+    ~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%
+    ```
+
+**Note**: This fix will make Vulkan use only the **NVIDIA GPU**. If you need Vulkan to work with the **Intel integrated GPU** in the future, rename the ICD files back to their original names.

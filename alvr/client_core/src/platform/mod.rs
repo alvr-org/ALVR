@@ -30,6 +30,31 @@ pub enum Platform {
     Unknown,
 }
 
+impl Platform {
+    pub const fn is_quest(&self) -> bool {
+        matches!(
+            self,
+            Platform::Quest1
+                | Platform::Quest2
+                | Platform::Quest3
+                | Platform::Quest3S
+                | Platform::QuestPro
+                | Platform::QuestUnknown
+        )
+    }
+
+    pub const fn is_pico(&self) -> bool {
+        matches!(self, Platform::PicoNeo3 | Platform::Pico4)
+    }
+
+    pub const fn is_vive(&self) -> bool {
+        matches!(
+            self,
+            Platform::Focus3 | Platform::XRElite | Platform::ViveUnknown
+        )
+    }
+}
+
 impl Display for Platform {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let name = match self {

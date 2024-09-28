@@ -205,7 +205,6 @@ fn client_thread(
 ) {
     let capabilities = ClientCapabilities {
         default_view_resolution: UVec2::new(1920, 1832),
-        external_decoder: true,
         refresh_rates: vec![60.0, 72.0, 80.0, 90.0, 120.0],
         foveated_encoding: false,
         encoder_high_profile: false,
@@ -269,16 +268,6 @@ fn client_thread(
                     got_decoder_config.set(true);
 
                     window_output.decoder_codec = Some(codec);
-                }
-                ClientCoreEvent::FrameReady { timestamp, .. } => {
-                    if streaming.value() && !got_decoder_config.value() {
-                        client_core_context.request_idr();
-                    }
-
-                    window_output.current_frame_timestamp = timestamp;
-
-                    thread::sleep(Duration::from_millis(input_lock.emulated_decode_ms));
-                    client_core_context.report_frame_decoded(timestamp);
                 }
             }
 

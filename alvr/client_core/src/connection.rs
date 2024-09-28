@@ -14,7 +14,7 @@ use alvr_common::{
     dbg_connection, debug, error, info,
     parking_lot::{Condvar, Mutex, RwLock},
     wait_rwlock, warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState,
-    RelaxedAtomic, ALVR_VERSION,
+    Pose, RelaxedAtomic, ALVR_VERSION,
 };
 use alvr_packets::{
     ClientConnectionResult, ClientControlPacket, ClientStatistics, Haptics, ServerControlPacket,
@@ -75,9 +75,9 @@ pub struct ConnectionContext {
     pub statistics_manager: Mutex<Option<StatisticsManager>>,
     pub decoder_sink: Mutex<Option<DecoderSink>>,
     pub decoder_source: Mutex<Option<DecoderSource>>,
-    // todo: the server is supposed to receive and send view configs for each frame
-    pub view_params_queue: RwLock<VecDeque<(Duration, [ViewParams; 2])>>,
-    pub last_good_view_params: RwLock<[ViewParams; 2]>,
+    pub head_pose_queue: RwLock<VecDeque<(Duration, Pose)>>,
+    pub last_good_head_pose: RwLock<Pose>,
+    pub view_params: RwLock<[ViewParams; 2]>,
     pub uses_multimodal_protocol: RelaxedAtomic,
 }
 
@@ -329,16 +329,27 @@ fn connection_pipeline(
 
                 if !stream_corrupted || !settings.connection.avoid_video_glitching {
                     if capabilities.external_decoder {
-                        let mut view_params = *ctx.last_good_view_params.read();
-                        for (timestamp, views) in &*ctx.view_params_queue.read() {
+                        let mut head_pose = *ctx.last_good_head_pose.read();
+                        for (timestamp, pose) in &*ctx.head_pose_queue.read() {
                             if *timestamp == header.timestamp {
-                                view_params = *views;
+                                head_pose = *pose;
                                 break;
                             }
                         }
+
+                        let view_params = &ctx.view_params.read();
                         event_queue.lock().push_back(ClientCoreEvent::FrameReady {
                             timestamp: header.timestamp,
-                            view_params,
+                            view_params: [
+                                ViewParams {
+                                    pose: head_pose * view_params[0].pose,
+                                    fov: view_params[0].fov,
+                                },
+                                ViewParams {
+                                    pose: head_pose * view_params[1].pose,
+                                    fov: view_params[1].fov,
+                                },
+                            ],
                             nal: nal.to_vec(),
                         });
                     } else if !ctx
@@ -600,10 +611,6 @@ fn connection_pipeline(
     *connection_state_lock = ConnectionState::Streaming;
 
     dbg_connection!("connection_pipeline: Unlock streams");
-
-    // Make sure IPD and FoV are resent after reconnection
-    // todo: send this data as part of the connection handshake
-    ctx.view_params_queue.write().clear();
 
     // Unlock CONNECTION_STATE and block thread
     wait_rwlock(&disconnect_notif, &mut connection_state_lock);

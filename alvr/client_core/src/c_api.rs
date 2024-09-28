@@ -919,7 +919,6 @@ pub extern "C" fn alvr_create_decoder(config: AlvrDecoderConfig) {
             }
         });
 
-    // *DECODER_SINK.lock() = Some(sink);
     *DECODER_SOURCE.lock() = Some(source);
 
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {

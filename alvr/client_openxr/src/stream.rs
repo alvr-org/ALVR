@@ -103,7 +103,7 @@ pub struct StreamContext {
     input_thread_running: Arc<RelaxedAtomic>,
     config: ParsedStreamConfig,
     renderer: StreamRenderer,
-    decoder_source: Option<DecoderSource>,
+    decoder: Option<(DecoderConfig, DecoderSource)>,
 }
 
 impl StreamContext {
@@ -254,7 +254,7 @@ impl StreamContext {
             input_thread_running,
             config,
             renderer,
-            decoder_source: None,
+            decoder: None,
         }
     }
 
@@ -300,8 +300,8 @@ impl StreamContext {
         }));
     }
 
-    pub fn initialize_decoder(&mut self, codec: CodecType, config_nal: Vec<u8>) {
-        let config = DecoderConfig {
+    pub fn maybe_initialize_decoder(&mut self, codec: CodecType, config_nal: Vec<u8>) {
+        let new_config = DecoderConfig {
             codec,
             force_software_decoder: self.config.force_software_decoder,
             max_buffering_frames: self.config.max_buffering_frames,
@@ -310,19 +310,26 @@ impl StreamContext {
             config_buffer: config_nal,
         };
 
-        let (mut sink, source) = decoder::create_decoder(config, {
-            let ctx = Arc::clone(&self.core_context);
-            move |maybe_timestamp: Result<Duration>| match maybe_timestamp {
-                Ok(timestamp) => ctx.report_frame_decoded(timestamp),
-                Err(e) => ctx.report_fatal_decoder_error(&e.to_string()),
-            }
-        });
-        self.decoder_source = Some(source);
+        let maybe_config = if let Some((config, _)) = &self.decoder {
+            (new_config != *config).then_some(new_config)
+        } else {
+            Some(new_config)
+        };
 
-        self.core_context
-            .set_decoder_input_callback(Box::new(move |timestamp, buffer| -> bool {
-                sink.push_nal(timestamp, buffer)
-            }));
+        if let Some(config) = maybe_config {
+            let (mut sink, source) = decoder::create_decoder(config.clone(), {
+                let ctx = Arc::clone(&self.core_context);
+                move |maybe_timestamp: Result<Duration>| match maybe_timestamp {
+                    Ok(timestamp) => ctx.report_frame_decoded(timestamp),
+                    Err(e) => ctx.report_fatal_decoder_error(&e.to_string()),
+                }
+            });
+            self.decoder = Some((config, source));
+
+            self.core_context.set_decoder_input_callback(Box::new(
+                move |timestamp, buffer| -> bool { sink.push_nal(timestamp, buffer) },
+            ));
+        }
     }
 
     pub fn render(
@@ -335,7 +342,7 @@ impl StreamContext {
                 frame_interval.as_secs_f32() * DECODER_MAX_TIMEOUT_MULTIPLIER,
             );
         let mut frame_result = None;
-        if let Some(source) = self.decoder_source.as_mut() {
+        if let Some((_, source)) = &mut self.decoder {
             while frame_result.is_none() && Instant::now() < frame_poll_deadline {
                 frame_result = source.get_frame();
                 thread::sleep(Duration::from_micros(500));

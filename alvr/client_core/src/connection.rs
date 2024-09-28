@@ -63,7 +63,7 @@ pub struct ConnectionContext {
     pub tracking_sender: Mutex<Option<StreamSender<Tracking>>>,
     pub statistics_sender: Mutex<Option<StreamSender<ClientStatistics>>>,
     pub statistics_manager: Mutex<Option<StatisticsManager>>,
-pub decoder_callback: Mutex<Option<Box<dyn FnMut(Duration, &[u8]) -> bool + Send>>>,
+    pub decoder_callback: Mutex<Option<Box<dyn FnMut(Duration, &[u8]) -> bool + Send>>>,
     pub head_pose_queue: RwLock<VecDeque<(Duration, Pose)>>,
     pub last_good_head_pose: RwLock<Pose>,
     pub view_params: RwLock<[ViewParams; 2]>,

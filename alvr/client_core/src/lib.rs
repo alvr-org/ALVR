@@ -325,6 +325,10 @@ impl ClientCoreContext {
         dbg_client_core!("set_decoder_input_callback");
 
         *self.connection_context.decoder_callback.lock() = Some(callback);
+
+        if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
+            sender.send(&ClientControlPacket::RequestIdr).ok();
+        }
     }
 
     pub fn report_frame_decoded(&self, timestamp: Duration) {

@@ -393,7 +393,7 @@ pub fn entry_point() {
                     }
                     ClientCoreEvent::DecoderConfig { codec, config_nal } => {
                         if let Some(stream) = &mut stream_context {
-                            stream.initialize_decoder(codec, config_nal);
+                            stream.maybe_initialize_decoder(codec, config_nal);
                         }
                     }
                 }

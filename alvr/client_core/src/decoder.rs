@@ -2,7 +2,7 @@ use alvr_common::anyhow::Result;
 use alvr_session::{CodecType, MediacodecDataType};
 use std::time::Duration;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct DecoderConfig {
     pub codec: CodecType,
     pub force_software_decoder: bool,

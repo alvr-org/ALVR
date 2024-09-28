@@ -22,9 +22,10 @@ pub struct Pose {
 
 impl Pose {
     pub fn inverse(&self) -> Pose {
+        let inverse_orientation = self.orientation.conjugate();
         Pose {
-            orientation: self.orientation.conjugate(),
-            position: -self.position,
+            orientation: inverse_orientation,
+            position: inverse_orientation * -self.position,
         }
     }
 }

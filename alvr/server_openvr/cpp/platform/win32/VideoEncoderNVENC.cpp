@@ -140,7 +140,7 @@ void VideoEncoderNVENC::Transmit(
         // so we need to strip it down to just the OBUs
         if (m_codec == ALVR_CODEC_AV1) {
             const uint8_t ivf_magic[4] = { 0x44, 0x4B, 0x49, 0x46 };
-            if (!memcmp(buf, ivf_magic, 4)) {
+            if (len >= 4 && !memcmp(buf, ivf_magic, 4)) {
                 buf += 0x20;
                 len -= 0x20;
             }

@@ -129,10 +129,6 @@ void VideoEncoderNVENC::Transmit(
     m_NvNecoder->EncodeFrame(vPacket, &picParams);
 
     for (std::vector<uint8_t>& packet : vPacket) {
-        if (fpOut) {
-            fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
-        }
-
         uint8_t* buf = packet.data();
         int len = (int)packet.size();
 
@@ -153,6 +149,10 @@ void VideoEncoderNVENC::Transmit(
 
         if (len <= 0) {
             continue;
+        }
+
+        if (fpOut) {
+            fpOut.write(reinterpret_cast<char*>(buf), len);
         }
 
         ParseFrameNals(m_codec, buf, len, targetTimestampNs, insertIDR);

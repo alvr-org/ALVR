@@ -353,6 +353,10 @@ impl StreamContext {
             if let Some((timestamp, buffer_ptr)) = frame_result {
                 let view_params = self.core_context.report_compositor_start(timestamp);
 
+                // Avoid passing invalid timestamp to runtime
+                let timestamp =
+                    Duration::max(timestamp, vsync_time.saturating_sub(Duration::from_secs(1)));
+
                 (timestamp, view_params, buffer_ptr)
             } else {
                 (vsync_time, self.last_good_view_params, ptr::null_mut())

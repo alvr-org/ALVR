@@ -443,13 +443,15 @@ pub fn entry_point() {
                 let time = to_xr_time(display_time);
                 error!("End frame failed! {e}, timestamp: {display_time:?}, time: {time:?}");
 
-                xr_frame_stream
-                    .end(
-                        frame_state.predicted_display_time,
-                        xr::EnvironmentBlendMode::OPAQUE,
-                        &[],
-                    )
-                    .unwrap();
+                if !platform.is_vive() {
+                    xr_frame_stream
+                        .end(
+                            frame_state.predicted_display_time,
+                            xr::EnvironmentBlendMode::OPAQUE,
+                            &[],
+                        )
+                        .unwrap();
+                }
             }
         }
     }

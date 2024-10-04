@@ -106,7 +106,24 @@ pub fn init_logging() {
                 .with_max_level(alvr_common::log::LevelFilter::Info),
         );
     }
-    #[cfg(not(target_os = "android"))]
+    #[cfg(any(target_os = "ios", target_os = "macos"))]
+    {
+        use std::io::Write;
+        env_logger::builder()
+            .format(|f, record| {
+                if send_log(record) {
+                    println!("[ALVR NATIVE-RUST] {}", record.args());
+                    Ok(())
+                } else {
+                    println!("[ALVR NATIVE-RUST] {}", record.args());
+                    Ok(())
+                }
+            })
+            .filter_level(alvr_common::log::LevelFilter::Info)
+            .try_init()
+            .ok();
+    }
+    #[cfg(not(any(target_os = "android", target_os = "ios", target_os = "macos")))]
     {
         use std::io::Write;
         env_logger::builder()

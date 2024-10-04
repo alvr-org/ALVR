@@ -89,6 +89,11 @@ pub struct ClientCoreContext {
 
 impl ClientCoreContext {
     pub fn new(capabilities: ClientCapabilities) -> Self {
+        #[cfg(any(target_os = "ios", target_os = "macos"))]
+        {
+            init_logging();
+        }
+
         dbg_client_core!("Create");
 
         // Make sure to reset config in case of version compat mismatch.

@@ -133,7 +133,29 @@ void VideoEncoderNVENC::Transmit(
             fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
         }
 
-        ParseFrameNals(m_codec, packet.data(), (int)packet.size(), targetTimestampNs, insertIDR);
+        uint8_t* buf = packet.data();
+        int len = (int)packet.size();
+
+        // NVENC's AV1 encoding includes a bunch of IVF wrapping,
+        // so we need to strip it down to just the OBUs
+        if (m_codec == ALVR_CODEC_AV1) {
+            const uint8_t ivf_magic[4] = { 0x44, 0x4B, 0x49, 0x46 };
+            if (!memcmp(buf, ivf_magic, 4)) {
+                buf += 0x20;
+                len -= 0x20;
+            }
+            if (len <= 0xC) {
+                continue;
+            }
+            buf += 0xC; // skip past the IVF packet size header thing
+            len -= 0xC;
+        }
+
+        if (len <= 0) {
+            continue;
+        }
+
+        ParseFrameNals(m_codec, buf, len, targetTimestampNs, insertIDR);
     }
 }
 
@@ -263,8 +285,7 @@ void VideoEncoderNVENC::FillEncodeConfig(
                 = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
             config.h264VUIParameters.colourMatrix = NV_ENC_VUI_MATRIX_COEFFS_BT709;
         }
-    }
-    break;
+    } break;
     case ALVR_CODEC_HEVC: {
         auto& config = encodeConfig.encodeCodecConfig.hevcConfig;
         config.repeatSPSPPS = 1;
@@ -304,8 +325,7 @@ void VideoEncoderNVENC::FillEncodeConfig(
                 = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
             config.hevcVUIParameters.colourMatrix = NV_ENC_VUI_MATRIX_COEFFS_BT709;
         }
-    }
-    break;
+    } break;
     case ALVR_CODEC_AV1: {
         auto& config = encodeConfig.encodeCodecConfig.av1Config;
         config.repeatSeqHdr = 1;
@@ -330,21 +350,17 @@ void VideoEncoderNVENC::FillEncodeConfig(
         }
 
         config.chromaFormatIDC = 1; // 4:2:0, 4:4:4 currently not supported
-        config.colorRange
-            = Settings::Instance().m_useFullRangeEncoding ? 1 : 0;
+        config.colorRange = Settings::Instance().m_useFullRangeEncoding ? 1 : 0;
         if (Settings::Instance().m_enableHdr) {
             config.colorPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT2020;
-            config.transferCharacteristics
-                = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
+            config.transferCharacteristics = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
             config.matrixCoefficients = NV_ENC_VUI_MATRIX_COEFFS_BT2020_NCL;
         } else {
             config.colorPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT709;
-            config.transferCharacteristics
-                = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
+            config.transferCharacteristics = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
             config.matrixCoefficients = NV_ENC_VUI_MATRIX_COEFFS_BT709;
         }
-    }
-    break;
+    } break;
     }
 
     // Disable automatic IDR insertion by NVENC. We need to manually insert IDR when packet is

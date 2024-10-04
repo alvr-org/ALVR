@@ -137,14 +137,14 @@ void VideoEncoderNVENC::Transmit(
         if (m_codec == ALVR_CODEC_AV1) {
             const uint8_t ivf_magic[4] = { 0x44, 0x4B, 0x49, 0x46 };
             if (len >= 4 && !memcmp(buf, ivf_magic, 4)) {
-                buf += 0x20;
-                len -= 0x20;
+                buf += 32;
+                len -= 32;
             }
-            if (len <= 0xC) {
+            if (len <= 12) {
                 continue;
             }
-            buf += 0xC; // skip past the IVF packet size header thing
-            len -= 0xC;
+            buf += 12; // skip past the IVF packet size header thing
+            len -= 12;
         }
 
         if (len <= 0) {

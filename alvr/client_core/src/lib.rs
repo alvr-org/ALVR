@@ -21,7 +21,7 @@ pub mod graphics;
 
 use alvr_common::{
     dbg_client_core, error,
-    glam::{UVec2, Vec2, Vec3},
+    glam::{Quat, UVec2, Vec2, Vec3},
     parking_lot::{Mutex, RwLock},
     warn, ConnectionState, DeviceMotion, LifecycleState, Pose, HAND_LEFT_ID, HAND_RIGHT_ID,
     HEAD_ID,
@@ -233,26 +233,41 @@ impl ClientCoreContext {
 
     pub fn send_tracking(
         &self,
-        target_timestamp: Duration,
+        poll_timestamp: Duration,
         mut device_motions: Vec<(u64, DeviceMotion)>,
         hand_skeletons: [Option<[Pose; 26]>; 2],
         face_data: FaceData,
     ) {
         dbg_client_core!("send_tracking");
 
-        if let Some((_, motion)) = device_motions.iter_mut().find(|(id, _)| *id == *HEAD_ID) {
-            let mut head_pose_queue = self.connection_context.head_pose_queue.write();
+        let target_timestamp =
+            if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
+                poll_timestamp + stats.average_total_pipeline_latency()
+            } else {
+                poll_timestamp
+            };
 
-            head_pose_queue.push_back((target_timestamp, motion.pose));
+        for (id, motion) in &mut device_motions {
+            if *id == *HEAD_ID {
+                *motion = predict_motion(target_timestamp, poll_timestamp, *motion);
 
-            while head_pose_queue.len() > 1024 {
-                head_pose_queue.pop_front();
+                let mut head_pose_queue = self.connection_context.head_pose_queue.write();
+
+                head_pose_queue.push_back((target_timestamp, motion.pose));
+
+                while head_pose_queue.len() > 1024 {
+                    head_pose_queue.pop_front();
+                }
+
+                // This is done for backward compatibiity for the v20 protocol. Will be removed with the
+                // tracking rewrite protocol extension.
+                motion.linear_velocity = Vec3::ZERO;
+                motion.angular_velocity = Vec3::ZERO;
+            } else if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
+                let tracker_timestamp = stats.tracker_prediction_offset();
+
+                *motion = predict_motion(tracker_timestamp, poll_timestamp, *motion);
             }
-
-            // This is done for backward compatibiity for the v20 protocol. Will be removed with the
-            // tracking rewrite protocol extension.
-            motion.linear_velocity = Vec3::ZERO;
-            motion.angular_velocity = Vec3::ZERO;
         }
 
         // send_tracking() expects hand data in the multimodal protocol. In case multimodal protocol
@@ -294,26 +309,6 @@ impl ClientCoreContext {
             if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
                 stats.report_input_acquired(target_timestamp);
             }
-        }
-    }
-
-    pub fn get_head_prediction_offset(&self) -> Duration {
-        dbg_client_core!("get_head_prediction_offset");
-
-        if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
-            stats.average_total_pipeline_latency()
-        } else {
-            Duration::ZERO
-        }
-    }
-
-    pub fn get_tracker_prediction_offset(&self) -> Duration {
-        dbg_client_core!("get_tracker_prediction_offset");
-
-        if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
-            stats.tracker_prediction_offset()
-        } else {
-            Duration::ZERO
         }
     }
 
@@ -404,5 +399,27 @@ impl Drop for ClientCoreContext {
 
         #[cfg(target_os = "android")]
         platform::set_wifi_lock(false);
+    }
+}
+
+pub fn predict_motion(
+    target_timestamp: Duration,
+    current_timestamp: Duration,
+    motion: DeviceMotion,
+) -> DeviceMotion {
+    let delta_time_s = target_timestamp
+        .saturating_sub(current_timestamp)
+        .as_secs_f32();
+
+    let delta_position = motion.linear_velocity * delta_time_s;
+    let delta_orientation = Quat::from_scaled_axis(motion.angular_velocity * delta_time_s);
+
+    DeviceMotion {
+        pose: Pose {
+            orientation: delta_orientation * motion.pose.orientation,
+            position: motion.pose.position + delta_position,
+        },
+        linear_velocity: motion.linear_velocity,
+        angular_velocity: motion.angular_velocity,
     }
 }

@@ -129,11 +129,33 @@ void VideoEncoderNVENC::Transmit(
     m_NvNecoder->EncodeFrame(vPacket, &picParams);
 
     for (std::vector<uint8_t>& packet : vPacket) {
-        if (fpOut) {
-            fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
+        uint8_t* buf = packet.data();
+        int len = (int)packet.size();
+
+        // NVENC's AV1 encoding includes a bunch of IVF wrapping,
+        // so we need to strip it down to just the OBUs
+        if (m_codec == ALVR_CODEC_AV1) {
+            const uint8_t ivf_magic[4] = { 0x44, 0x4B, 0x49, 0x46 };
+            if (len >= 4 && !memcmp(buf, ivf_magic, 4)) {
+                buf += 32;
+                len -= 32;
+            }
+            if (len <= 12) {
+                continue;
+            }
+            buf += 12; // skip past the IVF packet size header thing
+            len -= 12;
         }
 
-        ParseFrameNals(m_codec, packet.data(), (int)packet.size(), targetTimestampNs, insertIDR);
+        if (len <= 0) {
+            continue;
+        }
+
+        if (fpOut) {
+            fpOut.write(reinterpret_cast<char*>(buf), len);
+        }
+
+        ParseFrameNals(m_codec, buf, len, targetTimestampNs, insertIDR);
     }
 }
 
@@ -155,8 +177,7 @@ void VideoEncoderNVENC::FillEncodeConfig(
         encoderGUID = NV_ENC_CODEC_HEVC_GUID;
         break;
     case ALVR_CODEC_AV1:
-        Warn("AV1 is not supported yet. Using HEVC instead.");
-        encoderGUID = NV_ENC_CODEC_HEVC_GUID;
+        encoderGUID = NV_ENC_CODEC_AV1_GUID;
         break;
     }
 
@@ -264,7 +285,7 @@ void VideoEncoderNVENC::FillEncodeConfig(
                 = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
             config.h264VUIParameters.colourMatrix = NV_ENC_VUI_MATRIX_COEFFS_BT709;
         }
-    }
+    } break;
     case ALVR_CODEC_HEVC: {
         auto& config = encodeConfig.encodeCodecConfig.hevcConfig;
         config.repeatSPSPPS = 1;
@@ -304,10 +325,42 @@ void VideoEncoderNVENC::FillEncodeConfig(
                 = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
             config.hevcVUIParameters.colourMatrix = NV_ENC_VUI_MATRIX_COEFFS_BT709;
         }
-    }
+    } break;
     case ALVR_CODEC_AV1: {
-        // todo
-    }
+        auto& config = encodeConfig.encodeCodecConfig.av1Config;
+        config.repeatSeqHdr = 1;
+        config.enableIntraRefresh = Settings::Instance().m_nvencEnableIntraRefresh;
+
+        if (Settings::Instance().m_nvencIntraRefreshPeriod != -1) {
+            config.intraRefreshPeriod = Settings::Instance().m_nvencIntraRefreshPeriod;
+        }
+        if (Settings::Instance().m_nvencIntraRefreshCount != -1) {
+            config.intraRefreshCnt = Settings::Instance().m_nvencIntraRefreshCount;
+        }
+
+        config.maxNumRefFramesInDPB = maxNumRefFrames;
+        config.idrPeriod = gopLength;
+
+        if (Settings::Instance().m_use10bitEncoder) {
+            config.pixelBitDepthMinus8 = 2;
+        }
+
+        if (Settings::Instance().m_fillerData) {
+            config.enableBitstreamPadding = Settings::Instance().m_rateControlMode == ALVR_CBR;
+        }
+
+        config.chromaFormatIDC = 1; // 4:2:0, 4:4:4 currently not supported
+        config.colorRange = Settings::Instance().m_useFullRangeEncoding ? 1 : 0;
+        if (Settings::Instance().m_enableHdr) {
+            config.colorPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT2020;
+            config.transferCharacteristics = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
+            config.matrixCoefficients = NV_ENC_VUI_MATRIX_COEFFS_BT2020_NCL;
+        } else {
+            config.colorPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT709;
+            config.transferCharacteristics = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
+            config.matrixCoefficients = NV_ENC_VUI_MATRIX_COEFFS_BT709;
+        }
+    } break;
     }
 
     // Disable automatic IDR insertion by NVENC. We need to manually insert IDR when packet is

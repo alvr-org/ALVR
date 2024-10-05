@@ -460,10 +460,11 @@ pub fn entry_point() {
 }
 
 #[allow(unused)]
-fn xr_runtime_now(xr_instance: &xr::Instance) -> Option<Duration> {
-    let time_nanos = xr_instance.now().ok()?.as_nanos();
-
-    (time_nanos > 0).then(|| Duration::from_nanos(time_nanos as _))
+fn xr_runtime_now(xr_instance: &xr::Instance) -> Option<xr::Time> {
+    xr_instance
+        .now()
+        .ok()
+        .filter(|&time_nanos| time_nanos.as_nanos() > 0)
 }
 
 #[cfg(target_os = "android")]

@@ -487,7 +487,7 @@ pub extern "C" fn alvr_send_view_params(view_params: *const AlvrViewParams) {
 /// * inner ptr: pose (can be null if eye gaze is absent)
 #[no_mangle]
 pub extern "C" fn alvr_send_tracking(
-    target_timestamp_ns: u64,
+    poll_timestamp_ns: u64,
     device_motions: *const AlvrDeviceMotion,
     device_motions_count: u64,
     hand_skeletons: *const *const AlvrPose,
@@ -569,7 +569,7 @@ pub extern "C" fn alvr_send_tracking(
 
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
         context.send_tracking(
-            Duration::from_nanos(target_timestamp_ns),
+            Duration::from_nanos(poll_timestamp_ns),
             device_motions,
             hand_skeletons,
             FaceData {
@@ -577,24 +577,6 @@ pub extern "C" fn alvr_send_tracking(
                 ..Default::default()
             },
         );
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn alvr_get_head_prediction_offset_ns() -> u64 {
-    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
-        context.get_head_prediction_offset().as_nanos() as u64
-    } else {
-        0
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn alvr_get_tracker_prediction_offset_ns() -> u64 {
-    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
-        context.get_tracker_prediction_offset().as_nanos() as u64
-    } else {
-        0
     }
 }
 
@@ -628,7 +610,7 @@ pub extern "C" fn alvr_set_decoder_input_callback(
 #[no_mangle]
 pub extern "C" fn alvr_report_frame_decoded(target_timestamp_ns: u64) {
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
-        context.report_frame_decoded(Duration::from_nanos(target_timestamp_ns as u64));
+        context.report_frame_decoded(Duration::from_nanos(target_timestamp_ns));
     }
 }
 
@@ -648,7 +630,7 @@ pub unsafe extern "C" fn alvr_report_compositor_start(
 ) {
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
         let view_params =
-            context.report_compositor_start(Duration::from_nanos(target_timestamp_ns as u64));
+            context.report_compositor_start(Duration::from_nanos(target_timestamp_ns));
 
         *out_view_params = AlvrViewParams {
             pose: to_capi_pose(view_params[0].pose),

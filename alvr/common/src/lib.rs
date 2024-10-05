@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 pub use anyhow;
+pub use glam;
 pub use log;
 pub use once_cell;
 pub use parking_lot;

@@ -28,8 +28,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-// When the latency goes too high, if prediction offset is not capped tracking poll will fail.
-const MAX_PREDICTION: Duration = Duration::from_millis(70);
 const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 
 #[derive(PartialEq, Clone)]
@@ -381,9 +379,11 @@ impl StreamContext {
         self.swapchains[1].release_image().unwrap();
 
         if !buffer_ptr.is_null() {
-            if let Some(now) = crate::xr_runtime_now(&self.xr_context.instance) {
-                self.core_context
-                    .report_submit(timestamp, vsync_time.saturating_sub(now));
+            if let Some(xr_now) = crate::xr_runtime_now(&self.xr_context.instance) {
+                self.core_context.report_submit(
+                    timestamp,
+                    vsync_time.saturating_sub(Duration::from_nanos(xr_now.as_nanos() as u64)),
+                );
             }
         }
 
@@ -455,22 +455,16 @@ fn stream_input_loop(
             return;
         }
 
-        let Some(now) = crate::xr_runtime_now(&xr_ctx.instance) else {
+        let Some(xr_now) = crate::xr_runtime_now(&xr_ctx.instance) else {
             error!("Cannot poll tracking: invalid time");
             return;
         };
 
-        let target_timestamp =
-            now + Duration::min(core_ctx.get_head_prediction_offset(), MAX_PREDICTION);
-
         let mut device_motions = Vec::with_capacity(3);
 
-        let Some((head_motion, local_views)) = interaction::get_head_data(
-            &xr_ctx.session,
-            &reference_space,
-            target_timestamp,
-            &mut last_ipd,
-        ) else {
+        let Some((head_motion, local_views)) =
+            interaction::get_head_data(&xr_ctx.session, &reference_space, xr_now, &mut last_ipd)
+        else {
             continue;
         };
 
@@ -480,14 +474,10 @@ fn stream_input_loop(
             core_ctx.send_view_params(views);
         }
 
-        let tracker_time = crate::to_xr_time(
-            now + Duration::min(core_ctx.get_tracker_prediction_offset(), MAX_PREDICTION),
-        );
-
         let (left_hand_motion, left_hand_skeleton) = crate::interaction::get_hand_data(
             &xr_ctx.session,
             &reference_space,
-            tracker_time,
+            xr_now,
             &interaction_ctx.hands_interaction[0],
             &mut last_controller_poses[0],
             &mut last_palm_poses[0],
@@ -495,7 +485,7 @@ fn stream_input_loop(
         let (right_hand_motion, right_hand_skeleton) = crate::interaction::get_hand_data(
             &xr_ctx.session,
             &reference_space,
-            tracker_time,
+            xr_now,
             &interaction_ctx.hands_interaction[1],
             &mut last_controller_poses[1],
             &mut last_palm_poses[1],
@@ -519,11 +509,11 @@ fn stream_input_loop(
                 &xr_ctx.session,
                 &interaction_ctx.face_sources,
                 &reference_space,
-                crate::to_xr_time(now),
+                xr_now,
             ),
             fb_face_expression: interaction::get_fb_face_expression(
                 &interaction_ctx.face_sources,
-                crate::to_xr_time(now),
+                xr_now,
             ),
             htc_eye_expression: interaction::get_htc_eye_expression(&interaction_ctx.face_sources),
             htc_lip_expression: interaction::get_htc_lip_expression(&interaction_ctx.face_sources),
@@ -532,14 +522,14 @@ fn stream_input_loop(
         if let Some((tracker, joint_count)) = &interaction_ctx.body_sources.body_tracker_fb {
             device_motions.append(&mut interaction::get_fb_body_tracking_points(
                 &reference_space,
-                crate::to_xr_time(now),
+                xr_now,
                 tracker,
                 *joint_count,
             ));
         }
 
         core_ctx.send_tracking(
-            target_timestamp,
+            Duration::from_nanos(xr_now.as_nanos() as u64),
             device_motions,
             [left_hand_skeleton, right_hand_skeleton],
             face_data,

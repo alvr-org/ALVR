@@ -1090,11 +1090,10 @@ This could happen on TCP. A IDR frame is requested in this case."#
     #[schema(suffix = " frames")]
     pub statistics_history_size: usize,
 
-    #[schema(strings(
-        help = "Reduce minimum delay between IDR keyframes from 100ms to 5ms. Use on networks with high packet loss."
-    ))]
+    #[schema(strings(display_name = "Minimum IDR interval"))]
     #[schema(flag = "steamvr-restart")]
-    pub aggressive_keyframe_resend: bool,
+    #[schema(gui(slider(min = 5, max = 1000, step = 5)), suffix = "ms")]
+    pub minimum_idr_interval_ms: u64,
 
     pub dscp: Option<DscpTos>,
 }
@@ -1689,7 +1688,7 @@ pub fn session_settings_default() -> SettingsDefault {
             client_recv_buffer_bytes: socket_buffer,
             max_queued_server_video_frames: 1024,
             avoid_video_glitching: false,
-            aggressive_keyframe_resend: false,
+            minimum_idr_interval_ms: 100,
             on_connect_script: "".into(),
             on_disconnect_script: "".into(),
             packet_size: 1400,

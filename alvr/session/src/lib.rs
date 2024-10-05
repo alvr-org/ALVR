@@ -43,7 +43,7 @@ pub struct OpenvrConfig {
     pub target_eye_resolution_height: u32,
     pub tracking_ref_only: bool,
     pub enable_vive_tracker_proxy: bool,
-    pub aggressive_keyframe_resend: bool,
+    pub minimum_idr_interval_ms: u64,
     pub adapter_index: u32,
     pub codec: u8,
     pub h264_profile: u32,

@@ -95,41 +95,36 @@ OLED HDR: OLED preset with BT.2020 HDR enabled, for use with HDR injection tools
         options: [
             ("LCD", true, "1.0", false, false, "H264"),
             ("OLED", false, "1.5", true, false, "Hevc"),
-            ("HDR OLED", false, "1.5", true, true, "Hevc")
+            ("HDR OLED", false, "1.5", true, true, "Hevc"),
         ]
         .into_iter()
-        .map(|(key, color_correction_enabled, encoding_gamma, use_10bit, enable_hdr, codec)| HigherOrderChoiceOption {
-            display_name: key.into(),
-            modifiers: [
-                bool_modifier(
-                    "session_settings.video.color_correction.enabled",
-                    color_correction_enabled,
-                ),
-                num_modifier(
-                    "session_settings.video.encoder_config.encoding_gamma",
-                    encoding_gamma,
-                ),
-                bool_modifier(
-                    "session_settings.video.encoder_config.use_10bit",
-                    use_10bit,
-                ),
-                bool_modifier(
-                    "session_settings.video.encoder_config.use_full_range",
-                    true,
-                ),
-                bool_modifier(
-                    "session_settings.video.encoder_config.enable_hdr",
-                    enable_hdr,
-                ),
-                string_modifier(
-                    "session_settings.video.preferred_codec.variant",
-                    codec
-                )
-            ]
-            .into_iter()
-            .collect(),
-            content: None,
-        })
+        .map(
+            |(key, color_correction_enabled, encoding_gamma, use_10bit, enable_hdr, codec)| {
+                HigherOrderChoiceOption {
+                    display_name: key.into(),
+                    modifiers: [
+                        bool_modifier(
+                            "session_settings.video.color_correction.enabled",
+                            color_correction_enabled,
+                        ),
+                        num_modifier(
+                            "session_settings.video.encoder_config.encoding_gamma",
+                            encoding_gamma,
+                        ),
+                        bool_modifier("session_settings.video.encoder_config.use_10bit", use_10bit),
+                        bool_modifier("session_settings.video.encoder_config.use_full_range", true),
+                        bool_modifier(
+                            "session_settings.video.encoder_config.enable_hdr",
+                            enable_hdr,
+                        ),
+                        string_modifier("session_settings.video.preferred_codec.variant", codec),
+                    ]
+                    .into_iter()
+                    .collect(),
+                    content: None,
+                }
+            },
+        )
         .collect(),
         default_option_index: 0,
         gui: ChoiceControlType::ButtonGroup,

@@ -25,6 +25,7 @@ struct TopLevelEntry {
 pub struct SettingsTab {
     selected_top_tab_id: String,
     resolution_preset: PresetControl,
+    panel_type_preset: PresetControl,
     framerate_preset: PresetControl,
     encoder_preset: PresetControl,
     game_audio_preset: Option<PresetControl>,
@@ -68,6 +69,7 @@ impl SettingsTab {
         Self {
             selected_top_tab_id: "presets".into(),
             resolution_preset: PresetControl::new(builtin_schema::resolution_schema()),
+            panel_type_preset: PresetControl::new(builtin_schema::panel_type_schema()),
             framerate_preset: PresetControl::new(builtin_schema::framerate_schema()),
             encoder_preset: PresetControl::new(builtin_schema::encoder_preset_schema()),
             game_audio_preset: None,
@@ -86,6 +88,8 @@ impl SettingsTab {
         let settings_json = json::to_value(session_settings).unwrap();
 
         self.resolution_preset
+            .update_session_settings(&settings_json);
+        self.panel_type_preset
             .update_session_settings(&settings_json);
         self.framerate_preset
             .update_session_settings(&settings_json);
@@ -167,6 +171,9 @@ impl SettingsTab {
                         .num_columns(2)
                         .show(ui, |ui| {
                             path_value_pairs.extend(self.resolution_preset.ui(ui));
+                            ui.end_row();
+
+                            path_value_pairs.extend(self.panel_type_preset.ui(ui));
                             ui.end_row();
 
                             path_value_pairs.extend(self.framerate_preset.ui(ui));

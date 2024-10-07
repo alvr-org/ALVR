@@ -109,9 +109,20 @@ pub fn build_streamer(
     if reproducible {
         common_flags.push("--locked");
     }
-    let common_flags_ref = &common_flags;
 
-    let artifacts_dir = afs::target_dir().join(profile.to_string());
+    let artifacts_dir = if cfg!(all(windows, target_arch = "aarch64")) {
+        // Fix for cross compilation
+        const TARGET: &str = "x86_64-pc-windows-msvc";
+
+        common_flags.push("--target");
+        common_flags.push(TARGET);
+
+        afs::target_dir().join(TARGET).join(profile.to_string())
+    } else {
+        afs::target_dir().join(profile.to_string())
+    };
+
+    let common_flags_ref = &common_flags;
 
     let maybe_config = if keep_config {
         fs::read_to_string(build_layout.session()).ok()
@@ -119,7 +130,7 @@ pub fn build_streamer(
         None
     };
 
-    sh.remove_path(afs::streamer_build_dir()).unwrap();
+    sh.remove_path(afs::streamer_build_dir()).ok();
     sh.create_dir(build_layout.openvr_driver_lib_dir()).unwrap();
     sh.create_dir(&build_layout.executables_dir).unwrap();
 

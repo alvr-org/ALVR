@@ -264,7 +264,7 @@ impl ClientCoreContext {
                 motion.linear_velocity = Vec3::ZERO;
                 motion.angular_velocity = Vec3::ZERO;
             } else if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
-                let tracker_timestamp = stats.tracker_prediction_offset();
+                let tracker_timestamp = poll_timestamp + stats.tracker_prediction_offset();
 
                 *motion = predict_motion(tracker_timestamp, poll_timestamp, *motion);
             }

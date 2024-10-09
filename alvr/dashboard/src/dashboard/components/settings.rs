@@ -160,7 +160,7 @@ impl SettingsTab {
 
         if self.selected_top_tab_id == "presets" {
             ScrollArea::new([false, true])
-                .id_salt("presets_scroll")
+                .id_source("presets_scroll")
                 .show(ui, |ui| {
                     Grid::new("presets_grid")
                         .striped(true)
@@ -194,7 +194,7 @@ impl SettingsTab {
                 });
         } else {
             ScrollArea::new([false, true])
-                .id_salt(format!("{}_scroll", self.selected_top_tab_id))
+                .id_source(format!("{}_scroll", self.selected_top_tab_id))
                 .show(ui, |ui| {
                     Grid::new(format!("{}_grid", self.selected_top_tab_id))
                         .striped(true)

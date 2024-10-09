@@ -128,7 +128,6 @@ impl StreamRenderer {
                     compilation_options: PipelineCompilationOptions {
                         constants,
                         zero_initialize_workgroup_memory: false,
-                        vertex_pulling_transform: false,
                     },
                     buffers: &[],
                 },
@@ -144,7 +143,6 @@ impl StreamRenderer {
                     compilation_options: PipelineCompilationOptions {
                         constants,
                         zero_initialize_workgroup_memory: false,
-                        vertex_pulling_transform: false,
                     },
                     targets: &[Some(ColorTargetState {
                         format: target_format,
@@ -153,7 +151,6 @@ impl StreamRenderer {
                     })],
                 }),
                 multiview: None,
-                cache: None,
             });
 
             let sampler = device.create_sampler(&SamplerDescriptor {

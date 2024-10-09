@@ -16,7 +16,7 @@ alvr_gui_common.workspace = true
 
 bincode = "1"
 chrono = "0.4"
-eframe = "0.29"
+eframe = "0.28"
 env_logger = "0.11"
 ico = "0.3"
 rand = "0.8"
@@ -32,7 +32,7 @@ tungstenite = "0.24"
 ureq = { version = "2", features = ["json"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-wgpu = "22"
+wgpu = "0.20"
 libva = { package = "cros-libva", version = "0.0.7" }
 nvml-wrapper = "0.10.0"
 

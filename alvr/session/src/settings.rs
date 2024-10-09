@@ -224,18 +224,32 @@ CABAC produces better compression but it's significantly slower and may lead to 
     pub entropy_coding: EntropyCoding,
 
     #[schema(strings(
-        display_name = "10 bit encoding",
-        help = "Sets the encoder to use 10 bits per channel instead of 8. Does not work on Linux with Nvidia"
+        display_name = "10-bit encoding",
+        help = "Sets the encoder to use 10 bits per channel instead of 8, if the client has no preference. Does not work on Linux with Nvidia"
     ))]
     #[schema(flag = "steamvr-restart")]
     pub use_10bit: bool,
 
     #[schema(strings(
+        display_name = "Override headset's preference for 10-bit encoding",
+        help = "Override the headset client's preference for 10-bit encoding."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub server_overrides_use_10bit: bool,
+
+    #[schema(strings(
         display_name = "Full range color",
-        help = "Sets the encoder to encode full range RGB (0-255) instead of limited/video range RGB (16-235)"
+        help = "Sets the encoder to encode full range RGB (0-255) instead of limited/video range RGB (16-235), if the client has no preference"
     ))]
     #[schema(flag = "steamvr-restart")]
     pub use_full_range: bool,
+
+    #[schema(strings(
+        display_name = "Override headset's preference for full range color",
+        help = "The server will override the headset client's preference for full range color."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub server_overrides_use_full_range: bool,
 
     #[schema(strings(
         display_name = "Encoding Gamma",
@@ -245,11 +259,25 @@ CABAC produces better compression but it's significantly slower and may lead to 
     pub encoding_gamma: f32,
 
     #[schema(strings(
+        display_name = "Override headset's preference for encoding gamma",
+        help = "The server will override the headset client's preference for encoding gamma."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub server_overrides_encoding_gamma: bool,
+
+    #[schema(strings(
         display_name = "Enable HDR",
-        help = "Composite VR layers to an RGBA float16 framebuffer, and do sRGB/YUV conversions in shader code."
+        help = "If the client has no preference, enables compositing VR layers to an RGBA float16 framebuffer, and doing sRGB/YUV conversions in shader code."
     ))]
     #[schema(flag = "steamvr-restart")]
     pub enable_hdr: bool,
+
+    #[schema(strings(
+        display_name = "Override headset's preference for HDR",
+        help = "The server will override the headset client's preference for HDR."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub server_overrides_enable_hdr: bool,
 
     #[schema(strings(
         display_name = "Force HDR sRGB Correction",
@@ -519,6 +547,13 @@ pub struct VideoConfig {
 
     #[schema(flag = "steamvr-restart")]
     pub color_correction: Switch<ColorCorrectionConfig>,
+
+    #[schema(strings(
+        display_name = "Override headset's preference for Color Correction",
+        help = "The server will override the headset client's preference for Color Correction."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub server_overrides_color_correction: bool,
 
     #[schema(
         strings(
@@ -1332,9 +1367,13 @@ pub fn session_settings_default() -> SettingsDefault {
                     variant: EntropyCodingDefaultVariant::Cavlc,
                 },
                 use_10bit: false,
+                server_overrides_use_10bit: false,
                 use_full_range: true,
+                server_overrides_use_full_range: false,
                 encoding_gamma: 1.0,
+                server_overrides_encoding_gamma: false,
                 enable_hdr: false,
+                server_overrides_enable_hdr: false,
                 force_hdr_srgb_correction: false,
                 clamp_hdr_extended_range: false,
                 nvenc: NvencConfigDefault {
@@ -1452,6 +1491,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     sharpening: 0.5,
                 },
             },
+            server_overrides_color_correction: false,
         },
         audio: AudioConfigDefault {
             game_audio: SwitchDefault {

@@ -40,6 +40,11 @@ pub struct VideoStreamingCapabilities {
     pub encoder_10_bits: bool,
     pub encoder_av1: bool,
     pub multimodal_protocol: bool,
+    pub use_10bit: bool,
+    pub use_full_range: bool,
+    pub encoding_gamma: f32,
+    pub enable_hdr: bool,
+    pub enable_color_correction: bool,
 }
 
 // Nasty workaround to make the packet extensible, pushing the limits of protocol compatibility
@@ -95,6 +100,13 @@ pub fn decode_video_streaming_capabilities(
         encoder_10_bits: caps_json["encoder_10_bits"].as_bool().unwrap_or(true),
         encoder_av1: caps_json["encoder_av1"].as_bool().unwrap_or(true),
         multimodal_protocol: caps_json["multimodal_protocol"].as_bool().unwrap_or(false),
+        use_10bit: caps_json["use_10bit"].as_bool().unwrap_or(false),
+        use_full_range: caps_json["use_full_range"].as_bool().unwrap_or(true),
+        encoding_gamma: caps_json["encoding_gamma"].as_f64().unwrap_or(1.0) as f32,
+        enable_hdr: caps_json["enable_hdr"].as_bool().unwrap_or(false),
+        enable_color_correction: caps_json["enable_color_correction"]
+            .as_bool()
+            .unwrap_or(true),
     })
 }
 

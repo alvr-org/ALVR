@@ -179,6 +179,11 @@ fn connection_pipeline(
                     encoder_10_bits: capabilities.encoder_10_bits,
                     encoder_av1: capabilities.encoder_av1,
                     multimodal_protocol: true,
+                    use_10bit: capabilities.use_10bit,
+                    use_full_range: capabilities.use_full_range,
+                    encoding_gamma: capabilities.encoding_gamma,
+                    enable_hdr: capabilities.enable_hdr,
+                    enable_color_correction: capabilities.enable_color_correction,
                 })
                 .to_con()?,
             ),

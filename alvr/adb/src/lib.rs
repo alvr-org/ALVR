@@ -75,7 +75,7 @@ pub fn install_apk(adb_path: &str, apk_path: &str) -> anyhow::Result<()> {
 // Devices
 
 // https://cs.android.com/android/platform/superproject/main/+/7dbe542b9a93fb3cee6c528e16e2d02a26da7cc0:packages/modules/adb/transport.cpp;l=1398
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug)]
 pub struct Device {
     device: String,
     model: String,
@@ -159,7 +159,7 @@ fn get_platform_tools_path() -> anyhow::Result<PathBuf> {
 //////////////////
 // Port forwarding
 
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug)]
 pub struct ForwardedPort {
     serial: String,
     local: u16,

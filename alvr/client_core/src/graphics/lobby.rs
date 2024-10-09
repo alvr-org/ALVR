@@ -168,7 +168,6 @@ fn create_pipeline(
             })],
         }),
         multiview: None,
-        cache: None,
     })
 }
 

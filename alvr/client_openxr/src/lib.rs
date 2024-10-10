@@ -244,6 +244,10 @@ pub fn entry_point() {
             encoder_high_profile: platform != Platform::Unknown,
             encoder_10_bits: platform != Platform::Unknown,
             encoder_av1: matches!(platform, Platform::Quest3 | Platform::Quest3S),
+            preferred_use_10bit: false,
+            preferred_use_full_range: true,
+            preferred_encoding_gamma: 1.0,
+            preferred_enable_hdr: false,
         };
         let core_context = Arc::new(ClientCoreContext::new(capabilities));
 

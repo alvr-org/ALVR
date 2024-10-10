@@ -41,6 +41,10 @@ pub struct AlvrClientCapabilities {
     encoder_high_profile: bool,
     encoder_10_bits: bool,
     encoder_av1: bool,
+    preferred_use_10bit: bool,
+    preferred_use_full_range: bool,
+    preferred_encoding_gamma: f32,
+    preferred_enable_hdr: bool,
 }
 
 #[repr(u8)]
@@ -283,6 +287,10 @@ pub unsafe extern "C" fn alvr_initialize(capabilities: AlvrClientCapabilities) {
         encoder_high_profile: capabilities.encoder_high_profile,
         encoder_10_bits: capabilities.encoder_10_bits,
         encoder_av1: capabilities.encoder_av1,
+        preferred_use_10bit: capabilities.preferred_use_10bit,
+        preferred_use_full_range: capabilities.preferred_use_full_range,
+        preferred_encoding_gamma: capabilities.preferred_encoding_gamma,
+        preferred_enable_hdr: capabilities.preferred_enable_hdr,
     };
     *CLIENT_CORE_CONTEXT.lock() = Some(ClientCoreContext::new(capabilities));
 }

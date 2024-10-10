@@ -91,7 +91,7 @@ enum ConnectionState {
     Device,
     #[strum(serialize = "host")]
     Host,
-    // https://cs.android.com/android/platform/superproject/main/+/main:system/core/diagnose_usb/diagnose_usb.cpp;l=83-90?q=system%2Fcore%2Fdiagnose_usb%2Fdiagnose_usb.cpp%20&ss=android%2Fplatform%2Fsuperproject%2Fmain
+    // https://cs.android.com/android/platform/superproject/main/+/main:system/core/diagnose_usb/diagnose_usb.cpp;l=83-90
     NoPermissions,
     #[strum(serialize = "offline")]
     Offline,

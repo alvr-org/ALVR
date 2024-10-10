@@ -548,13 +548,6 @@ pub struct VideoConfig {
     #[schema(flag = "steamvr-restart")]
     pub color_correction: Switch<ColorCorrectionConfig>,
 
-    #[schema(strings(
-        display_name = "Override headset's preference for Color Correction",
-        help = "The server will override the headset client's preference for Color Correction."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub server_overrides_color_correction: bool,
-
     #[schema(
         strings(
             display_name = "Maximum buffering",
@@ -1482,7 +1475,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             force_software_decoder: false,
             color_correction: SwitchDefault {
-                enabled: true,
+                enabled: false,
                 content: ColorCorrectionConfigDefault {
                     brightness: 0.,
                     contrast: 0.,
@@ -1491,7 +1484,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     sharpening: 0.5,
                 },
             },
-            server_overrides_color_correction: false,
         },
         audio: AudioConfigDefault {
             game_audio: SwitchDefault {

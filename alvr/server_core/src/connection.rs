@@ -564,7 +564,7 @@ fn connection_pipeline(
     let mut enable_10_bits_encoding = if settings.video.encoder_config.server_overrides_use_10bit {
         settings.video.encoder_config.use_10bit
     } else {
-        streaming_caps.use_10bit
+        streaming_caps.preferred_use_10bit
     };
 
     if enable_10_bits_encoding && !streaming_caps.encoder_10_bits {
@@ -579,13 +579,13 @@ fn connection_pipeline(
     {
         settings.video.encoder_config.use_full_range
     } else {
-        streaming_caps.use_full_range
+        streaming_caps.preferred_use_full_range
     };
 
     let enable_hdr = if settings.video.encoder_config.server_overrides_enable_hdr {
         settings.video.encoder_config.enable_hdr
     } else {
-        streaming_caps.enable_hdr
+        streaming_caps.preferred_enable_hdr
     };
 
     let encoding_gamma = if settings
@@ -595,13 +595,7 @@ fn connection_pipeline(
     {
         settings.video.encoder_config.encoding_gamma
     } else {
-        streaming_caps.encoding_gamma
-    };
-
-    let enable_color_correction = if settings.video.server_overrides_color_correction {
-        settings.video.color_correction.enabled()
-    } else {
-        streaming_caps.enable_color_correction
+        streaming_caps.preferred_encoding_gamma
     };
 
     let codec = if settings.video.preferred_codec == CodecType::AV1 {
@@ -686,10 +680,6 @@ fn connection_pipeline(
     new_openvr_config.enable_hdr = enable_hdr;
     new_openvr_config.encoding_gamma = encoding_gamma;
     new_openvr_config.codec = codec as _;
-
-    if enable_color_correction {
-        new_openvr_config.enable_color_correction = enable_color_correction;
-    }
 
     if session_manager_lock.session().openvr_config != new_openvr_config {
         session_manager_lock.session_mut().openvr_config = new_openvr_config;

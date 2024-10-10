@@ -1,8 +1,9 @@
 // https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/user/adb.1.md
 
-use std::{io::Cursor, path::PathBuf, process::Command, time::Duration};
+use std::{io::Cursor, path::PathBuf, process::Command, str::FromStr, time::Duration};
 
 use const_format::formatcp;
+use strum_macros::EnumString;
 use zip::ZipArchive;
 
 #[cfg(not(windows))]
@@ -26,6 +27,10 @@ const PLATFORM_TOOLS_OS: &str = "windows";
 const PLATFORM_TOOLS_URL: &str = formatcp!("https://dl.google.com/android/repository/platform-tools{PLATFORM_TOOLS_VERSION}-{PLATFORM_TOOLS_OS}.zip");
 
 const REQUEST_TIMEOUT: Duration = Duration::from_millis(200);
+
+// https://cs.android.com/android/platform/superproject/main/+/7dbe542b9a93fb3cee6c528e16e2d02a26da7cc0:packages/modules/adb/transport.cpp;l=1409
+// The serial number is printed with a "%-22s" format, meaning that it's a left-aligned space-padded string of 22 characters.
+const SERIAL_NUMBER_COLUMN_LENGTH: usize = 22;
 
 ///////////////////
 // ADB Installation
@@ -63,11 +68,50 @@ pub fn install_apk(adb_path: &str, apk_path: &str) -> anyhow::Result<()> {
 // https://cs.android.com/android/platform/superproject/main/+/7dbe542b9a93fb3cee6c528e16e2d02a26da7cc0:packages/modules/adb/transport.cpp;l=1398
 #[derive(Debug)]
 pub struct Device {
-    device: String,
-    model: String,
-    path: String,
-    product: String,
-    serial: String,
+    connection_state: Option<ConnectionState>,
+    device: Option<String>,
+    model: Option<String>,
+    product: Option<String>,
+    serial: Option<String>,
+    transport_type: Option<TransportType>,
+}
+
+// https://cs.android.com/android/platform/superproject/main/+/7dbe542b9a93fb3cee6c528e16e2d02a26da7cc0:packages/modules/adb/adb.h;l=104-122
+#[derive(Debug, EnumString)]
+enum ConnectionState {
+    #[strum(serialize = "authorizing")]
+    Authorizing,
+    #[strum(serialize = "bootloader")]
+    Bootloader,
+    #[strum(serialize = "connecting")]
+    Connecting,
+    #[strum(serialize = "detached")]
+    Detached,
+    #[strum(serialize = "device")]
+    Device,
+    #[strum(serialize = "host")]
+    Host,
+    // https://cs.android.com/android/platform/superproject/main/+/main:system/core/diagnose_usb/diagnose_usb.cpp;l=83-90?q=system%2Fcore%2Fdiagnose_usb%2Fdiagnose_usb.cpp%20&ss=android%2Fplatform%2Fsuperproject%2Fmain
+    NoPermissions,
+    #[strum(serialize = "offline")]
+    Offline,
+    #[strum(serialize = "recovery")]
+    Recovery,
+    #[strum(serialize = "rescue")]
+    Rescue,
+    #[strum(serialize = "sideload")]
+    Sideload,
+    #[strum(serialize = "unauthorized")]
+    Unauthorized,
+}
+
+// https://cs.android.com/android/platform/superproject/main/+/7dbe542b9a93fb3cee6c528e16e2d02a26da7cc0:packages/modules/adb/adb.h;l=95-100
+#[derive(Debug)]
+enum TransportType {
+    Usb,
+    Local,
+    Any,
+    Host,
 }
 
 pub fn list_devices<B>(adb_path: &str) -> anyhow::Result<B>
@@ -81,25 +125,48 @@ where
 }
 
 fn parse_device(line: &str) -> Option<Device> {
-    let mut slices = line.split_whitespace();
-    let serial = slices.next();
-    let path = slices.next();
-    let product = parse_device_pair(slices.next()?);
-    let model = parse_device_pair(slices.next()?);
-    let device = parse_device_pair(slices.next()?);
-    if let (Some(serial), Some(path), Some(product), Some(model), Some(device)) =
-        (serial, path, product, model, device)
-    {
-        Some(Device {
-            serial: serial.to_owned(),
-            path: path.to_owned(),
-            product,
-            model,
-            device,
-        })
-    } else {
-        None
+    if line.len() < SERIAL_NUMBER_COLUMN_LENGTH {
+        return None;
     }
+    let (left, right) = line.split_at(SERIAL_NUMBER_COLUMN_LENGTH);
+    let serial = if left.contains("(no serial number)") {
+        None
+    } else {
+        Some(left.trim().to_owned())
+    };
+    let mut remaining = right.trim();
+
+    let connection_state = if remaining.starts_with("no permissions") {
+        // Since the current user's name can be printed in the error message,
+        // we are gambling that there's not a "]" in it.
+        if let Some((_, right)) = remaining.split_once("]") {
+            remaining = right;
+            Some(ConnectionState::NoPermissions)
+        } else {
+            None
+        }
+    } else {
+        if let Some((left, right)) = remaining.split_once(" ") {
+            remaining = right;
+            ConnectionState::from_str(left).ok()
+        } else {
+            None
+        }
+    };
+
+    let mut slices = remaining.split_whitespace();
+    let product = slices.next().and_then(parse_device_pair);
+    let model = slices.next().and_then(parse_device_pair);
+    let device = slices.next().and_then(parse_device_pair);
+    let transport_type = slices.next().and_then(parse_device_transport_type);
+    Some(Device {
+        connection_state,
+        device,
+        model,
+        product,
+        serial,
+        transport_type,
+    })
 }
 
 fn parse_device_pair(pair: &str) -> Option<String> {
@@ -107,6 +174,23 @@ fn parse_device_pair(pair: &str) -> Option<String> {
     let _key = slice.next();
     if let Some(value) = slice.next() {
         Some(value.to_string())
+    } else {
+        None
+    }
+}
+
+fn parse_device_transport_type(pair: &str) -> Option<TransportType> {
+    let mut slice = pair.split(":");
+    let _key = slice.next();
+    if let Some(value) = slice.next()?.parse::<u8>().ok() {
+        match value {
+            // TODO: Use something similar to strum?
+            0 => Some(TransportType::Usb),
+            1 => Some(TransportType::Local),
+            2 => Some(TransportType::Any),
+            3 => Some(TransportType::Host),
+            _ => None,
+        }
     } else {
         None
     }

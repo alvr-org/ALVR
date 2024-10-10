@@ -164,7 +164,6 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool, deps_path: &Path) {
     fs::rename(deps_path.join("FFmpeg-n6.0"), &final_path).unwrap();
 
     let flags = [
-        "--enable-gpl",
         "--enable-version3",
         "--enable-static",
         "--disable-programs",
@@ -176,6 +175,7 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool, deps_path: &Path) {
         "--disable-postproc",
         "--disable-network",
         "--disable-everything",
+        "--enable-libopenh264",
         "--enable-encoder=h264_vaapi",
         "--enable-encoder=hevc_vaapi",
         "--enable-encoder=av1_vaapi",

@@ -6,23 +6,23 @@
 #include "alvr_server/Logger.h"
 #include "alvr_server/Settings.h"
 
+#include <cstring>
+
 namespace {
 
-void x264_log(void*, int level, const char* fmt, va_list args) {
-    char buf[256];
-    vsnprintf(buf, sizeof(buf), fmt, args);
+void h264_log(void*, int level, const char* message) {
     switch (level) {
-    case X264_LOG_ERROR:
-        Error("x264: %s", buf);
+    case WELS_LOG_ERROR:
+        Error("h264: %s", message);
         break;
-    case X264_LOG_WARNING:
-        Warn("x264: %s", buf);
+    case WELS_LOG_WARNING:
+        Warn("h264: %s", message);
         break;
-    case X264_LOG_INFO:
-        Info("x264: %s", buf);
+    case WELS_LOG_INFO:
+        Info("h264: %s", message);
         break;
-    case X264_LOG_DEBUG:
-        Debug("x264: %s", buf);
+    case WELS_LOG_DEBUG:
+        Debug("h264: %s", message);
         break;
     default:
         break;
@@ -33,32 +33,55 @@ void x264_log(void*, int level, const char* fmt, va_list args) {
 
 alvr::EncodePipelineSW::EncodePipelineSW(Renderer* render, uint32_t width, uint32_t height) {
     const auto& settings = Settings::Instance();
+    SEncParamExt param;
 
-    x264_param_default_preset(&param, "ultrafast", "zerolatency");
+    int rv = WelsCreateSVCEncoder (&encoder_);
+    assert (rv == 0);
+    assert (encoder_ != NULL);
 
-    param.pf_log = x264_log;
-    param.i_log_level = X264_LOG_INFO;
+    encoder_->GetDefaultParams (&param);
+    param.iUsageType = SCREEN_CONTENT_REAL_TIME;
+    param.iPicWidth = width;
+    param.iPicHeight = height;
+    param.iTargetBitrate = 30'000'000;
+    param.fMaxFrameRate = Settings::Instance().m_refreshRate;
+    param.iRCMode = RC_BITRATE_MODE;
 
-    param.b_aud = 0;
-    param.b_cabac = settings.m_entropyCoding == ALVR_CABAC;
-    param.b_sliced_threads = true;
-    param.i_threads = settings.m_swThreadCount;
-    param.i_width = width;
-    param.i_height = height;
-    param.rc.i_rc_method = X264_RC_ABR;
+    param.iComplexityMode = LOW_COMPLEXITY;
+    param.bPrefixNalAddingCtrl = 0;
+    param.iEntropyCodingModeFlag = settings.m_entropyCoding == ALVR_CABAC;
 
-    switch (settings.m_h264Profile) {
-    case ALVR_H264_PROFILE_BASELINE:
-        x264_param_apply_profile(&param, "baseline");
-        break;
-    case ALVR_H264_PROFILE_MAIN:
-        x264_param_apply_profile(&param, "main");
-        break;
-    default:
-    case ALVR_H264_PROFILE_HIGH:
-        x264_param_apply_profile(&param, "high");
-        break;
+    
+    param.iSpatialLayerNum = 1;
+    param.iMultipleThreadIdc = settings.m_swThreadCount;
+
+    for (int i = 0; i < param.iSpatialLayerNum; i++) {
+        param.sSpatialLayers[i].iVideoWidth = width >> (param.iSpatialLayerNum - 1 - i);
+        param.sSpatialLayers[i].iVideoHeight = height >> (param.iSpatialLayerNum - 1 - i);
+        param.sSpatialLayers[i].fFrameRate = Settings::Instance().m_refreshRate;
+        param.sSpatialLayers[i].iSpatialBitrate = 30'000'000;
+
+        param.sSpatialLayers[i].sSliceArgument.uiSliceMode = SM_SINGLE_SLICE;
+
+        switch (settings.m_h264Profile) {
+        case ALVR_H264_PROFILE_BASELINE:
+            param.sSpatialLayers[i].uiProfileIdc = PRO_BASELINE;
+            break;
+        case ALVR_H264_PROFILE_MAIN:
+            param.sSpatialLayers[i].uiProfileIdc = PRO_MAIN;
+            break;
+        default:
+        case ALVR_H264_PROFILE_HIGH:
+            param.sSpatialLayers[i].uiProfileIdc = PRO_HIGH;
+            break;
+        }
+
     }
+    encoder_->InitializeExt (&param);
+
+    int level = WELS_LOG_DEBUG;
+    encoder_->SetOption (ENCODER_OPTION_TRACE_CALLBACK, (void *)h264_log);
+    encoder_->SetOption (ENCODER_OPTION_TRACE_LEVEL, &level);
 
     auto params = FfiDynamicEncoderParams {};
     params.updated = true;
@@ -66,16 +89,22 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer* render, uint32_t width, uint3
     params.framerate = Settings::Instance().m_refreshRate;
     SetParams(params);
 
-    enc = x264_encoder_open(&param);
-    if (!enc) {
-        throw std::runtime_error("Failed to open encoder");
-    }
-
-    x264_picture_init(&picture);
-    picture.img.i_csp = X264_CSP_I420;
-    picture.img.i_plane = 3;
-
-    x264_picture_init(&picture_out);
+    int videoFormat = videoFormatI420;
+    encoder_->SetOption (ENCODER_OPTION_DATAFORMAT, &videoFormat);
+    
+    int frameSize = width * height * 3 / 2;
+    buf = new uint8_t[frameSize];
+    buf_out = new std::vector<uint8_t>();
+    memset (&info, 0, sizeof (SFrameBSInfo));
+    memset (&pic, 0, sizeof (SSourcePicture));
+    pic.iPicWidth = width;
+    pic.iPicHeight = height;
+    pic.iColorFormat = videoFormatI420;
+    pic.iStride[0] = pic.iPicWidth;
+    pic.iStride[1] = pic.iStride[2] = pic.iPicWidth >> 1;
+    pic.pData[0] = buf;
+    pic.pData[1] = pic.pData[0] + width * height;
+    pic.pData[2] = pic.pData[1] + (width * height >> 2);
 
     rgbtoyuv = new RgbToYuv420(
         render,
@@ -89,36 +118,59 @@ alvr::EncodePipelineSW::~EncodePipelineSW() {
     if (rgbtoyuv) {
         delete rgbtoyuv;
     }
-    if (enc) {
-        x264_encoder_close(enc);
+    if (encoder_) {
+        encoder_->Uninitialize();
+        WelsDestroySVCEncoder (encoder_);
+        delete buf;
+        delete buf_out;
     }
 }
 
 void alvr::EncodePipelineSW::PushFrame(uint64_t targetTimestampNs, bool idr) {
-    rgbtoyuv->Convert(picture.img.plane, picture.img.i_stride);
+    rgbtoyuv->Convert(pic.pData, pic.iStride);
     rgbtoyuv->Sync();
     timestamp.cpu = std::chrono::duration_cast<std::chrono::nanoseconds>(
                         std::chrono::steady_clock::now().time_since_epoch()
     )
                         .count();
 
-    picture.i_type = idr ? X264_TYPE_IDR : X264_TYPE_AUTO;
-    pts = picture.i_pts = targetTimestampNs;
+    encoder_->ForceIntraFrame(idr);
+    pts = pic.uiTimeStamp = targetTimestampNs;
     is_idr = idr;
 
-    int nnal = 0;
-    nal_size = x264_encoder_encode(enc, &nal, &nnal, &picture, &picture_out);
-    if (nal_size < 0) {
-        throw std::runtime_error("x264 encoder_encode failed");
+    //prepare input data
+    int rv = encoder_->EncodeFrame (&pic, &info);
+    if (rv != cmResultSuccess) {
+        throw std::runtime_error("openh264 EncodeFrame failed");
+    }
+
+    buf_out->clear();
+    if (info.eFrameType != videoFrameTypeSkip) 
+    {
+        //output bitstream
+        for (int iLayer=0; iLayer < info.iLayerNum; iLayer++)
+        {
+            SLayerBSInfo* pLayerBsInfo = &info.sLayerInfo[iLayer];
+
+            int iLayerSize = 0;
+            int iNalIdx = pLayerBsInfo->iNalCount - 1;
+            do {
+                iLayerSize += pLayerBsInfo->pNalLengthInByte[iNalIdx];
+                --iNalIdx;
+            } while (iNalIdx >= 0);
+
+            unsigned char *outBuf = pLayerBsInfo->pBsBuf;
+            buf_out->insert(buf_out->end(), outBuf, outBuf+iLayerSize);
+        }
     }
 }
 
 bool alvr::EncodePipelineSW::GetEncoded(FramePacket& packet) {
-    if (!nal) {
+    if (buf_out->size() == 0) {
         return false;
     }
-    packet.size = nal_size;
-    packet.data = nal[0].p_payload;
+    packet.size = buf_out->size();
+    packet.data = buf_out->data();
     packet.pts = pts;
     packet.isIDR = is_idr;
     return packet.size > 0;
@@ -129,16 +181,8 @@ void alvr::EncodePipelineSW::SetParams(FfiDynamicEncoderParams params) {
         return;
     }
     // x264 doesn't work well with adaptive bitrate/fps
-    param.i_fps_num = Settings::Instance().m_refreshRate;
-    param.i_fps_den = 1;
-    param.rc.i_bitrate
-        = params.bitrate_bps / 1'000 * 1.4; // needs higher value to hit target bitrate
-    param.rc.i_vbv_buffer_size = param.rc.i_bitrate / param.i_fps_num * 1.1;
-    param.rc.i_vbv_max_bitrate = param.rc.i_bitrate;
-    param.rc.f_vbv_buffer_init = 0.75;
-    if (enc) {
-        x264_encoder_reconfig(enc, &param);
-    }
+    encoder_->SetOption (ENCODER_OPTION_FRAME_RATE, &Settings::Instance().m_refreshRate);
+    encoder_->SetOption (ENCODER_OPTION_BITRATE, &params.bitrate_bps); // needs higher value to hit target bitrate
 }
 
 int alvr::EncodePipelineSW::GetCodec() { return ALVR_CODEC_H264; }

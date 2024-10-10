@@ -202,7 +202,7 @@ fn main() {
 
         #[cfg(not(feature = "gpl"))]
         {
-            pkg_config::Config::new().probe("x264").unwrap();
+            pkg_config::Config::new().probe("openh264").unwrap();
         }
 
         // fail build if there are undefined symbols in final library

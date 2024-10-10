@@ -1,9 +1,8 @@
 // https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/user/adb.1.md
 
-use std::{io::Cursor, path::PathBuf, process::Command};
+use std::{io::Cursor, path::PathBuf, process::Command, time::Duration};
 
 use const_format::formatcp;
-use futures_util::StreamExt;
 use zip::ZipArchive;
 
 #[cfg(not(windows))]
@@ -26,38 +25,25 @@ const PLATFORM_TOOLS_OS: &str = "windows";
 
 const PLATFORM_TOOLS_URL: &str = formatcp!("https://dl.google.com/android/repository/platform-tools{PLATFORM_TOOLS_VERSION}-{PLATFORM_TOOLS_OS}.zip");
 
+const REQUEST_TIMEOUT: Duration = Duration::from_millis(200);
+
 ///////////////////
 // ADB Installation
 
-type ProgressCallback = fn(u64, usize);
-
-/// Installs a local version of `adb` in the specified `path`, using `client` to download the "platform-tools" archive.
-pub async fn install_adb(
-    client: &reqwest::Client,
-    progress_callback: ProgressCallback,
-) -> anyhow::Result<()> {
-    let buffer = download_adb(&client, progress_callback).await?;
+pub fn install_adb() -> anyhow::Result<()> {
+    let buffer = download_adb()?;
     let mut reader = Cursor::new(buffer);
     let path = get_installation_path()?;
     ZipArchive::new(&mut reader)?.extract(path)?;
     Ok(())
 }
 
-async fn download_adb(
-    client: &reqwest::Client,
-    progress_callback: ProgressCallback,
-) -> anyhow::Result<Vec<u8>> {
-    let response = client.get(PLATFORM_TOOLS_URL).send().await?;
-    let maybe_total_size = response.content_length();
-    let mut stream = response.bytes_stream();
-    let mut buffer = Vec::new();
-    while let Some(item) = stream.next().await {
-        buffer.extend(item?);
-        if let Some(total_size) = maybe_total_size {
-            let downloaded_size = buffer.len();
-            (progress_callback)(total_size, downloaded_size)
-        }
-    }
+fn download_adb() -> anyhow::Result<Vec<u8>> {
+    let response = ureq::get(PLATFORM_TOOLS_URL)
+        .timeout(REQUEST_TIMEOUT)
+        .call()?;
+    let mut buffer = Vec::<u8>::new();
+    response.into_reader().read_to_end(&mut buffer)?;
     Ok(buffer)
 }
 

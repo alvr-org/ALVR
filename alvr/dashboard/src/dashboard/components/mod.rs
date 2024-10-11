@@ -1,4 +1,5 @@
 mod about;
+mod audio_script_check;
 mod debug;
 mod devices;
 mod logs;
@@ -12,6 +13,7 @@ mod statistics;
 mod installation;
 
 pub use about::*;
+pub use audio_script_check::*;
 pub use debug::*;
 pub use devices::*;
 pub use logs::*;

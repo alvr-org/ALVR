@@ -57,9 +57,9 @@ fn download_adb() -> anyhow::Result<Vec<u8>> {
 ///////////////////
 // APK installation
 
-pub fn install_apk(adb_path: &str, apk_path: &str) -> anyhow::Result<()> {
+pub fn install_apk(adb_path: &str, device_serial: &str, apk_path: &str) -> anyhow::Result<()> {
     Command::new(adb_path)
-        .args(["install", "-r", &apk_path])
+        .args(["-s", &device_serial, "install", "-r", &apk_path])
         .output()?;
     Ok(())
 }
@@ -116,21 +116,23 @@ fn get_platform_tools_path() -> anyhow::Result<PathBuf> {
 //////////////////
 // Port forwarding
 
-pub fn list_forwarded_ports<B>(adb_path: &str) -> anyhow::Result<B>
+pub fn list_forwarded_ports<B>(adb_path: &str, device_serial: &str) -> anyhow::Result<B>
 where
     B: FromIterator<ForwardedPort>,
 {
     let output = Command::new(adb_path)
-        .args(["forward", "--list"])
+        .args(["-s", &device_serial, "forward", "--list"])
         .output()?;
     let text = String::from_utf8_lossy(&output.stdout);
     let forwarded_ports = text.lines().filter_map(forwarded_port::parse).collect();
     Ok(forwarded_ports)
 }
 
-pub fn forward_port(adb_path: &str, port: u16) -> anyhow::Result<()> {
+pub fn forward_port(adb_path: &str, device_serial: &str, port: u16) -> anyhow::Result<()> {
     Command::new(adb_path)
         .args([
+            "-s",
+            &device_serial,
             "forward",
             &format!("tcp:{}", port),
             &format!("tcp:{}", port),

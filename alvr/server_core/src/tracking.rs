@@ -21,15 +21,15 @@ struct MotionConfig {
 }
 
 pub struct TrackingManager {
-    last_head_pose: Pose,     // client's reference space
-    recentering_origin: Pose, // client's reference space
+    last_head_pose: Pose,             // client's reference space
+    inverse_recentering_origin: Pose, // client's reference space
 }
 
 impl TrackingManager {
     pub fn new() -> TrackingManager {
         TrackingManager {
             last_head_pose: Pose::default(),
-            recentering_origin: Pose::default(),
+            inverse_recentering_origin: Pose::default(),
         }
     }
 
@@ -38,7 +38,7 @@ impl TrackingManager {
         position_recentering_mode: PositionRecenteringMode,
         rotation_recentering_mode: RotationRecenteringMode,
     ) {
-        self.recentering_origin.position = match position_recentering_mode {
+        let position = match position_recentering_mode {
             PositionRecenteringMode::Disabled => Vec3::ZERO,
             PositionRecenteringMode::LocalFloor => {
                 let mut pos = self.last_head_pose.position;
@@ -47,11 +47,12 @@ impl TrackingManager {
                 pos
             }
             PositionRecenteringMode::Local { view_height } => {
-                self.last_head_pose.position - Vec3::new(0.0, view_height, 0.0)
+                self.last_head_pose.position
+                    - self.last_head_pose.orientation * Vec3::new(0.0, view_height, 0.0)
             }
         };
 
-        self.recentering_origin.orientation = match rotation_recentering_mode {
+        let orientation = match rotation_recentering_mode {
             RotationRecenteringMode::Disabled => Quat::IDENTITY,
             RotationRecenteringMode::Yaw => {
                 let mut rot = self.last_head_pose.orientation;
@@ -64,15 +65,23 @@ impl TrackingManager {
             }
             RotationRecenteringMode::Tilted => self.last_head_pose.orientation,
         };
+
+        self.inverse_recentering_origin = Pose {
+            position,
+            orientation,
+        }
+        .inverse();
     }
 
     pub fn recenter_pose(&self, pose: Pose) -> Pose {
-        let inverse_origin_orientation = self.recentering_origin.orientation.conjugate();
+        self.inverse_recentering_origin * pose
+    }
 
-        Pose {
-            orientation: inverse_origin_orientation * pose.orientation,
-            position: inverse_origin_orientation
-                * (pose.position - self.recentering_origin.position),
+    pub fn recenter_motion(&self, motion: DeviceMotion) -> DeviceMotion {
+        DeviceMotion {
+            pose: self.recenter_pose(motion.pose),
+            linear_velocity: self.inverse_recentering_origin.orientation * motion.linear_velocity,
+            angular_velocity: self.inverse_recentering_origin.orientation * motion.angular_velocity,
         }
     }
 
@@ -142,11 +151,7 @@ impl TrackingManager {
 
             if let Some(config) = device_motion_configs.get(&device_id) {
                 // Recenter
-                motion.pose = self.recenter_pose(motion.pose);
-
-                let inverse_origin_orientation = self.recentering_origin.orientation.conjugate();
-                motion.linear_velocity = inverse_origin_orientation * motion.linear_velocity;
-                motion.angular_velocity = inverse_origin_orientation * motion.angular_velocity;
+                motion = self.recenter_motion(motion);
 
                 // Apply custom transform
                 motion.pose.orientation *= config.pose_offset.orientation;

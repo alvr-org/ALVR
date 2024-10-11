@@ -1,9 +1,15 @@
 // https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/user/adb.1.md
 
-use std::{io::Cursor, path::PathBuf, process::Command, str::FromStr, time::Duration};
+pub mod connection_state;
+pub mod device;
+pub mod forwarded_port;
+pub mod transport_type;
+
+use std::{io::Cursor, path::PathBuf, process::Command, time::Duration};
 
 use const_format::formatcp;
-use strum_macros::EnumString;
+use device::Device;
+use forwarded_port::ForwardedPort;
 use zip::ZipArchive;
 
 #[cfg(not(windows))]
@@ -27,10 +33,6 @@ const PLATFORM_TOOLS_OS: &str = "windows";
 const PLATFORM_TOOLS_URL: &str = formatcp!("https://dl.google.com/android/repository/platform-tools{PLATFORM_TOOLS_VERSION}-{PLATFORM_TOOLS_OS}.zip");
 
 const REQUEST_TIMEOUT: Duration = Duration::from_millis(200);
-
-// https://cs.android.com/android/platform/superproject/main/+/7dbe542b9a93fb3cee6c528e16e2d02a26da7cc0:packages/modules/adb/transport.cpp;l=1409
-// The serial number is printed with a "%-22s" format, meaning that it's a left-aligned space-padded string of 22 characters.
-const SERIAL_NUMBER_COLUMN_LENGTH: usize = 22;
 
 ///////////////////
 // ADB Installation
@@ -65,135 +67,14 @@ pub fn install_apk(adb_path: &str, apk_path: &str) -> anyhow::Result<()> {
 //////////
 // Devices
 
-// https://cs.android.com/android/platform/superproject/main/+/7dbe542b9a93fb3cee6c528e16e2d02a26da7cc0:packages/modules/adb/transport.cpp;l=1398
-#[derive(Debug)]
-pub struct Device {
-    connection_state: Option<ConnectionState>,
-    device: Option<String>,
-    model: Option<String>,
-    product: Option<String>,
-    serial: Option<String>,
-    transport_type: Option<TransportType>,
-}
-
-// https://cs.android.com/android/platform/superproject/main/+/7dbe542b9a93fb3cee6c528e16e2d02a26da7cc0:packages/modules/adb/adb.h;l=104-122
-#[derive(Debug, EnumString)]
-enum ConnectionState {
-    #[strum(serialize = "authorizing")]
-    Authorizing,
-    #[strum(serialize = "bootloader")]
-    Bootloader,
-    #[strum(serialize = "connecting")]
-    Connecting,
-    #[strum(serialize = "detached")]
-    Detached,
-    #[strum(serialize = "device")]
-    Device,
-    #[strum(serialize = "host")]
-    Host,
-    // https://cs.android.com/android/platform/superproject/main/+/main:system/core/diagnose_usb/diagnose_usb.cpp;l=83-90
-    NoPermissions,
-    #[strum(serialize = "offline")]
-    Offline,
-    #[strum(serialize = "recovery")]
-    Recovery,
-    #[strum(serialize = "rescue")]
-    Rescue,
-    #[strum(serialize = "sideload")]
-    Sideload,
-    #[strum(serialize = "unauthorized")]
-    Unauthorized,
-}
-
-// https://cs.android.com/android/platform/superproject/main/+/7dbe542b9a93fb3cee6c528e16e2d02a26da7cc0:packages/modules/adb/adb.h;l=95-100
-#[derive(Debug)]
-enum TransportType {
-    Usb,
-    Local,
-    Any,
-    Host,
-}
-
 pub fn list_devices<B>(adb_path: &str) -> anyhow::Result<B>
 where
     B: FromIterator<Device>,
 {
     let output = Command::new(adb_path).args(["devices", "-l"]).output()?;
     let text = String::from_utf8_lossy(&output.stdout);
-    let devices = text.lines().filter_map(parse_device).collect();
+    let devices = text.lines().filter_map(device::parse).collect();
     Ok(devices)
-}
-
-fn parse_device(line: &str) -> Option<Device> {
-    if line.len() < SERIAL_NUMBER_COLUMN_LENGTH {
-        return None;
-    }
-    let (left, right) = line.split_at(SERIAL_NUMBER_COLUMN_LENGTH);
-    let serial = if left.contains("(no serial number)") {
-        None
-    } else {
-        Some(left.trim().to_owned())
-    };
-    let mut remaining = right.trim();
-
-    let connection_state = if remaining.starts_with("no permissions") {
-        // Since the current user's name can be printed in the error message,
-        // we are gambling that there's not a "]" in it.
-        if let Some((_, right)) = remaining.split_once("]") {
-            remaining = right;
-            Some(ConnectionState::NoPermissions)
-        } else {
-            None
-        }
-    } else {
-        if let Some((left, right)) = remaining.split_once(" ") {
-            remaining = right;
-            ConnectionState::from_str(left).ok()
-        } else {
-            None
-        }
-    };
-
-    let mut slices = remaining.split_whitespace();
-    let product = slices.next().and_then(parse_device_pair);
-    let model = slices.next().and_then(parse_device_pair);
-    let device = slices.next().and_then(parse_device_pair);
-    let transport_type = slices.next().and_then(parse_device_transport_type);
-    Some(Device {
-        connection_state,
-        device,
-        model,
-        product,
-        serial,
-        transport_type,
-    })
-}
-
-fn parse_device_pair(pair: &str) -> Option<String> {
-    let mut slice = pair.split(":");
-    let _key = slice.next();
-    if let Some(value) = slice.next() {
-        Some(value.to_string())
-    } else {
-        None
-    }
-}
-
-fn parse_device_transport_type(pair: &str) -> Option<TransportType> {
-    let mut slice = pair.split(":");
-    let _key = slice.next();
-    if let Some(value) = slice.next()?.parse::<u8>().ok() {
-        match value {
-            // TODO: Use something similar to strum?
-            0 => Some(TransportType::Usb),
-            1 => Some(TransportType::Local),
-            2 => Some(TransportType::Any),
-            3 => Some(TransportType::Host),
-            _ => None,
-        }
-    } else {
-        None
-    }
 }
 
 ////////
@@ -235,13 +116,6 @@ fn get_platform_tools_path() -> anyhow::Result<PathBuf> {
 //////////////////
 // Port forwarding
 
-#[derive(Debug)]
-pub struct ForwardedPort {
-    serial: String,
-    local: u16,
-    remote: u16,
-}
-
 pub fn list_forwarded_ports<B>(adb_path: &str) -> anyhow::Result<B>
 where
     B: FromIterator<ForwardedPort>,
@@ -250,35 +124,8 @@ where
         .args(["forward", "--list"])
         .output()?;
     let text = String::from_utf8_lossy(&output.stdout);
-    let forwarded_ports = text.lines().filter_map(parse_forwarded_port).collect();
+    let forwarded_ports = text.lines().filter_map(forwarded_port::parse).collect();
     Ok(forwarded_ports)
-}
-
-fn parse_forwarded_port(line: &str) -> Option<ForwardedPort> {
-    let mut slices = line.split_whitespace();
-    let serial = slices.next();
-    let local = parse_port_with_protocol(slices.next()?);
-    let remote = parse_port_with_protocol(slices.next()?);
-    if let (Some(serial), Some(local), Some(remote)) = (serial, local, remote) {
-        Some(ForwardedPort {
-            serial: serial.to_owned(),
-            local,
-            remote,
-        })
-    } else {
-        None
-    }
-}
-
-fn parse_port_with_protocol(value: &str) -> Option<u16> {
-    let mut slices = value.split(":");
-    let _protocol = slices.next();
-    let maybe_port = slices.next();
-    if let Some(port) = maybe_port {
-        port.parse::<u16>().ok()
-    } else {
-        None
-    }
 }
 
 pub fn forward_port(adb_path: &str, port: u16) -> anyhow::Result<()> {

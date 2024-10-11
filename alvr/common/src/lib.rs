@@ -2,6 +2,7 @@ mod average;
 mod connection_result;
 mod inputs;
 mod logging;
+pub mod platform;
 mod primitives;
 mod version;
 

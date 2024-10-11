@@ -21,6 +21,7 @@ use alvr_common::{
     glam::Vec2,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
+    platform::Platform,
     settings_schema::Switch,
     warn, ConnectionState, Fov, LifecycleState, Pose, RelaxedAtomic, DEVICE_ID_TO_PATH,
 };
@@ -31,7 +32,7 @@ use alvr_packets::{
     VideoPacketHeader,
 };
 use alvr_server_io::ServerSessionManager;
-use alvr_session::{CodecType, OpenvrProperty, Settings};
+use alvr_session::{CodecType, ControllersEmulationMode, OpenvrProperty, Settings};
 use alvr_sockets::StreamSender;
 use bitrate::{BitrateManager, DynamicEncoderParams};
 use statistics::StatisticsManager;
@@ -163,12 +164,31 @@ pub fn settings() -> Settings {
     SESSION_MANAGER.read().settings().clone()
 }
 
+pub fn platform() -> Platform {
+    SESSION_MANAGER.read().session().last_connected_platform
+}
+
 pub fn registered_button_set() -> HashSet<u64> {
     let session_manager = SESSION_MANAGER.read();
     if let Switch::Enabled(input_mapping) = &session_manager.settings().headset.controllers {
-        input_mapping::registered_button_set(&input_mapping.emulation_mode)
+        let controller_type = match &input_mapping.emulation_mode {
+            ControllersEmulationMode::Automatic => platform_automatic_controller_type(),
+            _ => input_mapping.emulation_mode.clone(),
+        };
+        input_mapping::registered_button_set(&controller_type)
     } else {
         HashSet::new()
+    }
+}
+
+pub fn platform_automatic_controller_type() -> ControllersEmulationMode {
+    match platform() {
+        Platform::Quest1 => ControllersEmulationMode::RiftSTouch,
+        Platform::Quest2 => ControllersEmulationMode::Quest2Touch,
+        Platform::Quest3 => ControllersEmulationMode::Quest3Plus,
+        Platform::QuestPro => ControllersEmulationMode::QuestPro,
+        Platform::AppleHeadset => ControllersEmulationMode::Quest3Plus, // TODO: Joy-Con?
+        _ => ControllersEmulationMode::Quest3Plus,
     }
 }
 
@@ -491,8 +511,10 @@ impl Drop for ServerCoreContext {
         dbg_server_core!("Setting restart settings chache");
         {
             let mut session_manager_lock = SESSION_MANAGER.write();
-            session_manager_lock.session_mut().openvr_config =
-                connection::contruct_openvr_config(session_manager_lock.session());
+            session_manager_lock.session_mut().openvr_config = connection::contruct_openvr_config(
+                session_manager_lock.session(),
+                Platform::Unknown,
+            );
         }
 
         dbg_server_core!("Restore drivers registration backup");

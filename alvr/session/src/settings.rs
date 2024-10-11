@@ -644,8 +644,9 @@ pub struct AudioConfig {
     pub microphone: Switch<MicrophoneConfig>,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub enum HeadsetEmulationMode {
+    Automatic,
     #[schema(strings(display_name = "Rift S"))]
     RiftS,
     #[schema(strings(display_name = "Quest 2"))]
@@ -714,15 +715,20 @@ pub struct BodyTrackingConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum ControllersEmulationMode {
+    Automatic,
     #[schema(strings(display_name = "Rift S Touch"))]
     RiftSTouch,
     #[schema(strings(display_name = "Quest 2 Touch"))]
     Quest2Touch,
     #[schema(strings(display_name = "Quest 3 Touch Plus"))]
     Quest3Plus,
+    #[schema(strings(display_name = "Quest Pro"))]
+    QuestPro,
     #[schema(strings(display_name = "Valve Index"))]
     ValveIndex,
+    #[schema(strings(display_name = "Vive Wand"))]
     ViveWand,
+    #[schema(strings(display_name = "Vive Tracker"))]
     ViveTracker,
     Custom {
         serial_number: String,
@@ -1494,7 +1500,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 Custom: HeadsetEmulationModeCustomDefault {
                     serial_number: "Unknown".into(),
                 },
-                variant: HeadsetEmulationModeDefaultVariant::Quest2,
+                variant: HeadsetEmulationModeDefaultVariant::Automatic,
             },
             extra_openvr_props: default_custom_openvr_props.clone(),
             tracking_ref_only: false,
@@ -1554,7 +1560,7 @@ pub fn session_settings_default() -> SettingsDefault {
                                 content: vec![],
                             },
                         },
-                        variant: ControllersEmulationModeDefaultVariant::Quest2Touch,
+                        variant: ControllersEmulationModeDefaultVariant::Automatic,
                     },
                     extra_openvr_props: default_custom_openvr_props,
                     button_mappings: OptionalDefault {

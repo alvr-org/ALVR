@@ -41,14 +41,14 @@ use std::{
 };
 use storage::Config;
 
+pub use alvr_common::platform::Platform;
 pub use logging_backend::init_logging;
-pub use platform::Platform;
 
 #[cfg(target_os = "android")]
 pub use platform::try_get_permission;
 
 pub fn platform() -> Platform {
-    platform::platform()
+    alvr_common::platform::platform()
 }
 
 #[derive(Serialize, Deserialize)]

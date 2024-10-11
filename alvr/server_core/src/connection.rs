@@ -15,6 +15,8 @@ use alvr_common::{
     glam::{Quat, UVec2, Vec2, Vec3},
     info,
     parking_lot::{Condvar, Mutex, RwLock},
+    platform,
+    platform::Platform,
     settings_schema::Switch,
     warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, Pose,
     BUTTON_INFO, CONTROLLER_PROFILE_INFO, DEVICE_ID_TO_PATH, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
@@ -66,7 +68,7 @@ fn is_streaming(client_hostname: &str) -> bool {
         .unwrap_or(false)
 }
 
-pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
+pub fn contruct_openvr_config(session: &SessionConfig, platform: Platform) -> OpenvrConfig {
     let old_config = session.openvr_config.clone();
     let settings = session.to_settings();
 
@@ -76,14 +78,26 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
         controller_is_tracker =
             matches!(config.emulation_mode, ControllersEmulationMode::ViveTracker);
+        // These numbers don't mean anything, they're just for triggering SteamVR resets
         _controller_profile = match config.emulation_mode {
             ControllersEmulationMode::RiftSTouch => 0,
             ControllersEmulationMode::Quest2Touch => 1,
             ControllersEmulationMode::Quest3Plus => 2,
-            ControllersEmulationMode::ValveIndex => 3,
-            ControllersEmulationMode::ViveWand => 4,
-            ControllersEmulationMode::ViveTracker => 5,
-            ControllersEmulationMode::Custom { .. } => 6,
+            ControllersEmulationMode::QuestPro => 3,
+            ControllersEmulationMode::ValveIndex => 4,
+            ControllersEmulationMode::ViveWand => 5,
+            ControllersEmulationMode::ViveTracker => 6,
+            ControllersEmulationMode::Custom { .. } => 7,
+            ControllersEmulationMode::Automatic => {
+                match platform {
+                    Platform::Quest1 => 0, // Quest 1 looks like Rift S
+                    Platform::Quest2 => 1,
+                    Platform::Quest3 => 2,
+                    Platform::QuestPro => 3,
+                    Platform::AppleHeadset => 2, // TODO: Joy-Con?
+                    _ => 1,
+                }
+            }
         };
         use_separate_hand_trackers = config
             .hand_skeleton
@@ -422,6 +436,7 @@ fn connection_pipeline(
     // to thos client, no other client can connect until handshake is finished. It will then be
     // temporarily relocked while shutting down the threads.
     let mut session_manager_lock = SESSION_MANAGER.write();
+    let mut session_platform = platform::Platform::Unknown;
 
     dbg_connection!("connection_pipeline: Setting client state in session");
     session_manager_lock.update_client_list(
@@ -453,6 +468,8 @@ fn connection_pipeline(
         ..
     } = connection_result
     {
+        session_platform = platform::platform_display_to_enum(&display_name);
+
         session_manager_lock.update_client_list(
             client_hostname.clone(),
             ClientListAction::SetDisplayName(display_name),
@@ -625,6 +642,8 @@ fn connection_pipeline(
             0
         };
 
+    session_manager_lock.session_mut().last_connected_platform = session_platform;
+
     dbg_connection!("connection_pipeline: send streaming config");
     let stream_config_packet = alvr_packets::encode_stream_config(
         session_manager_lock.session(),
@@ -642,7 +661,8 @@ fn connection_pipeline(
     let (mut control_sender, mut control_receiver) =
         proto_socket.split(STREAMING_RECV_TIMEOUT).to_con()?;
 
-    let mut new_openvr_config = contruct_openvr_config(session_manager_lock.session());
+    let mut new_openvr_config =
+        contruct_openvr_config(session_manager_lock.session(), session_platform);
     new_openvr_config.eye_resolution_width = stream_view_resolution.x;
     new_openvr_config.eye_resolution_height = stream_view_resolution.y;
     new_openvr_config.target_eye_resolution_width = target_view_resolution.x;

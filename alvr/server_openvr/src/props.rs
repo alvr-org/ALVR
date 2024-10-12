@@ -8,7 +8,7 @@ use crate::{
     FfiOpenvrPropertyType_Uint64, FfiOpenvrPropertyType_Vector3, FfiOpenvrPropertyValue,
 };
 use alvr_common::{
-    info, platform::Platform, settings_schema::Switch, HAND_LEFT_ID, HAND_RIGHT_ID,
+    info, settings_schema::Switch, HAND_LEFT_ID, HAND_RIGHT_ID,
     HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
 };
 use alvr_session::{

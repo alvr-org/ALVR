@@ -8,6 +8,5 @@ license.workspace = true
 
 [dependencies]
 anyhow = "1"
-const_format = "0.2"
 ureq = "2.10"
 zip = "2"

@@ -7,7 +7,6 @@ pub mod transport_type;
 
 use std::{io::Cursor, path::PathBuf, process::Command, time::Duration};
 
-use const_format::formatcp;
 use device::Device;
 use forwarded_port::ForwardedPort;
 use zip::ZipArchive;
@@ -30,8 +29,6 @@ const PLATFORM_TOOLS_OS: &str = "darwin";
 #[cfg(windows)]
 const PLATFORM_TOOLS_OS: &str = "windows";
 
-const PLATFORM_TOOLS_URL: &str = formatcp!("https://dl.google.com/android/repository/platform-tools{PLATFORM_TOOLS_VERSION}-{PLATFORM_TOOLS_OS}.zip");
-
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 ///////////////////
@@ -46,12 +43,15 @@ pub fn install_adb() -> anyhow::Result<()> {
 }
 
 fn download_adb() -> anyhow::Result<Vec<u8>> {
-    let response = ureq::get(PLATFORM_TOOLS_URL)
-        .timeout(REQUEST_TIMEOUT)
-        .call()?;
+    let url = get_platform_tools_url();
+    let response = ureq::get(&url).timeout(REQUEST_TIMEOUT).call()?;
     let mut buffer = Vec::<u8>::new();
     response.into_reader().read_to_end(&mut buffer)?;
     Ok(buffer)
+}
+
+fn get_platform_tools_url() -> String {
+    format!("https://dl.google.com/android/repository/platform-tools{PLATFORM_TOOLS_VERSION}-{PLATFORM_TOOLS_OS}.zip")
 }
 
 ///////////////////

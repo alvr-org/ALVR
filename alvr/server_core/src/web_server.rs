@@ -257,8 +257,8 @@ async fn http_api(
             reply(StatusCode::OK)?
         }
         "/api/average-video-latency-ms" => {
-            let latency = if let Some(manager) = &*connection_context.statistics_manager.lock() {
-                manager.video_pipeline_latency_average().as_millis()
+            let latency = if let Some(manager) = &*connection_context.statistics_manager.read() {
+                manager.motion_to_photon_latency_average().as_millis()
             } else {
                 0
             };

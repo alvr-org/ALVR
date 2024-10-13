@@ -14,12 +14,38 @@ use std::{
 
 const DEG_TO_RAD: f32 = PI / 180.0;
 
+// todo: remove the need for staging indices
+pub static BODY_TRACKER_ID_MAP: Lazy<HashMap<u64, u32>> = Lazy::new(|| {
+    HashMap::from([
+        // Upper body
+        (*BODY_CHEST_ID, 0),
+        (*BODY_HIPS_ID, 1),
+        (*BODY_LEFT_ELBOW_ID, 2),
+        (*BODY_RIGHT_ELBOW_ID, 3),
+        // Legs
+        (*BODY_LEFT_KNEE_ID, 4),
+        (*BODY_LEFT_FOOT_ID, 5),
+        (*BODY_RIGHT_KNEE_ID, 6),
+        (*BODY_RIGHT_FOOT_ID, 7),
+    ])
+});
+
 fn to_ffi_quat(quat: Quat) -> FfiQuat {
     FfiQuat {
         x: quat.x,
         y: quat.y,
         z: quat.z,
         w: quat.w,
+    }
+}
+
+pub fn to_ffi_motion(device_id: u64, motion: DeviceMotion) -> FfiDeviceMotion {
+    FfiDeviceMotion {
+        deviceID: device_id,
+        orientation: to_ffi_quat(motion.pose.orientation),
+        position: motion.pose.position.to_array(),
+        linearVelocity: motion.linear_velocity.to_array(),
+        angularVelocity: motion.angular_velocity.to_array(),
     }
 }
 
@@ -56,11 +82,28 @@ fn get_hand_skeleton_offsets(config: &HeadsetConfig) -> (Pose, Pose) {
     (left_offset, right_offset)
 }
 
-pub fn to_openvr_hand_skeleton(
+fn to_ffi_skeleton(skeleton: [Pose; 31]) -> FfiHandSkeleton {
+    FfiHandSkeleton {
+        jointRotations: skeleton
+            .iter()
+            .map(|j| to_ffi_quat(j.orientation))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap(),
+        jointPositions: skeleton
+            .iter()
+            .map(|j| j.position.to_array())
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap(),
+    }
+}
+
+pub fn to_openvr_ffi_hand_skeleton(
     config: &HeadsetConfig,
     device_id: u64,
     hand_skeleton: [Pose; 26],
-) -> [Pose; 31] {
+) -> FfiHandSkeleton {
     let (left_hand_skeleton_offset, right_hand_skeleton_offset) = get_hand_skeleton_offsets(config);
     let id = device_id;
 
@@ -150,7 +193,7 @@ pub fn to_openvr_hand_skeleton(
         position: gj[1].position,
     };
 
-    [
+    let skeleton = [
         // Palm. NB: this is ignored by SteamVR
         Pose {
             orientation: gj[0].orientation * pose_offset.orientation,
@@ -194,55 +237,15 @@ pub fn to_openvr_hand_skeleton(
         aux_orientation(id, root_parented_pose(gj[14])),
         aux_orientation(id, root_parented_pose(gj[19])),
         aux_orientation(id, root_parented_pose(gj[24])),
-    ]
-}
+    ];
 
-pub fn to_ffi_motion(device_id: u64, motion: DeviceMotion) -> FfiDeviceMotion {
-    FfiDeviceMotion {
-        deviceID: device_id,
-        orientation: to_ffi_quat(motion.pose.orientation),
-        position: motion.pose.position.to_array(),
-        linearVelocity: motion.linear_velocity.to_array(),
-        angularVelocity: motion.angular_velocity.to_array(),
-    }
-}
-
-pub fn to_ffi_skeleton(skeleton: [Pose; 31]) -> FfiHandSkeleton {
-    FfiHandSkeleton {
-        jointRotations: skeleton
-            .iter()
-            .map(|j| to_ffi_quat(j.orientation))
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap(),
-        jointPositions: skeleton
-            .iter()
-            .map(|j| j.position.to_array())
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap(),
-    }
+    to_ffi_skeleton(skeleton)
 }
 
 pub fn to_ffi_body_trackers(
     device_motions: &[(u64, DeviceMotion)],
     tracking: bool,
 ) -> Option<Vec<FfiBodyTracker>> {
-    static BODY_TRACKER_ID_MAP: Lazy<HashMap<u64, u32>> = Lazy::new(|| {
-        HashMap::from([
-            // Upper body
-            (*BODY_CHEST_ID, 0),
-            (*BODY_HIPS_ID, 1),
-            (*BODY_LEFT_ELBOW_ID, 2),
-            (*BODY_RIGHT_ELBOW_ID, 3),
-            // Legs
-            (*BODY_LEFT_KNEE_ID, 4),
-            (*BODY_LEFT_FOOT_ID, 5),
-            (*BODY_RIGHT_KNEE_ID, 6),
-            (*BODY_RIGHT_FOOT_ID, 7),
-        ])
-    });
-
     let mut trackers = vec![];
     for i in 0..8 {
         if let Some((id, motion)) = device_motions.iter().find(|(id, _)| {

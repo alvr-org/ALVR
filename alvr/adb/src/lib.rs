@@ -124,6 +124,18 @@ pub fn list_forwarded_ports(
     Ok(forwarded_ports)
 }
 
+pub fn forward_ports(adb_path: &str, device_serial: &str, ports: &[u16]) -> anyhow::Result<()> {
+    let forwarded_ports = list_forwarded_ports(&adb_path, &device_serial)?;
+    let ports = forwarded_ports
+        .into_iter()
+        .map(|f| f.local)
+        .filter(|p| !ports.contains(p));
+    for port in ports {
+        forward_port(&adb_path, &device_serial, port)?;
+    }
+    Ok(())
+}
+
 pub fn forward_port(adb_path: &str, device_serial: &str, port: u16) -> anyhow::Result<()> {
     Command::new(adb_path)
         .args([

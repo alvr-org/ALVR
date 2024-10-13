@@ -31,7 +31,7 @@ use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSocketBuilder, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT,
 };
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     net::IpAddr,
     process::Command,
     sync::{mpsc::RecvTimeoutError, Arc},
@@ -296,20 +296,20 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                             .is_some_and(|s| !s.starts_with("127.0.0.1"))
                     }),
                 };
-                let ports = [9943, 9944];
+                let ports = HashSet::from([9943, 9944]);
                 for device in devices {
                     let Some(device_serial) = device.serial else {
                         dbg_connection!("Skipping device without serial number");
-                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                         continue;
                     };
+                    dbg_connection!("Forwarding ports {ports:?} of device {device_serial}");
                     if let Err(e) = alvr_adb::forward_ports(&adb_path, &device_serial, &ports) {
                         error!(
                             "Failed to forward ports {ports:?} of device {device_serial}: {e:?}"
                         );
-                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                         continue;
                     }
+                    dbg_connection!("Ports {ports:?} of device {device_serial} forwarded");
                 }
             }
 

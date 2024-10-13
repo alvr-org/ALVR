@@ -5,7 +5,7 @@ pub mod device;
 pub mod forwarded_port;
 pub mod transport_type;
 
-use std::{io::Cursor, path::PathBuf, process::Command, time::Duration};
+use std::{collections::HashSet, io::Cursor, path::PathBuf, process::Command, time::Duration};
 
 use device::Device;
 use forwarded_port::ForwardedPort;
@@ -124,14 +124,18 @@ pub fn list_forwarded_ports(
     Ok(forwarded_ports)
 }
 
-pub fn forward_ports(adb_path: &str, device_serial: &str, ports: &[u16]) -> anyhow::Result<()> {
-    let forwarded_ports = list_forwarded_ports(&adb_path, &device_serial)?;
-    let ports = forwarded_ports
+pub fn forward_ports(
+    adb_path: &str,
+    device_serial: &str,
+    ports: &HashSet<u16>,
+) -> anyhow::Result<()> {
+    let forwarded_ports: HashSet<u16> = list_forwarded_ports(&adb_path, &device_serial)?
         .into_iter()
         .map(|f| f.local)
-        .filter(|p| !ports.contains(p));
-    for port in ports {
-        forward_port(&adb_path, &device_serial, port)?;
+        .collect();
+    let missing_ports = ports.difference(&forwarded_ports);
+    for port in missing_ports {
+        forward_port(&adb_path, &device_serial, *port)?;
     }
     Ok(())
 }

@@ -1,14 +1,16 @@
 #![allow(dead_code, unused_variables)]
 #![allow(clippy::missing_safety_doc)]
 
-use crate::{logging_backend, ServerCoreContext, ServerCoreEvent, SESSION_MANAGER};
+use crate::{
+    logging_backend, tracking::HandType, ServerCoreContext, ServerCoreEvent, SESSION_MANAGER,
+};
 use alvr_common::{
     log,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
-    Fov, Pose, HAND_LEFT_ID, HAND_RIGHT_ID,
+    Fov, Pose,
 };
-use alvr_packets::{ButtonEntry, ButtonValue, Haptics, Tracking};
+use alvr_packets::{ButtonEntry, ButtonValue, Haptics};
 use alvr_session::CodecType;
 use std::{
     collections::{HashMap, VecDeque},
@@ -24,7 +26,6 @@ static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> =
     Lazy::new(|| RwLock::new(None));
 static EVENTS_RECEIVER: Lazy<Mutex<Option<mpsc::Receiver<ServerCoreEvent>>>> =
     Lazy::new(|| Mutex::new(None));
-static TRACKING_QUEUE: Lazy<Mutex<VecDeque<Tracking>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
 static BUTTONS_QUEUE: Lazy<Mutex<VecDeque<Vec<ButtonEntry>>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));
 
@@ -73,24 +74,17 @@ pub struct AlvrPose {
 }
 
 #[repr(C)]
-pub struct AlvrSpaceRelation {
+pub struct AlvrDeviceMotion {
     pub pose: AlvrPose,
     pub linear_velocity: [f32; 3],
     pub angular_velocity: [f32; 3],
 }
 
-#[repr(C)]
-pub struct AlvrJoint {
-    relation: AlvrSpaceRelation,
-    radius: f32,
+#[repr(u8)]
+pub enum AlvrHandType {
+    Left = 0,
+    Right = 1,
 }
-
-// #[repr(C)]
-// pub struct AlvrJointSet {
-//     values: [AlvrJoint; 26],
-//     global_hand_relation: AlvrSpaceRelation,
-//     is_active: bool,
-// }
 
 #[repr(C)]
 pub union AlvrButtonValue {
@@ -124,7 +118,7 @@ pub enum AlvrEvent {
         fov: [AlvrFov; 2],
     },
     TrackingUpdated {
-        target_timestamp_ns: u64,
+        sample_timestamp_ns: u64,
     },
     ButtonsUpdated,
     RequestIDR,
@@ -340,11 +334,10 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
                         fov: [fov_to_capi(&config.fov[0]), fov_to_capi(&config.fov[1])],
                     }
                 }
-                ServerCoreEvent::Tracking { tracking, .. } => {
+                ServerCoreEvent::Tracking { sample_timestamp } => {
                     *out_event = AlvrEvent::TrackingUpdated {
-                        target_timestamp_ns: tracking.target_timestamp.as_nanos() as u64,
+                        sample_timestamp_ns: sample_timestamp.as_nanos() as u64,
                     };
-                    TRACKING_QUEUE.lock().push_back(*tracking);
                 }
                 ServerCoreEvent::Buttons(entries) => {
                     BUTTONS_QUEUE.lock().push_back(entries);
@@ -370,20 +363,18 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
     }
 }
 
-/// Returns false if current tracking frame has no relation for the requested device or there is no
-/// tracking frame
+/// Returns false if there is no tracking sample for the requested sample timestamp
 #[no_mangle]
-pub unsafe extern "C" fn alvr_get_device_relation(
+pub unsafe extern "C" fn alvr_get_device_motion(
     device_id: u64,
-    out_tracking: *mut AlvrSpaceRelation,
+    sample_timestamp_ns: u64,
+    out_motion: *mut AlvrDeviceMotion,
 ) -> bool {
-    if let Some(tracking) = TRACKING_QUEUE.lock().front() {
-        let maybe_motion = tracking
-            .device_motions
-            .iter()
-            .find_map(|(id, motion)| (*id == device_id).then_some(motion));
-        if let Some(motion) = maybe_motion {
-            *out_tracking = AlvrSpaceRelation {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        if let Some(motion) =
+            context.get_device_motion(device_id, Duration::from_nanos(sample_timestamp_ns))
+        {
+            *out_motion = AlvrDeviceMotion {
                 pose: pose_to_capi(&motion.pose),
                 linear_velocity: motion.linear_velocity.to_array(),
                 angular_velocity: motion.angular_velocity.to_array(),
@@ -399,30 +390,23 @@ pub unsafe extern "C" fn alvr_get_device_relation(
 }
 
 /// out_skeleton must be an array of length 26
-/// Returns false if current tracking frame has no data for the requested device or there is no
-/// tracking frame
+/// Returns false if there is no tracking sample for the requested sample timestamp
 #[no_mangle]
 pub unsafe extern "C" fn alvr_get_hand_skeleton(
-    device_id: u64,
-    out_skeleton: *mut AlvrJoint,
+    hand_type: AlvrHandType,
+    sample_timestamp_ns: u64,
+    out_skeleton: *mut AlvrPose,
 ) -> bool {
-    if let Some(tracking) = TRACKING_QUEUE.lock().front() {
-        let idx = if device_id == *HAND_LEFT_ID {
-            0
-        } else if device_id == *HAND_RIGHT_ID {
-            1
-        } else {
-            return false;
-        };
-
-        if let Some(skeleton) = &tracking.hand_skeletons[idx] {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        if let Some(skeleton) = context.get_hand_skeleton(
+            match hand_type {
+                AlvrHandType::Left => HandType::Left,
+                AlvrHandType::Right => HandType::Right,
+            },
+            Duration::from_nanos(sample_timestamp_ns),
+        ) {
             for (i, joint_pose) in skeleton.iter().enumerate() {
-                (*out_skeleton.add(i)).relation = AlvrSpaceRelation {
-                    pose: pose_to_capi(joint_pose),
-                    linear_velocity: [0.; 3],  // todo
-                    angular_velocity: [0.; 3], // todo
-                };
-                (*out_skeleton.add(i)).radius = 0.007; // todo
+                (*out_skeleton.add(i)) = pose_to_capi(joint_pose);
             }
 
             true
@@ -432,11 +416,6 @@ pub unsafe extern "C" fn alvr_get_hand_skeleton(
     } else {
         false
     }
-}
-
-#[no_mangle]
-pub extern "C" fn alvr_advance_tracking_queue() {
-    TRACKING_QUEUE.lock().pop_front();
 }
 
 /// Call with null out_entries to get the buffer length

@@ -10,7 +10,7 @@ ViveTrackerProxy::ViveTrackerProxy(Hmd& owner)
 
 vr::DriverPose_t ViveTrackerProxy::GetPose() {
     assert(m_HMDOwner != nullptr);
-    return m_HMDOwner->GetPose();
+    return m_HMDOwner->last_pose;
 }
 
 vr::EVRInitError ViveTrackerProxy::Activate(vr::TrackedDeviceIndex_t unObjectId) {

@@ -125,7 +125,10 @@ pub fn install_apk(adb_path: &str, device_serial: &str, apk_path: &str) -> Resul
 // Devices
 
 pub fn list_devices(adb_path: &str) -> Result<Vec<Device>> {
-    let output = Command::new(adb_path).args(["devices", "-l"]).output()?;
+    let output = Command::new(adb_path)
+        .args(["devices", "-l"])
+        .output()
+        .context("Failed to list ADB devices")?;
     let text = String::from_utf8_lossy(&output.stdout);
     let devices = text.lines().skip(1).filter_map(device::parse).collect();
     Ok(devices)

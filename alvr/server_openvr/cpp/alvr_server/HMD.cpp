@@ -32,7 +32,11 @@ vr::HmdRect2_t fov_to_projection(FfiFov fov) {
 }
 
 Hmd::Hmd()
-    : TrackedDevice(HEAD_ID)
+    : TrackedDevice(
+          HEAD_ID,
+          Settings::Instance().m_TrackingRefOnly ? vr::TrackedDeviceClass_TrackingReference
+                                                 : vr::TrackedDeviceClass_HMD
+      )
     , m_baseComponentsInitialized(false)
     , m_streamComponentsInitialized(false) {
     Debug("Hmd::constructor");
@@ -44,19 +48,7 @@ Hmd::Hmd()
     this->views_config.fov[0] = dummy_fov;
     this->views_config.fov[1] = dummy_fov;
 
-    m_pose = vr::DriverPose_t {};
-    m_pose.poseIsValid = true;
-    m_pose.result = vr::TrackingResult_Running_OK;
-    m_pose.deviceIsConnected = true;
-    m_pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
-
     m_poseHistory = std::make_shared<PoseHistory>();
-
-    m_deviceClass = Settings::Instance().m_TrackingRefOnly
-        ? vr::TrackedDeviceClass_TrackingReference
-        : vr::TrackedDeviceClass_HMD;
 
     if (Settings::Instance().m_enableViveTrackerProxy) {
         m_viveTrackerProxy = std::make_unique<ViveTrackerProxy>(*this);
@@ -87,13 +79,10 @@ Hmd::~Hmd() {
 #endif
 }
 
-vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
+bool Hmd::activate() {
     Debug("Hmd::Activate");
 
     auto vr_properties = vr::VRProperties();
-
-    this->object_id = unObjectId;
-    this->prop_container = vr_properties->TrackedDeviceToPropertyContainer(this->object_id);
 
     SetOpenvrProps(this->device_id);
 
@@ -133,7 +122,7 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     if (!m_baseComponentsInitialized) {
         m_baseComponentsInitialized = true;
 
-        if (IsHMD()) {
+        if (this->device_class == vr::TrackedDeviceClass_HMD) {
 #ifdef _WIN32
             m_D3DRender = std::make_shared<CD3DRender>();
 
@@ -150,13 +139,13 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
                     "graphics cards.\n",
                     Settings::Instance().m_nAdapterIndex
                 );
-                return vr::VRInitError_Driver_Failed;
+                return false;
             }
 
             int32_t nDisplayAdapterIndex;
             if (!m_D3DRender->GetAdapterInfo(&nDisplayAdapterIndex, m_adapterName)) {
                 Error("Failed to get primary adapter info!\n");
-                return vr::VRInitError_Driver_Failed;
+                return false;
             }
 
             Info("Using %ls as primary graphics adapter.\n", m_adapterName.c_str());
@@ -167,10 +156,10 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
 #endif
         }
 
-        DriverReadyIdle(IsHMD());
+        DriverReadyIdle(this->device_class == vr::TrackedDeviceClass_HMD);
     }
 
-    if (IsHMD()) {
+    if (this->device_class == vr::TrackedDeviceClass_HMD) {
         vr::VREvent_Data_t eventData;
         eventData.ipd = { 0.063 };
         vr::VRServerDriverHost()->VendorSpecificEvent(
@@ -178,17 +167,10 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
         );
     }
 
-    return vr::VRInitError_None;
+    return true;
 }
 
-void Hmd::Deactivate() {
-    Debug("Hmd::Deactivate");
-
-    this->object_id = vr::k_unTrackedDeviceIndexInvalid;
-    this->prop_container = vr::k_ulInvalidPropertyContainer;
-}
-
-void* Hmd::GetComponent(const char* component_name_and_version) {
+void* Hmd::get_component(const char* component_name_and_version) {
     Debug("Hmd::GetComponent %s", component_name_and_version);
 
     // NB: "this" pointer needs to be statically cast to point to the correct vtable
@@ -206,8 +188,6 @@ void* Hmd::GetComponent(const char* component_name_and_version) {
 
     return nullptr;
 }
-
-vr::DriverPose_t Hmd::GetPose() { return m_pose; }
 
 void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
     Debug("Hmd::OnPoseUpdated");
@@ -231,13 +211,9 @@ void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
     pose.vecPosition[1] = motion.position[1];
     pose.vecPosition[2] = motion.position[2];
 
-    m_pose = pose;
+    this->submit_pose(pose);
 
     m_poseHistory->OnPoseUpdated(targetTimestampNs, motion);
-
-    vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-        this->object_id, pose, sizeof(vr::DriverPose_t)
-    );
 
     if (m_viveTrackerProxy)
         m_viveTrackerProxy->update();
@@ -266,7 +242,7 @@ void Hmd::StartStreaming() {
     }
 
     // Spin up a separate thread to handle the overlapped encoding/transmit step.
-    if (IsHMD()) {
+    if (this->device_class == vr::TrackedDeviceClass_HMD) {
 #ifdef _WIN32
         m_encoder = std::make_shared<CEncoder>();
         try {

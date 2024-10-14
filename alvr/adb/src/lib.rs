@@ -111,14 +111,75 @@ fn get_platform_tools_url() -> String {
     format!("https://dl.google.com/android/repository/platform-tools{PLATFORM_TOOLS_VERSION}-{PLATFORM_TOOLS_OS}.zip")
 }
 
-///////////////////
-// APK installation
+///////////////
+// Applications
 
-pub fn install_apk(adb_path: &str, device_serial: &str, apk_path: &str) -> Result<()> {
+pub fn start_application(adb_path: &str, device_serial: &str, application_id: &str) -> Result<()> {
+    Command::new(adb_path)
+        .args([
+            "-s",
+            &device_serial,
+            "shell",
+            "monkey",
+            "-p",
+            &application_id,
+            "1",
+        ])
+        .output()
+        .with_context(|| format!("Failed to start {application_id}"))?;
+    Ok(())
+}
+
+///////////
+// Packages
+
+pub fn install_package(adb_path: &str, device_serial: &str, apk_path: &str) -> Result<()> {
     Command::new(adb_path)
         .args(["-s", &device_serial, "install", "-r", &apk_path])
-        .output()?;
+        .output()
+        .with_context(|| format!("Failed to install {apk_path}"))?;
     Ok(())
+}
+
+pub fn is_package_installed(
+    adb_path: &str,
+    device_serial: &str,
+    application_id: &str,
+) -> Result<bool> {
+    let found = list_installed_packages(adb_path, device_serial)
+        .with_context(|| format!("Failed to check if package {application_id} is installed"))?
+        .contains(application_id);
+    Ok(found)
+}
+
+pub fn replace_package(
+    adb_path: &str,
+    device_serial: &str,
+    application_id: &str,
+    apk_path: &str,
+) -> Result<()> {
+    if is_package_installed(adb_path, device_serial, application_id)? {
+        uninstall_package(adb_path, device_serial, application_id)?;
+    }
+    install_package(adb_path, device_serial, apk_path)
+}
+
+pub fn uninstall_package(adb_path: &str, device_serial: &str, application_id: &str) -> Result<()> {
+    Command::new(adb_path)
+        .args(["-s", &device_serial, "uninstall", &application_id])
+        .output()
+        .with_context(|| format!("Failed to uninstall {application_id}"))?;
+    Ok(())
+}
+
+pub fn list_installed_packages(adb_path: &str, device_serial: &str) -> Result<HashSet<String>> {
+    let output = Command::new(adb_path)
+        .args(["-s", &device_serial, "shell", "pm", "list", "package"])
+        .output()
+        .with_context(|| format!("Failed to list installed packages"))?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    let packages = text.lines().map(|l| l.replace("package:", "")).collect();
+    Ok(packages)
 }
 
 //////////

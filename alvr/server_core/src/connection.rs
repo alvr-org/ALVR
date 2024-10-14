@@ -264,57 +264,12 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
 
         if !available_manual_client_ips.is_empty() {
             if available_manual_client_ips.keys().any(|i| i.is_loopback()) {
-                let adb_path = match alvr_adb::get_adb_path() {
-                    Some(path) => path,
-                    None => {
-                        dbg_connection!("Couldn't find adb, installing it...");
-                        if let Err(e) = alvr_adb::install_adb(|downloaded, total| {
-                            dbg_connection!("Downloaded {downloaded:?} bytes of {total:?}");
-                        }) {
-                            error!("Failed to install adb: {e:?}");
-                            thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-                            continue;
-                        }
-                        dbg_connection!("Finished installing adb");
-                        let maybe_adb_path = alvr_adb::get_adb_path();
-                        let Some(adb_path) = maybe_adb_path else {
-                            error!("Failed to get adb path after installation");
-                            thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-                            continue;
-                        };
-                        adb_path
-                    }
-                };
-                dbg_connection!("Found adb executable: {adb_path:?}");
-                let devices = match alvr_adb::list_devices(&adb_path) {
-                    Err(e) => {
-                        error!("Failed to list adb devices: {e:?}");
-                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-                        continue;
-                    }
-                    Ok(devices) => devices.into_iter().filter(|d| {
-                        d.serial
-                            .as_ref()
-                            .is_some_and(|s| !s.starts_with("127.0.0.1"))
-                    }),
-                };
-                let ports = HashSet::from([9943, 9944]);
-                for device in devices {
-                    let Some(device_serial) = device.serial else {
-                        dbg_connection!("Skipping device without serial number");
-                        continue;
-                    };
-                    dbg_connection!("Forwarding ports {ports:?} of device {device_serial}");
-                    if let Err(e) = alvr_adb::forward_ports(&adb_path, &device_serial, &ports) {
-                        error!(
-                            "Failed to forward ports {ports:?} of device {device_serial}: {e:?}"
-                        );
-                        continue;
-                    }
-                    dbg_connection!("Ports {ports:?} of device {device_serial} forwarded");
+                if let Err(e) = alvr_adb::setup_wired_connection() {
+                    error!("{e:?}");
+                    thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                    continue;
                 }
             }
-
             if try_connect(
                 Arc::clone(&ctx),
                 Arc::clone(&lifecycle_state),

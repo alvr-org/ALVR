@@ -8,39 +8,21 @@
 #include <cstring>
 #include <string_view>
 
-vr::ETrackedDeviceClass Controller::getControllerDeviceClass() {
-    if (Settings::Instance().m_controllerIsTracker)
-        return vr::TrackedDeviceClass_GenericTracker;
-    return vr::TrackedDeviceClass_Controller;
-}
-
 Controller::Controller(uint64_t deviceID, vr::EVRSkeletalTrackingLevel skeletonLevel)
-    : TrackedDevice(deviceID)
+    : TrackedDevice(
+          deviceID,
+          Settings::Instance().m_controllerIsTracker ? vr::TrackedDeviceClass_GenericTracker
+                                                     : vr::TrackedDeviceClass_Controller
+      )
     , m_skeletonLevel(skeletonLevel) {
     Debug("Controller::constructor deviceID=%llu", deviceID);
-
-    m_pose = vr::DriverPose_t {};
-    m_pose.poseIsValid = false;
-    m_pose.deviceIsConnected = false;
-    m_pose.result = vr::TrackingResult_Uninitialized;
-
-    m_pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 }
 
-//
-// ITrackedDeviceServerDriver
-//
-
-vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
+bool Controller::activate() {
     Debug("Controller::Activate deviceID=%llu", this->device_id);
 
     auto vr_properties = vr::VRProperties();
     auto vr_driver_input = vr::VRDriverInput();
-
-    this->object_id = unObjectId;
-    this->prop_container = vr_properties->TrackedDeviceToPropertyContainer(this->object_id);
 
     SetOpenvrProps(this->device_id);
 
@@ -120,37 +102,8 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
         );
     }
 
-    return vr::VRInitError_None;
+    return true;
 }
-
-void Controller::Deactivate() {
-    Debug("Controller::Deactivate deviceID=%llu", this->device_id);
-    this->object_id = vr::k_unTrackedDeviceIndexInvalid;
-}
-
-void Controller::EnterStandby() { }
-
-void* Controller::GetComponent(const char* pchComponentNameAndVersion) {
-    Debug(
-        "Controller::GetComponent deviceID=%llu Name=%hs",
-        this->device_id,
-        pchComponentNameAndVersion
-    );
-
-    return NULL;
-}
-
-void PowerOff() { }
-
-/** debug request from a client */
-void Controller::DebugRequest(
-    const char* /*pchRequest*/, char* pchResponseBuffer, uint32_t unResponseBufferSize
-) {
-    if (unResponseBufferSize >= 1)
-        pchResponseBuffer[0] = 0;
-}
-
-vr::DriverPose_t Controller::GetPose() { return m_pose; }
 
 vr::VRInputComponentHandle_t Controller::getHapticComponent() { return m_compHaptic; }
 
@@ -190,7 +143,7 @@ void Controller::RegisterButton(uint64_t id) {
 void Controller::SetButton(uint64_t id, FfiButtonValue value) {
     Debug("Controller::SetButton deviceID=%llu buttonID=%llu", this->device_id, id);
 
-    if (!this->isEnabled()) {
+    if (!this->last_pose.poseIsValid) {
         return;
     }
 
@@ -220,7 +173,7 @@ void Controller::SetButton(uint64_t id, FfiButtonValue value) {
     }
 }
 
-bool Controller::onPoseUpdate(uint64_t targetTimestampNs, float predictionS, FfiHandData handData) {
+bool Controller::OnPoseUpdate(uint64_t targetTimestampNs, float predictionS, FfiHandData handData) {
     if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
         return false;
     }
@@ -287,14 +240,15 @@ bool Controller::onPoseUpdate(uint64_t targetTimestampNs, float predictionS, Ffi
         double linearVelocity[3] = { 0.0, 0.0, 0.0 };
         vr::HmdVector3d_t angularVelocity = { 0.0, 0.0, 0.0 };
 
-        if (m_pose.poseIsValid) {
+        if (this->last_pose.poseIsValid) {
             double dt = ((double)targetTimestampNs - (double)m_poseTargetTimestampNs) / NS_PER_S;
 
             if (dt > 0.0) {
-                linearVelocity[0] = (pose.vecPosition[0] - m_pose.vecPosition[0]) / dt;
-                linearVelocity[1] = (pose.vecPosition[1] - m_pose.vecPosition[1]) / dt;
-                linearVelocity[2] = (pose.vecPosition[2] - m_pose.vecPosition[2]) / dt;
-                angularVelocity = AngularVelocityBetweenQuats(m_pose.qRotation, pose.qRotation, dt);
+                linearVelocity[0] = (pose.vecPosition[0] - this->last_pose.vecPosition[0]) / dt;
+                linearVelocity[1] = (pose.vecPosition[1] - this->last_pose.vecPosition[1]) / dt;
+                linearVelocity[2] = (pose.vecPosition[2] - this->last_pose.vecPosition[2]) / dt;
+                angularVelocity
+                    = AngularVelocityBetweenQuats(this->last_pose.qRotation, pose.qRotation, dt);
             }
         }
 
@@ -309,12 +263,9 @@ bool Controller::onPoseUpdate(uint64_t targetTimestampNs, float predictionS, Ffi
 
     pose.poseTimeOffset = predictionS;
 
-    m_pose = pose;
-    m_poseTargetTimestampNs = targetTimestampNs;
+    this->submit_pose(pose);
 
-    vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-        this->object_id, pose, sizeof(vr::DriverPose_t)
-    );
+    m_poseTargetTimestampNs = targetTimestampNs;
 
     // Early return to skip updating the skeleton
     if (!enabled) {

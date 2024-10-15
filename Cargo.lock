@@ -194,6 +194,7 @@ dependencies = [
 name = "alvr_adb"
 version = "21.0.0-dev01"
 dependencies = [
+ "alvr_common",
  "alvr_filesystem",
  "anyhow",
  "ureq",

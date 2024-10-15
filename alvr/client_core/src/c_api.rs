@@ -41,6 +41,10 @@ pub struct AlvrClientCapabilities {
     encoder_high_profile: bool,
     encoder_10_bits: bool,
     encoder_av1: bool,
+    prefer_10bit: bool,
+    prefer_full_range: bool,
+    preferred_encoding_gamma: f32,
+    prefer_hdr: bool,
 }
 
 #[repr(u8)]
@@ -57,7 +61,9 @@ pub enum AlvrEvent {
         view_width: u32,
         view_height: u32,
         refresh_rate_hint: f32,
+        encoding_gamma: f32,
         enable_foveated_encoding: bool,
+        enable_hdr: bool,
     },
     StreamingStopped,
     Haptics {
@@ -283,6 +289,10 @@ pub unsafe extern "C" fn alvr_initialize(capabilities: AlvrClientCapabilities) {
         encoder_high_profile: capabilities.encoder_high_profile,
         encoder_10_bits: capabilities.encoder_10_bits,
         encoder_av1: capabilities.encoder_av1,
+        prefer_10bit: capabilities.prefer_10bit,
+        prefer_full_range: capabilities.prefer_full_range,
+        preferred_encoding_gamma: capabilities.preferred_encoding_gamma,
+        prefer_hdr: capabilities.prefer_hdr,
     };
     *CLIENT_CORE_CONTEXT.lock() = Some(ClientCoreContext::new(capabilities));
 }
@@ -328,9 +338,11 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                         view_width: stream_config.negotiated_config.view_resolution.x,
                         view_height: stream_config.negotiated_config.view_resolution.y,
                         refresh_rate_hint: stream_config.negotiated_config.refresh_rate_hint,
+                        encoding_gamma: stream_config.negotiated_config.encoding_gamma,
                         enable_foveated_encoding: stream_config
                             .negotiated_config
                             .enable_foveated_encoding,
+                        enable_hdr: stream_config.negotiated_config.enable_hdr,
                     }
                 }
                 ClientCoreEvent::StreamingStopped => AlvrEvent::StreamingStopped,

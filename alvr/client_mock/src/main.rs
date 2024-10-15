@@ -210,6 +210,10 @@ fn client_thread(
         encoder_high_profile: false,
         encoder_10_bits: false,
         encoder_av1: false,
+        prefer_10bit: false,
+        prefer_full_range: true,
+        preferred_encoding_gamma: 1.0,
+        prefer_hdr: false,
     };
     let client_core_context = Arc::new(ClientCoreContext::new(capabilities));
 

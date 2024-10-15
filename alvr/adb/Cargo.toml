@@ -9,6 +9,7 @@ license.workspace = true
 [dependencies]
 alvr_common.workspace = true
 alvr_filesystem.workspace = true
+alvr_server_io.workspace = true
 
 anyhow = "1"
 ureq = "2.10"

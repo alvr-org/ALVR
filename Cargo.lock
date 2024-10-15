@@ -170,6 +170,7 @@ version = "21.0.0-dev01"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
+ "alvr_server_io",
  "anyhow",
  "ureq",
  "zip",

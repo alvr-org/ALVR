@@ -7,6 +7,9 @@ pub mod transport_type;
 
 use std::{collections::HashSet, io::Cursor, path::PathBuf, process::Command, time::Duration};
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
 use anyhow::{Context, Result};
 use device::Device;
 use forwarded_port::ForwardedPort;
@@ -69,6 +72,16 @@ pub fn setup_wired_connection() -> Result<()> {
     Ok(())
 }
 
+fn get_command(adb_path: &str, args: &[&str]) -> Command {
+    let mut command = Command::new(adb_path);
+    command.args(args);
+
+    #[cfg(windows)]
+    command.creation_flags(0x08000000); // CREATE_NO_WINDOW
+
+    command
+}
+
 ///////////////////
 // ADB Installation
 
@@ -115,8 +128,9 @@ fn get_platform_tools_url() -> String {
 // Applications
 
 pub fn start_application(adb_path: &str, device_serial: &str, application_id: &str) -> Result<()> {
-    Command::new(adb_path)
-        .args([
+    get_command(
+        adb_path,
+        &[
             "-s",
             &device_serial,
             "shell",
@@ -124,9 +138,10 @@ pub fn start_application(adb_path: &str, device_serial: &str, application_id: &s
             "-p",
             &application_id,
             "1",
-        ])
-        .output()
-        .with_context(|| format!("Failed to start {application_id}"))?;
+        ],
+    )
+    .output()
+    .with_context(|| format!("Failed to start {application_id}"))?;
     Ok(())
 }
 
@@ -134,10 +149,12 @@ pub fn start_application(adb_path: &str, device_serial: &str, application_id: &s
 // Packages
 
 pub fn install_package(adb_path: &str, device_serial: &str, apk_path: &str) -> Result<()> {
-    Command::new(adb_path)
-        .args(["-s", &device_serial, "install", "-r", &apk_path])
-        .output()
-        .with_context(|| format!("Failed to install {apk_path}"))?;
+    get_command(
+        adb_path,
+        &["-s", &device_serial, "install", "-r", &apk_path],
+    )
+    .output()
+    .with_context(|| format!("Failed to install {apk_path}"))?;
     Ok(())
 }
 
@@ -165,18 +182,22 @@ pub fn replace_package(
 }
 
 pub fn uninstall_package(adb_path: &str, device_serial: &str, application_id: &str) -> Result<()> {
-    Command::new(adb_path)
-        .args(["-s", &device_serial, "uninstall", &application_id])
-        .output()
-        .with_context(|| format!("Failed to uninstall {application_id}"))?;
+    get_command(
+        adb_path,
+        &["-s", &device_serial, "uninstall", &application_id],
+    )
+    .output()
+    .with_context(|| format!("Failed to uninstall {application_id}"))?;
     Ok(())
 }
 
 pub fn list_installed_packages(adb_path: &str, device_serial: &str) -> Result<HashSet<String>> {
-    let output = Command::new(adb_path)
-        .args(["-s", &device_serial, "shell", "pm", "list", "package"])
-        .output()
-        .with_context(|| format!("Failed to list installed packages"))?;
+    let output = get_command(
+        adb_path,
+        &["-s", &device_serial, "shell", "pm", "list", "package"],
+    )
+    .output()
+    .with_context(|| format!("Failed to list installed packages"))?;
     let text = String::from_utf8_lossy(&output.stdout);
     let packages = text.lines().map(|l| l.replace("package:", "")).collect();
     Ok(packages)
@@ -186,8 +207,7 @@ pub fn list_installed_packages(adb_path: &str, device_serial: &str) -> Result<Ha
 // Devices
 
 pub fn list_devices(adb_path: &str) -> Result<Vec<Device>> {
-    let output = Command::new(adb_path)
-        .args(["devices", "-l"])
+    let output = get_command(adb_path, &["devices", "-l"])
         .output()
         .context("Failed to list ADB devices")?;
     let text = String::from_utf8_lossy(&output.stdout);
@@ -205,7 +225,7 @@ pub fn get_adb_path() -> Option<String> {
 
 fn get_os_adb_path() -> Option<String> {
     let name = get_executable_name().to_owned();
-    if Command::new(&name).output().is_ok() {
+    if get_command(&name, &[]).output().is_ok() {
         Some(name)
     } else {
         None
@@ -239,8 +259,7 @@ fn get_executable_name() -> String {
 // Port forwarding
 
 fn list_forwarded_ports(adb_path: &str, device_serial: &str) -> Result<Vec<ForwardedPort>> {
-    let output = Command::new(adb_path)
-        .args(["-s", &device_serial, "forward", "--list"])
+    let output = get_command(adb_path, &["-s", &device_serial, "forward", "--list"])
         .output()
         .with_context(|| format!("Failed to list forwarded ports of device {device_serial:?}"))?;
     let text = String::from_utf8_lossy(&output.stdout);
@@ -261,15 +280,17 @@ fn forward_ports(adb_path: &str, device_serial: &str, ports: &HashSet<u16>) -> R
 }
 
 fn forward_port(adb_path: &str, device_serial: &str, port: u16) -> Result<()> {
-    Command::new(adb_path)
-        .args([
+    get_command(
+        adb_path,
+        &[
             "-s",
             &device_serial,
             "forward",
             &format!("tcp:{}", port),
             &format!("tcp:{}", port),
-        ])
-        .output()
-        .with_context(|| format!("Failed to forward port {port:?} of device {device_serial:?}"))?;
+        ],
+    )
+    .output()
+    .with_context(|| format!("Failed to forward port {port:?} of device {device_serial:?}"))?;
     Ok(())
 }

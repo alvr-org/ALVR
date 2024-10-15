@@ -34,9 +34,10 @@ const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 pub struct ParsedStreamConfig {
     pub view_resolution: UVec2,
     pub refresh_rate_hint: f32,
+    pub encoding_gamma: f32,
+    pub enable_hdr: bool,
     pub foveated_encoding_config: Option<FoveatedEncodingConfig>,
     pub clientside_foveation_config: Option<ClientsideFoveationConfig>,
-    pub encoder_config: EncoderConfig,
     pub face_sources_config: Option<FaceTrackingSourcesConfig>,
     pub body_sources_config: Option<BodyTrackingSourcesConfig>,
     pub prefers_multimodal_input: bool,
@@ -51,6 +52,8 @@ impl ParsedStreamConfig {
         ParsedStreamConfig {
             view_resolution: config.negotiated_config.view_resolution,
             refresh_rate_hint: config.negotiated_config.refresh_rate_hint,
+            encoding_gamma: config.negotiated_config.encoding_gamma,
+            enable_hdr: config.negotiated_config.enable_hdr,
             foveated_encoding_config: config
                 .negotiated_config
                 .enable_foveated_encoding
@@ -62,7 +65,6 @@ impl ParsedStreamConfig {
                 .clientside_foveation
                 .as_option()
                 .cloned(),
-            encoder_config: config.settings.video.encoder_config.clone(),
             face_sources_config: config
                 .settings
                 .headset
@@ -153,8 +155,7 @@ impl StreamContext {
             None
         };
 
-        let format =
-            graphics::swapchain_format(&gfx_ctx, &xr_ctx.session, config.encoder_config.enable_hdr);
+        let format = graphics::swapchain_format(&gfx_ctx, &xr_ctx.session, config.enable_hdr);
 
         let swapchains = [
             graphics::create_swapchain(
@@ -192,10 +193,9 @@ impl StreamContext {
             ],
             format,
             config.foveated_encoding_config.clone(),
-            platform != Platform::Lynx
-                && !((platform.is_pico()) && config.encoder_config.enable_hdr),
-            !config.encoder_config.enable_hdr,
-            config.encoder_config.encoding_gamma,
+            platform != Platform::Lynx && !((platform.is_pico()) && config.enable_hdr),
+            !config.enable_hdr,
+            config.encoding_gamma,
         );
 
         core_ctx.send_playspace(

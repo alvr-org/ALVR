@@ -562,16 +562,49 @@ fn connection_pipeline(
         initial_settings.video.encoder_config.h264_profile
     };
 
-    let enable_10_bits_encoding = if initial_settings.video.encoder_config.use_10bit {
-        let enable = streaming_caps.encoder_10_bits;
-
-        if !enable {
-            warn!("10 bits encoding is not supported by the client.");
-        }
-
-        enable
+    let mut enable_10_bits_encoding = if initial_settings
+        .video
+        .encoder_config
+        .server_overrides_use_10bit
+    {
+        initial_settings.video.encoder_config.use_10bit
     } else {
-        false
+        streaming_caps.prefer_10bit
+    };
+
+    if enable_10_bits_encoding && !streaming_caps.encoder_10_bits {
+        warn!("10 bits encoding is not supported by the client.");
+        enable_10_bits_encoding = false
+    }
+
+    let use_full_range = if initial_settings
+        .video
+        .encoder_config
+        .server_overrides_use_full_range
+    {
+        initial_settings.video.encoder_config.use_full_range
+    } else {
+        streaming_caps.prefer_full_range
+    };
+
+    let enable_hdr = if initial_settings
+        .video
+        .encoder_config
+        .server_overrides_enable_hdr
+    {
+        initial_settings.video.encoder_config.enable_hdr
+    } else {
+        streaming_caps.prefer_hdr
+    };
+
+    let encoding_gamma = if initial_settings
+        .video
+        .encoder_config
+        .server_overrides_encoding_gamma
+    {
+        initial_settings.video.encoder_config.encoding_gamma
+    } else {
+        streaming_caps.preferred_encoding_gamma
     };
 
     let codec = if initial_settings.video.preferred_codec == CodecType::AV1 {
@@ -635,6 +668,8 @@ fn connection_pipeline(
             game_audio_sample_rate,
             enable_foveated_encoding,
             use_multimodal_protocol: streaming_caps.multimodal_protocol,
+            encoding_gamma: encoding_gamma,
+            enable_hdr: enable_hdr,
         },
     )
     .to_con()?;
@@ -652,6 +687,9 @@ fn connection_pipeline(
     new_openvr_config.enable_foveated_encoding = enable_foveated_encoding;
     new_openvr_config.h264_profile = encoder_profile as _;
     new_openvr_config.use_10bit_encoder = enable_10_bits_encoding;
+    new_openvr_config.use_full_range_encoding = use_full_range;
+    new_openvr_config.enable_hdr = enable_hdr;
+    new_openvr_config.encoding_gamma = encoding_gamma;
     new_openvr_config.codec = codec as _;
 
     if session_manager_lock.session().openvr_config != new_openvr_config {

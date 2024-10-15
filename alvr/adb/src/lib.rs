@@ -97,7 +97,11 @@ pub fn install_adb(progress_callback: ProgressCallback) -> Result<()> {
 
 fn download_adb(progress_callback: ProgressCallback) -> Result<Vec<u8>> {
     let url = get_platform_tools_url();
-    let response = ureq::get(&url).timeout(REQUEST_TIMEOUT).call()?;
+    let agent = ureq::builder()
+        .timeout_connect(REQUEST_TIMEOUT)
+        .timeout_read(REQUEST_TIMEOUT)
+        .build();
+    let response = agent.get(&url).call()?;
     let maybe_expected_size: Option<usize> = response
         .header("Content-Length")
         .map(|l| l.parse().ok())

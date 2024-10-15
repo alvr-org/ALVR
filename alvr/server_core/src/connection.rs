@@ -5,7 +5,7 @@ use crate::{
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
-    ConnectionContext, ServerCoreEvent, ViewsConfig, SESSION_MANAGER,
+    ConnectionContext, ServerCoreEvent, ViewsConfig, FILESYSTEM_LAYOUT, SESSION_MANAGER,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -264,7 +264,15 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
 
         if !available_manual_client_ips.is_empty() {
             if available_manual_client_ips.keys().any(|i| i.is_loopback()) {
-                if let Err(e) = alvr_adb::setup_wired_connection() {
+                let layout = match FILESYSTEM_LAYOUT.get() {
+                    None => {
+                        error!("Failed to get filesystem layout");
+                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                        continue;
+                    }
+                    Some(layout) => layout,
+                };
+                if let Err(e) = alvr_adb::setup_wired_connection(layout) {
                     error!("{e:?}");
                     thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                     continue;

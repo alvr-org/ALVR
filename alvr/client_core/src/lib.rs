@@ -78,6 +78,10 @@ pub struct ClientCapabilities {
     pub encoder_high_profile: bool,
     pub encoder_10_bits: bool,
     pub encoder_av1: bool,
+    pub prefer_10bit: bool,
+    pub prefer_full_range: bool,
+    pub preferred_encoding_gamma: f32,
+    pub prefer_hdr: bool,
 }
 
 pub struct ClientCoreContext {

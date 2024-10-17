@@ -119,6 +119,7 @@ pub struct NegotiatedStreamingConfig {
     // This is needed to detect when to use SteamVR hand trackers. This does NOT imply if multimodal
     // input is supported
     pub use_multimodal_protocol: bool,
+    pub wired: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -160,6 +161,7 @@ pub fn decode_stream_config(packet: &StreamConfigPacket) -> Result<StreamConfig>
             .unwrap_or_else(|_| settings.video.foveated_encoding.enabled());
     let use_multimodal_protocol =
         json::from_value(negotiated_json["use_multimodal_protocol"].clone()).unwrap_or(false);
+    let wired = json::from_value(negotiated_json["wired"].clone())?;
 
     Ok(StreamConfig {
         server_version: session_config.server_version,
@@ -170,6 +172,7 @@ pub fn decode_stream_config(packet: &StreamConfigPacket) -> Result<StreamConfig>
             game_audio_sample_rate,
             enable_foveated_encoding,
             use_multimodal_protocol,
+            wired,
         },
     })
 }
@@ -328,6 +331,7 @@ pub enum ClientListAction {
     AddIfMissing {
         trusted: bool,
         manual_ips: Vec<IpAddr>,
+        wired: bool,
     },
     SetDisplayName(String),
     Trust,
@@ -335,6 +339,7 @@ pub enum ClientListAction {
     RemoveEntry,
     UpdateCurrentIp(Option<IpAddr>),
     SetConnectionState(ConnectionState),
+    SetWiredMode(bool),
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]

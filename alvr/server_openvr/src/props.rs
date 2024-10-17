@@ -562,7 +562,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                         "{htc}/icons/tracker_status_ready_low.png".into(),
                     ));
                 }
-                ControllersEmulationMode::Custom { .. } => todo!(),
+                ControllersEmulationMode::Custom { .. } => {}
             }
 
             set_prop(SerialNumber(serial_number(device_id)));

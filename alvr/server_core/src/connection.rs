@@ -33,7 +33,7 @@ use alvr_sockets::{
 };
 use std::{
     collections::{HashMap, HashSet},
-    net::IpAddr,
+    net::{IpAddr, Ipv4Addr},
     process::Command,
     sync::{mpsc::RecvTimeoutError, Arc},
     thread,
@@ -256,6 +256,9 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                 .iter()
                 .filter(|(_, info)| info.connection_state == ConnectionState::Disconnected)
             {
+                if connection_info.wired {
+                    manual_client_ips.insert(IpAddr::V4(Ipv4Addr::LOCALHOST), hostname.clone());
+                }
                 for ip in &connection_info.manual_ips {
                     manual_client_ips.insert(*ip, hostname.clone());
                 }
@@ -326,6 +329,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                         ClientListAction::AddIfMissing {
                             trusted: false,
                             manual_ips: vec![],
+                            wired: false,
                         },
                     );
 
@@ -678,6 +682,8 @@ fn connection_pipeline(
             0
         };
 
+    let wired = Some(client_ip.is_loopback());
+
     dbg_connection!("connection_pipeline: send streaming config");
     let stream_config_packet = alvr_packets::encode_stream_config(
         session_manager_lock.session(),
@@ -689,6 +695,7 @@ fn connection_pipeline(
             use_multimodal_protocol: streaming_caps.multimodal_protocol,
             encoding_gamma: encoding_gamma,
             enable_hdr: enable_hdr,
+            wired,
         },
     )
     .to_con()?;

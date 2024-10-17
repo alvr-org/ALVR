@@ -17,7 +17,7 @@ use alvr_common::{
 use alvr_packets::{FaceData, StreamConfig, ViewParams};
 use alvr_session::{
     BodyTrackingSourcesConfig, ClientsideFoveationConfig, ClientsideFoveationMode, CodecType,
-    EncoderConfig, FaceTrackingSourcesConfig, FoveatedEncodingConfig, MediacodecDataType,
+    FaceTrackingSourcesConfig, FoveatedEncodingConfig, MediacodecDataType,
 };
 use openxr as xr;
 use std::{
@@ -354,6 +354,8 @@ impl StreamContext {
                 // Avoid passing invalid timestamp to runtime
                 let timestamp =
                     Duration::max(timestamp, vsync_time.saturating_sub(Duration::from_secs(1)));
+
+                self.last_good_view_params = view_params;
 
                 (timestamp, view_params, buffer_ptr)
             } else {

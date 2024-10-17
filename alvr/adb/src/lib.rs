@@ -32,7 +32,7 @@ const PLATFORM_TOOLS_OS: &str = "windows";
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
-pub fn setup_wired_connection(layout: &Layout) -> Result<()> {
+pub fn setup_wired_connection(layout: &Layout, control_port: u16, stream_port: u16) -> Result<()> {
     let adb_path = match get_adb_path(layout) {
         Some(adb_path) => {
             dbg_connection!("Found ADB executable at {adb_path}");
@@ -60,7 +60,7 @@ pub fn setup_wired_connection(layout: &Layout) -> Result<()> {
             .as_ref()
             .is_some_and(|s| !s.starts_with("127.0.0.1"))
     });
-    let ports = HashSet::from([9943, 9944]);
+    let ports = HashSet::from([control_port, stream_port]);
     for device in devices {
         let Some(device_serial) = device.serial else {
             dbg_connection!("Skipping device without serial number");

@@ -11,7 +11,7 @@ use alvr_common::{glam::Vec3, *};
 use alvr_packets::{ButtonEntry, ButtonValue, ViewParams};
 use alvr_session::{BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
-use std::{collections::HashMap, time::Duration};
+use std::collections::HashMap;
 use xr::SpaceLocationFlags;
 
 const IPD_CHANGE_EPS: f32 = 0.001;

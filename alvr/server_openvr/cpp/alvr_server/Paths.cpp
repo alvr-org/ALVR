@@ -6,10 +6,14 @@ uint64_t HAND_LEFT_ID;
 uint64_t HAND_RIGHT_ID;
 uint64_t HAND_TRACKER_LEFT_ID;
 uint64_t HAND_TRACKER_RIGHT_ID;
-
-std::map<uint64_t, ButtonInfo> LEFT_CONTROLLER_BUTTON_MAPPING;
-std::map<uint64_t, ButtonInfo> RIGHT_CONTROLLER_BUTTON_MAPPING;
-std::map<uint64_t, std::vector<uint64_t>> ALVR_TO_STEAMVR_PATH_IDS;
+uint64_t BODY_CHEST_ID;
+uint64_t BODY_HIPS_ID;
+uint64_t BODY_LEFT_ELBOW_ID;
+uint64_t BODY_RIGHT_ELBOW_ID;
+uint64_t BODY_LEFT_KNEE_ID;
+uint64_t BODY_LEFT_FOOT_ID;
+uint64_t BODY_RIGHT_KNEE_ID;
+uint64_t BODY_RIGHT_FOOT_ID;
 
 uint64_t LEFT_A_TOUCH_ID;
 uint64_t LEFT_B_TOUCH_ID;
@@ -30,12 +34,53 @@ uint64_t RIGHT_TRIGGER_TOUCH_ID;
 uint64_t RIGHT_TRIGGER_VALUE_ID;
 uint64_t RIGHT_SQUEEZE_VALUE_ID;
 
+std::set<uint64_t> BODY_IDS;
+std::map<uint64_t, ButtonInfo> LEFT_CONTROLLER_BUTTON_MAPPING;
+std::map<uint64_t, ButtonInfo> RIGHT_CONTROLLER_BUTTON_MAPPING;
+std::map<uint64_t, std::vector<uint64_t>> ALVR_TO_STEAMVR_PATH_IDS;
+
 void init_paths() {
     HEAD_ID = PathStringToHash("/user/head");
     HAND_LEFT_ID = PathStringToHash("/user/hand/left");
     HAND_RIGHT_ID = PathStringToHash("/user/hand/right");
     HAND_TRACKER_LEFT_ID = PathStringToHash("/user/hand_tracker/left");
     HAND_TRACKER_RIGHT_ID = PathStringToHash("/user/hand_tracker/right");
+    BODY_CHEST_ID = PathStringToHash("/user/body/chest");
+    BODY_HIPS_ID = PathStringToHash("/user/body/waist");
+    BODY_LEFT_ELBOW_ID = PathStringToHash("/user/body/left_elbow");
+    BODY_RIGHT_ELBOW_ID = PathStringToHash("/user/body/right_elbow");
+    BODY_LEFT_KNEE_ID = PathStringToHash("/user/body/left_knee");
+    BODY_LEFT_FOOT_ID = PathStringToHash("/user/body/left_foot");
+    BODY_RIGHT_KNEE_ID = PathStringToHash("/user/body/right_knee");
+    BODY_RIGHT_FOOT_ID = PathStringToHash("/user/body/right_foot");
+
+    LEFT_A_TOUCH_ID = PathStringToHash("/user/hand/left/input/a/touch");
+    LEFT_B_TOUCH_ID = PathStringToHash("/user/hand/left/input/b/touch");
+    LEFT_X_TOUCH_ID = PathStringToHash("/user/hand/left/input/x/touch");
+    LEFT_Y_TOUCH_ID = PathStringToHash("/user/hand/left/input/y/touch");
+    LEFT_TRACKPAD_TOUCH_ID = PathStringToHash("/user/hand/left/input/trackpad/touch");
+    LEFT_THUMBSTICK_TOUCH_ID = PathStringToHash("/user/hand/left/input/thumbstick/touch");
+    LEFT_THUMBREST_TOUCH_ID = PathStringToHash("/user/hand/left/input/thumbrest/touch");
+    LEFT_TRIGGER_TOUCH_ID = PathStringToHash("/user/hand/left/input/trigger/touch");
+    LEFT_TRIGGER_VALUE_ID = PathStringToHash("/user/hand/left/input/trigger/value");
+    LEFT_SQUEEZE_VALUE_ID = PathStringToHash("/user/hand/left/input/squeeze/value");
+    RIGHT_A_TOUCH_ID = PathStringToHash("/user/hand/right/input/a/touch");
+    RIGHT_B_TOUCH_ID = PathStringToHash("/user/hand/right/input/b/touch");
+    RIGHT_TRACKPAD_TOUCH_ID = PathStringToHash("/user/hand/right/input/trackpad/touch");
+    RIGHT_THUMBSTICK_TOUCH_ID = PathStringToHash("/user/hand/right/input/thumbstick/touch");
+    RIGHT_THUMBREST_TOUCH_ID = PathStringToHash("/user/hand/right/input/thumbrest/touch");
+    RIGHT_TRIGGER_TOUCH_ID = PathStringToHash("/user/hand/right/input/trigger/touch");
+    RIGHT_TRIGGER_VALUE_ID = PathStringToHash("/user/hand/right/input/trigger/value");
+    RIGHT_SQUEEZE_VALUE_ID = PathStringToHash("/user/hand/right/input/squeeze/value");
+
+    BODY_IDS.insert(BODY_CHEST_ID);
+    BODY_IDS.insert(BODY_HIPS_ID);
+    BODY_IDS.insert(BODY_LEFT_ELBOW_ID);
+    BODY_IDS.insert(BODY_RIGHT_ELBOW_ID);
+    BODY_IDS.insert(BODY_LEFT_KNEE_ID);
+    BODY_IDS.insert(BODY_LEFT_FOOT_ID);
+    BODY_IDS.insert(BODY_RIGHT_KNEE_ID);
+    BODY_IDS.insert(BODY_RIGHT_FOOT_ID);
 
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/system/click"),
                                             { { "/input/system/click" }, ButtonType::Binary } });
@@ -202,23 +247,4 @@ void init_paths() {
             ALVR_TO_STEAMVR_PATH_IDS.insert({ info.first, ids });
         }
     }
-
-    LEFT_A_TOUCH_ID = PathStringToHash("/user/hand/left/input/a/touch");
-    LEFT_B_TOUCH_ID = PathStringToHash("/user/hand/left/input/b/touch");
-    LEFT_X_TOUCH_ID = PathStringToHash("/user/hand/left/input/x/touch");
-    LEFT_Y_TOUCH_ID = PathStringToHash("/user/hand/left/input/y/touch");
-    LEFT_TRACKPAD_TOUCH_ID = PathStringToHash("/user/hand/left/input/trackpad/touch");
-    LEFT_THUMBSTICK_TOUCH_ID = PathStringToHash("/user/hand/left/input/thumbstick/touch");
-    LEFT_THUMBREST_TOUCH_ID = PathStringToHash("/user/hand/left/input/thumbrest/touch");
-    LEFT_TRIGGER_TOUCH_ID = PathStringToHash("/user/hand/left/input/trigger/touch");
-    LEFT_TRIGGER_VALUE_ID = PathStringToHash("/user/hand/left/input/trigger/value");
-    LEFT_SQUEEZE_VALUE_ID = PathStringToHash("/user/hand/left/input/squeeze/value");
-    RIGHT_A_TOUCH_ID = PathStringToHash("/user/hand/right/input/a/touch");
-    RIGHT_B_TOUCH_ID = PathStringToHash("/user/hand/right/input/b/touch");
-    RIGHT_TRACKPAD_TOUCH_ID = PathStringToHash("/user/hand/right/input/trackpad/touch");
-    RIGHT_THUMBSTICK_TOUCH_ID = PathStringToHash("/user/hand/right/input/thumbstick/touch");
-    RIGHT_THUMBREST_TOUCH_ID = PathStringToHash("/user/hand/right/input/thumbrest/touch");
-    RIGHT_TRIGGER_TOUCH_ID = PathStringToHash("/user/hand/right/input/trigger/touch");
-    RIGHT_TRIGGER_VALUE_ID = PathStringToHash("/user/hand/right/input/trigger/value");
-    RIGHT_SQUEEZE_VALUE_ID = PathStringToHash("/user/hand/right/input/squeeze/value");
 }

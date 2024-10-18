@@ -33,13 +33,6 @@ struct FfiHandData {
     bool isHandTracker;
 };
 
-struct FfiBodyTracker {
-    unsigned int trackerID;
-    FfiQuat orientation;
-    float position[3];
-    unsigned int tracking;
-};
-
 enum FfiOpenvrPropertyType {
     Bool,
     Float,
@@ -151,8 +144,8 @@ extern "C" void SetTracking(
     FfiDeviceMotion headMotion,
     FfiHandData leftHandData,
     FfiHandData rightHandData,
-    const FfiBodyTracker* bodyTrackers,
-    int bodyTrackersCount
+    const FfiDeviceMotion* bodyTrackerMotions,
+    int bodyTrackerMotionCount
 );
 extern "C" void VideoErrorReportReceive();
 extern "C" void RequestDriverResync();

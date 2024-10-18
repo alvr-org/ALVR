@@ -202,14 +202,19 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                                 && ffi_right_hand_skeleton.is_some(),
                         };
 
-                        let body_motions = tracking::BODY_TRACKER_ID_MAP
-                            .keys()
-                            .filter_map(|id| {
-                                Some((*id, context.get_device_motion(*id, sample_timestamp)?))
-                            })
-                            .collect::<Vec<_>>();
-                        let ffi_body_trackers =
-                            tracking::to_ffi_body_trackers(&body_motions, track_body);
+                        let ffi_body_trackers = if track_body {
+                            tracking::BODY_TRACKER_IDS
+                                .iter()
+                                .filter_map(|id| {
+                                    Some(tracking::to_ffi_motion(
+                                        *id,
+                                        context.get_device_motion(*id, sample_timestamp)?,
+                                    ))
+                                })
+                                .collect::<Vec<_>>()
+                        } else {
+                            vec![]
+                        };
 
                         // There are two pairs of controllers/hand tracking devices registered in
                         // OpenVR, two lefts and two rights. If enabled with use_separate_hand_trackers,
@@ -222,16 +227,8 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                                 ffi_head_motion,
                                 ffi_left_hand_data,
                                 ffi_right_hand_data,
-                                if let Some(body_trackers) = &ffi_body_trackers {
-                                    body_trackers.as_ptr()
-                                } else {
-                                    ptr::null()
-                                },
-                                if let Some(body_trackers) = &ffi_body_trackers {
-                                    body_trackers.len() as _
-                                } else {
-                                    0
-                                },
+                                ffi_body_trackers.as_ptr(),
+                                ffi_body_trackers.len() as i32,
                             )
                         };
                     }

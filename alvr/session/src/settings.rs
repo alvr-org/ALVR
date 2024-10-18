@@ -740,6 +740,16 @@ pub struct BodyTrackingConfig {
     pub tracked: bool,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[schema(collapsible)]
+pub struct VMCConfig {
+    pub host: String,
+    pub port: u16,
+    #[schema(strings(help = "Turn this off to temporarily pause sending data."))]
+    #[schema(flag = "real-time")]
+    pub publish: bool,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum ControllersEmulationMode {
     #[schema(strings(display_name = "Rift S Touch"))]
@@ -1037,6 +1047,10 @@ Tilted: the world gets tilted when long pressing the oculus button. This is usef
 
     #[schema(flag = "steamvr-restart")]
     pub body_tracking: Switch<BodyTrackingConfig>,
+
+    #[schema(flag = "steamvr-restart")]
+    #[schema(strings(display_name = "VMC"))]
+    pub vmc: Switch<VMCConfig>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -1563,6 +1577,15 @@ pub fn session_settings_default() -> SettingsDefault {
                         variant: BodyTrackingSinkConfigDefaultVariant::FakeViveTracker,
                     },
                     tracked: true,
+                },
+            },
+            vmc: SwitchDefault {
+                enabled: false,
+                content: VMCConfigDefault {
+                    gui_collapsed: true,
+                    host: "127.0.0.1".into(),
+                    port: 39540,
+                    publish: true,
                 },
             },
             controllers: SwitchDefault {

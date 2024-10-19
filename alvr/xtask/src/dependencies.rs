@@ -264,7 +264,7 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool, deps_path: &Path) {
             ];
 
             let env_vars = format!(
-                "PKG_CONFIG_PATH='{}'",
+                "PKG_CONFIG_PATH=$PKG_CONFIG_PATH:'{}'",
                 header_build_dir.join("lib/pkgconfig").display()
             );
             let flags_combined = flags.join(" ");

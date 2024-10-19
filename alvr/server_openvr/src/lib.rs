@@ -121,17 +121,21 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                         .unwrap_or(false);
 
                     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+                        let target_timestamp =
+                            sample_timestamp + context.get_motion_to_photon_latency();
                         let controllers_pose_time_offset = context.get_tracker_pose_time_offset();
+                        let controllers_timestamp =
+                            target_timestamp.saturating_sub(controllers_pose_time_offset);
 
                         let ffi_head_motion = context
-                            .get_device_motion(*HEAD_ID, sample_timestamp)
+                            .get_device_motion(*HEAD_ID, target_timestamp)
                             .map(|m| tracking::to_ffi_motion(*HEAD_ID, m))
                             .unwrap_or_else(FfiDeviceMotion::default);
                         let ffi_left_controller_motion = context
-                            .get_device_motion(*HAND_LEFT_ID, sample_timestamp)
+                            .get_device_motion(*HAND_LEFT_ID, controllers_timestamp)
                             .map(|m| tracking::to_ffi_motion(*HAND_LEFT_ID, m));
                         let ffi_right_controller_motion = context
-                            .get_device_motion(*HAND_RIGHT_ID, sample_timestamp)
+                            .get_device_motion(*HAND_RIGHT_ID, controllers_timestamp)
                             .map(|m| tracking::to_ffi_motion(*HAND_RIGHT_ID, m));
 
                         let (
@@ -222,7 +226,7 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                         // independently. Selection is done by setting deviceIsConnected.
                         unsafe {
                             SetTracking(
-                                sample_timestamp.as_nanos() as _,
+                                target_timestamp.as_nanos() as _,
                                 controllers_pose_time_offset.as_secs_f32(),
                                 ffi_head_motion,
                                 ffi_left_hand_data,

@@ -243,6 +243,35 @@ impl TrackingManager {
             })
     }
 
+    pub fn get_predicted_device_motion(
+        &self,
+        device_id: u64,
+        sample_timestamp: Duration,
+        target_timestamp: Duration,
+    ) -> Option<DeviceMotion> {
+        let motion = self.get_device_motion(device_id, sample_timestamp)?;
+
+        // There is no simple sub for Duration, this is needed to get signed difference
+        let delta_time_s = target_timestamp
+            .saturating_sub(sample_timestamp)
+            .as_secs_f32()
+            - sample_timestamp
+                .saturating_sub(target_timestamp)
+                .as_secs_f32();
+
+        let delta_position = motion.linear_velocity * delta_time_s;
+        let delta_orientation = Quat::from_scaled_axis(motion.angular_velocity * delta_time_s);
+
+        Some(DeviceMotion {
+            pose: Pose {
+                orientation: delta_orientation * motion.pose.orientation,
+                position: motion.pose.position + delta_position,
+            },
+            linear_velocity: motion.linear_velocity,
+            angular_velocity: motion.angular_velocity,
+        })
+    }
+
     pub fn report_hand_skeleton(
         &mut self,
         hand_type: HandType,

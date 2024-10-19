@@ -2,7 +2,7 @@
 
 use crate::{
     logging_backend::{LogMirrorData, LOG_CHANNEL_SENDER},
-    platform,
+    platform::local_ip,
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
     storage::Config,
@@ -12,8 +12,8 @@ use alvr_audio::AudioDevice;
 use alvr_common::{
     dbg_connection, debug, error, info,
     parking_lot::{Condvar, Mutex, RwLock},
-    wait_rwlock, warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState,
-    Pose, RelaxedAtomic, ALVR_VERSION,
+    platform, wait_rwlock, warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState,
+    LifecycleState, Pose, RelaxedAtomic, ALVR_VERSION,
 };
 use alvr_packets::{
     ClientConnectionResult, ClientControlPacket, ClientStatistics, Haptics, ServerControlPacket,
@@ -75,7 +75,7 @@ fn set_hud_message(event_queue: &Mutex<VecDeque<ClientCoreEvent>>, message: &str
         "ALVR v{}\nhostname: {}\nIP: {}\n\n{message}",
         *ALVR_VERSION,
         Config::load().hostname,
-        platform::local_ip(),
+        local_ip(),
     );
 
     event_queue

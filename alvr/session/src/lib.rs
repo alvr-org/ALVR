@@ -5,6 +5,7 @@ pub use settings_schema;
 
 use alvr_common::{
     anyhow::{bail, Result},
+    platform::Platform,
     semver::Version,
     ConnectionState, ToAny, ALVR_VERSION,
 };
@@ -140,6 +141,7 @@ pub struct SessionConfig {
     // The hashmap key is the hostname
     pub client_connections: HashMap<String, ClientConnectionConfig>,
     pub session_settings: SessionSettings,
+    pub last_connected_platform: Platform,
 }
 
 impl Default for SessionConfig {
@@ -166,6 +168,7 @@ impl Default for SessionConfig {
             },
             client_connections: HashMap::new(),
             session_settings: settings::session_settings_default(),
+            last_connected_platform: Platform::Unknown,
         }
     }
 }

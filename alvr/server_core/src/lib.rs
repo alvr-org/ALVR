@@ -21,14 +21,13 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
-    warn, ConnectionState, DeviceMotion, Fov, LifecycleState, Pose, RelaxedAtomic,
-    DEVICE_ID_TO_PATH,
+    warn, ConnectionState, DeviceMotion, LifecycleState, Pose, RelaxedAtomic, DEVICE_ID_TO_PATH,
 };
 use alvr_events::{EventType, HapticsEvent};
 use alvr_filesystem as afs;
 use alvr_packets::{
     BatteryInfo, ButtonEntry, ClientListAction, DecoderInitializationConfig, Haptics,
-    VideoPacketHeader,
+    VideoPacketHeader, ViewParams,
 };
 use alvr_server_io::ServerSessionManager;
 use alvr_session::{CodecType, OpenvrProperty, Settings};
@@ -69,13 +68,6 @@ static SESSION_MANAGER: Lazy<RwLock<ServerSessionManager>> = Lazy::new(|| {
     ))
 });
 
-// todo: use this as the network packet
-pub struct ViewsConfig {
-    // transforms relative to the head
-    pub local_view_transforms: [Pose; 2],
-    pub fov: [Fov; 2],
-}
-
 pub enum ServerCoreEvent {
     SetOpenvrProperty {
         device_id: u64,
@@ -85,7 +77,7 @@ pub enum ServerCoreEvent {
     ClientDisconnected,
     Battery(BatteryInfo),
     PlayspaceSync(Vec2),
-    ViewsConfig(ViewsConfig),
+    ViewsParams([ViewParams; 2]), // local reference frame
     Tracking {
         sample_timestamp: Duration,
     },
@@ -272,6 +264,22 @@ impl ServerCoreContext {
             .get_device_motion(device_id, sample_timestamp)
     }
 
+    pub fn get_predicted_device_motion(
+        &self,
+        device_id: u64,
+        sample_timestamp: Duration,
+        target_timestamp: Duration,
+    ) -> Option<DeviceMotion> {
+        dbg_server_core!(
+            "get_predicted_device_motion: dev={device_id} sample_ts={sample_timestamp:?} target_ts={target_timestamp:?}"
+        );
+
+        self.connection_context
+            .tracking_manager
+            .read()
+            .get_predicted_device_motion(device_id, sample_timestamp, target_timestamp)
+    }
+
     pub fn get_hand_skeleton(
         &self,
         hand_type: HandType,
@@ -289,14 +297,12 @@ impl ServerCoreContext {
     pub fn get_motion_to_photon_latency(&self) -> Duration {
         dbg_server_core!("get_total_pipeline_latency");
 
-        // self.connection_context
-        //     .statistics_manager
-        //     .read()
-        //     .as_ref()
-        //     .map(|stats| stats.motion_to_photon_latency_average())
-        //     .unwrap_or_default()
-
-        Duration::from_millis(0)
+        self.connection_context
+            .statistics_manager
+            .read()
+            .as_ref()
+            .map(|stats| stats.motion_to_photon_latency_average())
+            .unwrap_or_default()
     }
 
     pub fn get_tracker_pose_time_offset(&self) -> Duration {
@@ -363,7 +369,13 @@ impl ServerCoreContext {
         });
     }
 
-    pub fn send_video_nal(&self, target_timestamp: Duration, nal_buffer: Vec<u8>, is_idr: bool) {
+    pub fn send_video_nal(
+        &self,
+        target_timestamp: Duration,
+        mut views_params: [ViewParams; 2],
+        is_idr: bool,
+        nal_buffer: Vec<u8>,
+    ) {
         dbg_server_core!("send_video_nal");
 
         // start in the corrupts state, the client didn't receive the initial IDR yet.
@@ -417,10 +429,19 @@ impl ServerCoreContext {
                     file.write_all(&nal_buffer).ok();
                 }
 
+                {
+                    let tracking_manager_lock = self.connection_context.tracking_manager.read();
+                    views_params[0].pose =
+                        tracking_manager_lock.server_to_client_pose(views_params[0].pose);
+                    views_params[1].pose =
+                        tracking_manager_lock.server_to_client_pose(views_params[1].pose);
+                }
+
                 if matches!(
                     sender.try_send(VideoPacket {
                         header: VideoPacketHeader {
                             timestamp: target_timestamp,
+                            views_params,
                             is_idr
                         },
                         payload: nal_buffer,

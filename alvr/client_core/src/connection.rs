@@ -12,7 +12,7 @@ use alvr_common::{
     dbg_connection, debug, error, info,
     parking_lot::{Condvar, Mutex, RwLock},
     wait_rwlock, warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState,
-    Pose, RelaxedAtomic, ALVR_VERSION,
+    RelaxedAtomic, ALVR_VERSION,
 };
 use alvr_packets::{
     ClientConnectionResult, ClientControlPacket, ClientStatistics, Haptics, ServerControlPacket,
@@ -65,9 +65,7 @@ pub struct ConnectionContext {
     pub statistics_sender: Mutex<Option<StreamSender<ClientStatistics>>>,
     pub statistics_manager: Mutex<Option<StatisticsManager>>,
     pub decoder_callback: Mutex<Option<Box<DecoderCallback>>>,
-    pub head_pose_queue: RwLock<VecDeque<(Duration, Pose)>>,
-    pub last_good_head_pose: RwLock<Pose>,
-    pub view_params: RwLock<[ViewParams; 2]>,
+    pub view_params_queue: RwLock<VecDeque<(Duration, [ViewParams; 2])>>,
     pub uses_multimodal_protocol: RelaxedAtomic,
     pub velocities_multiplier: RwLock<f32>,
     pub max_prediction: RwLock<Duration>,
@@ -322,7 +320,14 @@ fn connection_pipeline(
                         .map(|callback| callback(header.timestamp, nal))
                         .unwrap_or(false);
 
-                    if !submitted {
+                    if submitted {
+                        let view_params_lock = &mut *ctx.view_params_queue.write();
+                        view_params_lock.push_back((header.timestamp, header.views_params));
+
+                        if view_params_lock.len() > 1024 {
+                            view_params_lock.pop_front();
+                        }
+                    } else {
                         stream_corrupted = true;
                         if let Some(sender) = &mut *ctx.control_sender.lock() {
                             sender.send(&ClientControlPacket::RequestIdr).ok();

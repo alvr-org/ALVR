@@ -5,12 +5,13 @@ use crate::{
     logging_backend, tracking::HandType, ServerCoreContext, ServerCoreEvent, SESSION_MANAGER,
 };
 use alvr_common::{
+    glam::Quat,
     log,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
     Fov, Pose,
 };
-use alvr_packets::{ButtonEntry, ButtonValue, Haptics};
+use alvr_packets::{ButtonEntry, ButtonValue, Haptics, ViewParams};
 use alvr_session::CodecType;
 use std::{
     collections::{HashMap, VecDeque},
@@ -73,6 +74,48 @@ pub struct AlvrPose {
     position: [f32; 3],
 }
 
+fn pose_to_capi(pose: &Pose) -> AlvrPose {
+    AlvrPose {
+        orientation: AlvrQuat {
+            x: pose.orientation.x,
+            y: pose.orientation.y,
+            z: pose.orientation.z,
+            w: pose.orientation.w,
+        },
+        position: pose.position.to_array(),
+    }
+}
+
+fn capi_to_pose(pose: &AlvrPose) -> Pose {
+    Pose {
+        orientation: Quat::from_xyzw(
+            pose.orientation.x,
+            pose.orientation.y,
+            pose.orientation.z,
+            pose.orientation.w,
+        ),
+        position: pose.position.into(),
+    }
+}
+
+fn fov_to_capi(fov: &Fov) -> AlvrFov {
+    AlvrFov {
+        left: fov.left,
+        right: fov.right,
+        up: fov.up,
+        down: fov.down,
+    }
+}
+
+fn capi_to_fov(fov: &AlvrFov) -> Fov {
+    Fov {
+        left: fov.left,
+        right: fov.right,
+        up: fov.up,
+        down: fov.down,
+    }
+}
+
 #[repr(C)]
 pub struct AlvrDeviceMotion {
     pub pose: AlvrPose,
@@ -107,19 +150,19 @@ pub struct AlvrBatteryInfo {
     pub is_plugged: bool,
 }
 
+pub struct AlvrViewParams {
+    pub pose: AlvrPose,
+    pub fov: AlvrFov,
+}
+
 #[repr(u8)]
 pub enum AlvrEvent {
     ClientConnected,
     ClientDisconnected,
     Battery(AlvrBatteryInfo),
     PlayspaceSync([f32; 2]),
-    ViewsConfig {
-        local_view_transform: [AlvrPose; 2],
-        fov: [AlvrFov; 2],
-    },
-    TrackingUpdated {
-        sample_timestamp_ns: u64,
-    },
+    ViewsParams([AlvrViewParams; 2]),
+    TrackingUpdated { sample_timestamp_ns: u64 },
     ButtonsUpdated,
     RequestIDR,
     CaptureFrame,
@@ -145,27 +188,6 @@ pub struct AlvrDeviceConfig {
 pub struct AlvrDynamicEncoderParams {
     bitrate_bps: f32,
     framerate: f32,
-}
-
-fn pose_to_capi(pose: &Pose) -> AlvrPose {
-    AlvrPose {
-        orientation: AlvrQuat {
-            x: pose.orientation.x,
-            y: pose.orientation.y,
-            z: pose.orientation.z,
-            w: pose.orientation.w,
-        },
-        position: pose.position.to_array(),
-    }
-}
-
-fn fov_to_capi(fov: &Fov) -> AlvrFov {
-    AlvrFov {
-        left: fov.left,
-        right: fov.right,
-        up: fov.up,
-        down: fov.down,
-    }
 }
 
 fn string_to_c_str(buffer: *mut c_char, value: &str) -> u64 {
@@ -325,14 +347,17 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
                 ServerCoreEvent::PlayspaceSync(bounds) => {
                     *out_event = AlvrEvent::PlayspaceSync(bounds.to_array())
                 }
-                ServerCoreEvent::ViewsConfig(config) => {
-                    *out_event = AlvrEvent::ViewsConfig {
-                        local_view_transform: [
-                            pose_to_capi(&config.local_view_transforms[0]),
-                            pose_to_capi(&config.local_view_transforms[1]),
-                        ],
-                        fov: [fov_to_capi(&config.fov[0]), fov_to_capi(&config.fov[1])],
-                    }
+                ServerCoreEvent::ViewsParams(config) => {
+                    *out_event = AlvrEvent::ViewsParams([
+                        AlvrViewParams {
+                            pose: pose_to_capi(&config[0].pose),
+                            fov: fov_to_capi(&config[0].fov),
+                        },
+                        AlvrViewParams {
+                            pose: pose_to_capi(&config[1].pose),
+                            fov: fov_to_capi(&config[1].fov),
+                        },
+                    ]);
                 }
                 ServerCoreEvent::Tracking { sample_timestamp } => {
                     *out_event = AlvrEvent::TrackingUpdated {
@@ -487,13 +512,31 @@ pub unsafe extern "C" fn alvr_set_video_config_nals(
 #[no_mangle]
 pub unsafe extern "C" fn alvr_send_video_nal(
     timestamp_ns: u64,
+    view_params: *const AlvrViewParams,
+    is_idr: bool,
     buffer_ptr: *mut u8,
     len: i32,
-    is_idr: bool,
 ) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        let view_params = std::slice::from_raw_parts(view_params, 2);
+        let view_params = [
+            ViewParams {
+                pose: capi_to_pose(&view_params[0].pose),
+                fov: capi_to_fov(&view_params[0].fov),
+            },
+            ViewParams {
+                pose: capi_to_pose(&view_params[1].pose),
+                fov: capi_to_fov(&view_params[1].fov),
+            },
+        ];
         let buffer = std::slice::from_raw_parts(buffer_ptr, len as usize);
-        context.send_video_nal(Duration::from_nanos(timestamp_ns), buffer.to_vec(), is_idr);
+
+        context.send_video_nal(
+            Duration::from_nanos(timestamp_ns),
+            view_params,
+            is_idr,
+            buffer.to_vec(),
+        );
     }
 }
 

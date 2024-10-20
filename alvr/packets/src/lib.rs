@@ -131,7 +131,7 @@ pub struct NegotiatedStreamingConfig {
     pub use_multimodal_protocol: bool,
     pub encoding_gamma: f32,
     pub enable_hdr: bool,
-    pub wired: Option<bool>,
+    pub wired: bool,
 }
 
 #[derive(Serialize, Deserialize)]

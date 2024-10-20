@@ -682,7 +682,7 @@ fn connection_pipeline(
             0
         };
 
-    let wired = Some(client_ip.is_loopback());
+    let wired = client_ip.is_loopback();
 
     dbg_connection!("connection_pipeline: send streaming config");
     let stream_config_packet = alvr_packets::encode_stream_config(

@@ -1,5 +1,19 @@
 #include "TrackedDevice.h"
 #include "Logger.h"
+#include "Utils.h"
+
+TrackedDevice::TrackedDevice(uint64_t device_id, vr::ETrackedDeviceClass device_class)
+    : device_id(device_id)
+    , device_class(device_class) {
+    this->last_pose = vr::DriverPose_t {};
+    this->last_pose.poseIsValid = false;
+    this->last_pose.deviceIsConnected = false;
+    this->last_pose.result = vr::TrackingResult_Uninitialized;
+
+    this->last_pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    this->last_pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    this->last_pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
+}
 
 std::string TrackedDevice::get_serial_number() {
     auto size = GetSerialNumber(this->device_id, nullptr);
@@ -8,6 +22,16 @@ std::string TrackedDevice::get_serial_number() {
     GetSerialNumber(this->device_id, &buffer[0]);
 
     return std::string(&buffer[0]);
+}
+
+void TrackedDevice::register_device() {
+    if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+            this->get_serial_number().c_str(),
+            this->device_class,
+            (vr::ITrackedDeviceServerDriver*)this
+        )) {
+        Error("Failed to register device");
+    }
 }
 
 void TrackedDevice::set_prop(FfiOpenvrProperty prop) {
@@ -58,4 +82,18 @@ void TrackedDevice::set_prop(FfiOpenvrProperty prop) {
     vr::VRServerDriverHost()->VendorSpecificEvent(
         this->object_id, vr::VREvent_PropertyChanged, event_data, 0.
     );
+}
+
+void TrackedDevice::submit_pose(vr::DriverPose_t pose) {
+    this->last_pose = pose;
+    vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
+        this->object_id, pose, sizeof(vr::DriverPose_t)
+    );
+}
+
+vr::EVRInitError TrackedDevice::Activate(vr::TrackedDeviceIndex_t object_id) {
+    this->object_id = object_id;
+    this->prop_container = vr::VRProperties()->TrackedDeviceToPropertyContainer(this->object_id);
+
+    return activate() ? vr::VRInitError_None : vr::VRInitError_Driver_Failed;
 }

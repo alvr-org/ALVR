@@ -47,7 +47,14 @@ impl Platform {
     }
 
     pub const fn is_pico(&self) -> bool {
-        matches!(self, Platform::PicoNeo3 | Platform::Pico4)
+        matches!(
+            self,
+            Platform::PicoG3
+                | Platform::PicoNeo3
+                | Platform::Pico4
+                | Platform::Pico4Ultra
+                | Platform::PicoUnknown
+        )
     }
 
     pub const fn is_vive(&self) -> bool {
@@ -94,6 +101,8 @@ pub fn platform() -> Platform {
         let manufacturer = android::manufacturer_name();
         let model = android::model_name();
         let device = android::device_name();
+
+        alvr_common::info!("manufacturer: {manufacturer}, model: {model}, device: {device}");
 
         match (manufacturer.as_str(), model.as_str(), device.as_str()) {
             ("Oculus", _, "monterey") => Platform::Quest1,

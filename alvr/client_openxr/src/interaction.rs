@@ -100,7 +100,7 @@ pub fn initialize_interaction(
     let controllers_profile_path = match platform {
         p if p.is_quest() => QUEST_CONTROLLER_PROFILE_PATH, // todo: create new controller profile for quest pro and 3
         Platform::PicoNeo3 => PICO_NEO3_CONTROLLER_PROFILE_PATH,
-        Platform::Pico4 => PICO4_CONTROLLER_PROFILE_PATH,
+        p if p.is_pico() => PICO4_CONTROLLER_PROFILE_PATH,
         p if p.is_vive() => FOCUS3_CONTROLLER_PROFILE_PATH,
         Platform::Yvr => YVR_CONTROLLER_PROFILE_PATH,
         _ => QUEST_CONTROLLER_PROFILE_PATH,

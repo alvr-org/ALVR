@@ -258,6 +258,22 @@ impl ServerCoreContext {
             .get_device_motion(device_id, sample_timestamp)
     }
 
+    pub fn get_predicted_device_motion(
+        &self,
+        device_id: u64,
+        sample_timestamp: Duration,
+        target_timestamp: Duration,
+    ) -> Option<DeviceMotion> {
+        dbg_server_core!(
+            "get_predicted_device_motion: dev={device_id} sample_ts={sample_timestamp:?} target_ts={target_timestamp:?}"
+        );
+
+        self.connection_context
+            .tracking_manager
+            .read()
+            .get_predicted_device_motion(device_id, sample_timestamp, target_timestamp)
+    }
+
     pub fn get_hand_skeleton(
         &self,
         hand_type: HandType,
@@ -288,12 +304,14 @@ impl ServerCoreContext {
     pub fn get_tracker_pose_time_offset(&self) -> Duration {
         dbg_server_core!("get_tracker_pose_time_offset");
 
-        self.connection_context
-            .statistics_manager
-            .read()
-            .as_ref()
-            .map(|stats| stats.tracker_pose_time_offset())
-            .unwrap_or_default()
+        // self.connection_context
+        //     .statistics_manager
+        //     .read()
+        //     .as_ref()
+        //     .map(|stats| stats.tracker_pose_time_offset())
+        //     .unwrap_or_default()
+
+        Duration::from_millis(0)
     }
 
     pub fn send_haptics(&self, haptics: Haptics) {

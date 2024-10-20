@@ -1,4 +1,4 @@
-use crate::{FfiBodyTracker, FfiDeviceMotion, FfiHandSkeleton, FfiQuat};
+use crate::{FfiDeviceMotion, FfiHandSkeleton, FfiQuat};
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     once_cell::sync::Lazy,
@@ -7,27 +7,23 @@ use alvr_common::{
     BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, HAND_LEFT_ID,
 };
 use alvr_session::HeadsetConfig;
-use std::{
-    collections::HashMap,
-    f32::consts::{FRAC_PI_2, PI},
-};
+use std::f32::consts::{FRAC_PI_2, PI};
 
 const DEG_TO_RAD: f32 = PI / 180.0;
 
-// todo: remove the need for staging indices
-pub static BODY_TRACKER_ID_MAP: Lazy<HashMap<u64, u32>> = Lazy::new(|| {
-    HashMap::from([
+pub static BODY_TRACKER_IDS: Lazy<[u64; 8]> = Lazy::new(|| {
+    [
         // Upper body
-        (*BODY_CHEST_ID, 0),
-        (*BODY_HIPS_ID, 1),
-        (*BODY_LEFT_ELBOW_ID, 2),
-        (*BODY_RIGHT_ELBOW_ID, 3),
+        *BODY_CHEST_ID,
+        *BODY_HIPS_ID,
+        *BODY_LEFT_ELBOW_ID,
+        *BODY_RIGHT_ELBOW_ID,
         // Legs
-        (*BODY_LEFT_KNEE_ID, 4),
-        (*BODY_LEFT_FOOT_ID, 5),
-        (*BODY_RIGHT_KNEE_ID, 6),
-        (*BODY_RIGHT_FOOT_ID, 7),
-    ])
+        *BODY_LEFT_KNEE_ID,
+        *BODY_LEFT_FOOT_ID,
+        *BODY_RIGHT_KNEE_ID,
+        *BODY_RIGHT_FOOT_ID,
+    ]
 });
 
 fn to_ffi_quat(quat: Quat) -> FfiQuat {
@@ -240,35 +236,4 @@ pub fn to_openvr_ffi_hand_skeleton(
     ];
 
     to_ffi_skeleton(skeleton)
-}
-
-pub fn to_ffi_body_trackers(
-    device_motions: &[(u64, DeviceMotion)],
-    tracking: bool,
-) -> Option<Vec<FfiBodyTracker>> {
-    let mut trackers = vec![];
-    for i in 0..8 {
-        if let Some((id, motion)) = device_motions.iter().find(|(id, _)| {
-            BODY_TRACKER_ID_MAP
-                .get(id)
-                .map(|id| *id == i)
-                .unwrap_or(false)
-        }) {
-            trackers.push(FfiBodyTracker {
-                trackerID: *BODY_TRACKER_ID_MAP.get(id).unwrap(),
-                orientation: to_ffi_quat(motion.pose.orientation),
-                position: motion.pose.position.to_array(),
-                tracking: tracking.into(),
-            });
-        } else {
-            trackers.push(FfiBodyTracker {
-                trackerID: i,
-                orientation: to_ffi_quat(Quat::IDENTITY),
-                position: [0_f32; 3],
-                tracking: 0,
-            });
-        }
-    }
-
-    Some(trackers)
 }

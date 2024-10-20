@@ -121,17 +121,21 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                         .unwrap_or(false);
 
                     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+                        let target_timestamp =
+                            sample_timestamp + context.get_motion_to_photon_latency();
                         let controllers_pose_time_offset = context.get_tracker_pose_time_offset();
+                        let controllers_timestamp =
+                            target_timestamp.saturating_sub(controllers_pose_time_offset);
 
                         let ffi_head_motion = context
-                            .get_device_motion(*HEAD_ID, sample_timestamp)
+                            .get_device_motion(*HEAD_ID, target_timestamp)
                             .map(|m| tracking::to_ffi_motion(*HEAD_ID, m))
                             .unwrap_or_else(FfiDeviceMotion::default);
                         let ffi_left_controller_motion = context
-                            .get_device_motion(*HAND_LEFT_ID, sample_timestamp)
+                            .get_device_motion(*HAND_LEFT_ID, controllers_timestamp)
                             .map(|m| tracking::to_ffi_motion(*HAND_LEFT_ID, m));
                         let ffi_right_controller_motion = context
-                            .get_device_motion(*HAND_RIGHT_ID, sample_timestamp)
+                            .get_device_motion(*HAND_RIGHT_ID, controllers_timestamp)
                             .map(|m| tracking::to_ffi_motion(*HAND_RIGHT_ID, m));
 
                         let (
@@ -202,14 +206,19 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                                 && ffi_right_hand_skeleton.is_some(),
                         };
 
-                        let body_motions = tracking::BODY_TRACKER_ID_MAP
-                            .keys()
-                            .filter_map(|id| {
-                                Some((*id, context.get_device_motion(*id, sample_timestamp)?))
-                            })
-                            .collect::<Vec<_>>();
-                        let ffi_body_trackers =
-                            tracking::to_ffi_body_trackers(&body_motions, track_body);
+                        let ffi_body_trackers = if track_body {
+                            tracking::BODY_TRACKER_IDS
+                                .iter()
+                                .filter_map(|id| {
+                                    Some(tracking::to_ffi_motion(
+                                        *id,
+                                        context.get_device_motion(*id, sample_timestamp)?,
+                                    ))
+                                })
+                                .collect::<Vec<_>>()
+                        } else {
+                            vec![]
+                        };
 
                         // There are two pairs of controllers/hand tracking devices registered in
                         // OpenVR, two lefts and two rights. If enabled with use_separate_hand_trackers,
@@ -217,21 +226,13 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                         // independently. Selection is done by setting deviceIsConnected.
                         unsafe {
                             SetTracking(
-                                sample_timestamp.as_nanos() as _,
+                                target_timestamp.as_nanos() as _,
                                 controllers_pose_time_offset.as_secs_f32(),
                                 ffi_head_motion,
                                 ffi_left_hand_data,
                                 ffi_right_hand_data,
-                                if let Some(body_trackers) = &ffi_body_trackers {
-                                    body_trackers.as_ptr()
-                                } else {
-                                    ptr::null()
-                                },
-                                if let Some(body_trackers) = &ffi_body_trackers {
-                                    body_trackers.len() as _
-                                } else {
-                                    0
-                                },
+                                ffi_body_trackers.as_ptr(),
+                                ffi_body_trackers.len() as i32,
                             )
                         };
                     }

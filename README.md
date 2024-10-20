@@ -15,7 +15,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 |      VR Headset       |                                           Support                                            |
 | :-------------------: | :------------------------------------------------------------------------------------------: |
 |  Quest 1/2/3/3S/Pro   |     :heavy_check_mark: ([store link](https://www.meta.com/experiences/7674846229245715))     |
-|     Pico 4/Neo 3      |                                      :heavy_check_mark:                                      |
+| Pico Neo 3/4/4 Ultra  |                                      :heavy_check_mark:                                      |
 | Vive Focus 3/XR Elite |                                      :heavy_check_mark:                                      |
 |        YVR 1/2        |                                      :heavy_check_mark:                                      |
 |        Lynx R1        |                                      :heavy_check_mark:                                      |

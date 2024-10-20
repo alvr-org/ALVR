@@ -102,6 +102,8 @@ pub fn platform() -> Platform {
         let model = android::model_name();
         let device = android::device_name();
 
+        alvr_common::info!("manufacturer: {manufacturer}, model: {model}, device: {device}");
+
         match (manufacturer.as_str(), model.as_str(), device.as_str()) {
             ("Oculus", _, "monterey") => Platform::Quest1,
             ("Oculus", _, "hollywood") => Platform::Quest2,

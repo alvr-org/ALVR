@@ -131,12 +131,16 @@ impl VMCSink {
         }
     }
 
-    pub fn send_tracking(&mut self, device_motions: &[(u64, DeviceMotion)]) {
+    pub fn send_tracking(
+        &mut self,
+        device_motions: &[(u64, DeviceMotion)],
+        orientation_correction: bool,
+    ) {
         for (id, motion) in device_motions {
             if DEVICE_MOTIONS_VMC_MAP.contains_key(id) {
                 let corrected_orientation = {
                     let mut q = motion.pose.orientation;
-                    if true {
+                    if orientation_correction {
                         if DEVICE_MOTIONS_ROTATION_MAP.contains_key(id) {
                             q *= *DEVICE_MOTIONS_ROTATION_MAP.get(id).unwrap();
                         }

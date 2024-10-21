@@ -748,6 +748,8 @@ pub struct VMCConfig {
     #[schema(strings(help = "Turn this off to temporarily pause sending data."))]
     #[schema(flag = "real-time")]
     pub publish: bool,
+    #[schema(flag = "real-time")]
+    pub orientation_correction: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -1586,6 +1588,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     host: "127.0.0.1".into(),
                     port: 39540,
                     publish: true,
+                    orientation_correction: true,
                 },
             },
             controllers: SwitchDefault {

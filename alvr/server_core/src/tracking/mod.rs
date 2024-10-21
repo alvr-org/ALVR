@@ -484,6 +484,14 @@ pub fn tracking_loop(
             Switch::Enabled(VMCConfig { publish: true, .. })
         );
         if publish_vmc {
+            let orientation_correction = matches!(
+                SESSION_MANAGER.read().settings().headset.vmc,
+                Switch::Enabled(VMCConfig {
+                    orientation_correction: true,
+                    ..
+                })
+            );
+
             if let Some(sink) = &mut vmc_sink {
                 let tracking_manager_lock = ctx.tracking_manager.read();
                 let device_motions = device_motion_keys
@@ -497,7 +505,7 @@ pub fn tracking_loop(
                         ))
                     })
                     .collect::<Vec<(u64, DeviceMotion)>>();
-                sink.send_tracking(&device_motions);
+                sink.send_tracking(&device_motions, orientation_correction);
             }
         }
 

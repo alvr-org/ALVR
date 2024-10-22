@@ -47,7 +47,14 @@ impl Platform {
     }
 
     pub const fn is_pico(&self) -> bool {
-        matches!(self, Platform::PicoNeo3 | Platform::Pico4)
+        matches!(
+            self,
+            Platform::PicoG3
+                | Platform::PicoNeo3
+                | Platform::Pico4
+                | Platform::Pico4Ultra
+                | Platform::PicoUnknown
+        )
     }
 
     pub const fn is_vive(&self) -> bool {

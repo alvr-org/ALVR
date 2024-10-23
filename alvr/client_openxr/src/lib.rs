@@ -118,7 +118,7 @@ pub fn entry_point() {
 
     let loader_suffix = match platform {
         Platform::Quest1 => "_quest1",
-        p if p.is_pico() => "_pico",
+        Platform::PicoNeo3 => "_pn3",
         Platform::Yvr => "_yvr",
         Platform::Lynx => "_lynx",
         _ => "",

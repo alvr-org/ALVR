@@ -328,7 +328,7 @@ fn get_android_openxr_loaders(only_khronos_loader: bool) {
         );
 
         get_openxr_loader(
-            "_pico",
+            "_pn3",
             "https://sdk.picovr.com/developer-platform/sdk/PICO_OpenXR_SDK_220.zip",
             "libs/android.arm64-v8a",
         );

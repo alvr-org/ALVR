@@ -5,7 +5,7 @@ use crate::{
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
-    ConnectionContext, ServerCoreEvent, ViewsConfig, SESSION_MANAGER,
+    ConnectionContext, ServerCoreEvent, ViewsConfig, FILESYSTEM_LAYOUT, SESSION_MANAGER,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -28,11 +28,12 @@ use alvr_session::{
     OpenvrConfig, SessionConfig,
 };
 use alvr_sockets::{
-    PeerType, ProtoControlSocket, StreamSocketBuilder, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT,
+    PeerType, ProtoControlSocket, StreamSocketBuilder, CONTROL_PORT, KEEPALIVE_INTERVAL,
+    KEEPALIVE_TIMEOUT,
 };
 use std::{
     collections::HashMap,
-    net::IpAddr,
+    net::{IpAddr, Ipv4Addr},
     process::Command,
     sync::{mpsc::RecvTimeoutError, Arc},
     thread,
@@ -255,6 +256,9 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                 .iter()
                 .filter(|(_, info)| info.connection_state == ConnectionState::Disconnected)
             {
+                if connection_info.wired {
+                    manual_client_ips.insert(IpAddr::V4(Ipv4Addr::LOCALHOST), hostname.clone());
+                }
                 for ip in &connection_info.manual_ips {
                     manual_client_ips.insert(*ip, hostname.clone());
                 }
@@ -262,16 +266,34 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
             manual_client_ips
         };
 
-        if !available_manual_client_ips.is_empty()
-            && try_connect(
+        if !available_manual_client_ips.is_empty() {
+            if available_manual_client_ips.keys().any(|i| i.is_loopback()) {
+                let layout = match FILESYSTEM_LAYOUT.get() {
+                    None => {
+                        error!("Failed to get filesystem layout");
+                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                        continue;
+                    }
+                    Some(layout) => layout,
+                };
+                let stream_port = SESSION_MANAGER.read().settings().connection.stream_port;
+                if let Err(e) = alvr_adb::setup_wired_connection(layout, CONTROL_PORT, stream_port)
+                {
+                    error!("{e:?}");
+                    thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                    continue;
+                }
+            }
+            if try_connect(
                 Arc::clone(&ctx),
                 Arc::clone(&lifecycle_state),
                 available_manual_client_ips,
             )
             .is_ok()
-        {
-            thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-            continue;
+            {
+                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                continue;
+            }
         }
 
         let discovery_config = SESSION_MANAGER
@@ -307,6 +329,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                         ClientListAction::AddIfMissing {
                             trusted: false,
                             manual_ips: vec![],
+                            wired: false,
                         },
                     );
 
@@ -659,6 +682,8 @@ fn connection_pipeline(
             0
         };
 
+    let wired = client_ip.is_loopback();
+
     dbg_connection!("connection_pipeline: send streaming config");
     let stream_config_packet = alvr_packets::encode_stream_config(
         session_manager_lock.session(),
@@ -670,6 +695,7 @@ fn connection_pipeline(
             use_multimodal_protocol: streaming_caps.multimodal_protocol,
             encoding_gamma: encoding_gamma,
             enable_hdr: enable_hdr,
+            wired,
         },
     )
     .to_con()?;

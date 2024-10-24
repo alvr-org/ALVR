@@ -8,8 +8,10 @@ use crate::{
     FfiOpenvrPropertyType_Uint64, FfiOpenvrPropertyType_Vector3, FfiOpenvrPropertyValue,
 };
 use alvr_common::{
-    info, settings_schema::Switch, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID,
-    HAND_TRACKER_RIGHT_ID, HEAD_ID,
+    info, settings_schema::Switch, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID,
+    BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID,
+    BODY_RIGHT_KNEE_ID, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID,
+    HEAD_ID,
 };
 use alvr_session::{
     ControllersEmulationMode, HeadsetEmulationMode, OpenvrPropValue, OpenvrProperty,
@@ -90,16 +92,26 @@ fn serial_number(device_id: u64) -> String {
         } else {
             "Unknown".into()
         }
-    } else if device_id == *HAND_TRACKER_LEFT_ID || device_id == *HAND_TRACKER_RIGHT_ID {
-        if let Switch::Enabled(_) = &settings.headset.controllers {
-            if device_id == *HAND_TRACKER_LEFT_ID {
-                "ALVR_Left_Hand_Full_Skeletal".into()
-            } else {
-                "ALVR_Right_Hand_Full_Skeletal".into()
-            }
-        } else {
-            "Unknown".into()
-        }
+    } else if device_id == *HAND_TRACKER_LEFT_ID {
+        "ALVR_Left_Hand_Full_Skeletal".into()
+    } else if device_id == *HAND_TRACKER_RIGHT_ID {
+        "ALVR_Right_Hand_Full_Skeletal".into()
+    } else if device_id == *BODY_CHEST_ID {
+        "ALVR Tracker (chest)".into()
+    } else if device_id == *BODY_HIPS_ID {
+        "ALVR Tracker (waist)".into()
+    } else if device_id == *BODY_LEFT_ELBOW_ID {
+        "ALVR Tracker (left elbow)".into()
+    } else if device_id == *BODY_RIGHT_ELBOW_ID {
+        "ALVR Tracker (right elbow)".into()
+    } else if device_id == *BODY_LEFT_KNEE_ID {
+        "ALVR Tracker (left knee)".into()
+    } else if device_id == *BODY_RIGHT_KNEE_ID {
+        "ALVR Tracker (right knee)".into()
+    } else if device_id == *BODY_LEFT_FOOT_ID {
+        "ALVR Tracker (left foot)".into()
+    } else if device_id == *BODY_RIGHT_FOOT_ID {
+        "ALVR Tracker (right foot)".into()
     } else {
         "Unknown".into()
     }

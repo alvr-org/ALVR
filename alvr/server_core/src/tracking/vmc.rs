@@ -6,7 +6,7 @@ use alvr_common::{
 use rosc::{OscMessage, OscPacket, OscType};
 use std::{collections::HashMap, net::UdpSocket};
 
-use alvr_session::VMCSinkConfig;
+use alvr_session::VMCConfig;
 
 // Transform DeviceMotion into Unity HumanBodyBones
 // https://docs.unity3d.com/ScriptReference/HumanBodyBones.html
@@ -31,7 +31,7 @@ pub struct VMCSink {
 }
 
 impl VMCSink {
-    pub fn new(config: VMCSinkConfig) -> Result<Self> {
+    pub fn new(config: VMCConfig) -> Result<Self> {
         let socket = UdpSocket::bind("0.0.0.0:0")?;
         socket.connect(format!("{}:{}", config.host, config.port))?;
 

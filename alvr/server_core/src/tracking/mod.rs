@@ -331,7 +331,7 @@ pub fn tracking_loop(
         .headset
         .vmc
         .into_option()
-        .and_then(|config| VMCSink::new(config.sink).ok());
+        .and_then(|config| VMCSink::new(config).ok());
 
     while is_streaming() {
         let data = match tracking_receiver.recv(STREAMING_RECV_TIMEOUT) {

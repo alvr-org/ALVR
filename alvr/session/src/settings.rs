@@ -740,16 +740,11 @@ pub struct BodyTrackingConfig {
     pub tracked: bool,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-pub struct VMCSinkConfig {
-    pub host: String,
-    pub port: u16,
-}
-
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct VMCConfig {
-    pub sink: VMCSinkConfig,
+    pub host: String,
+    pub port: u16,
     #[schema(strings(help = "Turn this off to temporarily pause sending data."))]
     #[schema(flag = "real-time")]
     pub publish: bool,
@@ -1588,10 +1583,8 @@ pub fn session_settings_default() -> SettingsDefault {
                 enabled: false,
                 content: VMCConfigDefault {
                     gui_collapsed: true,
-                    sink: VMCSinkConfigDefault {
-                        host: "127.0.0.1".into(),
-                        port: 39540,
-                    },
+                    host: "127.0.0.1".into(),
+                    port: 39540,
                     publish: true,
                 },
             },

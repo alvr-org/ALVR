@@ -1,8 +1,10 @@
 mod body;
 mod face;
+mod vmc;
 
 pub use body::*;
 pub use face::*;
+pub use vmc::*;
 
 use crate::{
     connection::STREAMING_RECV_TIMEOUT,
@@ -325,6 +327,9 @@ pub fn tracking_loop(
             BodyTrackingSink::new(config.sink, initial_settings.connection.osc_local_port).ok()
         });
 
+    //TODO: Load config
+    let mut vmc_sink = VMCSink::new().ok();
+
     while is_streaming() {
         let data = match tracking_receiver.recv(STREAMING_RECV_TIMEOUT) {
             Ok(tracking) => tracking,
@@ -470,6 +475,22 @@ pub fn tracking_loop(
                 sample_timestamp: tracking.target_timestamp,
             })
             .ok();
+
+        if let Some(sink) = &mut vmc_sink {
+            let tracking_manager_lock = ctx.tracking_manager.read();
+            let device_motions =  device_motion_keys
+            .iter()
+            .filter_map(move |id| {
+                Some((
+                    (*DEVICE_ID_TO_PATH.get(id)?).into(),
+                    tracking_manager_lock
+                        .get_device_motion(*id, timestamp)
+                        .unwrap(),
+                ))
+            })
+            .collect::<Vec<(String, DeviceMotion)>>();
+            sink.send_tracking(device_motions);
+        }
 
         let track_body = matches!(
             SESSION_MANAGER.read().settings().headset.body_tracking,

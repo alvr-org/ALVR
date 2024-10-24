@@ -4,6 +4,8 @@ use alvr_common::{
 use rosc::{OscMessage, OscPacket, OscType};
 use std::{collections::HashMap, net::UdpSocket};
 
+use alvr_session::VMCSinkConfig;
+
 // Transform DeviceMotion into Unity HumanBodyBones
 // https://docs.unity3d.com/ScriptReference/HumanBodyBones.html
 static DEVICE_MOTIONS_VMC_MAP: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
@@ -23,21 +25,15 @@ static DEVICE_MOTIONS_VMC_MAP: Lazy<HashMap<&'static str, &'static str>> = Lazy:
 });
 
 pub struct VMCSink {
-//    config: VMCConfig,
     socket: Option<UdpSocket>,
 }
 
 impl VMCSink {
-    pub fn new(
-            //config: VMCSinkConfig
-            ) -> Result<Self> {
-
-        // TODO: Configure Target IP and Target Port (default 127.0.0.1:39540)
+    pub fn new(config: VMCSinkConfig) -> Result<Self> {
         let socket = UdpSocket::bind("0.0.0.0:0")?;
-        socket.connect("127.0.0.1:39540")?;
+        socket.connect(format!("{}:{}", config.host, config.port))?;
 
         Ok(Self {
-//            config,
             socket: Some(socket),
         })
     }

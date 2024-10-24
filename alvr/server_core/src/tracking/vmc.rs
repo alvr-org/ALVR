@@ -54,10 +54,7 @@ impl VMCSink {
         }
     }
 
-    pub fn send_tracking(
-        &mut self,
-        device_motions: &[(u64, DeviceMotion)],
-    ) {
+    pub fn send_tracking(&mut self, device_motions: &[(u64, DeviceMotion)]) {
         for (id, motion) in device_motions {
             if DEVICE_MOTIONS_VMC_MAP.contains_key(id) {
                 self.send_osc_message(

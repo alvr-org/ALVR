@@ -23,7 +23,7 @@ use alvr_events::{EventType, TrackingEvent};
 use alvr_packets::{FaceData, Tracking};
 use alvr_session::{
     settings_schema::Switch, BodyTrackingConfig, HeadsetConfig, PositionRecenteringMode,
-    RotationRecenteringMode, Settings, VMCConfig, 
+    RotationRecenteringMode, Settings, VMCConfig,
 };
 use alvr_sockets::StreamReceiver;
 use std::{
@@ -331,9 +331,7 @@ pub fn tracking_loop(
         .headset
         .vmc
         .into_option()
-        .and_then(|config| {
-            VMCSink::new(config.sink).ok()
-        });
+        .and_then(|config| VMCSink::new(config.sink).ok());
 
     while is_streaming() {
         let data = match tracking_receiver.recv(STREAMING_RECV_TIMEOUT) {
@@ -488,17 +486,17 @@ pub fn tracking_loop(
         if publish_vmc {
             if let Some(sink) = &mut vmc_sink {
                 let tracking_manager_lock = ctx.tracking_manager.read();
-                let device_motions =  device_motion_keys
-                .iter()
-                .filter_map(move |id| {
-                    Some((
-                        *id,
-                        tracking_manager_lock
-                            .get_device_motion(*id, timestamp)
-                            .unwrap(),
-                    ))
-                })
-                .collect::<Vec<(u64, DeviceMotion)>>();
+                let device_motions = device_motion_keys
+                    .iter()
+                    .filter_map(move |id| {
+                        Some((
+                            *id,
+                            tracking_manager_lock
+                                .get_device_motion(*id, timestamp)
+                                .unwrap(),
+                        ))
+                    })
+                    .collect::<Vec<(u64, DeviceMotion)>>();
                 sink.send_tracking(&device_motions);
             }
         }

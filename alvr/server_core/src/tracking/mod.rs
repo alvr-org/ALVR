@@ -492,14 +492,14 @@ pub fn tracking_loop(
                 .iter()
                 .filter_map(move |id| {
                     Some((
-                        (*DEVICE_ID_TO_PATH.get(id)?).into(),
+                        *id,
                         tracking_manager_lock
                             .get_device_motion(*id, timestamp)
                             .unwrap(),
                     ))
                 })
-                .collect::<Vec<(String, DeviceMotion)>>();
-                sink.send_tracking(device_motions);
+                .collect::<Vec<(u64, DeviceMotion)>>();
+                sink.send_tracking(&device_motions);
             }
         }
 

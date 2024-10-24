@@ -1586,7 +1586,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: VMCConfigDefault {
                     gui_collapsed: true,
                     host: "127.0.0.1".into(),
-                    port: 39540,
+                    port: 39539,
                     publish: true,
                     orientation_correction: true,
                 },

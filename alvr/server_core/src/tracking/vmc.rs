@@ -1,5 +1,5 @@
 use alvr_common::{
-    anyhow::Result, once_cell::sync::Lazy, DeviceMotion, BODY_CHEST_ID, BODY_HIPS_ID,
+    anyhow::Result, glam::Quat, once_cell::sync::Lazy, DeviceMotion, BODY_CHEST_ID, BODY_HIPS_ID,
     BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID,
     BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
@@ -19,10 +19,87 @@ static DEVICE_MOTIONS_VMC_MAP: Lazy<HashMap<u64, &'static str>> = Lazy::new(|| {
         (*BODY_LEFT_ELBOW_ID, "LeftLowerArm"),
         (*BODY_RIGHT_ELBOW_ID, "RightLowerArm"),
         (*BODY_LEFT_KNEE_ID, "LeftLowerLeg"),
-        (*BODY_RIGHT_KNEE_ID, "RightLowerLeg"),
         (*BODY_LEFT_FOOT_ID, "LeftFoot"),
+        (*BODY_RIGHT_KNEE_ID, "RightLowerLeg"),
         (*BODY_RIGHT_FOOT_ID, "RightFoot"),
         (*HEAD_ID, "Head"),
+    ])
+});
+
+static DEVICE_MOTIONS_ROTATION_MAP: Lazy<HashMap<u64, Quat>> = Lazy::new(|| {
+    HashMap::from([
+        (
+            *HAND_LEFT_ID,
+            Quat::from_xyzw(
+                -6.213430570750633e-08,
+                -1.7979416426202113e-07,
+                0.7071067411992601,
+                0.7071065897770331,
+            ),
+        ),
+        (
+            *HAND_RIGHT_ID,
+            Quat::from_xyzw(
+                0.3219087189747184,
+                0.7288832784221684,
+                0.3392694392278636,
+                -0.4999999512887856,
+            ),
+        ),
+        (
+            *BODY_CHEST_ID,
+            Quat::from_xyzw(
+                -0.48548752779498533,
+                0.5137675867233772,
+                -0.5131288074683715,
+                -0.4868713724975375,
+            ),
+        ),
+        (
+            *BODY_HIPS_ID,
+            Quat::from_xyzw(
+                -0.38920734358587283,
+                0.4731761921254787,
+                -0.25037835650145845,
+                -0.7496216673275858,
+            ),
+        ),
+        (
+            *BODY_LEFT_KNEE_ID,
+            Quat::from_xyzw(
+                0.42592041950463216,
+                0.5417784481730453,
+                0.3880448422573891,
+                -0.6119550893141193,
+            ),
+        ),
+        (
+            *BODY_LEFT_FOOT_ID,
+            Quat::from_xyzw(
+                -0.15405857492497116,
+                0.6901198926998461,
+                -2.2748115460768936e-08,
+                -0.7071068140641757,
+            ),
+        ),
+        (
+            *BODY_RIGHT_KNEE_ID,
+            Quat::from_xyzw(
+                -0.4650211913041333,
+                0.5058610693118244,
+                -0.6180250915435218,
+                -0.381974687482609,
+            ),
+        ),
+        (
+            *BODY_RIGHT_FOOT_ID,
+            Quat::from_xyzw(
+                0.6815561983146281,
+                -0.18836473838436454,
+                0.7071065841771154,
+                5.6213965690665724e-08,
+            ),
+        ),
     ])
 });
 
@@ -57,6 +134,18 @@ impl VMCSink {
     pub fn send_tracking(&mut self, device_motions: &[(u64, DeviceMotion)]) {
         for (id, motion) in device_motions {
             if DEVICE_MOTIONS_VMC_MAP.contains_key(id) {
+                let corrected_orientation = {
+                    let mut q = motion.pose.orientation;
+                    if true {
+                        if DEVICE_MOTIONS_ROTATION_MAP.contains_key(id) {
+                            q *= *DEVICE_MOTIONS_ROTATION_MAP.get(id).unwrap();
+                        }
+                        q.z = -q.z;
+                        q.w = -q.w;
+                    }
+                    q
+                };
+
                 self.send_osc_message(
                     "/VMC/Ext/Bone/Pos",
                     vec![
@@ -64,10 +153,10 @@ impl VMCSink {
                         OscType::Float(motion.pose.position.x),
                         OscType::Float(motion.pose.position.y),
                         OscType::Float(motion.pose.position.z),
-                        OscType::Float(motion.pose.orientation.x),
-                        OscType::Float(motion.pose.orientation.y),
-                        OscType::Float(motion.pose.orientation.z),
-                        OscType::Float(motion.pose.orientation.w),
+                        OscType::Float(corrected_orientation.x),
+                        OscType::Float(corrected_orientation.y),
+                        OscType::Float(corrected_orientation.z),
+                        OscType::Float(corrected_orientation.w),
                     ],
                 );
             }

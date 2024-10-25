@@ -1,12 +1,14 @@
 use alvr_common::{
-    anyhow::Result, glam::Quat, once_cell::sync::Lazy, DeviceMotion, BODY_CHEST_ID, BODY_HIPS_ID,
-    BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID,
+    anyhow::Result, glam::Quat, once_cell::sync::Lazy, DeviceMotion, Pose, BODY_CHEST_ID,
+    BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID,
     BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
 use rosc::{OscMessage, OscPacket, OscType};
 use std::{collections::HashMap, net::UdpSocket};
 
 use alvr_session::VMCConfig;
+
+pub use crate::tracking::HandType;
 
 // Transform DeviceMotion into Unity HumanBodyBones
 // https://docs.unity3d.com/ScriptReference/HumanBodyBones.html
@@ -103,6 +105,32 @@ static DEVICE_MOTIONS_ROTATION_MAP: Lazy<HashMap<u64, Quat>> = Lazy::new(|| {
     ])
 });
 
+static HAND_SKELETON_VMC_MAP: Lazy<[[(usize, &'static str); 1]; 2]> =
+    Lazy::new(|| [[(0, "LeftHand")], [(0, "RightHand")]]);
+
+static HAND_SKELETON_ROTATIONS: Lazy<[HashMap<usize, Quat>; 2]> = Lazy::new(|| {
+    [
+        HashMap::from([(
+            0,
+            Quat::from_xyzw(
+                -6.213430570750633e-08,
+                -1.7979416426202113e-07,
+                0.7071067411992601,
+                0.7071065897770331,
+            ),
+        )]),
+        HashMap::from([(
+            0,
+            Quat::from_xyzw(
+                0.3219087189747184,
+                0.7288832784221684,
+                0.3392694392278636,
+                -0.4999999512887856,
+            ),
+        )]),
+    ]
+});
+
 pub struct VMCSink {
     socket: Option<UdpSocket>,
 }
@@ -128,6 +156,42 @@ impl VMCSink {
                     .unwrap(),
                 )
                 .ok();
+        }
+    }
+
+    pub fn send_hand_tracking(
+        &mut self,
+        hand_type: HandType,
+        mut skeleton: [Pose; 26],
+        orientation_correction: bool,
+    ) {
+        let hand_id = hand_type as usize;
+        for (part, vmc_str) in HAND_SKELETON_VMC_MAP[hand_id] {
+            let corrected_orientation = {
+                let mut q = skeleton[part].orientation;
+                if orientation_correction {
+                    if HAND_SKELETON_ROTATIONS[hand_id].contains_key(&part) {
+                        q *= *HAND_SKELETON_ROTATIONS[hand_id].get(&part).unwrap();
+                    }
+                    q.z = -q.z;
+                    q.w = -q.w;
+                }
+                q
+            };
+
+            self.send_osc_message(
+                "/VMC/Ext/Bone/Pos",
+                vec![
+                    OscType::String(vmc_str.to_string()),
+                    OscType::Float(skeleton[part].position.x),
+                    OscType::Float(skeleton[part].position.y),
+                    OscType::Float(skeleton[part].position.z),
+                    OscType::Float(corrected_orientation.x),
+                    OscType::Float(corrected_orientation.y),
+                    OscType::Float(corrected_orientation.z),
+                    OscType::Float(corrected_orientation.w),
+                ],
+            );
         }
     }
 

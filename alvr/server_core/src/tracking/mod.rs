@@ -505,6 +505,13 @@ pub fn tracking_loop(
                         ))
                     })
                     .collect::<Vec<(u64, DeviceMotion)>>();
+
+                if let Some(skeleton) = tracking.hand_skeletons[0] {
+                    sink.send_hand_tracking(HandType::Left, skeleton, orientation_correction);
+                }
+                if let Some(skeleton) = tracking.hand_skeletons[1] {
+                    sink.send_hand_tracking(HandType::Right, skeleton, orientation_correction);
+                }
                 sink.send_tracking(&device_motions, orientation_correction);
             }
         }

@@ -80,7 +80,7 @@ void CEncoder::Initialize(std::shared_ptr<CD3DRender> d3dRender) {
 bool CEncoder::CopyToStaging(
     ID3D11Texture2D* pTexture[][2],
     vr::VRTextureBounds_t bounds[][2],
-    vr::HmdMatrix34_t poses[][2],
+    vr::HmdMatrix34_t poses[],
     vr::HmdRect2_t viewProj[2],
     vr::HmdMatrix34_t eyeToHead[2],
     int layerCount,
@@ -94,7 +94,9 @@ bool CEncoder::CopyToStaging(
     m_targetTimestampNs = targetTimestampNs;
     m_FrameRender->Startup();
 
-    m_FrameRender->RenderFrame(pTexture, bounds, poses, viewProj, eyeToHead, layerCount, recentering, message, debugText);
+    m_FrameRender->RenderFrame(
+        pTexture, bounds, poses, viewProj, eyeToHead, layerCount, recentering, message, debugText
+    );
     return true;
 }
 

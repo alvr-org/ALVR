@@ -48,7 +48,7 @@ public:
     bool RenderFrame(
         ID3D11Texture2D* pTexture[][2],
         vr::VRTextureBounds_t bounds[][2],
-        vr::HmdMatrix34_t poses[][2],
+        vr::HmdMatrix34_t poses[],
         vr::HmdRect2_t viewProj[2],
         vr::HmdMatrix34_t eyeToHead[2],
         int layerCount,
@@ -74,10 +74,11 @@ private:
 
     ComPtr<ID3D11SamplerState> m_pSamplerLinear;
 
-    ComPtr<ID3D11Texture2D> m_pDepthStencil;
     ComPtr<ID3D11RenderTargetView> m_pRenderTargetView;
-    ComPtr<ID3D11DepthStencilView> m_pDepthStencilView;
     ComPtr<ID3D11DepthStencilState> m_depthStencilState;
+
+    D3D11_VIEWPORT m_viewportL, m_viewportR, m_viewport;
+    D3D11_RECT m_scissorL, m_scissorR, m_scissor;
 
     ComPtr<ID3D11BlendState> m_pBlendStateFirst;
     ComPtr<ID3D11BlendState> m_pBlendState;

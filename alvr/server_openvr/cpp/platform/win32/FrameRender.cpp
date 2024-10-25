@@ -8,6 +8,74 @@ extern uint64_t g_DriverTestMode;
 
 using namespace d3d_render_utils;
 
+static DirectX::XMMATRIX HmdMatrix_AsDxMat(const vr::HmdMatrix34_t& m) {
+    // I think the negative Y basis is a handedness thing?
+    DirectX::XMFLOAT4X4 f = DirectX::XMFLOAT4X4(
+        m.m[0][0],
+        m.m[1][0],
+        m.m[2][0],
+        0.0f,
+        -m.m[0][1],
+        -m.m[1][1],
+        -m.m[2][1],
+        0.0f,
+        m.m[0][2],
+        m.m[1][2],
+        m.m[2][2],
+        0.0f,
+        m.m[0][3],
+        m.m[1][3],
+        m.m[2][3],
+        1.0f
+    );
+    return DirectX::XMLoadFloat4x4(&f);
+}
+
+static DirectX::XMMATRIX HmdMatrix_AsDxMatOrientOnly(vr::HmdMatrix34_t& m) {
+    // I think the negative Y basis is a handedness thing?
+    DirectX::XMFLOAT4X4 f = DirectX::XMFLOAT4X4(
+        m.m[0][0],
+        m.m[1][0],
+        m.m[2][0],
+        0.0f,
+        -m.m[0][1],
+        -m.m[1][1],
+        -m.m[2][1],
+        0.0f,
+        m.m[0][2],
+        m.m[1][2],
+        m.m[2][2],
+        0.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        1.0f
+    );
+    return DirectX::XMLoadFloat4x4(&f);
+}
+
+static DirectX::XMMATRIX HmdMatrix_AsDxMatPosOnly(const vr::HmdMatrix34_t& m) {
+    DirectX::XMFLOAT4X4 f = DirectX::XMFLOAT4X4(
+        1.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        1.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        1.0f,
+        0.0f,
+        m.m[0][3],
+        m.m[1][3],
+        m.m[2][3],
+        1.0f
+    );
+    return DirectX::XMLoadFloat4x4(&f);
+}
+
 FrameRender::FrameRender(std::shared_ptr<CD3DRender> pD3DRender)
     : m_pD3DRender(pD3DRender) {
     FrameRender::SetGpuPriority(m_pD3DRender->GetDevice());
@@ -55,45 +123,6 @@ bool FrameRender::Startup() {
         return false;
     }
 
-    // TODO: remove depth texture
-    // Create depth stencil texture
-    D3D11_TEXTURE2D_DESC descDepth;
-    ZeroMemory(&descDepth, sizeof(descDepth));
-    descDepth.Width = compositionTextureDesc.Width;
-    descDepth.Height = compositionTextureDesc.Height;
-    descDepth.MipLevels = 1;
-    descDepth.ArraySize = 1;
-    descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    descDepth.SampleDesc.Count = 1;
-    descDepth.SampleDesc.Quality = 0;
-    descDepth.Usage = D3D11_USAGE_DEFAULT;
-    descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-    descDepth.CPUAccessFlags = 0;
-    descDepth.MiscFlags = 0;
-    hr = m_pD3DRender->GetDevice()->CreateTexture2D(&descDepth, nullptr, &m_pDepthStencil);
-    if (FAILED(hr)) {
-        Error("CreateTexture2D %p %ls\n", hr, GetErrorStr(hr).c_str());
-        return false;
-    }
-
-    // Create the depth stencil view
-    D3D11_DEPTH_STENCIL_VIEW_DESC descDSV;
-    ZeroMemory(&descDSV, sizeof(descDSV));
-    descDSV.Format = descDepth.Format;
-    descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-    descDSV.Texture2D.MipSlice = 0;
-    hr = m_pD3DRender->GetDevice()->CreateDepthStencilView(
-        m_pDepthStencil.Get(), &descDSV, &m_pDepthStencilView
-    );
-    if (FAILED(hr)) {
-        Error("CreateDepthStencilView %p %ls\n", hr, GetErrorStr(hr).c_str());
-        return false;
-    }
-
-    m_pD3DRender->GetContext()->OMSetRenderTargets(
-        1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get()
-    );
-
     D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
     depthStencilDesc.DepthEnable = FALSE;
     depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
@@ -115,6 +144,49 @@ bool FrameRender::Startup() {
     depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
 
     m_pD3DRender->GetDevice()->CreateDepthStencilState(&depthStencilDesc, &m_depthStencilState);
+
+    // Left eye viewport
+
+    m_viewportL.Width = (float)Settings::Instance().m_renderWidth / 2.0;
+    m_viewportL.Height = (float)Settings::Instance().m_renderHeight;
+    m_viewportL.MinDepth = 0.0f;
+    m_viewportL.MaxDepth = 1.0f;
+    m_viewportL.TopLeftX = 0;
+    m_viewportL.TopLeftY = 0;
+
+    // Right eye viewport
+    m_viewportR.Width = (float)Settings::Instance().m_renderWidth / 2.0;
+    m_viewportR.Height = (float)Settings::Instance().m_renderHeight;
+    m_viewportR.MinDepth = 0.0f;
+    m_viewportR.MaxDepth = 1.0f;
+    m_viewportR.TopLeftX = (float)Settings::Instance().m_renderWidth / 2.0;
+    m_viewportR.TopLeftY = 0;
+
+    // Final composition viewport
+    m_viewport.Width = (float)Settings::Instance().m_renderWidth;
+    m_viewport.Height = (float)Settings::Instance().m_renderHeight;
+    m_viewport.MinDepth = 0.0f;
+    m_viewport.MaxDepth = 1.0f;
+    m_viewport.TopLeftX = 0;
+    m_viewport.TopLeftY = 0;
+
+    // Left eye scissor
+    m_scissorL.bottom = 0.0f;
+    m_scissorL.left = 0.0f;
+    m_scissorL.right = (float)Settings::Instance().m_renderWidth / 2.0f;
+    m_scissorL.top = (float)Settings::Instance().m_renderHeight;
+
+    // Right eye scissor
+    m_scissorR.bottom = 0.0f;
+    m_scissorR.left = (float)Settings::Instance().m_renderWidth / 2.0f;
+    m_scissorR.right = (float)Settings::Instance().m_renderWidth;
+    m_scissorR.top = (float)Settings::Instance().m_renderHeight;
+
+    // Final composition scissor
+    m_scissor.bottom = 0.0f;
+    m_scissor.left = 0.0f;
+    m_scissor.right = (float)Settings::Instance().m_renderWidth;
+    m_scissor.top = (float)Settings::Instance().m_renderHeight;
 
     //
     // Compile shaders
@@ -467,25 +539,10 @@ bool FrameRender::Startup() {
     return true;
 }
 
-DirectX::XMMATRIX HmdToDirectXOrientOnly(vr::HmdMatrix34_t& m) {
-    DirectX::XMFLOAT4X4 f = DirectX::XMFLOAT4X4(m.m[0][0], m.m[1][0], m.m[2][0], 0.0f, -m.m[0][1], -m.m[1][1], -m.m[2][1], 0.0f, m.m[0][2], m.m[1][2], m.m[2][2], 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
-    return DirectX::XMLoadFloat4x4(&f);
-}
-
-DirectX::XMMATRIX HmdToDirectX(const vr::HmdMatrix34_t& m) {
-    DirectX::XMFLOAT4X4 f = DirectX::XMFLOAT4X4(m.m[0][0], m.m[1][0], m.m[2][0], 0.0f, -m.m[0][1], -m.m[1][1], -m.m[2][1], 0.0f, m.m[0][2], m.m[1][2], m.m[2][2], 0.0f, m.m[0][3], m.m[1][3], m.m[2][3], 1.0f);
-    return DirectX::XMLoadFloat4x4(&f);
-}
-
-DirectX::XMMATRIX HmdToDirectXPosOnly(const vr::HmdMatrix34_t& m) {
-    DirectX::XMFLOAT4X4 f = DirectX::XMFLOAT4X4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, m.m[0][3], m.m[1][3], m.m[2][3], 1.0f);
-    return DirectX::XMLoadFloat4x4(&f);
-}
-
 bool FrameRender::RenderFrame(
     ID3D11Texture2D* pTexture[][2],
     vr::VRTextureBounds_t bounds[][2],
-    vr::HmdMatrix34_t poses[][2], // TODO they're both the same, simplify
+    vr::HmdMatrix34_t poses[],
     vr::HmdRect2_t viewProj[2],
     vr::HmdMatrix34_t eyeToHead[2],
     int layerCount,
@@ -494,58 +551,7 @@ bool FrameRender::RenderFrame(
     const std::string& debugText
 ) {
     // Set render target
-    m_pD3DRender->GetContext()->OMSetRenderTargets(
-        1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get()
-    );
-
-    // TODO: move this stuff to startup
-    // Left eye viewport
-    D3D11_VIEWPORT viewportL;
-    viewportL.Width = (float)Settings::Instance().m_renderWidth / 2.0;
-    viewportL.Height = (float)Settings::Instance().m_renderHeight;
-    viewportL.MinDepth = 0.0f;
-    viewportL.MaxDepth = 1.0f;
-    viewportL.TopLeftX = 0;
-    viewportL.TopLeftY = 0;
-
-    // Right eye viewport
-    D3D11_VIEWPORT viewportR;
-    viewportR.Width = (float)Settings::Instance().m_renderWidth / 2.0;
-    viewportR.Height = (float)Settings::Instance().m_renderHeight;
-    viewportR.MinDepth = 0.0f;
-    viewportR.MaxDepth = 1.0f;
-    viewportR.TopLeftX = (float)Settings::Instance().m_renderWidth / 2.0;
-    viewportR.TopLeftY = 0;
-
-    // Final composition viewport
-    D3D11_VIEWPORT viewport;
-    viewport.Width = (float)Settings::Instance().m_renderWidth;
-    viewport.Height = (float)Settings::Instance().m_renderHeight;
-    viewport.MinDepth = 0.0f;
-    viewport.MaxDepth = 1.0f;
-    viewport.TopLeftX = 0;
-    viewport.TopLeftY = 0;
-
-    // Left eye scissor
-    D3D11_RECT scissorL;
-    scissorL.bottom = 0.0f;
-    scissorL.left = 0.0f;
-    scissorL.right = (float)Settings::Instance().m_renderWidth / 2.0f;
-    scissorL.top = (float)Settings::Instance().m_renderHeight;
-
-    // Right eye scissor
-    D3D11_RECT scissorR;
-    scissorR.bottom = 0.0f;
-    scissorR.left = (float)Settings::Instance().m_renderWidth / 2.0f;
-    scissorR.right = (float)Settings::Instance().m_renderWidth;
-    scissorR.top = (float)Settings::Instance().m_renderHeight;
-
-    // Final composition scissor
-    D3D11_RECT scissor;
-    scissor.bottom = 0.0f;
-    scissor.left = 0.0f;
-    scissor.right = (float)Settings::Instance().m_renderWidth;
-    scissor.top = (float)Settings::Instance().m_renderHeight;
+    m_pD3DRender->GetContext()->OMSetRenderTargets(1, m_pRenderTargetView.GetAddressOf(), NULL);
 
     m_pD3DRender->GetContext()->OMSetDepthStencilState(m_depthStencilState.Get(), 0);
 
@@ -560,6 +566,32 @@ bool FrameRender::RenderFrame(
         recenterLayer = layerCount;
         layerCount++;
     }
+
+    // Set up our projection, HMD, and HMD-to-eye transforms once
+    const auto nearZ = 0.001f;
+    const auto farZ = 1.0f;
+    DirectX::XMMATRIX projectionMatL = DirectX::XMMatrixPerspectiveOffCenterRH(
+        viewProj[0].vTopLeft.v[0] * nearZ,
+        viewProj[0].vBottomRight.v[0] * nearZ,
+        -viewProj[0].vTopLeft.v[1] * nearZ,
+        -viewProj[0].vBottomRight.v[1] * nearZ,
+        nearZ,
+        farZ
+    );
+    DirectX::XMMATRIX projectionMatR = DirectX::XMMatrixPerspectiveOffCenterRH(
+        viewProj[1].vTopLeft.v[0] * nearZ,
+        viewProj[1].vBottomRight.v[0] * nearZ,
+        -viewProj[1].vTopLeft.v[1] * nearZ,
+        -viewProj[1].vBottomRight.v[1] * nearZ,
+        nearZ,
+        farZ
+    );
+    DirectX::XMMATRIX hmdToEyeMatL
+        = DirectX::XMMatrixInverse(nullptr, HmdMatrix_AsDxMatPosOnly(eyeToHead[0]));
+    DirectX::XMMATRIX hmdToEyeMatR
+        = DirectX::XMMatrixInverse(nullptr, HmdMatrix_AsDxMatPosOnly(eyeToHead[1]));
+    DirectX::XMMATRIX hmdPoseForTargetTs
+        = HmdMatrix_AsDxMatOrientOnly(poses[0]); // Set to HmdMatrix_AsDxMat to debug the rendering
 
     for (int i = 0; i < layerCount; i++) {
         ID3D11Texture2D* textures[2];
@@ -619,12 +651,6 @@ bool FrameRender::RenderFrame(
             m_pD3DRender->GetContext()->OMSetBlendState(m_pBlendState.Get(), NULL, 0xffffffff);
         }
 
-        // Clear the depth buffer to 1.0 (max depth)
-        // We need clear depth buffer to correctly render layers.
-        m_pD3DRender->GetContext()->ClearDepthStencilView(
-            m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0
-        );
-
         int inputColorAdjust = 0;
         if (Settings::Instance().m_enableHdr) {
             if (SRVDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
@@ -658,91 +684,105 @@ bool FrameRender::RenderFrame(
         // Update uv-coordinates in vertex buffer according to bounds.
         //
 
-        
-        static float test = 0.0f;
-        test += 0.01f;
-
-        DirectX::XMFLOAT4X4 _identityMat = DirectX::XMFLOAT4X4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+        // I think the negative Y basis is a handedness thing?
+        DirectX::XMFLOAT4X4 _identityMat = DirectX::XMFLOAT4X4(
+            1.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            -1.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            1.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            1.0f
+        );
         DirectX::XMMATRIX identityMat = DirectX::XMLoadFloat4x4(&_identityMat);
-        DirectX::XMMATRIX viewMatTargetTsL = HmdToDirectXOrientOnly(poses[0][0]);
-        DirectX::XMMATRIX viewMatTargetTsR = HmdToDirectXOrientOnly(poses[0][1]);
-        
-        const auto nearZ = 0.001f;
-        const auto farZ = 1.0f;
-        DirectX::XMMATRIX projectionMatL = DirectX::XMMatrixPerspectiveOffCenterRH(viewProj[0].vTopLeft.v[0] * nearZ, viewProj[0].vBottomRight.v[0] * nearZ, viewProj[0].vBottomRight.v[1] * nearZ, viewProj[0].vTopLeft.v[1] * nearZ, nearZ, farZ);
-        DirectX::XMMATRIX projectionMatR = DirectX::XMMatrixPerspectiveOffCenterRH(viewProj[1].vTopLeft.v[0] * nearZ, viewProj[1].vBottomRight.v[0] * nearZ, viewProj[1].vBottomRight.v[1] * nearZ, viewProj[1].vTopLeft.v[1] * nearZ, nearZ, farZ);
-        DirectX::XMMATRIX hmdToEyeMatL = HmdToDirectXPosOnly(eyeToHead[0]);
-        DirectX::XMMATRIX hmdToEyeMatR = HmdToDirectXPosOnly(eyeToHead[1]);
 
-        DirectX::XMMATRIX viewMatL = (i == recenterLayer) ? identityMat : HmdToDirectXOrientOnly(poses[i][0]);
-        DirectX::XMMATRIX viewMatLInv = DirectX::XMMatrixInverse(nullptr, viewMatL);
-        DirectX::XMMATRIX viewMatR = (i == recenterLayer) ? identityMat : HmdToDirectXOrientOnly(poses[i][1]);
-        DirectX::XMMATRIX viewMatRInv = DirectX::XMMatrixInverse(nullptr, viewMatR);
+        DirectX::XMMATRIX framePose
+            = (i == recenterLayer) ? identityMat : HmdMatrix_AsDxMatOrientOnly(poses[i]);
+        DirectX::XMMATRIX framePoseInv = DirectX::XMMatrixInverse(nullptr, framePose);
 
-        DirectX::XMMATRIX viewMatFinalL = viewMatTargetTsL * viewMatLInv * hmdToEyeMatL;
-        DirectX::XMMATRIX viewMatFinalR = viewMatTargetTsR * viewMatRInv * hmdToEyeMatR;
-        viewMatFinalL = DirectX::XMMatrixInverse(nullptr, viewMatFinalL);
-        viewMatFinalR = DirectX::XMMatrixInverse(nullptr, viewMatFinalR);
+        // framePose is the position of the layer in space, ie an identity matrix
+        // would place the quad perpendicular in the floor at 0,0,0
+        DirectX::XMMATRIX viewMatDiff
+            = DirectX::XMMatrixInverse(nullptr, hmdPoseForTargetTs * framePoseInv);
 
-        DirectX::XMMATRIX transformMatL = viewMatFinalL;
-        DirectX::XMMATRIX transformMatR = viewMatFinalR;
+        DirectX::XMMATRIX transformMatL = viewMatDiff * hmdToEyeMatL * projectionMatL;
+        DirectX::XMMATRIX transformMatR = viewMatDiff * hmdToEyeMatR * projectionMatR;
 
         if (i == recenterLayer) {
             transformMatL = identityMat;
             transformMatR = identityMat;
         }
 
-        // TODO: When I place the panel closer, it doesn't quite look correct?
-        // It seems to 'dance' when I move positionally.
-        // Luckily, the entire point of timewarp is to ignore the positional
-        // components, but it does worry me a bit.
         const auto depth = 700.0f;
         const auto m = 1.0f;
         DirectX::XMFLOAT4 lptA, lptB, lptC, lptD;
         DirectX::XMFLOAT4 rptA, rptB, rptC, rptD;
-        DirectX::XMVECTORF32 lptAvf = {{{-1.0f * -viewProj[0].vTopLeft.v[0] * depth * m, 1.0f * viewProj[0].vBottomRight.v[1] * depth * m, -depth, 1.0f}}};
-        DirectX::XMVECTORF32 lptBvf = {{{1.0f * viewProj[0].vBottomRight.v[0] * depth * m, -1.0f * -viewProj[0].vTopLeft.v[1] * depth * m, -depth, 1.0f}}};
-        DirectX::XMVECTORF32 lptCvf = {{{1.0f * viewProj[0].vBottomRight.v[0] * depth * m, 1.0f * viewProj[0].vBottomRight.v[1] * depth * m, -depth, 1.0f}}};
-        DirectX::XMVECTORF32 lptDvf = {{{-1.0f * -viewProj[0].vTopLeft.v[0] * depth * m, -1.0f * -viewProj[0].vTopLeft.v[1] * depth * m, -depth, 1.0f}}};
-        /*DirectX::XMVECTORF32 lptAvf = {{{-1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f}}};
-        DirectX::XMVECTORF32 lptBvf = {{{1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f}}};
-        DirectX::XMVECTORF32 lptCvf = {{{1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f}}};
-        DirectX::XMVECTORF32 lptDvf = {{{-1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f}}};*/
-        DirectX::XMVECTOR lptAv = DirectX::XMVector3Transform(lptAvf, transformMatL);
-        DirectX::XMVECTOR lptBv = DirectX::XMVector3Transform(lptBvf, transformMatL);
-        DirectX::XMVECTOR lptCv = DirectX::XMVector3Transform(lptCvf, transformMatL);
-        DirectX::XMVECTOR lptDv = DirectX::XMVector3Transform(lptDvf, transformMatL);
-        lptAv = DirectX::XMVector3Transform(lptAv, projectionMatL); // TODO: move up
-        lptBv = DirectX::XMVector3Transform(lptBv, projectionMatL);
-        lptCv = DirectX::XMVector3Transform(lptCv, projectionMatL);
-        lptDv = DirectX::XMVector3Transform(lptDv, projectionMatL);
-        
-        DirectX::XMStoreFloat4(&lptA, lptAv);
-        DirectX::XMStoreFloat4(&lptB, lptBv);
-        DirectX::XMStoreFloat4(&lptC, lptCv);
-        DirectX::XMStoreFloat4(&lptD, lptDv);
+#if 1
+        DirectX::XMVECTORF32 lptAvf = { { { -1.0f * -viewProj[0].vTopLeft.v[0] * depth * m,
+                                            1.0f * -viewProj[0].vTopLeft.v[1] * depth * m,
+                                            -depth,
+                                            1.0f } } };
+        DirectX::XMVECTORF32 lptBvf = { { { 1.0f * viewProj[0].vBottomRight.v[0] * depth * m,
+                                            -1.0f * viewProj[0].vBottomRight.v[1] * depth * m,
+                                            -depth,
+                                            1.0f } } };
+        DirectX::XMVECTORF32 lptCvf = { { { 1.0f * viewProj[0].vBottomRight.v[0] * depth * m,
+                                            1.0f * -viewProj[0].vTopLeft.v[1] * depth * m,
+                                            -depth,
+                                            1.0f } } };
+        DirectX::XMVECTORF32 lptDvf = { { { -1.0f * -viewProj[0].vTopLeft.v[0] * depth * m,
+                                            -1.0f * viewProj[0].vBottomRight.v[1] * depth * m,
+                                            -depth,
+                                            1.0f } } };
+#else
+        DirectX::XMVECTORF32 lptAvf = { { { -1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } };
+        DirectX::XMVECTORF32 lptBvf = { { { 1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } };
+        DirectX::XMVECTORF32 lptCvf = { { { 1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } };
+        DirectX::XMVECTORF32 lptDvf
+            = { { { -1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } };
+#endif
+        DirectX::XMStoreFloat4(&lptA, DirectX::XMVector3Transform(lptAvf, transformMatL));
+        DirectX::XMStoreFloat4(&lptB, DirectX::XMVector3Transform(lptBvf, transformMatL));
+        DirectX::XMStoreFloat4(&lptC, DirectX::XMVector3Transform(lptCvf, transformMatL));
+        DirectX::XMStoreFloat4(&lptD, DirectX::XMVector3Transform(lptDvf, transformMatL));
 
-        DirectX::XMVECTORF32 rptAvf = {{{-1.0f * -viewProj[1].vTopLeft.v[0] * depth * m, 1.0f * viewProj[1].vBottomRight.v[1] * depth * m, -depth, 1.0f}}};
-        DirectX::XMVECTORF32 rptBvf = {{{1.0f * viewProj[1].vBottomRight.v[0] * depth * m, -1.0f * -viewProj[1].vTopLeft.v[1] * depth * m, -depth, 1.0f}}};
-        DirectX::XMVECTORF32 rptCvf = {{{1.0f * viewProj[1].vBottomRight.v[0] * depth * m, 1.0f * viewProj[1].vBottomRight.v[1] * depth * m, -depth, 1.0f}}};
-        DirectX::XMVECTORF32 rptDvf = {{{-1.0f * -viewProj[1].vTopLeft.v[0] * depth * m, -1.0f * -viewProj[1].vTopLeft.v[1] * depth * m, -depth, 1.0f}}};
-        /*DirectX::XMVECTORF32 rptAvf = {{{-1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f}}};
-        DirectX::XMVECTORF32 rptBvf = {{{1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f}}};
-        DirectX::XMVECTORF32 rptCvf = {{{1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f}}};
-        DirectX::XMVECTORF32 rptDvf = {{{-1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f}}};*/
-        DirectX::XMVECTOR rptAv = DirectX::XMVector3Transform(rptAvf, transformMatR);
-        DirectX::XMVECTOR rptBv = DirectX::XMVector3Transform(rptBvf, transformMatR);
-        DirectX::XMVECTOR rptCv = DirectX::XMVector3Transform(rptCvf, transformMatR);
-        DirectX::XMVECTOR rptDv = DirectX::XMVector3Transform(rptDvf, transformMatR);
-        rptAv = DirectX::XMVector3Transform(rptAv, projectionMatR); // TODO: move up
-        rptBv = DirectX::XMVector3Transform(rptBv, projectionMatR);
-        rptCv = DirectX::XMVector3Transform(rptCv, projectionMatR);
-        rptDv = DirectX::XMVector3Transform(rptDv, projectionMatR);
-        
-        DirectX::XMStoreFloat4(&rptA, rptAv);
-        DirectX::XMStoreFloat4(&rptB, rptBv);
-        DirectX::XMStoreFloat4(&rptC, rptCv);
-        DirectX::XMStoreFloat4(&rptD, rptDv);
+#if 1
+        DirectX::XMVECTORF32 rptAvf = { { { -1.0f * -viewProj[1].vTopLeft.v[0] * depth * m,
+                                            1.0f * -viewProj[1].vTopLeft.v[1] * depth * m,
+                                            -depth,
+                                            1.0f } } };
+        DirectX::XMVECTORF32 rptBvf = { { { 1.0f * viewProj[1].vBottomRight.v[0] * depth * m,
+                                            -1.0f * viewProj[1].vBottomRight.v[1] * depth * m,
+                                            -depth,
+                                            1.0f } } };
+        DirectX::XMVECTORF32 rptCvf = { { { 1.0f * viewProj[1].vBottomRight.v[0] * depth * m,
+                                            1.0f * -viewProj[1].vTopLeft.v[1] * depth * m,
+                                            -depth,
+                                            1.0f } } };
+        DirectX::XMVECTORF32 rptDvf = { { { -1.0f * -viewProj[1].vTopLeft.v[0] * depth * m,
+                                            -1.0f * viewProj[1].vBottomRight.v[1] * depth * m,
+                                            -depth,
+                                            1.0f } } };
+#else
+        DirectX::XMVECTORF32 rptAvf = { { { -1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } };
+        DirectX::XMVECTORF32 rptBvf = { { { 1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } };
+        DirectX::XMVECTORF32 rptCvf = { { { 1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } };
+        DirectX::XMVECTORF32 rptDvf
+            = { { { -1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } };
+#endif
+        DirectX::XMStoreFloat4(&rptA, DirectX::XMVector3Transform(rptAvf, transformMatR));
+        DirectX::XMStoreFloat4(&rptB, DirectX::XMVector3Transform(rptBvf, transformMatR));
+        DirectX::XMStoreFloat4(&rptC, DirectX::XMVector3Transform(rptCvf, transformMatR));
+        DirectX::XMStoreFloat4(&rptD, DirectX::XMVector3Transform(rptDvf, transformMatR));
 
         // We discard the z value because we never want any clipping,
         // but we do want the w value for perspective correction.
@@ -774,10 +814,6 @@ bool FrameRender::RenderFrame(
               DirectX::XMFLOAT2(bound[1].uMin, bound[1].vMin),
               1 + (inputColorAdjust * 2) },
         };
-
-        // TODO: Which is better? UpdateSubresource or Map
-        // m_pD3DRender->GetContext()->UpdateSubresource(m_pVertexBuffer.Get(), 0, nullptr,
-        // &vertices, 0, 0);
 
         D3D11_MAPPED_SUBRESOURCE mapped = { 0 };
         hr = m_pD3DRender->GetContext()->Map(
@@ -827,17 +863,21 @@ bool FrameRender::RenderFrame(
         // Draw
         //
 
-        m_pD3DRender->GetContext()->RSSetViewports(1, &viewportL);
-        m_pD3DRender->GetContext()->RSSetScissorRects(1, &scissorL);
-        m_pD3DRender->GetContext()->DrawIndexed(VERTEX_INDEX_COUNT/2, 0, 0);
-        m_pD3DRender->GetContext()->RSSetViewports(1, &viewportR);
-        m_pD3DRender->GetContext()->RSSetScissorRects(1, &scissorR);
-        //m_pD3DRender->GetContext()->DrawIndexed(VERTEX_INDEX_COUNT/2, sizeof(WORD) * (VERTEX_INDEX_COUNT/2), 0);
-        m_pD3DRender->GetContext()->DrawIndexed(VERTEX_INDEX_COUNT/2, (VERTEX_INDEX_COUNT/2), 0);
+        // Left eye
+        m_pD3DRender->GetContext()->RSSetViewports(1, &m_viewportL);
+        m_pD3DRender->GetContext()->RSSetScissorRects(1, &m_scissorL);
+        m_pD3DRender->GetContext()->DrawIndexed(VERTEX_INDEX_COUNT / 2, 0, 0);
+
+        // Right eye
+        m_pD3DRender->GetContext()->RSSetViewports(1, &m_viewportR);
+        m_pD3DRender->GetContext()->RSSetScissorRects(1, &m_scissorR);
+        m_pD3DRender->GetContext()->DrawIndexed(
+            VERTEX_INDEX_COUNT / 2, (VERTEX_INDEX_COUNT / 2), 0
+        );
     }
 
-    m_pD3DRender->GetContext()->RSSetViewports(1, &viewport);
-    m_pD3DRender->GetContext()->RSSetScissorRects(1, &scissor);
+    m_pD3DRender->GetContext()->RSSetViewports(1, &m_viewport);
+    m_pD3DRender->GetContext()->RSSetScissorRects(1, &m_scissor);
 
     if (enableColorCorrection) {
         m_colorCorrectionPipeline->Render();

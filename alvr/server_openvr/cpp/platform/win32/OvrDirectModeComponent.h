@@ -16,7 +16,12 @@ public:
 
     void SetEncoder(std::shared_ptr<CEncoder> pEncoder);
 
-    void SetViewsConfig(vr::HmdRect2_t projLeft, vr::HmdMatrix34_t eyeToHeadLeft, vr::HmdRect2_t projRight, vr::HmdMatrix34_t eyeToHeadRight);
+    void SetViewsConfig(
+        vr::HmdRect2_t projLeft,
+        vr::HmdMatrix34_t eyeToHeadLeft,
+        vr::HmdRect2_t projRight,
+        vr::HmdMatrix34_t eyeToHeadRight
+    );
 
     /** Specific to Oculus compositor support, textures supplied must be created using this method.
      */

@@ -307,6 +307,9 @@ void Hmd::SetViewsConfig(FfiViewsConfig config) {
 
     this->views_config = config;
 
+    // The OpenXR spec defines the HMD position as the midpoint
+    // between the eyes, so conversion to this is handled by the
+    // client.
     auto left_transform = MATRIX_IDENTITY;
     left_transform.m[0][3] = -config.ipd_m / 2.0;
     auto right_transform = MATRIX_IDENTITY;
@@ -317,6 +320,8 @@ void Hmd::SetViewsConfig(FfiViewsConfig config) {
     auto right_proj = fov_to_projection(config.fov[1]);
 
     vr::VRServerDriverHost()->SetDisplayProjectionRaw(object_id, left_proj, right_proj);
+
+    m_directModeComponent->SetViewsConfig(left_proj, left_transform, right_proj, right_transform);
 
     // todo: check if this is still needed
     vr::VRServerDriverHost()->VendorSpecificEvent(

@@ -36,6 +36,9 @@ public:
     bool CopyToStaging(
         ID3D11Texture2D* pTexture[][2],
         vr::VRTextureBounds_t bounds[][2],
+        vr::HmdMatrix34_t poses[][2],
+        vr::HmdRect2_t viewProj[2],
+        vr::HmdMatrix34_t eyeToHead[2],
         int layerCount,
         bool recentering,
         uint64_t presentationTime,

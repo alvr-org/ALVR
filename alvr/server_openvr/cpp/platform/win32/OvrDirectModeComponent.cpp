@@ -5,10 +5,23 @@ OvrDirectModeComponent::OvrDirectModeComponent(
 )
     : m_pD3DRender(pD3DRender)
     , m_poseHistory(poseHistory)
-    , m_submitLayer(0) { }
+    , m_submitLayer(0) 
+{
+    HmdMatrix_SetIdentity(&m_eyeToHead[0]);
+    HmdMatrix_SetIdentity(&m_eyeToHead[1]);
+    m_viewProj[0] = {-1.0f, 1.0f, 1.0f, -1.0f};
+    m_viewProj[1] = {-1.0f, 1.0f, 1.0f, -1.0f};
+}
 
 void OvrDirectModeComponent::SetEncoder(std::shared_ptr<CEncoder> pEncoder) {
     m_pEncoder = pEncoder;
+}
+
+void OvrDirectModeComponent::SetViewsConfig(vr::HmdRect2_t projLeft, vr::HmdMatrix34_t eyeToHeadLeft, vr::HmdRect2_t projRight, vr::HmdMatrix34_t eyeToHeadRight) {
+    m_viewProj[0] = projLeft;
+    m_eyeToHead[0] = eyeToHeadLeft;
+    m_viewProj[1] = projRight;
+    m_eyeToHead[1] = eyeToHeadRight;
 }
 
 /** Specific to Oculus compositor support, textures supplied must be created using this method. */
@@ -270,6 +283,7 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
     ID3D11Texture2D* pTexture[MAX_LAYERS][2];
     ComPtr<ID3D11Texture2D> Texture[MAX_LAYERS][2];
     vr::VRTextureBounds_t bounds[MAX_LAYERS][2];
+    vr::HmdMatrix34_t poses[MAX_LAYERS][2];
 
     for (uint32_t i = 0; i < layerCount; i++) {
         // Find left eye texture.
@@ -311,6 +325,8 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
         pTexture[i][1] = Texture[i][1].Get();
         bounds[i][0] = m_submitLayers[i][0].bounds;
         bounds[i][1] = m_submitLayers[i][1].bounds;
+        poses[i][0] = m_submitLayers[i][0].mHmdPose;
+        poses[i][1] = m_submitLayers[i][1].mHmdPose;
     }
 
     // This can go away, but is useful to see it as a separate packet on the gpu in traces.
@@ -327,7 +343,7 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
 
         // Copy entire texture to staging so we can read the pixels to send to remote device.
         m_pEncoder->CopyToStaging(
-            pTexture, bounds, layerCount, false, presentationTime, submitFrameIndex, "", debugText
+            pTexture, bounds, poses, m_viewProj, m_eyeToHead, layerCount, false, presentationTime, submitFrameIndex, "", debugText
         );
 
         m_pD3DRender->GetContext()->Flush();

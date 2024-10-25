@@ -55,6 +55,7 @@ bool FrameRender::Startup() {
         return false;
     }
 
+    // TODO: remove depth texture
     // Create depth stencil texture
     D3D11_TEXTURE2D_DESC descDepth;
     ZeroMemory(&descDepth, sizeof(descDepth));
@@ -93,14 +94,27 @@ bool FrameRender::Startup() {
         1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get()
     );
 
-    D3D11_VIEWPORT viewport;
-    viewport.Width = (float)Settings::Instance().m_renderWidth;
-    viewport.Height = (float)Settings::Instance().m_renderHeight;
-    viewport.MinDepth = 0.0f;
-    viewport.MaxDepth = 1.0f;
-    viewport.TopLeftX = 0;
-    viewport.TopLeftY = 0;
-    m_pD3DRender->GetContext()->RSSetViewports(1, &viewport);
+    D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
+    depthStencilDesc.DepthEnable = FALSE;
+    depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+    depthStencilDesc.DepthFunc = D3D11_COMPARISON_ALWAYS;
+    depthStencilDesc.StencilEnable = FALSE;
+    depthStencilDesc.StencilReadMask = 0xFF;
+    depthStencilDesc.StencilWriteMask = 0xFF;
+
+    // Stencil operations if pixel is front-facing
+    depthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+    depthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+    depthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+    depthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
+    // Stencil operations if pixel is back-facing
+    depthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+    depthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+    depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+    depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
+    m_pD3DRender->GetDevice()->CreateDepthStencilState(&depthStencilDesc, &m_depthStencilState);
 
     //
     // Compile shaders
@@ -134,9 +148,9 @@ bool FrameRender::Startup() {
 
     // Define the input layout
     D3D11_INPUT_ELEMENT_DESC layout[] = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "VIEW", 0, DXGI_FORMAT_R32_UINT, 0, 20, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "VIEW", 0, DXGI_FORMAT_R32_UINT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
     };
     UINT numElements = ARRAYSIZE(layout);
 
@@ -453,9 +467,27 @@ bool FrameRender::Startup() {
     return true;
 }
 
+DirectX::XMMATRIX HmdToDirectXOrientOnly(vr::HmdMatrix34_t& m) {
+    DirectX::XMFLOAT4X4 f = DirectX::XMFLOAT4X4(m.m[0][0], m.m[1][0], m.m[2][0], 0.0f, -m.m[0][1], -m.m[1][1], -m.m[2][1], 0.0f, m.m[0][2], m.m[1][2], m.m[2][2], 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+    return DirectX::XMLoadFloat4x4(&f);
+}
+
+DirectX::XMMATRIX HmdToDirectX(const vr::HmdMatrix34_t& m) {
+    DirectX::XMFLOAT4X4 f = DirectX::XMFLOAT4X4(m.m[0][0], m.m[1][0], m.m[2][0], 0.0f, -m.m[0][1], -m.m[1][1], -m.m[2][1], 0.0f, m.m[0][2], m.m[1][2], m.m[2][2], 0.0f, m.m[0][3], m.m[1][3], m.m[2][3], 1.0f);
+    return DirectX::XMLoadFloat4x4(&f);
+}
+
+DirectX::XMMATRIX HmdToDirectXPosOnly(const vr::HmdMatrix34_t& m) {
+    DirectX::XMFLOAT4X4 f = DirectX::XMFLOAT4X4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, m.m[0][3], m.m[1][3], m.m[2][3], 1.0f);
+    return DirectX::XMLoadFloat4x4(&f);
+}
+
 bool FrameRender::RenderFrame(
     ID3D11Texture2D* pTexture[][2],
     vr::VRTextureBounds_t bounds[][2],
+    vr::HmdMatrix34_t poses[][2], // TODO they're both the same, simplify
+    vr::HmdRect2_t viewProj[2],
+    vr::HmdMatrix34_t eyeToHead[2],
     int layerCount,
     bool recentering,
     const std::string& message,
@@ -466,7 +498,26 @@ bool FrameRender::RenderFrame(
         1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get()
     );
 
-    // Set viewport
+    // TODO: move this stuff to startup
+    // Left eye viewport
+    D3D11_VIEWPORT viewportL;
+    viewportL.Width = (float)Settings::Instance().m_renderWidth / 2.0;
+    viewportL.Height = (float)Settings::Instance().m_renderHeight;
+    viewportL.MinDepth = 0.0f;
+    viewportL.MaxDepth = 1.0f;
+    viewportL.TopLeftX = 0;
+    viewportL.TopLeftY = 0;
+
+    // Right eye viewport
+    D3D11_VIEWPORT viewportR;
+    viewportR.Width = (float)Settings::Instance().m_renderWidth / 2.0;
+    viewportR.Height = (float)Settings::Instance().m_renderHeight;
+    viewportR.MinDepth = 0.0f;
+    viewportR.MaxDepth = 1.0f;
+    viewportR.TopLeftX = (float)Settings::Instance().m_renderWidth / 2.0;
+    viewportR.TopLeftY = 0;
+
+    // Final composition viewport
     D3D11_VIEWPORT viewport;
     viewport.Width = (float)Settings::Instance().m_renderWidth;
     viewport.Height = (float)Settings::Instance().m_renderHeight;
@@ -474,7 +525,29 @@ bool FrameRender::RenderFrame(
     viewport.MaxDepth = 1.0f;
     viewport.TopLeftX = 0;
     viewport.TopLeftY = 0;
-    m_pD3DRender->GetContext()->RSSetViewports(1, &viewport);
+
+    // Left eye scissor
+    D3D11_RECT scissorL;
+    scissorL.bottom = 0.0f;
+    scissorL.left = 0.0f;
+    scissorL.right = (float)Settings::Instance().m_renderWidth / 2.0f;
+    scissorL.top = (float)Settings::Instance().m_renderHeight;
+
+    // Right eye scissor
+    D3D11_RECT scissorR;
+    scissorR.bottom = 0.0f;
+    scissorR.left = (float)Settings::Instance().m_renderWidth / 2.0f;
+    scissorR.right = (float)Settings::Instance().m_renderWidth;
+    scissorR.top = (float)Settings::Instance().m_renderHeight;
+
+    // Final composition scissor
+    D3D11_RECT scissor;
+    scissor.bottom = 0.0f;
+    scissor.left = 0.0f;
+    scissor.right = (float)Settings::Instance().m_renderWidth;
+    scissor.top = (float)Settings::Instance().m_renderHeight;
+
+    m_pD3DRender->GetContext()->OMSetDepthStencilState(m_depthStencilState.Get(), 0);
 
     // Clear the back buffer
     m_pD3DRender->GetContext()->ClearRenderTargetView(
@@ -585,31 +658,119 @@ bool FrameRender::RenderFrame(
         // Update uv-coordinates in vertex buffer according to bounds.
         //
 
+        
+        static float test = 0.0f;
+        test += 0.01f;
+
+        DirectX::XMFLOAT4X4 _identityMat = DirectX::XMFLOAT4X4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+        DirectX::XMMATRIX identityMat = DirectX::XMLoadFloat4x4(&_identityMat);
+        DirectX::XMMATRIX viewMatTargetTsL = HmdToDirectXOrientOnly(poses[0][0]);
+        DirectX::XMMATRIX viewMatTargetTsR = HmdToDirectXOrientOnly(poses[0][1]);
+        
+        const auto nearZ = 0.001f;
+        const auto farZ = 1.0f;
+        DirectX::XMMATRIX projectionMatL = DirectX::XMMatrixPerspectiveOffCenterRH(viewProj[0].vTopLeft.v[0] * nearZ, viewProj[0].vBottomRight.v[0] * nearZ, viewProj[0].vBottomRight.v[1] * nearZ, viewProj[0].vTopLeft.v[1] * nearZ, nearZ, farZ);
+        DirectX::XMMATRIX projectionMatR = DirectX::XMMatrixPerspectiveOffCenterRH(viewProj[1].vTopLeft.v[0] * nearZ, viewProj[1].vBottomRight.v[0] * nearZ, viewProj[1].vBottomRight.v[1] * nearZ, viewProj[1].vTopLeft.v[1] * nearZ, nearZ, farZ);
+        DirectX::XMMATRIX hmdToEyeMatL = HmdToDirectXPosOnly(eyeToHead[0]);
+        DirectX::XMMATRIX hmdToEyeMatR = HmdToDirectXPosOnly(eyeToHead[1]);
+
+        DirectX::XMMATRIX viewMatL = (i == recenterLayer) ? identityMat : HmdToDirectXOrientOnly(poses[i][0]);
+        DirectX::XMMATRIX viewMatLInv = DirectX::XMMatrixInverse(nullptr, viewMatL);
+        DirectX::XMMATRIX viewMatR = (i == recenterLayer) ? identityMat : HmdToDirectXOrientOnly(poses[i][1]);
+        DirectX::XMMATRIX viewMatRInv = DirectX::XMMatrixInverse(nullptr, viewMatR);
+
+        DirectX::XMMATRIX viewMatFinalL = viewMatTargetTsL * viewMatLInv * hmdToEyeMatL;
+        DirectX::XMMATRIX viewMatFinalR = viewMatTargetTsR * viewMatRInv * hmdToEyeMatR;
+        viewMatFinalL = DirectX::XMMatrixInverse(nullptr, viewMatFinalL);
+        viewMatFinalR = DirectX::XMMatrixInverse(nullptr, viewMatFinalR);
+
+        DirectX::XMMATRIX transformMatL = viewMatFinalL;
+        DirectX::XMMATRIX transformMatR = viewMatFinalR;
+
+        if (i == recenterLayer) {
+            transformMatL = identityMat;
+            transformMatR = identityMat;
+        }
+
+        // TODO: When I place the panel closer, it doesn't quite look correct?
+        // It seems to 'dance' when I move positionally.
+        // Luckily, the entire point of timewarp is to ignore the positional
+        // components, but it does worry me a bit.
+        const auto depth = 700.0f;
+        const auto m = 1.0f;
+        DirectX::XMFLOAT4 lptA, lptB, lptC, lptD;
+        DirectX::XMFLOAT4 rptA, rptB, rptC, rptD;
+        DirectX::XMVECTORF32 lptAvf = {{{-1.0f * -viewProj[0].vTopLeft.v[0] * depth * m, 1.0f * viewProj[0].vBottomRight.v[1] * depth * m, -depth, 1.0f}}};
+        DirectX::XMVECTORF32 lptBvf = {{{1.0f * viewProj[0].vBottomRight.v[0] * depth * m, -1.0f * -viewProj[0].vTopLeft.v[1] * depth * m, -depth, 1.0f}}};
+        DirectX::XMVECTORF32 lptCvf = {{{1.0f * viewProj[0].vBottomRight.v[0] * depth * m, 1.0f * viewProj[0].vBottomRight.v[1] * depth * m, -depth, 1.0f}}};
+        DirectX::XMVECTORF32 lptDvf = {{{-1.0f * -viewProj[0].vTopLeft.v[0] * depth * m, -1.0f * -viewProj[0].vTopLeft.v[1] * depth * m, -depth, 1.0f}}};
+        /*DirectX::XMVECTORF32 lptAvf = {{{-1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f}}};
+        DirectX::XMVECTORF32 lptBvf = {{{1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f}}};
+        DirectX::XMVECTORF32 lptCvf = {{{1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f}}};
+        DirectX::XMVECTORF32 lptDvf = {{{-1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f}}};*/
+        DirectX::XMVECTOR lptAv = DirectX::XMVector3Transform(lptAvf, transformMatL);
+        DirectX::XMVECTOR lptBv = DirectX::XMVector3Transform(lptBvf, transformMatL);
+        DirectX::XMVECTOR lptCv = DirectX::XMVector3Transform(lptCvf, transformMatL);
+        DirectX::XMVECTOR lptDv = DirectX::XMVector3Transform(lptDvf, transformMatL);
+        lptAv = DirectX::XMVector3Transform(lptAv, projectionMatL); // TODO: move up
+        lptBv = DirectX::XMVector3Transform(lptBv, projectionMatL);
+        lptCv = DirectX::XMVector3Transform(lptCv, projectionMatL);
+        lptDv = DirectX::XMVector3Transform(lptDv, projectionMatL);
+        
+        DirectX::XMStoreFloat4(&lptA, lptAv);
+        DirectX::XMStoreFloat4(&lptB, lptBv);
+        DirectX::XMStoreFloat4(&lptC, lptCv);
+        DirectX::XMStoreFloat4(&lptD, lptDv);
+
+        DirectX::XMVECTORF32 rptAvf = {{{-1.0f * -viewProj[1].vTopLeft.v[0] * depth * m, 1.0f * viewProj[1].vBottomRight.v[1] * depth * m, -depth, 1.0f}}};
+        DirectX::XMVECTORF32 rptBvf = {{{1.0f * viewProj[1].vBottomRight.v[0] * depth * m, -1.0f * -viewProj[1].vTopLeft.v[1] * depth * m, -depth, 1.0f}}};
+        DirectX::XMVECTORF32 rptCvf = {{{1.0f * viewProj[1].vBottomRight.v[0] * depth * m, 1.0f * viewProj[1].vBottomRight.v[1] * depth * m, -depth, 1.0f}}};
+        DirectX::XMVECTORF32 rptDvf = {{{-1.0f * -viewProj[1].vTopLeft.v[0] * depth * m, -1.0f * -viewProj[1].vTopLeft.v[1] * depth * m, -depth, 1.0f}}};
+        /*DirectX::XMVECTORF32 rptAvf = {{{-1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f}}};
+        DirectX::XMVECTORF32 rptBvf = {{{1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f}}};
+        DirectX::XMVECTORF32 rptCvf = {{{1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f}}};
+        DirectX::XMVECTORF32 rptDvf = {{{-1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f}}};*/
+        DirectX::XMVECTOR rptAv = DirectX::XMVector3Transform(rptAvf, transformMatR);
+        DirectX::XMVECTOR rptBv = DirectX::XMVector3Transform(rptBvf, transformMatR);
+        DirectX::XMVECTOR rptCv = DirectX::XMVector3Transform(rptCvf, transformMatR);
+        DirectX::XMVECTOR rptDv = DirectX::XMVector3Transform(rptDvf, transformMatR);
+        rptAv = DirectX::XMVector3Transform(rptAv, projectionMatR); // TODO: move up
+        rptBv = DirectX::XMVector3Transform(rptBv, projectionMatR);
+        rptCv = DirectX::XMVector3Transform(rptCv, projectionMatR);
+        rptDv = DirectX::XMVector3Transform(rptDv, projectionMatR);
+        
+        DirectX::XMStoreFloat4(&rptA, rptAv);
+        DirectX::XMStoreFloat4(&rptB, rptBv);
+        DirectX::XMStoreFloat4(&rptC, rptCv);
+        DirectX::XMStoreFloat4(&rptD, rptDv);
+
+        // We discard the z value because we never want any clipping,
+        // but we do want the w value for perspective correction.
         SimpleVertex vertices[] = {
             // Left View
-            { DirectX::XMFLOAT3(-1.0f, -1.0f, 0.5f),
+            { DirectX::XMFLOAT4(lptA.x, lptA.y, 0.5, lptA.w),
               DirectX::XMFLOAT2(bound[0].uMin, bound[0].vMax),
               0 + (inputColorAdjust * 2) },
-            { DirectX::XMFLOAT3(0.0f, 1.0f, 0.5f),
+            { DirectX::XMFLOAT4(lptB.x, lptB.y, 0.5, lptB.w),
               DirectX::XMFLOAT2(bound[0].uMax, bound[0].vMin),
               0 + (inputColorAdjust * 2) },
-            { DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f),
+            { DirectX::XMFLOAT4(lptC.x, lptC.y, 0.5, lptC.w),
               DirectX::XMFLOAT2(bound[0].uMax, bound[0].vMax),
               0 + (inputColorAdjust * 2) },
-            { DirectX::XMFLOAT3(-1.0f, 1.0f, 0.5f),
+            { DirectX::XMFLOAT4(lptD.x, lptD.y, 0.5, lptD.w),
               DirectX::XMFLOAT2(bound[0].uMin, bound[0].vMin),
               0 + (inputColorAdjust * 2) },
             // Right View
-            { DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f),
+            { DirectX::XMFLOAT4(rptA.x, rptA.y, 0.5, rptA.w),
               DirectX::XMFLOAT2(bound[1].uMin, bound[1].vMax),
               1 + (inputColorAdjust * 2) },
-            { DirectX::XMFLOAT3(1.0f, 1.0f, 0.5f),
+            { DirectX::XMFLOAT4(rptB.x, rptB.y, 0.5, rptB.w),
               DirectX::XMFLOAT2(bound[1].uMax, bound[1].vMin),
               1 + (inputColorAdjust * 2) },
-            { DirectX::XMFLOAT3(1.0f, -1.0f, 0.5f),
+            { DirectX::XMFLOAT4(rptC.x, rptC.y, 0.5, rptC.w),
               DirectX::XMFLOAT2(bound[1].uMax, bound[1].vMax),
               1 + (inputColorAdjust * 2) },
-            { DirectX::XMFLOAT3(0.0f, 1.0f, 0.5f),
+            { DirectX::XMFLOAT4(rptD.x, rptD.y, 0.5, rptD.w),
               DirectX::XMFLOAT2(bound[1].uMin, bound[1].vMin),
               1 + (inputColorAdjust * 2) },
         };
@@ -666,8 +827,17 @@ bool FrameRender::RenderFrame(
         // Draw
         //
 
-        m_pD3DRender->GetContext()->DrawIndexed(VERTEX_INDEX_COUNT, 0, 0);
+        m_pD3DRender->GetContext()->RSSetViewports(1, &viewportL);
+        m_pD3DRender->GetContext()->RSSetScissorRects(1, &scissorL);
+        m_pD3DRender->GetContext()->DrawIndexed(VERTEX_INDEX_COUNT/2, 0, 0);
+        m_pD3DRender->GetContext()->RSSetViewports(1, &viewportR);
+        m_pD3DRender->GetContext()->RSSetScissorRects(1, &scissorR);
+        //m_pD3DRender->GetContext()->DrawIndexed(VERTEX_INDEX_COUNT/2, sizeof(WORD) * (VERTEX_INDEX_COUNT/2), 0);
+        m_pD3DRender->GetContext()->DrawIndexed(VERTEX_INDEX_COUNT/2, (VERTEX_INDEX_COUNT/2), 0);
     }
+
+    m_pD3DRender->GetContext()->RSSetViewports(1, &viewport);
+    m_pD3DRender->GetContext()->RSSetScissorRects(1, &scissor);
 
     if (enableColorCorrection) {
         m_colorCorrectionPipeline->Render();

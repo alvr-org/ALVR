@@ -8,6 +8,10 @@ extern uint64_t g_DriverTestMode;
 
 using namespace d3d_render_utils;
 
+static const DirectX::XMFLOAT4X4 _identityMat = DirectX::XMFLOAT4X4(
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f
+);
+
 static DirectX::XMMATRIX HmdMatrix_AsDxMat(const vr::HmdMatrix34_t& m) {
     // I think the negative Y basis is a handedness thing?
     DirectX::XMFLOAT4X4 f = DirectX::XMFLOAT4X4(
@@ -593,6 +597,9 @@ bool FrameRender::RenderFrame(
     DirectX::XMMATRIX hmdPoseForTargetTs
         = HmdMatrix_AsDxMatOrientOnly(poses[0]); // Set to HmdMatrix_AsDxMat to debug the rendering
 
+    // I think the negative Y basis is a handedness thing?
+    DirectX::XMMATRIX identityMat = DirectX::XMLoadFloat4x4(&_identityMat);
+
     for (int i = 0; i < layerCount; i++) {
         ID3D11Texture2D* textures[2];
         vr::VRTextureBounds_t bound[2];
@@ -684,27 +691,6 @@ bool FrameRender::RenderFrame(
         // Update uv-coordinates in vertex buffer according to bounds.
         //
 
-        // I think the negative Y basis is a handedness thing?
-        DirectX::XMFLOAT4X4 _identityMat = DirectX::XMFLOAT4X4(
-            1.0f,
-            0.0f,
-            0.0f,
-            0.0f,
-            0.0f,
-            -1.0f,
-            0.0f,
-            0.0f,
-            0.0f,
-            0.0f,
-            1.0f,
-            0.0f,
-            0.0f,
-            0.0f,
-            0.0f,
-            1.0f
-        );
-        DirectX::XMMATRIX identityMat = DirectX::XMLoadFloat4x4(&_identityMat);
-
         DirectX::XMMATRIX framePose
             = (i == recenterLayer) ? identityMat : HmdMatrix_AsDxMatOrientOnly(poses[i]);
         DirectX::XMMATRIX framePoseInv = DirectX::XMMatrixInverse(nullptr, framePose);
@@ -724,93 +710,100 @@ bool FrameRender::RenderFrame(
 
         const auto depth = 700.0f;
         const auto m = 1.0f;
-        DirectX::XMFLOAT4 lptA, lptB, lptC, lptD;
-        DirectX::XMFLOAT4 rptA, rptB, rptC, rptD;
-#if 1
-        DirectX::XMVECTORF32 lptAvf = { { { -1.0f * -viewProj[0].vTopLeft.v[0] * depth * m,
-                                            1.0f * -viewProj[0].vTopLeft.v[1] * depth * m,
-                                            -depth,
-                                            1.0f } } };
-        DirectX::XMVECTORF32 lptBvf = { { { 1.0f * viewProj[0].vBottomRight.v[0] * depth * m,
-                                            -1.0f * viewProj[0].vBottomRight.v[1] * depth * m,
-                                            -depth,
-                                            1.0f } } };
-        DirectX::XMVECTORF32 lptCvf = { { { 1.0f * viewProj[0].vBottomRight.v[0] * depth * m,
-                                            1.0f * -viewProj[0].vTopLeft.v[1] * depth * m,
-                                            -depth,
-                                            1.0f } } };
-        DirectX::XMVECTORF32 lptDvf = { { { -1.0f * -viewProj[0].vTopLeft.v[0] * depth * m,
-                                            -1.0f * viewProj[0].vBottomRight.v[1] * depth * m,
-                                            -depth,
-                                            1.0f } } };
-#else
-        DirectX::XMVECTORF32 lptAvf = { { { -1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } };
-        DirectX::XMVECTORF32 lptBvf = { { { 1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } };
-        DirectX::XMVECTORF32 lptCvf = { { { 1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } };
-        DirectX::XMVECTORF32 lptDvf
-            = { { { -1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } };
-#endif
-        DirectX::XMStoreFloat4(&lptA, DirectX::XMVector3Transform(lptAvf, transformMatL));
-        DirectX::XMStoreFloat4(&lptB, DirectX::XMVector3Transform(lptBvf, transformMatL));
-        DirectX::XMStoreFloat4(&lptC, DirectX::XMVector3Transform(lptCvf, transformMatL));
-        DirectX::XMStoreFloat4(&lptD, DirectX::XMVector3Transform(lptDvf, transformMatL));
+        DirectX::XMFLOAT4 vertsL[4];
+        DirectX::XMFLOAT4 vertsR[4];
 
+        // Debugging quad if 0, useful for sorting out issues
 #if 1
-        DirectX::XMVECTORF32 rptAvf = { { { -1.0f * -viewProj[1].vTopLeft.v[0] * depth * m,
-                                            1.0f * -viewProj[1].vTopLeft.v[1] * depth * m,
-                                            -depth,
-                                            1.0f } } };
-        DirectX::XMVECTORF32 rptBvf = { { { 1.0f * viewProj[1].vBottomRight.v[0] * depth * m,
-                                            -1.0f * viewProj[1].vBottomRight.v[1] * depth * m,
-                                            -depth,
-                                            1.0f } } };
-        DirectX::XMVECTORF32 rptCvf = { { { 1.0f * viewProj[1].vBottomRight.v[0] * depth * m,
-                                            1.0f * -viewProj[1].vTopLeft.v[1] * depth * m,
-                                            -depth,
-                                            1.0f } } };
-        DirectX::XMVECTORF32 rptDvf = { { { -1.0f * -viewProj[1].vTopLeft.v[0] * depth * m,
-                                            -1.0f * viewProj[1].vBottomRight.v[1] * depth * m,
-                                            -depth,
-                                            1.0f } } };
+        DirectX::XMVECTORF32 vertsL_VF32[4]
+            = { { { { -1.0f * -viewProj[0].vTopLeft.v[0] * depth * m,
+                      1.0f * -viewProj[0].vTopLeft.v[1] * depth * m,
+                      -depth,
+                      1.0f } } },
+                { { { 1.0f * viewProj[0].vBottomRight.v[0] * depth * m,
+                      -1.0f * viewProj[0].vBottomRight.v[1] * depth * m,
+                      -depth,
+                      1.0f } } },
+                { { { 1.0f * viewProj[0].vBottomRight.v[0] * depth * m,
+                      1.0f * -viewProj[0].vTopLeft.v[1] * depth * m,
+                      -depth,
+                      1.0f } } },
+                { { { -1.0f * -viewProj[0].vTopLeft.v[0] * depth * m,
+                      -1.0f * viewProj[0].vBottomRight.v[1] * depth * m,
+                      -depth,
+                      1.0f } } } };
 #else
-        DirectX::XMVECTORF32 rptAvf = { { { -1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } };
-        DirectX::XMVECTORF32 rptBvf = { { { 1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } };
-        DirectX::XMVECTORF32 rptCvf = { { { 1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } };
-        DirectX::XMVECTORF32 rptDvf
-            = { { { -1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } };
+        DirectX::XMVECTORF32 vertsL_VF32[4]
+            = { { { { -1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } },
+                { { { 1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } },
+                { { { 1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } },
+                { { { -1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } } };
 #endif
-        DirectX::XMStoreFloat4(&rptA, DirectX::XMVector3Transform(rptAvf, transformMatR));
-        DirectX::XMStoreFloat4(&rptB, DirectX::XMVector3Transform(rptBvf, transformMatR));
-        DirectX::XMStoreFloat4(&rptC, DirectX::XMVector3Transform(rptCvf, transformMatR));
-        DirectX::XMStoreFloat4(&rptD, DirectX::XMVector3Transform(rptDvf, transformMatR));
+        for (int i = 0; i < 4; i++) {
+            DirectX::XMStoreFloat4(
+                &vertsL[i], DirectX::XMVector3Transform(vertsL_VF32[i], transformMatL)
+            );
+        }
+
+        // Debugging quad if 0, useful for sorting out issues
+#if 1
+        DirectX::XMVECTORF32 vertsR_VF32[4]
+            = { { { { -1.0f * -viewProj[1].vTopLeft.v[0] * depth * m,
+                      1.0f * -viewProj[1].vTopLeft.v[1] * depth * m,
+                      -depth,
+                      1.0f } } },
+                { { { 1.0f * viewProj[1].vBottomRight.v[0] * depth * m,
+                      -1.0f * viewProj[1].vBottomRight.v[1] * depth * m,
+                      -depth,
+                      1.0f } } },
+                { { { 1.0f * viewProj[1].vBottomRight.v[0] * depth * m,
+                      1.0f * -viewProj[1].vTopLeft.v[1] * depth * m,
+                      -depth,
+                      1.0f } } },
+                { { { -1.0f * -viewProj[1].vTopLeft.v[0] * depth * m,
+                      -1.0f * viewProj[1].vBottomRight.v[1] * depth * m,
+                      -depth,
+                      1.0f } } } };
+#else
+        DirectX::XMVECTORF32 vertsR_VF32[4]
+            = { { { { -1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } },
+                { { { 1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } },
+                { { { 1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } },
+                { { { -1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } } };
+#endif
+        for (int i = 0; i < 4; i++) {
+            DirectX::XMStoreFloat4(
+                &vertsR[i], DirectX::XMVector3Transform(vertsR_VF32[i], transformMatR)
+            );
+        }
 
         // We discard the z value because we never want any clipping,
         // but we do want the w value for perspective correction.
         SimpleVertex vertices[] = {
             // Left View
-            { DirectX::XMFLOAT4(lptA.x, lptA.y, 0.5, lptA.w),
+            { DirectX::XMFLOAT4(vertsL[0].x, vertsL[0].y, 0.5, vertsL[0].w),
               DirectX::XMFLOAT2(bound[0].uMin, bound[0].vMax),
               0 + (inputColorAdjust * 2) },
-            { DirectX::XMFLOAT4(lptB.x, lptB.y, 0.5, lptB.w),
+            { DirectX::XMFLOAT4(vertsL[1].x, vertsL[1].y, 0.5, vertsL[1].w),
               DirectX::XMFLOAT2(bound[0].uMax, bound[0].vMin),
               0 + (inputColorAdjust * 2) },
-            { DirectX::XMFLOAT4(lptC.x, lptC.y, 0.5, lptC.w),
+            { DirectX::XMFLOAT4(vertsL[2].x, vertsL[2].y, 0.5, vertsL[2].w),
               DirectX::XMFLOAT2(bound[0].uMax, bound[0].vMax),
               0 + (inputColorAdjust * 2) },
-            { DirectX::XMFLOAT4(lptD.x, lptD.y, 0.5, lptD.w),
+            { DirectX::XMFLOAT4(vertsL[3].x, vertsL[3].y, 0.5, vertsL[3].w),
               DirectX::XMFLOAT2(bound[0].uMin, bound[0].vMin),
               0 + (inputColorAdjust * 2) },
             // Right View
-            { DirectX::XMFLOAT4(rptA.x, rptA.y, 0.5, rptA.w),
+            { DirectX::XMFLOAT4(vertsR[0].x, vertsR[0].y, 0.5, vertsR[0].w),
               DirectX::XMFLOAT2(bound[1].uMin, bound[1].vMax),
               1 + (inputColorAdjust * 2) },
-            { DirectX::XMFLOAT4(rptB.x, rptB.y, 0.5, rptB.w),
+            { DirectX::XMFLOAT4(vertsR[1].x, vertsR[1].y, 0.5, vertsR[1].w),
               DirectX::XMFLOAT2(bound[1].uMax, bound[1].vMin),
               1 + (inputColorAdjust * 2) },
-            { DirectX::XMFLOAT4(rptC.x, rptC.y, 0.5, rptC.w),
+            { DirectX::XMFLOAT4(vertsR[2].x, vertsR[2].y, 0.5, vertsR[2].w),
               DirectX::XMFLOAT2(bound[1].uMax, bound[1].vMax),
               1 + (inputColorAdjust * 2) },
-            { DirectX::XMFLOAT4(rptD.x, rptD.y, 0.5, rptD.w),
+            { DirectX::XMFLOAT4(vertsR[3].x, vertsR[3].y, 0.5, vertsR[3].w),
               DirectX::XMFLOAT2(bound[1].uMin, bound[1].vMin),
               1 + (inputColorAdjust * 2) },
         };
@@ -876,6 +869,7 @@ bool FrameRender::RenderFrame(
         );
     }
 
+    // Restore full viewport/scissor rect for the rest
     m_pD3DRender->GetContext()->RSSetViewports(1, &m_viewport);
     m_pD3DRender->GetContext()->RSSetScissorRects(1, &m_scissor);
 

@@ -173,8 +173,8 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t (&perEye)[2])
 
     m_presentMutex.lock();
 
-    // mHmdPose is the same pose for both eyes, getting the view pose requires
-    // some records keeping, unfortunately (m_eyeToHead)
+    // mHmdPose is the same pose for both eyes, getting the eye view pose
+    //  requires some records keeping, unfortunately (m_eyeToHead)
     auto pPose = &perEye[0].mHmdPose;
 
     if (m_submitLayer == 0) {

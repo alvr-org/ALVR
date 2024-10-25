@@ -32,75 +32,39 @@ static DEVICE_MOTIONS_ROTATION_MAP: Lazy<HashMap<u64, Quat>> = Lazy::new(|| {
     HashMap::from([
         (
             *HAND_LEFT_ID,
-            Quat::from_xyzw(
-                -6.213430570750633e-08,
-                -1.7979416426202113e-07,
-                0.7071067411992601,
-                0.7071065897770331,
-            ),
+            Quat::from_xyzw(-0.03538, 0.25483, -0.00000, -0.96634),
         ),
         (
             *HAND_RIGHT_ID,
-            Quat::from_xyzw(
-                0.3219087189747184,
-                0.7288832784221684,
-                0.3392694392278636,
-                -0.4999999512887856,
-            ),
+            Quat::from_xyzw(-0.05859, -0.20524, -0.00000, 0.97696),
         ),
         (
             *BODY_CHEST_ID,
-            Quat::from_xyzw(
-                -0.48548752779498533,
-                0.5137675867233772,
-                -0.5131288074683715,
-                -0.4868713724975375,
-            ),
+            Quat::from_xyzw(-0.49627, 0.49516, -0.43469, -0.56531),
         ),
         (
             *BODY_HIPS_ID,
-            Quat::from_xyzw(
-                -0.38920734358587283,
-                0.4731761921254787,
-                -0.25037835650145845,
-                -0.7496216673275858,
-            ),
+            Quat::from_xyzw(-0.49274, 0.49568, -0.42416, -0.57584),
+        ),
+        (
+            *BODY_RIGHT_ELBOW_ID,
+            Quat::from_xyzw(-0.63465, -0.11567, 0.00000, 0.76410),
         ),
         (
             *BODY_LEFT_KNEE_ID,
-            Quat::from_xyzw(
-                0.42592041950463216,
-                0.5417784481730453,
-                0.3880448422573891,
-                -0.6119550893141193,
-            ),
+            Quat::from_xyzw(0.51049, 0.47862, 0.42815, -0.57185),
         ),
         (
             *BODY_LEFT_FOOT_ID,
-            Quat::from_xyzw(
-                -0.15405857492497116,
-                0.6901198926998461,
-                -2.2748115460768936e-08,
-                -0.7071068140641757,
-            ),
+            Quat::from_xyzw(-0.59103, 0.38818, 0.00000, -0.70711),
         ),
         (
             *BODY_RIGHT_KNEE_ID,
-            Quat::from_xyzw(
-                -0.4650211913041333,
-                0.5058610693118244,
-                -0.6180250915435218,
-                -0.381974687482609,
-            ),
+            Quat::from_xyzw(-0.52823, 0.45434, -0.58530, -0.41470),
         ),
         (
             *BODY_RIGHT_FOOT_ID,
-            Quat::from_xyzw(
-                0.6815561983146281,
-                -0.18836473838436454,
-                0.7071065841771154,
-                5.6213965690665724e-08,
-            ),
+            Quat::from_xyzw(0.70228, -0.08246, 0.70711, 0.00000),
         ),
     ])
 });
@@ -110,24 +74,8 @@ static HAND_SKELETON_VMC_MAP: Lazy<[[(usize, &'static str); 1]; 2]> =
 
 static HAND_SKELETON_ROTATIONS: Lazy<[HashMap<usize, Quat>; 2]> = Lazy::new(|| {
     [
-        HashMap::from([(
-            0,
-            Quat::from_xyzw(
-                -6.213430570750633e-08,
-                -1.7979416426202113e-07,
-                0.7071067411992601,
-                0.7071065897770331,
-            ),
-        )]),
-        HashMap::from([(
-            0,
-            Quat::from_xyzw(
-                0.3219087189747184,
-                0.7288832784221684,
-                0.3392694392278636,
-                -0.4999999512887856,
-            ),
-        )]),
+        HashMap::from([(0, Quat::from_xyzw(-0.03566, 0.25481, 0.00000, -0.96633))]),
+        HashMap::from([(0, Quat::from_xyzw(-0.05880, -0.20574, -0.00000, 0.97684))]),
     ]
 });
 
@@ -162,7 +110,7 @@ impl VMCSink {
     pub fn send_hand_tracking(
         &mut self,
         hand_type: HandType,
-        mut skeleton: [Pose; 26],
+        skeleton: [Pose; 26],
         orientation_correction: bool,
     ) {
         let hand_id = hand_type as usize;

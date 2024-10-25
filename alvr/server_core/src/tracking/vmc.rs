@@ -56,7 +56,7 @@ static DEVICE_MOTIONS_ROTATION_MAP: Lazy<HashMap<u64, Quat>> = Lazy::new(|| {
         ),
         (
             *BODY_LEFT_FOOT_ID,
-            Quat::from_xyzw(-0.59103, 0.38818, 0.00000, -0.70711),
+            Quat::from_xyzw(-0.59103, 0.38818, 0.00000, -0.7071100),
         ),
         (
             *BODY_RIGHT_KNEE_ID,
@@ -64,7 +64,7 @@ static DEVICE_MOTIONS_ROTATION_MAP: Lazy<HashMap<u64, Quat>> = Lazy::new(|| {
         ),
         (
             *BODY_RIGHT_FOOT_ID,
-            Quat::from_xyzw(0.70228, -0.08246, 0.70711, 0.00000),
+            Quat::from_xyzw(0.70228, -0.08246, 0.7071100, 0.00000),
         ),
     ])
 });

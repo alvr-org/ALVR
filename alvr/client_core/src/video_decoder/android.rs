@@ -3,9 +3,9 @@ use alvr_common::{
     anyhow::{anyhow, bail, Context, Result},
     error, info,
     parking_lot::{Condvar, Mutex},
-    warn, RelaxedAtomic,
+    warn, RelaxedAtomic, ToAny,
 };
-use alvr_session::{CodecType, MediacodecDataType};
+use alvr_session::{CodecType, MediacodecPropType};
 use ndk::{
     hardware_buffer::HardwareBufferUsage,
     media::{
@@ -254,12 +254,28 @@ fn decoder_lifecycle(
     format.set_i32("height", 1024);
     format.set_buffer("csd-0", &csd_0);
 
-    for (key, value) in &config.options {
-        match value {
-            MediacodecDataType::Float(value) => format.set_f32(key, *value),
-            MediacodecDataType::Int32(value) => format.set_i32(key, *value),
-            MediacodecDataType::Int64(value) => format.set_i64(key, *value),
-            MediacodecDataType::String(value) => format.set_str(key, value),
+    for (key, prop) in &config.options {
+        let maybe_error = match prop.ty {
+            MediacodecPropType::Float => prop
+                .value
+                .parse()
+                .map(|value| format.set_f32(key, value))
+                .to_any(),
+            MediacodecPropType::Int32 => prop
+                .value
+                .parse()
+                .map(|value| format.set_i32(key, value))
+                .to_any(),
+            MediacodecPropType::Int64 => prop
+                .value
+                .parse()
+                .map(|value| format.set_i64(key, value))
+                .to_any(),
+            MediacodecPropType::String => Ok(format.set_str(key, &prop.value)),
+        };
+
+        if let Err(e) = maybe_error {
+            error!("Failed to set property {key} to {}: {e}", prop.value);
         }
     }
 

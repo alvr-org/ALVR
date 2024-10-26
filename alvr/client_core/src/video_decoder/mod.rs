@@ -2,7 +2,7 @@
 mod android;
 
 use alvr_common::anyhow::Result;
-use alvr_session::{CodecType, MediacodecDataType};
+use alvr_session::{CodecType, MediacodecProperty};
 use std::time::Duration;
 
 #[derive(Clone, Default, PartialEq)]
@@ -11,7 +11,7 @@ pub struct VideoDecoderConfig {
     pub force_software_decoder: bool,
     pub max_buffering_frames: f32,
     pub buffering_history_weight: f32,
-    pub options: Vec<(String, MediacodecDataType)>,
+    pub options: Vec<(String, MediacodecProperty)>,
     pub config_buffer: Vec<u8>,
 }
 

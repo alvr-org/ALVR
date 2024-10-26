@@ -11,6 +11,22 @@ use settings_schema::{
 
 include!(concat!(env!("OUT_DIR"), "/openvr_property_keys.rs"));
 
+pub enum OpenvrPropType {
+    Bool,
+    Float,
+    Int32,
+    Uint64,
+    Vector3,
+    Double,
+    String,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug)]
+pub struct OpenvrProperty {
+    pub key: OpenvrPropKey,
+    pub value: String,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(gui = "button_group")]
 pub enum FrameSize {
@@ -305,11 +321,18 @@ CABAC produces better compression but it's significantly slower and may lead to 
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum MediacodecDataType {
-    Float(f32),
-    Int32(i32),
-    Int64(i64),
-    String(String),
+pub enum MediacodecPropType {
+    Float,
+    Int32,
+    Int64,
+    String,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct MediacodecProperty {
+    #[schema(strings(display_name = "Type"))]
+    pub ty: MediacodecPropType,
+    pub value: String,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
@@ -573,7 +596,7 @@ pub struct VideoConfig {
     ))]
     pub force_software_decoder: bool,
 
-    pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
+    pub mediacodec_extra_options: Vec<(String, MediacodecProperty)>,
 
     #[schema(strings(
         help = "Resolution used for encoding and decoding. Relative to a single eye view."
@@ -1281,7 +1304,12 @@ pub fn session_settings_default() -> SettingsDefault {
     };
     let default_custom_openvr_props = VectorDefault {
         gui_collapsed: true,
-        element: OPENVR_PROPS_DEFAULT.clone(),
+        element: OpenvrPropertyDefault {
+            key: OpenvrPropKeyDefault {
+                variant: OpenvrPropKeyDefaultVariant::TrackingSystemNameString,
+            },
+            value: "".into(),
+        },
         content: vec![],
     };
     let socket_buffer = SocketBufferSizeDefault {
@@ -1416,13 +1444,12 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             mediacodec_extra_options: {
-                fn int32_default(int32: i32) -> MediacodecDataTypeDefault {
-                    MediacodecDataTypeDefault {
-                        variant: MediacodecDataTypeDefaultVariant::Int32,
-                        Float: 0.0,
-                        Int32: int32,
-                        Int64: 0,
-                        String: "".into(),
+                fn int32_default(int32: i32) -> MediacodecPropertyDefault {
+                    MediacodecPropertyDefault {
+                        ty: MediacodecPropTypeDefault {
+                            variant: MediacodecPropTypeDefaultVariant::Int32,
+                        },
+                        value: int32.to_string(),
                     }
                 }
                 DictionaryDefault {

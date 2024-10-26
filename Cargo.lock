@@ -409,6 +409,7 @@ dependencies = [
  "bindgen 0.70.1",
  "cc",
  "pkg-config",
+ "serde_json",
  "walkdir",
 ]
 

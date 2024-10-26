@@ -17,7 +17,7 @@ use alvr_common::{
 use alvr_packets::{FaceData, StreamConfig, ViewParams};
 use alvr_session::{
     BodyTrackingSourcesConfig, ClientsideFoveationConfig, ClientsideFoveationMode, CodecType,
-    FaceTrackingSourcesConfig, FoveatedEncodingConfig, MediacodecDataType,
+    FaceTrackingSourcesConfig, FoveatedEncodingConfig, MediacodecProperty,
 };
 use openxr as xr;
 use std::{
@@ -44,7 +44,7 @@ pub struct ParsedStreamConfig {
     pub force_software_decoder: bool,
     pub max_buffering_frames: f32,
     pub buffering_history_weight: f32,
-    pub decoder_options: Vec<(String, MediacodecDataType)>,
+    pub decoder_options: Vec<(String, MediacodecProperty)>,
 }
 
 impl ParsedStreamConfig {

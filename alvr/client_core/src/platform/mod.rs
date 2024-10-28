@@ -21,6 +21,7 @@ pub enum Platform {
     PicoG3,
     PicoUnknown,
     Focus3,
+    FocusVision,
     XRElite,
     ViveUnknown,
     Yvr,
@@ -60,7 +61,7 @@ impl Platform {
     pub const fn is_vive(&self) -> bool {
         matches!(
             self,
-            Platform::Focus3 | Platform::XRElite | Platform::ViveUnknown
+            Platform::Focus3 | Platform::FocusVision | Platform::XRElite | Platform::ViveUnknown
         )
     }
 }
@@ -80,6 +81,7 @@ impl Display for Platform {
             Platform::PicoG3 => "Pico G3",
             Platform::PicoUnknown => "Pico (unknown)",
             Platform::Focus3 => "VIVE Focus 3",
+            Platform::FocusVision => "VIVE Focus Vision",
             Platform::XRElite => "VIVE XR Elite",
             Platform::ViveUnknown => "HTC VIVE (unknown)",
             Platform::Yvr => "YVR",
@@ -102,6 +104,8 @@ pub fn platform() -> Platform {
         let model = android::model_name();
         let device = android::device_name();
 
+        alvr_common::info!("manufacturer: {manufacturer}, model: {model}, device: {device}");
+
         match (manufacturer.as_str(), model.as_str(), device.as_str()) {
             ("Oculus", _, "monterey") => Platform::Quest1,
             ("Oculus", _, "hollywood") => Platform::Quest2,
@@ -110,11 +114,12 @@ pub fn platform() -> Platform {
             ("Oculus", _, "seacliff") => Platform::QuestPro,
             ("Oculus", _, _) => Platform::QuestUnknown,
             ("Pico", "Pico Neo 3" | "Pico Neo3 Link", _) => Platform::PicoNeo3,
-            ("Pico", _, "phoenix") => Platform::Pico4,
+            ("Pico", _, "PICOA8110" | "phoenix") => Platform::Pico4,
             ("Pico", _, "sparrow") => Platform::Pico4Ultra,
             ("Pico", _, "merline") => Platform::PicoG3,
             ("Pico", _, _) => Platform::PicoUnknown,
             ("HTC", "VIVE Focus 3", _) => Platform::Focus3,
+            ("HTC", "VIVE Focus Vision", _) => Platform::FocusVision,
             ("HTC", "VIVE XR Series", _) => Platform::XRElite,
             ("HTC", _, _) => Platform::ViveUnknown,
             ("YVR", _, _) => Platform::Yvr,

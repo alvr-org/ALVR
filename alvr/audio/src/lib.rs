@@ -137,6 +137,9 @@ impl AudioDevice {
 
                 pair?
             }
+            MicrophoneDevicesConfig::VAC => {
+                microphone_pair_from_sink_name(&host, "Virtual Cable 1")?
+            }
             MicrophoneDevicesConfig::VBCable => {
                 microphone_pair_from_sink_name(&host, "CABLE Input")?
             }

@@ -636,6 +636,8 @@ pub struct GameAudioConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub enum MicrophoneDevicesConfig {
     Automatic,
+    #[schema(strings(display_name = "Virtual Audio Cable"))]
+    VAC,
     #[schema(strings(display_name = "VB Cable"))]
     VBCable,
     #[schema(strings(display_name = "VoiceMeeter"))]

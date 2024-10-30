@@ -30,6 +30,7 @@ use std::{
 
 static VIRTUAL_MICROPHONE_PAIRS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     [
+        ("Virtual Cable 1", "Virtual Cable 2"),
         ("CABLE Input", "CABLE Output"),
         ("VoiceMeeter Input", "VoiceMeeter Output"),
         ("VoiceMeeter Aux Input", "VoiceMeeter Aux Output"),

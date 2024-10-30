@@ -22,7 +22,7 @@ For any problem visit the [Troubleshooting page](https://github.com/alvr-org/ALV
 
 ### Windows microphone streaming
 
-To use the microphone you need to install the [VB-CABLE driver](https://vb-audio.com/Cable/).
+To use the microphone you need to install the [VB-CABLE driver](https://vb-audio.com/Cable).
 Set "VB Cable" as the default microphone.
 Then you can enable the microphone in the ALVR setting, leave "Virtual microphone input" to Default.
 

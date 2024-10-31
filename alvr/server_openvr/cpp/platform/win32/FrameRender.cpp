@@ -713,8 +713,6 @@ bool FrameRender::RenderFrame(
         DirectX::XMFLOAT4 vertsL[4];
         DirectX::XMFLOAT4 vertsR[4];
 
-        // Debugging quad if 0, useful for sorting out issues
-#if 1
         DirectX::XMVECTORF32 vertsL_VF32[4]
             = { { { { -1.0f * -viewProj[0].vTopLeft.v[0] * depth * m,
                       1.0f * -viewProj[0].vTopLeft.v[1] * depth * m,
@@ -732,21 +730,13 @@ bool FrameRender::RenderFrame(
                       -1.0f * viewProj[0].vBottomRight.v[1] * depth * m,
                       -depth,
                       1.0f } } } };
-#else
-        DirectX::XMVECTORF32 vertsL_VF32[4]
-            = { { { { -1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } },
-                { { { 1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } },
-                { { { 1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } },
-                { { { -1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } } };
-#endif
+
         for (int i = 0; i < 4; i++) {
             DirectX::XMStoreFloat4(
                 &vertsL[i], DirectX::XMVector3Transform(vertsL_VF32[i], transformMatL)
             );
         }
 
-        // Debugging quad if 0, useful for sorting out issues
-#if 1
         DirectX::XMVECTORF32 vertsR_VF32[4]
             = { { { { -1.0f * -viewProj[1].vTopLeft.v[0] * depth * m,
                       1.0f * -viewProj[1].vTopLeft.v[1] * depth * m,
@@ -764,13 +754,7 @@ bool FrameRender::RenderFrame(
                       -1.0f * viewProj[1].vBottomRight.v[1] * depth * m,
                       -depth,
                       1.0f } } } };
-#else
-        DirectX::XMVECTORF32 vertsR_VF32[4]
-            = { { { { -1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } },
-                { { { 1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } },
-                { { { 1.0f * depth * m, 1.0f * depth * m, -depth, 1.0f } } },
-                { { { -1.0f * depth * m, -1.0f * depth * m, -depth, 1.0f } } } };
-#endif
+
         for (int i = 0; i < 4; i++) {
             DirectX::XMStoreFloat4(
                 &vertsR[i], DirectX::XMVector3Transform(vertsR_VF32[i], transformMatR)

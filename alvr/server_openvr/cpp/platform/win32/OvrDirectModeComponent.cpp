@@ -156,7 +156,9 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t (&perEye)[2])
 
     m_presentMutex.lock();
 
-    auto pPose = &perEye[0].mHmdPose; // TODO: are both poses the same? Name HMD suggests yes.
+    // mHmdPose is the same pose for both eyes, getting the eye view pose
+    //  requires some records keeping, unfortunately (m_eyeToHead)
+    auto pPose = &perEye[0].mHmdPose;
 
     if (m_submitLayer == 0) {
         // Detect FrameIndex of submitted frame by pPose.
@@ -270,6 +272,7 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
     ID3D11Texture2D* pTexture[MAX_LAYERS][2];
     ComPtr<ID3D11Texture2D> Texture[MAX_LAYERS][2];
     vr::VRTextureBounds_t bounds[MAX_LAYERS][2];
+    vr::HmdMatrix34_t poses[MAX_LAYERS];
 
     for (uint32_t i = 0; i < layerCount; i++) {
         // Find left eye texture.
@@ -311,6 +314,7 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
         pTexture[i][1] = Texture[i][1].Get();
         bounds[i][0] = m_submitLayers[i][0].bounds;
         bounds[i][1] = m_submitLayers[i][1].bounds;
+        poses[i] = m_submitLayers[i][0].mHmdPose;
     }
 
     // This can go away, but is useful to see it as a separate packet on the gpu in traces.
@@ -327,7 +331,15 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
 
         // Copy entire texture to staging so we can read the pixels to send to remote device.
         m_pEncoder->CopyToStaging(
-            pTexture, bounds, layerCount, false, presentationTime, submitFrameIndex, "", debugText
+            pTexture,
+            bounds,
+            poses,
+            layerCount,
+            false,
+            presentationTime,
+            submitFrameIndex,
+            "",
+            debugText
         );
 
         m_pD3DRender->GetContext()->Flush();

@@ -77,9 +77,19 @@ void CEncoder::Initialize(std::shared_ptr<CD3DRender> d3dRender) {
 #endif
 }
 
+void CEncoder::SetViewsConfig(
+    vr::HmdRect2_t projLeft,
+    vr::HmdMatrix34_t eyeToHeadLeft,
+    vr::HmdRect2_t projRight,
+    vr::HmdMatrix34_t eyeToHeadRight
+) {
+    m_FrameRender->SetViewsConfig(projLeft, eyeToHeadLeft, projRight, eyeToHeadRight);
+}
+
 bool CEncoder::CopyToStaging(
     ID3D11Texture2D* pTexture[][2],
     vr::VRTextureBounds_t bounds[][2],
+    vr::HmdMatrix34_t poses[],
     int layerCount,
     bool recentering,
     uint64_t presentationTime,
@@ -91,7 +101,9 @@ bool CEncoder::CopyToStaging(
     m_targetTimestampNs = targetTimestampNs;
     m_FrameRender->Startup();
 
-    m_FrameRender->RenderFrame(pTexture, bounds, layerCount, recentering, message, debugText);
+    m_FrameRender->RenderFrame(
+        pTexture, bounds, poses, layerCount, recentering, message, debugText
+    );
     return true;
 }
 

@@ -82,6 +82,12 @@ static DirectX::XMMATRIX HmdMatrix_AsDxMatPosOnly(const vr::HmdMatrix34_t& m) {
 
 FrameRender::FrameRender(std::shared_ptr<CD3DRender> pD3DRender)
     : m_pD3DRender(pD3DRender) {
+    // Set safe defaults for tangents and eye-to-HMD
+    HmdMatrix_SetIdentity(&m_eyeToHead[0]);
+    HmdMatrix_SetIdentity(&m_eyeToHead[1]);
+    m_viewProj[0] = { -1.0f, 1.0f, 1.0f, -1.0f };
+    m_viewProj[1] = { -1.0f, 1.0f, 1.0f, -1.0f };
+
     FrameRender::SetGpuPriority(m_pD3DRender->GetDevice());
 }
 
@@ -543,12 +549,22 @@ bool FrameRender::Startup() {
     return true;
 }
 
+void FrameRender::SetViewsConfig(
+    vr::HmdRect2_t projLeft,
+    vr::HmdMatrix34_t eyeToHeadLeft,
+    vr::HmdRect2_t projRight,
+    vr::HmdMatrix34_t eyeToHeadRight
+) {
+    m_viewProj[0] = projLeft;
+    m_eyeToHead[0] = eyeToHeadLeft;
+    m_viewProj[1] = projRight;
+    m_eyeToHead[1] = eyeToHeadRight;
+}
+
 bool FrameRender::RenderFrame(
     ID3D11Texture2D* pTexture[][2],
     vr::VRTextureBounds_t bounds[][2],
     vr::HmdMatrix34_t poses[],
-    vr::HmdRect2_t viewProj[2],
-    vr::HmdMatrix34_t eyeToHead[2],
     int layerCount,
     bool recentering,
     const std::string& message,
@@ -575,25 +591,25 @@ bool FrameRender::RenderFrame(
     const auto nearZ = 0.001f;
     const auto farZ = 1.0f;
     DirectX::XMMATRIX projectionMatL = DirectX::XMMatrixPerspectiveOffCenterRH(
-        viewProj[0].vTopLeft.v[0] * nearZ,
-        viewProj[0].vBottomRight.v[0] * nearZ,
-        -viewProj[0].vTopLeft.v[1] * nearZ,
-        -viewProj[0].vBottomRight.v[1] * nearZ,
+        m_viewProj[0].vTopLeft.v[0] * nearZ,
+        m_viewProj[0].vBottomRight.v[0] * nearZ,
+        -m_viewProj[0].vTopLeft.v[1] * nearZ,
+        -m_viewProj[0].vBottomRight.v[1] * nearZ,
         nearZ,
         farZ
     );
     DirectX::XMMATRIX projectionMatR = DirectX::XMMatrixPerspectiveOffCenterRH(
-        viewProj[1].vTopLeft.v[0] * nearZ,
-        viewProj[1].vBottomRight.v[0] * nearZ,
-        -viewProj[1].vTopLeft.v[1] * nearZ,
-        -viewProj[1].vBottomRight.v[1] * nearZ,
+        m_viewProj[1].vTopLeft.v[0] * nearZ,
+        m_viewProj[1].vBottomRight.v[0] * nearZ,
+        -m_viewProj[1].vTopLeft.v[1] * nearZ,
+        -m_viewProj[1].vBottomRight.v[1] * nearZ,
         nearZ,
         farZ
     );
     DirectX::XMMATRIX hmdToEyeMatL
-        = DirectX::XMMatrixInverse(nullptr, HmdMatrix_AsDxMatPosOnly(eyeToHead[0]));
+        = DirectX::XMMatrixInverse(nullptr, HmdMatrix_AsDxMatPosOnly(m_eyeToHead[0]));
     DirectX::XMMATRIX hmdToEyeMatR
-        = DirectX::XMMatrixInverse(nullptr, HmdMatrix_AsDxMatPosOnly(eyeToHead[1]));
+        = DirectX::XMMatrixInverse(nullptr, HmdMatrix_AsDxMatPosOnly(m_eyeToHead[1]));
     DirectX::XMMATRIX hmdPoseForTargetTs
         = HmdMatrix_AsDxMatOrientOnly(poses[0]); // Set to HmdMatrix_AsDxMat to debug the rendering
 
@@ -714,20 +730,20 @@ bool FrameRender::RenderFrame(
         DirectX::XMFLOAT4 vertsR[4];
 
         DirectX::XMVECTORF32 vertsL_VF32[4]
-            = { { { { -1.0f * -viewProj[0].vTopLeft.v[0] * depth * m,
-                      1.0f * -viewProj[0].vTopLeft.v[1] * depth * m,
+            = { { { { -1.0f * -m_viewProj[0].vTopLeft.v[0] * depth * m,
+                      1.0f * -m_viewProj[0].vTopLeft.v[1] * depth * m,
                       -depth,
                       1.0f } } },
-                { { { 1.0f * viewProj[0].vBottomRight.v[0] * depth * m,
-                      -1.0f * viewProj[0].vBottomRight.v[1] * depth * m,
+                { { { 1.0f * m_viewProj[0].vBottomRight.v[0] * depth * m,
+                      -1.0f * m_viewProj[0].vBottomRight.v[1] * depth * m,
                       -depth,
                       1.0f } } },
-                { { { 1.0f * viewProj[0].vBottomRight.v[0] * depth * m,
-                      1.0f * -viewProj[0].vTopLeft.v[1] * depth * m,
+                { { { 1.0f * m_viewProj[0].vBottomRight.v[0] * depth * m,
+                      1.0f * -m_viewProj[0].vTopLeft.v[1] * depth * m,
                       -depth,
                       1.0f } } },
-                { { { -1.0f * -viewProj[0].vTopLeft.v[0] * depth * m,
-                      -1.0f * viewProj[0].vBottomRight.v[1] * depth * m,
+                { { { -1.0f * -m_viewProj[0].vTopLeft.v[0] * depth * m,
+                      -1.0f * m_viewProj[0].vBottomRight.v[1] * depth * m,
                       -depth,
                       1.0f } } } };
 
@@ -738,20 +754,20 @@ bool FrameRender::RenderFrame(
         }
 
         DirectX::XMVECTORF32 vertsR_VF32[4]
-            = { { { { -1.0f * -viewProj[1].vTopLeft.v[0] * depth * m,
-                      1.0f * -viewProj[1].vTopLeft.v[1] * depth * m,
+            = { { { { -1.0f * -m_viewProj[1].vTopLeft.v[0] * depth * m,
+                      1.0f * -m_viewProj[1].vTopLeft.v[1] * depth * m,
                       -depth,
                       1.0f } } },
-                { { { 1.0f * viewProj[1].vBottomRight.v[0] * depth * m,
-                      -1.0f * viewProj[1].vBottomRight.v[1] * depth * m,
+                { { { 1.0f * m_viewProj[1].vBottomRight.v[0] * depth * m,
+                      -1.0f * m_viewProj[1].vBottomRight.v[1] * depth * m,
                       -depth,
                       1.0f } } },
-                { { { 1.0f * viewProj[1].vBottomRight.v[0] * depth * m,
-                      1.0f * -viewProj[1].vTopLeft.v[1] * depth * m,
+                { { { 1.0f * m_viewProj[1].vBottomRight.v[0] * depth * m,
+                      1.0f * -m_viewProj[1].vTopLeft.v[1] * depth * m,
                       -depth,
                       1.0f } } },
-                { { { -1.0f * -viewProj[1].vTopLeft.v[0] * depth * m,
-                      -1.0f * viewProj[1].vBottomRight.v[1] * depth * m,
+                { { { -1.0f * -m_viewProj[1].vTopLeft.v[0] * depth * m,
+                      -1.0f * m_viewProj[1].vBottomRight.v[1] * depth * m,
                       -depth,
                       1.0f } } } };
 

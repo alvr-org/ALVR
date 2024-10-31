@@ -322,7 +322,9 @@ void Hmd::SetViewsConfig(FfiViewsConfig config) {
     vr::VRServerDriverHost()->SetDisplayProjectionRaw(object_id, left_proj, right_proj);
 
 #ifdef _WIN32
-    m_directModeComponent->SetViewsConfig(left_proj, left_transform, right_proj, right_transform);
+    if (m_encoder) {
+        m_encoder->SetViewsConfig(left_proj, left_transform, right_proj, right_transform);
+    }
 #endif
 
     // todo: check if this is still needed

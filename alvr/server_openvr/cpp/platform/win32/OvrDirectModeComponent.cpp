@@ -5,27 +5,10 @@ OvrDirectModeComponent::OvrDirectModeComponent(
 )
     : m_pD3DRender(pD3DRender)
     , m_poseHistory(poseHistory)
-    , m_submitLayer(0) {
-    HmdMatrix_SetIdentity(&m_eyeToHead[0]);
-    HmdMatrix_SetIdentity(&m_eyeToHead[1]);
-    m_viewProj[0] = { -1.0f, 1.0f, 1.0f, -1.0f };
-    m_viewProj[1] = { -1.0f, 1.0f, 1.0f, -1.0f };
-}
+    , m_submitLayer(0) { }
 
 void OvrDirectModeComponent::SetEncoder(std::shared_ptr<CEncoder> pEncoder) {
     m_pEncoder = pEncoder;
-}
-
-void OvrDirectModeComponent::SetViewsConfig(
-    vr::HmdRect2_t projLeft,
-    vr::HmdMatrix34_t eyeToHeadLeft,
-    vr::HmdRect2_t projRight,
-    vr::HmdMatrix34_t eyeToHeadRight
-) {
-    m_viewProj[0] = projLeft;
-    m_eyeToHead[0] = eyeToHeadLeft;
-    m_viewProj[1] = projRight;
-    m_eyeToHead[1] = eyeToHeadRight;
 }
 
 /** Specific to Oculus compositor support, textures supplied must be created using this method. */
@@ -351,8 +334,6 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
             pTexture,
             bounds,
             poses,
-            m_viewProj,
-            m_eyeToHead,
             layerCount,
             false,
             presentationTime,

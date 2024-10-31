@@ -45,12 +45,16 @@ public:
     virtual ~FrameRender();
 
     bool Startup();
+    void SetViewsConfig(
+        vr::HmdRect2_t projLeft,
+        vr::HmdMatrix34_t eyeToHeadLeft,
+        vr::HmdRect2_t projRight,
+        vr::HmdMatrix34_t eyeToHeadRight
+    );
     bool RenderFrame(
         ID3D11Texture2D* pTexture[][2],
         vr::VRTextureBounds_t bounds[][2],
         vr::HmdMatrix34_t poses[],
-        vr::HmdRect2_t viewProj[2],
-        vr::HmdMatrix34_t eyeToHead[2],
         int layerCount,
         bool recentering,
         const std::string& message,
@@ -87,6 +91,9 @@ private:
     ComPtr<ID3D11ShaderResourceView> m_recenterResourceView;
     ComPtr<ID3D11Resource> m_messageBGTexture;
     ComPtr<ID3D11ShaderResourceView> m_messageBGResourceView;
+
+    vr::HmdRect2_t m_viewProj[2];
+    vr::HmdMatrix34_t m_eyeToHead[2];
 
     struct SimpleVertex {
         DirectX::XMFLOAT4 Pos;

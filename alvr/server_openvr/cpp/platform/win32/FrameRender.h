@@ -45,9 +45,16 @@ public:
     virtual ~FrameRender();
 
     bool Startup();
+    void SetViewsConfig(
+        vr::HmdRect2_t projLeft,
+        vr::HmdMatrix34_t eyeToHeadLeft,
+        vr::HmdRect2_t projRight,
+        vr::HmdMatrix34_t eyeToHeadRight
+    );
     bool RenderFrame(
         ID3D11Texture2D* pTexture[][2],
         vr::VRTextureBounds_t bounds[][2],
+        vr::HmdMatrix34_t poses[],
         int layerCount,
         bool recentering,
         const std::string& message,
@@ -71,9 +78,11 @@ private:
 
     ComPtr<ID3D11SamplerState> m_pSamplerLinear;
 
-    ComPtr<ID3D11Texture2D> m_pDepthStencil;
     ComPtr<ID3D11RenderTargetView> m_pRenderTargetView;
-    ComPtr<ID3D11DepthStencilView> m_pDepthStencilView;
+    ComPtr<ID3D11DepthStencilState> m_depthStencilState;
+
+    D3D11_VIEWPORT m_viewportL, m_viewportR, m_viewport;
+    D3D11_RECT m_scissorL, m_scissorR, m_scissor;
 
     ComPtr<ID3D11BlendState> m_pBlendStateFirst;
     ComPtr<ID3D11BlendState> m_pBlendState;
@@ -83,8 +92,11 @@ private:
     ComPtr<ID3D11Resource> m_messageBGTexture;
     ComPtr<ID3D11ShaderResourceView> m_messageBGResourceView;
 
+    vr::HmdRect2_t m_viewProj[2];
+    vr::HmdMatrix34_t m_eyeToHead[2];
+
     struct SimpleVertex {
-        DirectX::XMFLOAT3 Pos;
+        DirectX::XMFLOAT4 Pos;
         DirectX::XMFLOAT2 Tex;
         uint32_t View;
     };

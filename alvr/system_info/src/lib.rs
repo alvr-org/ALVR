@@ -1,10 +1,10 @@
 #[cfg(target_os = "android")]
 pub mod android;
 
-use std::fmt::{Display, Formatter};
-
 #[cfg(target_os = "android")]
 pub use android::*;
+
+use std::fmt::{Display, Formatter};
 
 // Platform of the device. It is used to match the VR runtime and enable features conditionally.
 #[derive(PartialEq, Eq, Clone, Copy)]

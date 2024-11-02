@@ -114,7 +114,7 @@ fn default_view() -> xr::View {
 pub fn entry_point() {
     alvr_client_core::init_logging();
 
-    let platform = alvr_client_core::platform();
+    let platform = alvr_system_info::platform();
 
     let loader_suffix = match platform {
         Platform::Quest1 => "_quest1",

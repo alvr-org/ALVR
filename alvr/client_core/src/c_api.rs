@@ -1,7 +1,8 @@
 use crate::{
-    decoder::{self, DecoderConfig, DecoderSource},
     graphics::{GraphicsContext, LobbyRenderer, RenderViewInput, StreamRenderer},
-    storage, ClientCapabilities, ClientCoreContext, ClientCoreEvent,
+    storage,
+    video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
+    ClientCapabilities, ClientCoreContext, ClientCoreEvent,
 };
 use alvr_common::{
     anyhow::Result,
@@ -255,7 +256,7 @@ pub extern "C" fn alvr_protocol_id(protocol_buffer: *mut c_char) -> u64 {
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub unsafe extern "C" fn alvr_try_get_permission(permission: *const c_char) {
-    crate::platform::try_get_permission(CStr::from_ptr(permission).to_str().unwrap());
+    alvr_system_info::try_get_permission(CStr::from_ptr(permission).to_str().unwrap());
 }
 
 /// NB: for android, `context` must be thread safe.
@@ -823,7 +824,7 @@ pub unsafe extern "C" fn alvr_render_stream_opengl(
 
 // Decoder-related interface
 
-static DECODER_SOURCE: OptLazy<DecoderSource> = alvr_common::lazy_mut_none();
+static DECODER_SOURCE: OptLazy<VideoDecoderSource> = alvr_common::lazy_mut_none();
 
 #[repr(u8)]
 pub enum AlvrMediacodecPropType {
@@ -863,7 +864,7 @@ pub struct AlvrDecoderConfig {
 /// alvr_initialize() must be called before alvr_create_decoder
 #[no_mangle]
 pub extern "C" fn alvr_create_decoder(config: AlvrDecoderConfig) {
-    let config = DecoderConfig {
+    let config = VideoDecoderConfig {
         codec: match config.codec {
             AlvrCodec::H264 => CodecType::H264,
             AlvrCodec::Hevc => CodecType::Hevc,
@@ -909,7 +910,7 @@ pub extern "C" fn alvr_create_decoder(config: AlvrDecoderConfig) {
     };
 
     let (mut sink, source) =
-        decoder::create_decoder(config, |maybe_timestamp: Result<Duration>| {
+        video_decoder::create_decoder(config, |maybe_timestamp: Result<Duration>| {
             if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
                 match maybe_timestamp {
                     Ok(timestamp) => context.report_frame_decoded(timestamp),

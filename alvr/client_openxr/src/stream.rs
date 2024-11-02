@@ -4,8 +4,8 @@ use crate::{
     XrContext,
 };
 use alvr_client_core::{
-    decoder::{self, DecoderConfig, DecoderSource},
     graphics::{GraphicsContext, StreamRenderer},
+    video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
     ClientCoreContext, Platform,
 };
 use alvr_common::{
@@ -103,7 +103,7 @@ pub struct StreamContext {
     input_thread_running: Arc<RelaxedAtomic>,
     config: ParsedStreamConfig,
     renderer: StreamRenderer,
-    decoder: Option<(DecoderConfig, DecoderSource)>,
+    decoder: Option<(VideoDecoderConfig, VideoDecoderSource)>,
 }
 
 impl StreamContext {
@@ -299,7 +299,7 @@ impl StreamContext {
     }
 
     pub fn maybe_initialize_decoder(&mut self, codec: CodecType, config_nal: Vec<u8>) {
-        let new_config = DecoderConfig {
+        let new_config = VideoDecoderConfig {
             codec,
             force_software_decoder: self.config.force_software_decoder,
             max_buffering_frames: self.config.max_buffering_frames,
@@ -315,7 +315,7 @@ impl StreamContext {
         };
 
         if let Some(config) = maybe_config {
-            let (mut sink, source) = decoder::create_decoder(config.clone(), {
+            let (mut sink, source) = video_decoder::create_decoder(config.clone(), {
                 let ctx = Arc::clone(&self.core_context);
                 move |maybe_timestamp: Result<Duration>| match maybe_timestamp {
                     Ok(timestamp) => ctx.report_frame_decoded(timestamp),

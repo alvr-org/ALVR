@@ -8,7 +8,6 @@
 mod c_api;
 mod connection;
 mod logging_backend;
-mod platform;
 mod sockets;
 mod statistics;
 mod storage;
@@ -16,8 +15,8 @@ mod storage;
 #[cfg(target_os = "android")]
 mod audio;
 
-pub mod decoder;
 pub mod graphics;
+pub mod video_decoder;
 
 use alvr_common::{
     dbg_client_core, error,
@@ -32,7 +31,6 @@ use alvr_packets::{
 };
 use alvr_session::CodecType;
 use connection::ConnectionContext;
-use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashSet, VecDeque},
     sync::Arc,
@@ -41,17 +39,9 @@ use std::{
 };
 use storage::Config;
 
+pub use alvr_system_info::Platform;
 pub use logging_backend::init_logging;
-pub use platform::Platform;
 
-#[cfg(target_os = "android")]
-pub use platform::try_get_permission;
-
-pub fn platform() -> Platform {
-    platform::platform()
-}
-
-#[derive(Serialize, Deserialize)]
 pub enum ClientCoreEvent {
     UpdateHudMessage(String),
     StreamingStarted(Box<StreamConfig>),
@@ -104,8 +94,8 @@ impl ClientCoreContext {
         #[cfg(target_os = "android")]
         {
             dbg_client_core!("Getting permissions");
-            platform::try_get_permission(platform::MICROPHONE_PERMISSION);
-            platform::set_wifi_lock(true);
+            alvr_system_info::try_get_permission(alvr_system_info::MICROPHONE_PERMISSION);
+            alvr_system_info::set_wifi_lock(true);
         }
 
         let lifecycle_state = Arc::new(RwLock::new(LifecycleState::Idle));
@@ -402,7 +392,7 @@ impl Drop for ClientCoreContext {
         }
 
         #[cfg(target_os = "android")]
-        platform::set_wifi_lock(false);
+        alvr_system_info::set_wifi_lock(false);
     }
 }
 

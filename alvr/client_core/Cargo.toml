@@ -20,6 +20,7 @@ alvr_common.workspace = true
 alvr_packets.workspace = true
 alvr_session.workspace = true
 alvr_sockets.workspace = true
+alvr_system_info.workspace = true
 
 app_dirs2 = "2"
 bincode = "1"

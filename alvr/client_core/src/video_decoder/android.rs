@@ -1,3 +1,4 @@
+use super::VideoDecoderConfig;
 use alvr_common::{
     anyhow::{anyhow, bail, Context, Result},
     error, info,
@@ -24,8 +25,6 @@ use std::{
     thread::{self, JoinHandle},
     time::Duration,
 };
-
-use crate::decoder::DecoderConfig;
 
 struct FakeThreadSafe<T>(T);
 unsafe impl<T> Send for FakeThreadSafe<T> {}
@@ -90,7 +89,7 @@ pub struct VideoDecoderSource {
     running: Arc<RelaxedAtomic>,
     dequeue_thread: Option<JoinHandle<()>>,
     image_queue: Arc<Mutex<VecDeque<QueuedImage>>>,
-    config: DecoderConfig,
+    config: VideoDecoderConfig,
     buffering_running_average: f32,
 }
 
@@ -191,7 +190,7 @@ fn decoder_attempt_setup(
 // Since we leak the ImageReader, and we pass frame_result_callback to it which contains a reference
 // to ClientCoreContext, to avoid circular references we need to use a Weak reference.
 fn decoder_lifecycle(
-    config: DecoderConfig,
+    config: VideoDecoderConfig,
     csd_0: Vec<u8>,
     frame_result_callback: Weak<impl Fn(Result<Duration>) + Send + Sync + 'static>,
     running: Arc<RelaxedAtomic>,
@@ -334,7 +333,7 @@ fn decoder_lifecycle(
 
 // Create a sink/source pair
 pub fn video_decoder_split(
-    config: DecoderConfig,
+    config: VideoDecoderConfig,
     csd_0: Vec<u8>,
     frame_result_callback: impl Fn(Result<Duration>) + Send + Sync + 'static,
 ) -> Result<(VideoDecoderSink, VideoDecoderSource)> {

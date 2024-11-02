@@ -65,14 +65,14 @@ pub fn initialize_interaction(
         if (config.combined_eye_gaze || config.eye_tracking_fb)
             && matches!(platform, Platform::QuestPro)
         {
-            alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING")
+            alvr_system_info::try_get_permission("com.oculus.permission.EYE_TRACKING")
         }
         if config.combined_eye_gaze && platform.is_pico() {
-            alvr_client_core::try_get_permission("com.picovr.permission.EYE_TRACKING")
+            alvr_system_info::try_get_permission("com.picovr.permission.EYE_TRACKING")
         }
         if config.face_tracking_fb && matches!(platform, Platform::QuestPro) {
-            alvr_client_core::try_get_permission("android.permission.RECORD_AUDIO");
-            alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING")
+            alvr_system_info::try_get_permission("android.permission.RECORD_AUDIO");
+            alvr_system_info::try_get_permission("com.oculus.permission.FACE_TRACKING")
         }
     }
 
@@ -82,7 +82,7 @@ pub fn initialize_interaction(
             && platform.is_quest()
             && platform != Platform::Quest1
         {
-            alvr_client_core::try_get_permission("com.oculus.permission.BODY_TRACKING")
+            alvr_system_info::try_get_permission("com.oculus.permission.BODY_TRACKING")
         }
     }
 

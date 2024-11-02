@@ -189,6 +189,7 @@ dependencies = [
  "alvr_packets",
  "alvr_session",
  "alvr_sockets",
+ "alvr_system_info",
  "android_logger",
  "app_dirs2",
  "bincode",
@@ -236,6 +237,7 @@ dependencies = [
  "alvr_common",
  "alvr_packets",
  "alvr_session",
+ "alvr_system_info",
  "android-activity 0.6.0",
  "jni",
  "libc",
@@ -436,6 +438,18 @@ dependencies = [
  "serde",
  "serde_json",
  "socket2 0.5.7",
+]
+
+[[package]]
+name = "alvr_system_info"
+version = "21.0.0-dev01"
+dependencies = [
+ "alvr_common",
+ "jni",
+ "local-ip-address",
+ "ndk 0.9.0",
+ "ndk-context",
+ "ndk-sys 0.6.0+11769913",
 ]
 
 [[package]]

@@ -1,7 +1,3 @@
-mod decoder;
-
-pub use decoder::*;
-
 use alvr_common::warn;
 use jni::{objects::JObject, sys::jobject, JNIEnv, JavaVM};
 use std::net::{IpAddr, Ipv4Addr};

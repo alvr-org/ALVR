@@ -224,6 +224,14 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
             NamedIconPathDeviceAlertLowString,
             format!("{base_path}_ready_low.png").as_str(),
         );
+        set_prop(
+            NamedIconPathDeviceStandbyString,
+            format!("{base_path}_standby.png").as_str(),
+        );
+        set_prop(
+            NamedIconPathDeviceStandbyAlertString,
+            format!("{base_path}_standby_alert.gif").as_str(),
+        );
     };
 
     let device_serial = &serial_number(device_id);
@@ -307,6 +315,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
     {
         let left_hand = device_id == *HAND_LEFT_ID || device_id == *HAND_TRACKER_LEFT_ID;
         let right_hand = device_id == *HAND_RIGHT_ID || device_id == *HAND_TRACKER_RIGHT_ID;
+        let full_skeletal_hand = device_id == *HAND_TRACKER_LEFT_ID || device_id == *HAND_TRACKER_RIGHT_ID;
         if let Switch::Enabled(config) = &settings.headset.controllers {
             // Controller-specific properties, not shared
             match config.emulation_mode {
@@ -495,8 +504,6 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                     }
                 }
                 ControllersEmulationMode::ValveIndex => {
-                    // The index controllers at those paths are the old green ones,
-                    // and leaving out the icons works so let's just do that for now.
                     if left_hand {
                         set_icons("{indexcontroller}/icons/left_controller_status");
                     } else if right_hand {
@@ -512,6 +519,27 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                     set_icons("{htc}/icons/tracker");
                 }
                 ControllersEmulationMode::Custom { .. } => {}
+            }
+
+            if full_skeletal_hand {
+                set_prop(TrackingSystemNameString, "vrlink");
+                set_prop(ManufacturerNameString, "VRLink");
+                
+                set_prop(RenderModelNameString, "{vrlink}/rendermodels/shuttlecock");
+                set_prop(ControllerTypeString, "svl_hand_interaction_augmented");
+                set_prop(InputProfilePathString, "{vrlink}/input/svl_hand_interaction_augmented_input_profile.json");
+                
+                if left_hand {
+                    set_prop(ModelNumberString, "VRLink Hand Tracker (Left Hand)");
+                    set_prop(RegisteredDeviceTypeString, "vrlink/VRLINKQ_HandTracker_Left");
+                    set_icons("{vrlink}/icons/left_handtracking");
+                }
+                else if right_hand {
+                    set_prop(ModelNumberString, "VRLink Hand Tracker (Right Hand)");
+                    set_prop(RegisteredDeviceTypeString, "vrlink/VRLINKQ_HandTracker_Right");
+                    set_icons("{vrlink}/icons/right_handtracking");
+                }
+                
             }
 
             set_prop(SerialNumberString, device_serial);

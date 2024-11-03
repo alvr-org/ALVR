@@ -20,6 +20,8 @@ alvr_server_core.workspace = true
 alvr_server_io.workspace = true
 alvr_session.workspace = true
 
+serde_json = "1"
+
 [build-dependencies]
 alvr_filesystem = { path = "../filesystem" }
 bindgen = "0.70"

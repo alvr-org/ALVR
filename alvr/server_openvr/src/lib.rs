@@ -72,9 +72,9 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
             };
 
             match event {
-                ServerCoreEvent::SetOpenvrProperty { device_id, prop } => unsafe {
-                    SetOpenvrProperty(device_id, props::to_ffi_openvr_prop(prop))
-                },
+                ServerCoreEvent::SetOpenvrProperty { device_id, prop } => {
+                    props::set_openvr_prop(device_id, prop)
+                }
                 ServerCoreEvent::ClientConnected => {
                     unsafe {
                         InitializeStreaming();

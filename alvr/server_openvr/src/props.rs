@@ -199,7 +199,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
         );
     };
 
-    let set_icons = |base_path: &str|  {
+    let set_icons = |base_path: &str| {
         set_prop(
             NamedIconPathDeviceOffString,
             format!("{base_path}_off.png").as_str(),
@@ -277,9 +277,11 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
             HeadsetEmulationMode::RiftS => {
                 set_icons("{oculus}/icons/rifts_headset");
             }
-            HeadsetEmulationMode::Quest2
-            | HeadsetEmulationMode::QuestPro => {
-                set_prop(RegisteredDeviceTypeString, format!("oculus/{headset_serial}").as_str());
+            HeadsetEmulationMode::Quest2 | HeadsetEmulationMode::QuestPro => {
+                set_prop(
+                    RegisteredDeviceTypeString,
+                    format!("oculus/{headset_serial}").as_str(),
+                );
                 set_icons("{oculus}/icons/quest_headset");
             }
             HeadsetEmulationMode::Vive => {
@@ -315,7 +317,8 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
     {
         let left_hand = device_id == *HAND_LEFT_ID || device_id == *HAND_TRACKER_LEFT_ID;
         let right_hand = device_id == *HAND_RIGHT_ID || device_id == *HAND_TRACKER_RIGHT_ID;
-        let full_skeletal_hand = device_id == *HAND_TRACKER_LEFT_ID || device_id == *HAND_TRACKER_RIGHT_ID;
+        let full_skeletal_hand =
+            device_id == *HAND_TRACKER_LEFT_ID || device_id == *HAND_TRACKER_RIGHT_ID;
         if let Switch::Enabled(config) = &settings.headset.controllers {
             // Controller-specific properties, not shared
             match config.emulation_mode {
@@ -492,14 +495,20 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 | ControllersEmulationMode::Quest3Plus
                 | ControllersEmulationMode::QuestPro => {
                     set_prop(TrackingSystemNameString, "oculus");
-                    
+
                     set_prop(ControllerTypeString, "oculus_touch");
                     set_prop(InputProfilePathString, "{oculus}/input/touch_profile.json");
                     if left_hand {
-                        set_prop(RegisteredDeviceTypeString, format!("oculus/{headset_serial}_Controller_Left").as_str());
+                        set_prop(
+                            RegisteredDeviceTypeString,
+                            format!("oculus/{headset_serial}_Controller_Left").as_str(),
+                        );
                         set_icons("{oculus}/icons/rifts_left_controller");
                     } else if right_hand {
-                        set_prop(RegisteredDeviceTypeString, format!("oculus/{headset_serial}_Controller_Right").as_str());
+                        set_prop(
+                            RegisteredDeviceTypeString,
+                            format!("oculus/{headset_serial}_Controller_Right").as_str(),
+                        );
                         set_icons("{oculus}/icons/rifts_right_controller");
                     }
                 }
@@ -524,22 +533,29 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
             if full_skeletal_hand {
                 set_prop(TrackingSystemNameString, "vrlink");
                 set_prop(ManufacturerNameString, "VRLink");
-                
+
                 set_prop(RenderModelNameString, "{vrlink}/rendermodels/shuttlecock");
                 set_prop(ControllerTypeString, "svl_hand_interaction_augmented");
-                set_prop(InputProfilePathString, "{vrlink}/input/svl_hand_interaction_augmented_input_profile.json");
-                
+                set_prop(
+                    InputProfilePathString,
+                    "{vrlink}/input/svl_hand_interaction_augmented_input_profile.json",
+                );
+
                 if left_hand {
                     set_prop(ModelNumberString, "VRLink Hand Tracker (Left Hand)");
-                    set_prop(RegisteredDeviceTypeString, "vrlink/VRLINKQ_HandTracker_Left");
+                    set_prop(
+                        RegisteredDeviceTypeString,
+                        "vrlink/VRLINKQ_HandTracker_Left",
+                    );
                     set_icons("{vrlink}/icons/left_handtracking");
-                }
-                else if right_hand {
+                } else if right_hand {
                     set_prop(ModelNumberString, "VRLink Hand Tracker (Right Hand)");
-                    set_prop(RegisteredDeviceTypeString, "vrlink/VRLINKQ_HandTracker_Right");
+                    set_prop(
+                        RegisteredDeviceTypeString,
+                        "vrlink/VRLINKQ_HandTracker_Right",
+                    );
                     set_icons("{vrlink}/icons/right_handtracking");
                 }
-                
             }
 
             set_prop(SerialNumberString, device_serial);

@@ -101,7 +101,7 @@ pub fn set_openvr_prop(device_id: u64, prop: OpenvrProperty) {
 
     unsafe {
         crate::SetOpenvrProperty(
-            *HEAD_ID,
+            device_id,
             FfiOpenvrProperty {
                 key,
                 type_,

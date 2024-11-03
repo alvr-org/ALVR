@@ -804,12 +804,14 @@ fn connection_pipeline(
 
                     #[cfg(windows)]
                     if let Ok(id) = alvr_audio::get_windows_device_id(&device) {
+                        let prop = alvr_session::OpenvrProperty {
+                            key: alvr_session::OpenvrPropKey::AudioDefaultPlaybackDeviceIdString,
+                            value: id,
+                        };
                         ctx.events_sender
                             .send(ServerCoreEvent::SetOpenvrProperty {
                                 device_id: *alvr_common::HEAD_ID,
-                                prop: alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(
-                                    id,
-                                ),
+                                prop,
                             })
                             .ok();
                     } else {
@@ -833,12 +835,14 @@ fn connection_pipeline(
                     if let Ok(id) = AudioDevice::new_output(None)
                         .and_then(|d| alvr_audio::get_windows_device_id(&d))
                     {
+                        let prop = alvr_session::OpenvrProperty {
+                            key: alvr_session::OpenvrPropKey::AudioDefaultPlaybackDeviceIdString,
+                            value: id,
+                        };
                         ctx.events_sender
                             .send(ServerCoreEvent::SetOpenvrProperty {
                                 device_id: *alvr_common::HEAD_ID,
-                                prop: alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(
-                                    id,
-                                ),
+                                prop,
                             })
                             .ok();
                     }
@@ -861,7 +865,10 @@ fn connection_pipeline(
             ctx.events_sender
                 .send(ServerCoreEvent::SetOpenvrProperty {
                     device_id: *alvr_common::HEAD_ID,
-                    prop: alvr_session::OpenvrProperty::AudioDefaultRecordingDeviceId(id),
+                    prop: alvr_session::OpenvrProperty {
+                        key: alvr_session::OpenvrPropKey::AudioDefaultRecordingDeviceIdString,
+                        value: id,
+                    },
                 })
                 .ok();
         }

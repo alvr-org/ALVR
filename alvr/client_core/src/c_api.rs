@@ -14,7 +14,7 @@ use alvr_common::{
     warn, DeviceMotion, Fov, OptLazy, Pose,
 };
 use alvr_packets::{ButtonEntry, ButtonValue, FaceData, ViewParams};
-use alvr_session::{CodecType, FoveatedEncodingConfig, MediacodecDataType};
+use alvr_session::{CodecType, FoveatedEncodingConfig, MediacodecPropType, MediacodecProperty};
 use std::{
     cell::RefCell,
     ffi::{c_char, c_void, CStr, CString},
@@ -880,25 +880,29 @@ pub extern "C" fn alvr_create_decoder(config: AlvrDecoderConfig) {
                 .iter()
                 .map(|option| unsafe {
                     let key = CStr::from_ptr(option.key).to_str().unwrap();
-                    let value = match option.ty {
-                        AlvrMediacodecPropType::Float => {
-                            MediacodecDataType::Float(option.value.float_)
-                        }
-                        AlvrMediacodecPropType::Int32 => {
-                            MediacodecDataType::Int32(option.value.int32)
-                        }
-                        AlvrMediacodecPropType::Int64 => {
-                            MediacodecDataType::Int64(option.value.int64)
-                        }
-                        AlvrMediacodecPropType::String => MediacodecDataType::String(
-                            CStr::from_ptr(option.value.string)
+                    let prop = match option.ty {
+                        AlvrMediacodecPropType::Float => MediacodecProperty {
+                            ty: MediacodecPropType::Float,
+                            value: option.value.float_.to_string(),
+                        },
+                        AlvrMediacodecPropType::Int32 => MediacodecProperty {
+                            ty: MediacodecPropType::Int32,
+                            value: option.value.int32.to_string(),
+                        },
+                        AlvrMediacodecPropType::Int64 => MediacodecProperty {
+                            ty: MediacodecPropType::Int64,
+                            value: option.value.int64.to_string(),
+                        },
+                        AlvrMediacodecPropType::String => MediacodecProperty {
+                            ty: MediacodecPropType::String,
+                            value: CStr::from_ptr(option.value.string)
                                 .to_str()
                                 .unwrap()
                                 .to_owned(),
-                        ),
+                        },
                     };
 
-                    (key.to_string(), value)
+                    (key.to_owned(), prop)
                 })
                 .collect()
         } else {

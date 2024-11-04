@@ -1,4 +1,3 @@
-
 var<push_constant> transform: mat4x4f;
 
 @vertex

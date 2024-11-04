@@ -74,8 +74,6 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
 
         return vec4f(out_color, 1.0);
     } else { // HUD
-        let mask = textureSample(hud_texture, hud_sampler, uv).a;
-
-        return vec4<f32>(1.0, 1.0, 1.0, mask);
+        return textureSample(hud_texture, hud_sampler, uv);
     }
 }

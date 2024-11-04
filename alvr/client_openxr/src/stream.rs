@@ -1,5 +1,5 @@
 use crate::{
-    graphics::{self, CompositionLayerBuilder},
+    graphics::{self, ProjectionLayerBuilder},
     interaction::{self, InteractionContext},
     XrContext,
 };
@@ -334,7 +334,7 @@ impl StreamContext {
         &mut self,
         frame_interval: Duration,
         vsync_time: Duration,
-    ) -> (CompositionLayerBuilder, Duration) {
+    ) -> (ProjectionLayerBuilder, Duration) {
         let frame_poll_deadline = Instant::now()
             + Duration::from_secs_f32(
                 frame_interval.as_secs_f32() * DECODER_MAX_TIMEOUT_MULTIPLIER,
@@ -397,7 +397,7 @@ impl StreamContext {
             },
         };
 
-        let layer = CompositionLayerBuilder::new(
+        let layer = ProjectionLayerBuilder::new(
             &self.reference_space,
             [
                 xr::CompositionLayerProjectionView::new()
@@ -419,6 +419,7 @@ impl StreamContext {
                             .image_rect(rect),
                     ),
             ],
+            false,
         );
 
         (layer, timestamp)

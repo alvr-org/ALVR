@@ -1,5 +1,5 @@
 use crate::{
-    graphics::{self, CompositionLayerBuilder},
+    graphics::{self, ProjectionLayerBuilder},
     interaction::{self, InteractionContext},
     XrContext,
 };
@@ -95,7 +95,7 @@ impl Lobby {
         self.renderer.update_hud_message(message);
     }
 
-    pub fn render(&mut self, predicted_display_time: xr::Time) -> CompositionLayerBuilder {
+    pub fn render(&mut self, predicted_display_time: xr::Time) -> ProjectionLayerBuilder {
         let (flags, maybe_views) = self
             .xr_session
             .locate_views(
@@ -173,6 +173,7 @@ impl Lobby {
                 (right_hand_data.0.map(|dm| dm.pose), right_hand_data.1),
             ],
             body_skeleton_fb,
+            false,
         );
 
         self.swapchains[0].release_image().unwrap();
@@ -186,7 +187,7 @@ impl Lobby {
             },
         };
 
-        CompositionLayerBuilder::new(
+        ProjectionLayerBuilder::new(
             &self.reference_space,
             [
                 xr::CompositionLayerProjectionView::new()
@@ -208,6 +209,7 @@ impl Lobby {
                             .image_rect(rect),
                     ),
             ],
+            true,
         )
     }
 }

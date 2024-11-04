@@ -3,6 +3,7 @@ mod extra_extensions;
 mod graphics;
 mod interaction;
 mod lobby;
+mod passthrough;
 mod stream;
 
 use crate::stream::ParsedStreamConfig;
@@ -20,6 +21,7 @@ use extra_extensions::{
 };
 use lobby::Lobby;
 use openxr as xr;
+use passthrough::PassthroughLayer;
 use std::{path::Path, rc::Rc, sync::Arc, thread, time::Duration};
 use stream::StreamContext;
 
@@ -141,15 +143,17 @@ pub fn entry_point() {
     exts.ext_eye_gaze_interaction = available_extensions.ext_eye_gaze_interaction;
     exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
     exts.ext_local_floor = available_extensions.ext_local_floor;
+    exts.fb_body_tracking = available_extensions.fb_body_tracking;
     exts.fb_color_space = available_extensions.fb_color_space;
     exts.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
     exts.fb_eye_tracking_social = available_extensions.fb_eye_tracking_social;
     exts.fb_face_tracking2 = available_extensions.fb_face_tracking2;
-    exts.fb_body_tracking = available_extensions.fb_body_tracking;
     exts.fb_foveation = available_extensions.fb_foveation;
     exts.fb_foveation_configuration = available_extensions.fb_foveation_configuration;
+    exts.fb_passthrough = available_extensions.fb_passthrough;
     exts.fb_swapchain_update_state = available_extensions.fb_swapchain_update_state;
     exts.htc_facial_tracking = available_extensions.htc_facial_tracking;
+    exts.htc_passthrough = available_extensions.htc_passthrough;
     exts.htc_vive_focus3_controller_interaction =
         available_extensions.htc_vive_focus3_controller_interaction;
     #[cfg(target_os = "android")]
@@ -278,6 +282,7 @@ pub fn entry_point() {
         );
         let mut session_running = false;
         let mut stream_context = None::<StreamContext>;
+        let mut passthrough_layer = None;
 
         let mut event_storage = xr::EventDataBuffer::new();
         'render_loop: loop {
@@ -295,10 +300,14 @@ pub fn entry_point() {
 
                             core_context.resume();
 
+                            passthrough_layer = PassthroughLayer::new(&xr_session).ok();
+
                             session_running = true;
                         }
                         xr::SessionState::STOPPING => {
                             session_running = false;
+
+                            passthrough_layer = None;
 
                             core_context.pause();
 
@@ -373,8 +382,14 @@ pub fn entry_point() {
 
                             parsed_stream_config = Some(new_config);
                         }
+
+                        passthrough_layer = None;
                     }
-                    ClientCoreEvent::StreamingStopped => stream_context = None,
+                    ClientCoreEvent::StreamingStopped => {
+                        passthrough_layer = PassthroughLayer::new(&xr_session).ok();
+
+                        stream_context = None;
+                    }
                     ClientCoreEvent::Haptics {
                         device_id,
                         duration,
@@ -439,11 +454,18 @@ pub fn entry_point() {
                 (lobby.render(frame_state.predicted_display_time), vsync_time)
             };
 
+            let layers: &[&xr::CompositionLayerBase<_>] =
+                if let Some(passthrough_layer) = &passthrough_layer {
+                    &[passthrough_layer, &layer.build()]
+                } else {
+                    &[&layer.build()]
+                };
+
             graphics_context.make_current();
             let res = xr_frame_stream.end(
                 to_xr_time(display_time),
                 xr::EnvironmentBlendMode::OPAQUE,
-                &[&layer.build()],
+                layers,
             );
 
             if let Err(e) = res {

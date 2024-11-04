@@ -785,7 +785,10 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
 
 // todo: support hands
 #[no_mangle]
-pub unsafe extern "C" fn alvr_render_lobby_opengl(view_inputs: *const AlvrViewInput) {
+pub unsafe extern "C" fn alvr_render_lobby_opengl(
+    view_inputs: *const AlvrViewInput,
+    render_background: bool,
+) {
     let view_inputs = [
         RenderViewInput {
             pose: from_capi_pose((*view_inputs).pose),
@@ -801,7 +804,12 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(view_inputs: *const AlvrViewIn
 
     LOBBY_RENDERER.with_borrow(|renderer| {
         if let Some(renderer) = renderer {
-            renderer.render(view_inputs, [(None, None), (None, None)], None);
+            renderer.render(
+                view_inputs,
+                [(None, None), (None, None)],
+                None,
+                render_background,
+            );
         }
     });
 }

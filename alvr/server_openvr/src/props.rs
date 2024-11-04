@@ -238,6 +238,15 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
     let headset_serial = &serial_number(*HEAD_ID);
 
     if device_id == *HEAD_ID {
+        // Closure for all the common Quest headset properties
+        let set_oculus_common_headset_props = || {
+            set_prop(
+                RegisteredDeviceTypeString,
+                format!("oculus/{headset_serial}").as_str(),
+            );
+            set_icons("{oculus}/icons/quest_headset");
+        };
+
         // Per-device props
         match &settings.headset.emulation_mode {
             HeadsetEmulationMode::RiftS => {
@@ -246,6 +255,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 set_prop(ManufacturerNameString, "Oculus");
                 set_prop(RenderModelNameString, "generic_hmd");
                 set_prop(DriverVersionString, "1.42.0");
+                set_icons("{oculus}/icons/rifts_headset");
             }
             HeadsetEmulationMode::Quest2 => {
                 set_prop(TrackingSystemNameString, "oculus");
@@ -253,6 +263,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 set_prop(ManufacturerNameString, "Oculus");
                 set_prop(RenderModelNameString, "generic_hmd");
                 set_prop(DriverVersionString, "1.55.0");
+                set_oculus_common_headset_props();
             }
             HeadsetEmulationMode::QuestPro => {
                 set_prop(TrackingSystemNameString, "oculus");
@@ -260,6 +271,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 set_prop(ManufacturerNameString, "Oculus");
                 set_prop(RenderModelNameString, "generic_hmd");
                 set_prop(DriverVersionString, "1.55.0");
+                set_oculus_common_headset_props();
             }
             HeadsetEmulationMode::Vive => {
                 set_prop(TrackingSystemNameString, "Vive Tracker");
@@ -268,23 +280,6 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 set_prop(RenderModelNameString, "generic_hmd");
                 set_prop(RegisteredDeviceTypeString, "vive");
                 set_prop(DriverVersionString, "");
-            }
-            HeadsetEmulationMode::Custom { .. } => (),
-        }
-
-        // Common props, especially icons
-        match &settings.headset.emulation_mode {
-            HeadsetEmulationMode::RiftS => {
-                set_icons("{oculus}/icons/rifts_headset");
-            }
-            HeadsetEmulationMode::Quest2 | HeadsetEmulationMode::QuestPro => {
-                set_prop(
-                    RegisteredDeviceTypeString,
-                    format!("oculus/{headset_serial}").as_str(),
-                );
-                set_icons("{oculus}/icons/quest_headset");
-            }
-            HeadsetEmulationMode::Vive => {
                 set_icons("{htc}/icons/vive_headset");
             }
             HeadsetEmulationMode::Custom { .. } => (),
@@ -320,6 +315,27 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
         let full_skeletal_hand =
             device_id == *HAND_TRACKER_LEFT_ID || device_id == *HAND_TRACKER_RIGHT_ID;
         if let Switch::Enabled(config) = &settings.headset.controllers {
+            // Closure for all the common Oculus/Meta controller properties
+            let set_oculus_common_props = || {
+                set_prop(TrackingSystemNameString, "oculus");
+
+                set_prop(ControllerTypeString, "oculus_touch");
+                set_prop(InputProfilePathString, "{oculus}/input/touch_profile.json");
+                if left_hand {
+                    set_prop(
+                        RegisteredDeviceTypeString,
+                        format!("oculus/{headset_serial}_Controller_Left").as_str(),
+                    );
+                    set_icons("{oculus}/icons/rifts_left_controller");
+                } else if right_hand {
+                    set_prop(
+                        RegisteredDeviceTypeString,
+                        format!("oculus/{headset_serial}_Controller_Right").as_str(),
+                    );
+                    set_icons("{oculus}/icons/rifts_right_controller");
+                }
+            };
+
             // Controller-specific properties, not shared
             match config.emulation_mode {
                 ControllersEmulationMode::RiftSTouch => {
@@ -333,6 +349,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                     }
                     set_prop(ControllerTypeString, "oculus_touch");
                     set_prop(InputProfilePathString, "{oculus}/input/touch_profile.json");
+                    set_oculus_common_props();
                 }
                 ControllersEmulationMode::Quest2Touch => {
                     set_prop(ManufacturerNameString, "Oculus");
@@ -345,6 +362,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                     }
                     set_prop(ControllerTypeString, "oculus_touch");
                     set_prop(InputProfilePathString, "{oculus}/input/touch_profile.json");
+                    set_oculus_common_props();
                 }
                 ControllersEmulationMode::Quest3Plus => {
                     set_prop(ManufacturerNameString, "Meta");
@@ -358,6 +376,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                     }
                     set_prop(ControllerTypeString, "oculus_touch");
                     set_prop(InputProfilePathString, "{oculus}/input/touch_profile.json");
+                    set_oculus_common_props();
                 }
                 ControllersEmulationMode::QuestPro => {
                     set_prop(ManufacturerNameString, "Meta");
@@ -369,6 +388,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                         set_prop(ModelNumberString, "Meta Quest Pro (Right Controller)");
                         set_prop(RenderModelNameString, "oculus_quest_pro_controller_right");
                     }
+                    set_oculus_common_props();
                 }
                 ControllersEmulationMode::ValveIndex => {
                     set_prop(TrackingSystemNameString, "indexcontroller");
@@ -383,6 +403,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                             RegisteredDeviceTypeString,
                             "valve/index_controllerLHR-E217CD00_Left",
                         );
+                        set_icons("{indexcontroller}/icons/left_controller_status");
                     } else if right_hand {
                         set_prop(ModelNumberString, "Knuckles (Right Controller)");
                         set_prop(
@@ -393,6 +414,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                             RegisteredDeviceTypeString,
                             "valve/index_controllerLHR-E217CD00_Right",
                         );
+                        set_icons("{indexcontroller}/icons/right_controller_status");
                     }
                     set_prop(ControllerTypeString, "knuckles");
                     set_prop(
@@ -419,6 +441,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                     }
                     set_prop(ControllerTypeString, "vive_controller");
                     set_prop(InputProfilePathString, "{oculus}/input/touch_profile.json");
+                    set_icons("{htc}/icons/controller");
                 }
                 ControllersEmulationMode::ViveTracker => {
                     set_prop(TrackingSystemNameString, "lighthouse");
@@ -436,6 +459,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                         InputProfilePathString,
                         "{htc}/input/vive_tracker_profile.json",
                     );
+                    set_icons("{htc}/icons/tracker");
 
                     // All of these property values were dumped from real a vive tracker via
                     // https://github.com/SDraw/openvr_dumper and were copied from
@@ -483,49 +507,6 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                     set_prop(HasCameraComponentBool, "false");
                     set_prop(HasDriverDirectModeComponentBool, "false");
                     set_prop(HasVirtualDisplayComponentBool, "false");
-                }
-                ControllersEmulationMode::Custom { .. } => {}
-            }
-
-            // Match for icons, to avoid duplicating across every Meta headset
-            // and also to override for the hand tracking controllers specifically
-            match config.emulation_mode {
-                ControllersEmulationMode::RiftSTouch
-                | ControllersEmulationMode::Quest2Touch
-                | ControllersEmulationMode::Quest3Plus
-                | ControllersEmulationMode::QuestPro => {
-                    set_prop(TrackingSystemNameString, "oculus");
-
-                    set_prop(ControllerTypeString, "oculus_touch");
-                    set_prop(InputProfilePathString, "{oculus}/input/touch_profile.json");
-                    if left_hand {
-                        set_prop(
-                            RegisteredDeviceTypeString,
-                            format!("oculus/{headset_serial}_Controller_Left").as_str(),
-                        );
-                        set_icons("{oculus}/icons/rifts_left_controller");
-                    } else if right_hand {
-                        set_prop(
-                            RegisteredDeviceTypeString,
-                            format!("oculus/{headset_serial}_Controller_Right").as_str(),
-                        );
-                        set_icons("{oculus}/icons/rifts_right_controller");
-                    }
-                }
-                ControllersEmulationMode::ValveIndex => {
-                    if left_hand {
-                        set_icons("{indexcontroller}/icons/left_controller_status");
-                    } else if right_hand {
-                        set_icons("{indexcontroller}/icons/right_controller_status");
-                    }
-                }
-                // This is probably also a good switch statement as a fallback
-                // for weirder controllers.
-                ControllersEmulationMode::ViveWand => {
-                    set_icons("{htc}/icons/controller");
-                }
-                ControllersEmulationMode::ViveTracker => {
-                    set_icons("{htc}/icons/tracker");
                 }
                 ControllersEmulationMode::Custom { .. } => {}
             }

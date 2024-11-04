@@ -530,6 +530,9 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 ControllersEmulationMode::Custom { .. } => {}
             }
 
+            set_prop(SerialNumberString, device_serial);
+            set_prop(AttachedDeviceIdString, device_serial);
+
             if full_skeletal_hand {
                 set_prop(TrackingSystemNameString, "vrlink");
                 set_prop(ManufacturerNameString, "VRLink");
@@ -547,6 +550,8 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                         RegisteredDeviceTypeString,
                         "vrlink/VRLINKQ_HandTracker_Left",
                     );
+                    set_prop(SerialNumberString, "VRLINKQ_Hand_Left");
+                    set_prop(AttachedDeviceIdString, "VRLINKQ_Hand_Left");
                     set_icons("{vrlink}/icons/left_handtracking");
                 } else if right_hand {
                     set_prop(ModelNumberString, "VRLink Hand Tracker (Right Hand)");
@@ -554,12 +559,11 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                         RegisteredDeviceTypeString,
                         "vrlink/VRLINKQ_HandTracker_Right",
                     );
+                    set_prop(SerialNumberString, "VRLINKQ_Hand_Right");
+                    set_prop(AttachedDeviceIdString, "VRLINKQ_Hand_Right");
                     set_icons("{vrlink}/icons/right_handtracking");
                 }
             }
-
-            set_prop(SerialNumberString, device_serial);
-            set_prop(AttachedDeviceIdString, device_serial);
 
             set_prop(SupportedButtonsUint64, "0xFFFFFFFFFFFFFFFF");
 

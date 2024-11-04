@@ -52,25 +52,37 @@ pub fn create_swapchain(
     session.create_swapchain(&swapchain_info).unwrap()
 }
 
-// This is needed to work around lifetime limitations
-pub struct CompositionLayerBuilder<'a> {
+// This is needed to work around lifetime limitations. Deref cannot be implemented because there are
+// nested references, and in a way or the other I would get `cannot return reference to temporary
+// value`
+pub struct ProjectionLayerBuilder<'a> {
     reference_space: &'a xr::Space,
     layers: [xr::CompositionLayerProjectionView<'a, xr::OpenGlEs>; 2],
+    enable_alpha: bool,
 }
 
-impl<'a> CompositionLayerBuilder<'a> {
+impl<'a> ProjectionLayerBuilder<'a> {
     pub fn new(
         reference_space: &'a xr::Space,
         layers: [xr::CompositionLayerProjectionView<'a, xr::OpenGlEs>; 2],
+        enable_alpha: bool,
     ) -> Self {
         Self {
             reference_space,
             layers,
+            enable_alpha,
         }
     }
 
     pub fn build(&self) -> xr::CompositionLayerProjection<xr::OpenGlEs> {
+        let flags = if self.enable_alpha {
+            xr::CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA
+        } else {
+            xr::CompositionLayerFlags::EMPTY
+        };
+
         xr::CompositionLayerProjection::new()
+            .layer_flags(flags)
             .space(self.reference_space)
             .views(&self.layers)
     }

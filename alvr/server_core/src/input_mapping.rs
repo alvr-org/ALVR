@@ -12,7 +12,8 @@ pub fn registered_button_set(
     match &controllers_emulation_mode {
         ControllersEmulationMode::RiftSTouch
         | ControllersEmulationMode::Quest2Touch
-        | ControllersEmulationMode::Quest3Plus => CONTROLLER_PROFILE_INFO
+        | ControllersEmulationMode::Quest3Plus
+        | ControllersEmulationMode::QuestPro => CONTROLLER_PROFILE_INFO
             .get(&QUEST_CONTROLLER_PROFILE_ID)
             .unwrap()
             .button_set

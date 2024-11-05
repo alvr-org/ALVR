@@ -701,6 +701,8 @@ pub enum HeadsetEmulationMode {
     RiftS,
     #[schema(strings(display_name = "Quest 2"))]
     Quest2,
+    #[schema(strings(display_name = "Quest Pro"))]
+    QuestPro,
     Vive,
     Custom {
         serial_number: String,
@@ -783,9 +785,13 @@ pub enum ControllersEmulationMode {
     Quest2Touch,
     #[schema(strings(display_name = "Quest 3 Touch Plus"))]
     Quest3Plus,
+    #[schema(strings(display_name = "Quest Pro"))]
+    QuestPro,
     #[schema(strings(display_name = "Valve Index"))]
     ValveIndex,
+    #[schema(strings(display_name = "Vive Wand"))]
     ViveWand,
+    #[schema(strings(display_name = "Vive Tracker"))]
     ViveTracker,
     Custom {
         serial_number: String,

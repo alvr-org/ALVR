@@ -55,6 +55,12 @@ void ShutdownOpenvrClient() {
 
 bool IsOpenvrClientReady() { return isOpenvrInit; }
 
+void ResetChaperoneToStage() {
+#ifndef __APPLE__
+    vr::VRChaperone()->ResetZeroPose(vr::TrackingUniverseRawAndUncalibrated);
+#endif
+}
+
 void _SetChaperoneArea(float areaWidth, float areaHeight) {
     Debug("SetChaperoneArea");
 
@@ -96,6 +102,7 @@ void _SetChaperoneArea(float areaWidth, float areaHeight) {
         );
     }
 
+    ResetChaperoneToStage();
 #endif
 }
 

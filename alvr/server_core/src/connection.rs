@@ -73,14 +73,18 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
         controller_is_tracker =
             matches!(config.emulation_mode, ControllersEmulationMode::ViveTracker);
+        // These numbers don't mean anything, they're just for triggering SteamVR resets.
+        // Gaps are included in the numbering to make adding other controllers
+        // a bit easier though.
         _controller_profile = match config.emulation_mode {
             ControllersEmulationMode::RiftSTouch => 0,
             ControllersEmulationMode::Quest2Touch => 1,
             ControllersEmulationMode::Quest3Plus => 2,
-            ControllersEmulationMode::ValveIndex => 3,
-            ControllersEmulationMode::ViveWand => 4,
-            ControllersEmulationMode::ViveTracker => 5,
-            ControllersEmulationMode::Custom { .. } => 6,
+            ControllersEmulationMode::QuestPro => 3,
+            ControllersEmulationMode::ValveIndex => 20,
+            ControllersEmulationMode::ViveWand => 40,
+            ControllersEmulationMode::ViveTracker => 41,
+            ControllersEmulationMode::Custom { .. } => 500,
         };
         use_separate_hand_trackers = config
             .hand_skeleton

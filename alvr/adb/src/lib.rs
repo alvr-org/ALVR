@@ -95,6 +95,12 @@ pub fn setup_wired_connection(
     Ok(WiredConnectionStatus::Ready)
 }
 
+pub fn teardown_wired_connection(layout: &Layout) -> Result<()> {
+    let adb_path = get_adb_path(layout).context("Failed to get ADB executable path")?;
+    kill_server(&adb_path)?;
+    Ok(())
+}
+
 fn get_command(adb_path: &str, args: &[&str]) -> Command {
     let mut command = Command::new(adb_path);
     command.args(args);
@@ -377,5 +383,15 @@ fn forward_port(adb_path: &str, device_serial: &str, port: u16) -> Result<()> {
     )
     .output()
     .with_context(|| format!("Failed to forward port {port:?} of device {device_serial:?}"))?;
+    Ok(())
+}
+
+/////////
+// Server
+
+pub fn kill_server(adb_path: &str) -> Result<()> {
+    get_command(adb_path, &["kill-server"])
+        .output()
+        .with_context(|| format!("Failed to kill ADB server"))?;
     Ok(())
 }

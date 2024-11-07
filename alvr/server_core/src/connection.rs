@@ -246,6 +246,8 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
         }
     };
 
+    let mut adb_server_started = false;
+
     while *lifecycle_state.read() != LifecycleState::ShuttingDown {
         dbg_connection!("handshake_loop: Try connect to wired device");
 
@@ -277,6 +279,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                 }
                 Ok(status) => status,
             };
+            adb_server_started = true;
             if let WiredConnectionStatus::NotReady(m) = status {
                 dbg_connection!("handshake_loop: Wired connection not ready: {m}");
                 thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
@@ -409,6 +412,15 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
     // At this point, LIFECYCLE_STATE == ShuttingDown, so all threads are already terminating
     for thread in ctx.connection_threads.lock().drain(..) {
         thread.join().ok();
+    }
+
+    if adb_server_started {
+        alvr_common::dbg_connection!("handshake_loop: Killing ADB server");
+        if let Some(layout) = FILESYSTEM_LAYOUT.get() {
+            if let Err(e) = alvr_adb::teardown_wired_connection(layout) {
+                error!("{e:?}");
+            }
+        };
     }
 
     alvr_common::dbg_connection!("handshake_loop: End");

@@ -90,6 +90,7 @@ pub fn setup_wired_connection(
 pub fn teardown_wired_connection(layout: &Layout) -> Result<()> {
     let adb_path = get_adb_path(layout).context("Failed to get ADB executable path")?;
     kill_server(&adb_path)?;
+
     Ok(())
 }
 
@@ -126,6 +127,7 @@ fn download(url: &str, progress_callback: impl Fn(usize, Option<usize>)) -> Resu
         let current_size = result.len();
         (progress_callback)(current_size, maybe_expected_size);
     }
+
     Ok(result)
 }
 
@@ -150,6 +152,7 @@ pub fn get_process_id(
     let process_id = text
         .parse::<usize>()
         .context("Failed to parse process ID")?;
+
     Ok(Some(process_id))
 }
 
@@ -215,11 +218,13 @@ fn install_adb(layout: &Layout, progress_callback: impl Fn(usize, Option<usize>)
     let mut reader = Cursor::new(buffer);
     let path = get_installation_path(layout);
     ZipArchive::new(&mut reader)?.extract(path)?;
+
     Ok(())
 }
 
 fn download_adb(progress_callback: impl Fn(usize, Option<usize>)) -> Result<Vec<u8>> {
     let url = get_platform_tools_url();
+
     download(&url, progress_callback).context(format!("Failed to download ADB from {url}"))
 }
 
@@ -245,6 +250,7 @@ pub fn start_application(adb_path: &str, device_serial: &str, application_id: &s
     )
     .output()
     .context(format!("Failed to start {application_id}"))?;
+
     Ok(())
 }
 
@@ -257,6 +263,7 @@ pub fn list_devices(adb_path: &str) -> Result<Vec<Device>> {
         .context("Failed to list ADB devices")?;
     let text = String::from_utf8_lossy(&output.stdout);
     let devices = text.lines().skip(1).filter_map(device::parse).collect();
+
     Ok(devices)
 }
 
@@ -267,6 +274,7 @@ pub fn install_package(adb_path: &str, device_serial: &str, apk_path: &str) -> R
     get_command(adb_path, &["-s", device_serial, "install", "-r", apk_path])
         .output()
         .context(format!("Failed to install {apk_path}"))?;
+
     Ok(())
 }
 
@@ -280,6 +288,7 @@ pub fn is_package_installed(
             "Failed to check if package {application_id} is installed"
         ))?
         .contains(application_id);
+
     Ok(found)
 }
 
@@ -290,6 +299,7 @@ pub fn uninstall_package(adb_path: &str, device_serial: &str, application_id: &s
     )
     .output()
     .context(format!("Failed to uninstall {application_id}"))?;
+
     Ok(())
 }
 
@@ -302,6 +312,7 @@ pub fn list_installed_packages(adb_path: &str, device_serial: &str) -> Result<Ha
     .context("Failed to list installed packages")?;
     let text = String::from_utf8_lossy(&output.stdout);
     let packages = text.lines().map(|l| l.replace("package:", "")).collect();
+
     Ok(packages)
 }
 
@@ -315,11 +326,13 @@ pub fn get_adb_path(layout: &Layout) -> Option<String> {
 
 fn get_os_adb_path() -> Option<String> {
     let name = get_executable_name().to_owned();
+
     get_command(&name, &[]).output().is_ok().then_some(name)
 }
 
 fn get_local_adb_path(layout: &Layout) -> Option<String> {
     let path = get_platform_tools_path(layout).join(get_executable_name());
+
     path.try_exists()
         .is_ok_and(|e| e)
         .then(|| path.to_string_lossy().to_string())
@@ -348,6 +361,7 @@ fn list_forwarded_ports(adb_path: &str, device_serial: &str) -> Result<Vec<Forwa
         ))?;
     let text = String::from_utf8_lossy(&output.stdout);
     let forwarded_ports = text.lines().filter_map(forwarded_port::parse).collect();
+
     Ok(forwarded_ports)
 }
 
@@ -366,6 +380,7 @@ fn forward_port(adb_path: &str, device_serial: &str, port: u16) -> Result<()> {
     .context(format!(
         "Failed to forward port {port:?} of device {device_serial:?}"
     ))?;
+
     Ok(())
 }
 
@@ -376,5 +391,6 @@ pub fn kill_server(adb_path: &str) -> Result<()> {
     get_command(adb_path, &["kill-server"])
         .output()
         .context("Failed to kill ADB server")?;
+
     Ok(())
 }

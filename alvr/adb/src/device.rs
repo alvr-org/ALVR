@@ -63,5 +63,6 @@ pub fn parse(line: &str) -> Option<Device> {
 fn parse_pair(pair: &str) -> Option<String> {
     let mut slice = pair.split(':');
     let _key = slice.next();
+
     slice.next().map(|value| value.to_string())
 }

@@ -10,6 +10,7 @@ pub fn parse(line: &str) -> Option<ForwardedPort> {
     let serial = slices.next();
     let local = parse_port(slices.next()?);
     let remote = parse_port(slices.next()?);
+
     if let (Some(serial), Some(local), Some(remote)) = (serial, local, remote) {
         Some(ForwardedPort {
             local,
@@ -25,5 +26,6 @@ fn parse_port(value: &str) -> Option<u16> {
     let mut slices = value.split(':');
     let _protocol = slices.next();
     let maybe_port = slices.next();
+
     maybe_port.and_then(|p| p.parse::<u16>().ok())
 }

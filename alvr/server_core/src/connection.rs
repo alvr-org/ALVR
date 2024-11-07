@@ -7,7 +7,6 @@ use crate::{
     tracking::{self, TrackingManager},
     ConnectionContext, ServerCoreEvent, ViewsConfig, SESSION_MANAGER,
 };
-use alvr_adb::forwarded_port::ForwardedPort;
 use alvr_audio::AudioDevice;
 use alvr_common::{
     con_bail, dbg_connection, debug, error,
@@ -293,33 +292,19 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                     }
                     Ok(devices) => devices,
                 };
+                let ports = [9943, 9944];
                 for device in devices {
                     let Some(device_serial) = device.serial else {
                         dbg_connection!("Skipping device without serial number");
                         thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                         continue;
                     };
-                    match alvr_adb::list_forwarded_ports(&adb_path, &device_serial) {
-                        Err(e) => error!(
-                            "Failed to list forwarded ports of device {device_serial}: {e:?}"
-                        ),
-                        Ok(forwarded_ports) => {
-                            let required = [9943, 9944];
-                            let ports: Vec<u16> = forwarded_ports
-                                .into_iter()
-                                .map(|f| f.local)
-                                .filter(|p| !required.contains(p))
-                                .collect();
-                            for port in ports {
-                                match alvr_adb::forward_port(&adb_path, &device_serial, port)
-                                {
-                                    Err(e) => error!("Failed to forward port {port:?} of device {device_serial}: {e:?}"),
-                                    Ok(()) => {
-                                        dbg_connection!("Forwarded port {port:?} of device {device_serial}");
-                                    }
-                                }
-                            }
-                        }
+                    if let Err(e) = alvr_adb::forward_ports(&adb_path, &device_serial, &ports) {
+                        error!(
+                            "Failed to forward ports {ports:?} of device {device_serial}: {e:?}"
+                        );
+                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                        continue;
                     }
                 }
             }

@@ -47,7 +47,9 @@ pub fn setup_wired_connection(
             Some(t) => t.to_string(),
             None => "?".to_owned(),
         };
-        dbg_connection!("Downloading ADB: got {downloaded} bytes of {total_display}");
+        dbg_connection!(
+            "setup_wired_connection: Downloading ADB: got {downloaded} bytes of {total_display}"
+        );
         Ok(())
     })?;
 

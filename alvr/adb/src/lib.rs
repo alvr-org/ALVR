@@ -246,9 +246,9 @@ fn get_local_adb_path() -> Option<String> {
 }
 
 fn get_installation_path() -> Result<PathBuf> {
-    let mut path = std::env::current_exe()?;
-    path.pop();
-    Ok(path)
+    let root = alvr_server_io::get_driver_dir_from_registered()?;
+    let layout = alvr_filesystem::filesystem_layout_from_openvr_driver_root_dir(&root);
+    Ok(layout.executables_dir)
 }
 
 fn get_platform_tools_path() -> Result<PathBuf> {

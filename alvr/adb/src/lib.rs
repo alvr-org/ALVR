@@ -12,6 +12,8 @@ use device::Device;
 use forwarded_port::ForwardedPort;
 use zip::ZipArchive;
 
+use alvr_common::{dbg_connection, warn};
+
 // https://developer.android.com/tools/releases/platform-tools#revisions
 // NOTE: At the time of writing this comment, the revisions section above
 // shows the latest version as 35.0.2, but the latest that can be downloaded
@@ -26,6 +28,46 @@ const PLATFORM_TOOLS_OS: &str = "darwin";
 const PLATFORM_TOOLS_OS: &str = "windows";
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
+
+pub fn setup_wired_connection() -> Result<()> {
+    let adb_path = match get_adb_path() {
+        Some(adb_path) => {
+            dbg_connection!("Found ADB executable at {adb_path}");
+            adb_path
+        }
+        None => {
+            dbg_connection!("Couldn't find ADB, installing it...");
+            install_adb(|downloaded, total| {
+                let total_display = match total {
+                    Some(t) => t.to_string(),
+                    None => "?".to_owned(),
+                };
+                warn!("Downloading ADB: got {downloaded} bytes of {total_display}");
+            })
+            .context("Failed to install ADB")?;
+            dbg_connection!("Finished installing ADB");
+            let adb_path = get_adb_path().context("Failed to get ADB path after installation")?;
+            dbg_connection!("ADB installed at {adb_path:?}");
+            adb_path
+        }
+    };
+    let devices = list_devices(&adb_path)?.into_iter().filter(|d| {
+        d.serial
+            .as_ref()
+            .is_some_and(|s| !s.starts_with("127.0.0.1"))
+    });
+    let ports = HashSet::from([9943, 9944]);
+    for device in devices {
+        let Some(device_serial) = device.serial else {
+            dbg_connection!("Skipping device without serial number");
+            continue;
+        };
+        dbg_connection!("Forwarding ports {ports:?} of device {device_serial}...");
+        forward_ports(&adb_path, &device_serial, &ports)?;
+        dbg_connection!("Forwarded ports {ports:?} of device {device_serial}");
+    }
+    Ok(())
+}
 
 ///////////////////
 // ADB Installation

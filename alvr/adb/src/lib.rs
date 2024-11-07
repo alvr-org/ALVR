@@ -12,7 +12,7 @@ use std::os::windows::process::CommandExt;
 
 use alvr_common::debug;
 use alvr_filesystem::Layout;
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use device::Device;
 use forwarded_port::ForwardedPort;
 use zip::ZipArchive;
@@ -32,38 +32,50 @@ const PLATFORM_TOOLS_OS: &str = "windows";
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
-pub fn setup_wired_connection(layout: &Layout, control_port: u16, stream_port: u16) -> Result<()> {
+pub enum WiredConnectionStatus {
+    NotReady(String),
+    Ready,
+}
+
+pub fn setup_wired_connection(
+    layout: &Layout,
+    control_port: u16,
+    stream_port: u16,
+) -> Result<WiredConnectionStatus> {
     let adb_path = require_adb(layout, |downloaded, total| {
         let total_display = match total {
             Some(t) => t.to_string(),
             None => "?".to_owned(),
         };
         debug!("Downloading ADB: got {downloaded} bytes of {total_display}");
-            })
-            .context("Failed to install ADB")?;
-            debug!("Finished installing ADB");
-            let adb_path =
-                get_adb_path(layout).context("Failed to get ADB path after installation")?;
-            debug!("ADB installed at {adb_path:?}");
-            adb_path
+        Ok(())
+    })?;
+
+    let device_serial = match list_devices(&adb_path)?
+        .into_iter()
+        .filter_map(|d| d.serial)
+        .find(|s| !s.starts_with("127.0.0.1"))
+    {
+        None => {
+            return Ok(WiredConnectionStatus::NotReady(
+                "No wired devices found".to_owned(),
+            ))
         }
+        Some(serial) => serial,
     };
-    let devices = list_devices(&adb_path)?.into_iter().filter(|d| {
-        d.serial
-            .as_ref()
-            .is_some_and(|s| !s.starts_with("127.0.0.1"))
-    });
+
     let ports = HashSet::from([control_port, stream_port]);
-    for device in devices {
-        let Some(device_serial) = device.serial else {
-            debug!("Skipping device without serial number");
-            continue;
-        };
-        debug!("Forwarding ports {ports:?} of device {device_serial}...");
-        forward_ports(&adb_path, &device_serial, &ports)?;
-        debug!("Forwarded ports {ports:?} of device {device_serial}");
+    debug!("Forwarding ports {ports:?} of device {device_serial}...");
+    forward_ports(&adb_path, &device_serial, &ports)?;
+    debug!("Forwarded ports {ports:?} of device {device_serial}");
+
+    if !is_activity_resumed(&adb_path, &device_serial, "alvr.client")? {
+        return Ok(WiredConnectionStatus::NotReady(
+            "ALVR client is not running".to_owned(),
+        ));
     }
-    Ok(())
+
+    Ok(WiredConnectionStatus::Ready)
 }
 
 fn get_command(adb_path: &str, args: &[&str]) -> Command {

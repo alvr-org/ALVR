@@ -7,6 +7,7 @@ use crate::{
     tracking::{self, TrackingManager},
     ConnectionContext, ServerCoreEvent, ViewsConfig, FILESYSTEM_LAYOUT, SESSION_MANAGER,
 };
+use alvr_adb::WiredConnectionStatus;
 use alvr_audio::AudioDevice;
 use alvr_common::{
     con_bail, dbg_connection, debug, error,
@@ -29,7 +30,7 @@ use alvr_session::{
 };
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSocketBuilder, CONTROL_PORT, KEEPALIVE_INTERVAL,
-    KEEPALIVE_TIMEOUT,
+    KEEPALIVE_TIMEOUT, WIRED_CLIENT_HOSTNAME,
 };
 use std::{
     collections::HashMap,
@@ -246,19 +247,71 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
     };
 
     while *lifecycle_state.read() != LifecycleState::ShuttingDown {
+        dbg_connection!("handshake_loop: Try connect to wired device");
+
+        let mut wired_client_ips = HashMap::new();
+        if let Some((client_hostname, _)) =
+            SESSION_MANAGER
+                .read()
+                .client_list()
+                .iter()
+                .find(|(hostname, info)| {
+                    info.connection_state == ConnectionState::Disconnected
+                        && hostname.as_str() == WIRED_CLIENT_HOSTNAME
+                })
+        {
+            let layout = match FILESYSTEM_LAYOUT.get() {
+                None => {
+                    error!("Failed to get filesystem layout");
+                    thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                    continue;
+                }
+                Some(layout) => layout,
+            };
+            let stream_port = SESSION_MANAGER.read().settings().connection.stream_port;
+            let status = match alvr_adb::setup_wired_connection(layout, CONTROL_PORT, stream_port) {
+                Err(e) => {
+                    error!("{e:?}");
+                    thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                    continue;
+                }
+                Ok(status) => status,
+            };
+            if let WiredConnectionStatus::NotReady(m) = status {
+                dbg_connection!("handshake_loop: Wired connection not ready: {m}");
+                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                continue;
+            }
+            let client_ip = IpAddr::V4(Ipv4Addr::LOCALHOST);
+            wired_client_ips.insert(client_ip, client_hostname.to_owned());
+        }
+
+        if !wired_client_ips.is_empty()
+            && try_connect(
+                Arc::clone(&ctx),
+                Arc::clone(&lifecycle_state),
+                wired_client_ips,
+            )
+            .is_ok()
+        {
+            thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+            continue;
+        }
+
         dbg_connection!("handshake_loop: Try connect to manual IPs");
 
         let available_manual_client_ips = {
             let mut manual_client_ips = HashMap::new();
-            for (hostname, connection_info) in SESSION_MANAGER
-                .read()
-                .client_list()
-                .iter()
-                .filter(|(_, info)| info.connection_state == ConnectionState::Disconnected)
+            for (hostname, connection_info) in
+                SESSION_MANAGER
+                    .read()
+                    .client_list()
+                    .iter()
+                    .filter(|(hostname, info)| {
+                        info.connection_state == ConnectionState::Disconnected
+                            && hostname.as_str() != WIRED_CLIENT_HOSTNAME
+                    })
             {
-                if connection_info.wired {
-                    manual_client_ips.insert(IpAddr::V4(Ipv4Addr::LOCALHOST), hostname.clone());
-                }
                 for ip in &connection_info.manual_ips {
                     manual_client_ips.insert(*ip, hostname.clone());
                 }
@@ -266,34 +319,16 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
             manual_client_ips
         };
 
-        if !available_manual_client_ips.is_empty() {
-            if available_manual_client_ips.keys().any(|i| i.is_loopback()) {
-                let layout = match FILESYSTEM_LAYOUT.get() {
-                    None => {
-                        error!("Failed to get filesystem layout");
-                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-                        continue;
-                    }
-                    Some(layout) => layout,
-                };
-                let stream_port = SESSION_MANAGER.read().settings().connection.stream_port;
-                if let Err(e) = alvr_adb::setup_wired_connection(layout, CONTROL_PORT, stream_port)
-                {
-                    error!("{e:?}");
-                    thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-                    continue;
-                }
-            }
-            if try_connect(
+        if !available_manual_client_ips.is_empty()
+            && try_connect(
                 Arc::clone(&ctx),
                 Arc::clone(&lifecycle_state),
                 available_manual_client_ips,
             )
             .is_ok()
-            {
-                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-                continue;
-            }
+        {
+            thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+            continue;
         }
 
         let discovery_config = SESSION_MANAGER
@@ -329,7 +364,6 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                         ClientListAction::AddIfMissing {
                             trusted: false,
                             manual_ips: vec![],
-                            wired: false,
                         },
                     );
 

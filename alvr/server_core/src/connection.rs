@@ -268,6 +268,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                 continue;
             };
             let stream_port = SESSION_MANAGER.read().settings().connection.stream_port;
+
             let maybe_status = alvr_adb::setup_wired_connection(
                 layout,
                 CONTROL_PORT,
@@ -288,12 +289,15 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                 }
                 Ok(status) => status,
             };
+
             adb_server_started = true;
+
             if let WiredConnectionStatus::NotReady(m) = status {
                 dbg_connection!("handshake_loop: Wired connection not ready: {m}");
                 thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                 continue;
             }
+
             let client_ip = IpAddr::V4(Ipv4Addr::LOCALHOST);
             wired_client_ips.insert(client_ip, client_hostname.to_owned());
         }

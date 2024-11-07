@@ -135,7 +135,8 @@ fn get_executable_name() -> String {
 fn list_forwarded_ports(adb_path: &str, device_serial: &str) -> Result<Vec<ForwardedPort>> {
     let output = Command::new(adb_path)
         .args(["-s", &device_serial, "forward", "--list"])
-        .output()?;
+        .output()
+        .with_context(|| format!("Failed to list forwarded ports of device {device_serial:?}"))?;
     let text = String::from_utf8_lossy(&output.stdout);
     let forwarded_ports = text.lines().filter_map(forwarded_port::parse).collect();
     Ok(forwarded_ports)
@@ -162,6 +163,7 @@ fn forward_port(adb_path: &str, device_serial: &str, port: u16) -> Result<()> {
             &format!("tcp:{}", port),
             &format!("tcp:{}", port),
         ])
-        .output()?;
+        .output()
+        .with_context(|| format!("Failed to forward port {port:?} of device {device_serial:?}"))?;
     Ok(())
 }

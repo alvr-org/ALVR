@@ -10,7 +10,7 @@ use std::{collections::HashSet, io::Cursor, path::PathBuf, process::Command, tim
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
-use alvr_common::debug;
+use alvr_common::{dbg_connection, debug};
 use alvr_filesystem::Layout;
 use anyhow::{anyhow, Context, Result};
 use device::Device;
@@ -47,7 +47,7 @@ pub fn setup_wired_connection(
             Some(t) => t.to_string(),
             None => "?".to_owned(),
         };
-        debug!("Downloading ADB: got {downloaded} bytes of {total_display}");
+        dbg_connection!("Downloading ADB: got {downloaded} bytes of {total_display}");
         Ok(())
     })?;
 
@@ -65,9 +65,9 @@ pub fn setup_wired_connection(
     };
 
     let ports = HashSet::from([control_port, stream_port]);
-    debug!("Forwarding ports {ports:?} of device {device_serial}...");
+    dbg_connection!("Forwarding ports {ports:?} of device {device_serial}...");
     forward_ports(&adb_path, &device_serial, &ports)?;
-    debug!("Forwarded ports {ports:?} of device {device_serial}");
+    dbg_connection!("Forwarded ports {ports:?} of device {device_serial}");
 
     if !is_activity_resumed(&adb_path, &device_serial, "alvr.client")? {
         return Ok(WiredConnectionStatus::NotReady(

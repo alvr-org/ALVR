@@ -239,18 +239,6 @@ pub fn is_package_installed(
     Ok(found)
 }
 
-pub fn replace_package(
-    adb_path: &str,
-    device_serial: &str,
-    application_id: &str,
-    apk_path: &str,
-) -> Result<()> {
-    if is_package_installed(adb_path, device_serial, application_id)? {
-        uninstall_package(adb_path, device_serial, application_id)?;
-    }
-    install_package(adb_path, device_serial, apk_path)
-}
-
 pub fn uninstall_package(adb_path: &str, device_serial: &str, application_id: &str) -> Result<()> {
     get_command(
         adb_path,

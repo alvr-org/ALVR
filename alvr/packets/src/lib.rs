@@ -347,7 +347,6 @@ pub enum ClientListAction {
     AddIfMissing {
         trusted: bool,
         manual_ips: Vec<IpAddr>,
-        wired: bool,
     },
     SetDisplayName(String),
     Trust,

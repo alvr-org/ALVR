@@ -286,6 +286,7 @@ dependencies = [
  "alvr_packets",
  "alvr_server_io",
  "alvr_session",
+ "alvr_sockets",
  "bincode",
  "chrono",
  "cros-libva",

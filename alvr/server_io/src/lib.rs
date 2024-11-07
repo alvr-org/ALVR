@@ -205,7 +205,6 @@ impl ServerSessionManager {
             ClientListAction::AddIfMissing {
                 trusted,
                 manual_ips,
-                wired,
             } => {
                 if let Entry::Vacant(new_entry) = maybe_client_entry {
                     let client_connection_desc = ClientConnectionConfig {
@@ -214,7 +213,6 @@ impl ServerSessionManager {
                         manual_ips: manual_ips.into_iter().collect(),
                         trusted,
                         connection_state: ConnectionState::Disconnected,
-                        wired,
                     };
                     new_entry.insert(client_connection_desc);
 

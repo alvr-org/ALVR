@@ -3,6 +3,7 @@ use alvr_common::ConnectionState;
 use alvr_gui_common::theme::{self, log_colors};
 use alvr_packets::ClientListAction;
 use alvr_session::{ClientConnectionConfig, SessionConfig};
+use alvr_sockets::WIRED_CLIENT_HOSTNAME;
 use eframe::{
     egui::{self, Frame, Grid, Layout, RichText, TextEdit, Ui, Window},
     emath::{Align, Align2},
@@ -13,7 +14,6 @@ struct EditPopupState {
     new_devices: bool,
     hostname: String,
     ips: Vec<String>,
-    wired: bool,
 }
 
 pub struct DevicesTab {
@@ -76,6 +76,17 @@ impl DevicesTab {
         }
 
         ui.vertical_centered_justified(|ui| {
+            if let Some(clients) = &mut self.trusted_devices {
+                let wired_client = clients
+                    .iter()
+                    .find(|(hostname, _)| hostname == WIRED_CLIENT_HOSTNAME);
+                if let Some(request) = wired_client_section(ui, wired_client) {
+                    requests.push(request);
+                }
+            }
+
+            ui.add_space(10.0);
+
             if let Some(clients) = &self.new_devices {
                 if let Some(request) = new_clients_section(ui, clients) {
                     requests.push(request);
@@ -85,9 +96,15 @@ impl DevicesTab {
             ui.add_space(10.0);
 
             if let Some(clients) = &mut self.trusted_devices {
-                if let Some(request) =
-                    trusted_clients_section(ui, clients, &mut self.edit_popup_state)
-                {
+                let wireless_clients: Vec<&(String, ClientConnectionConfig)> = clients
+                    .iter()
+                    .filter(|(hostname, _)| hostname != WIRED_CLIENT_HOSTNAME)
+                    .collect();
+                if let Some(request) = trusted_clients_section(
+                    ui,
+                    wireless_clients.as_slice(),
+                    &mut self.edit_popup_state,
+                ) {
                     requests.push(request);
                 }
             }
@@ -105,8 +122,6 @@ impl DevicesTab {
                             state.new_devices,
                             TextEdit::singleline(&mut state.hostname),
                         );
-                        ui[0].label("Wired:");
-                        alvr_gui_common::switch(&mut ui[1], &mut state.wired);
                         ui[0].label("IP Addresses:");
                         for address in &mut state.ips {
                             ui[1].text_edit_singleline(address);
@@ -130,7 +145,6 @@ impl DevicesTab {
                                     action: ClientListAction::AddIfMissing {
                                         trusted: true,
                                         manual_ips,
-                                        wired: state.wired,
                                     },
                                 });
                             } else {
@@ -148,6 +162,58 @@ impl DevicesTab {
 
         requests
     }
+}
+
+fn wired_client_section(
+    ui: &mut Ui,
+    maybe_client: Option<&(String, ClientConnectionConfig)>,
+) -> Option<ServerRequest> {
+    let mut request = None;
+
+    Frame::group(ui.style())
+        .fill(theme::SECTION_BG)
+        .show(ui, |ui| {
+            Grid::new("wired-client")
+                .num_columns(2)
+                .spacing(egui::vec2(8.0, 8.0))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.heading("Wired connection");
+                    });
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        let mut wired = maybe_client.is_some();
+                        if alvr_gui_common::switch(ui, &mut wired).changed() {
+                            if wired {
+                                request = Some(ServerRequest::UpdateClientList {
+                                    hostname: WIRED_CLIENT_HOSTNAME.to_owned(),
+                                    action: ClientListAction::AddIfMissing {
+                                        trusted: true,
+                                        manual_ips: Vec::new(),
+                                    },
+                                });
+                            } else {
+                                request = Some(ServerRequest::UpdateClientList {
+                                    hostname: WIRED_CLIENT_HOSTNAME.to_owned(),
+                                    action: ClientListAction::RemoveEntry,
+                                });
+                            }
+                        }
+                    });
+                    ui.end_row();
+
+                    if let Some((_, data)) = maybe_client {
+                        ui.horizontal(|ui| {
+                            ui.label(&data.display_name);
+                        });
+                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                            connection_label(ui, &data.connection_state);
+                        });
+                        ui.end_row();
+                    }
+                });
+        });
+
+    request
 }
 
 fn new_clients_section(
@@ -194,7 +260,7 @@ fn new_clients_section(
 
 fn trusted_clients_section(
     ui: &mut Ui,
-    clients: &mut [(String, ClientConnectionConfig)],
+    clients: &[&(String, ClientConnectionConfig)],
     edit_popup_state: &mut Option<EditPopupState>,
 ) -> Option<ServerRequest> {
     let mut request = None;
@@ -249,7 +315,6 @@ fn trusted_clients_section(
                                                     .iter()
                                                     .map(|addr| addr.to_string())
                                                     .collect::<Vec<String>>(),
-                                                wired: data.wired,
                                             });
                                         }
                                     });
@@ -263,7 +328,6 @@ fn trusted_clients_section(
                     hostname: "XXXX.client.local.".into(),
                     new_devices: true,
                     ips: Vec::new(),
-                    wired: false,
                 });
             }
         });

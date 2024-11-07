@@ -237,9 +237,10 @@ fn connection_pipeline(
         }
     }
 
-    let stream_protocol = match negotiated_config.wired.is_some_and(|w| w) {
-        false => settings.connection.stream_protocol,
-        true => SocketProtocol::Tcp,
+    let stream_protocol = if negotiated_config.wired {
+        SocketProtocol::Tcp
+    } else {
+        settings.connection.stream_protocol
     };
 
     dbg_connection!("connection_pipeline: create StreamSocket");

@@ -165,7 +165,7 @@ fn new_clients_section(
         .show(ui, |ui| {
             ui.vertical_centered_justified(|ui| {
                 ui.add_space(5.0);
-                ui.heading("New devices");
+                ui.heading("New wireless devices");
             });
             for (hostname, _) in clients {
                 Frame::group(ui.style())
@@ -208,7 +208,7 @@ fn trusted_clients_section(
         .show(ui, |ui| {
             ui.vertical_centered_justified(|ui| {
                 ui.add_space(5.0);
-                ui.heading("Trusted devices");
+                ui.heading("Trusted wireless devices");
             });
 
             ui.vertical(|ui| {

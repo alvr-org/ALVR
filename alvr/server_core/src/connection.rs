@@ -262,17 +262,10 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                         && hostname.as_str() == WIRED_CLIENT_HOSTNAME
                 })
         {
-            let Some(layout) = FILESYSTEM_LAYOUT.get() else {
-                error!("Failed to get filesystem layout");
-                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-                continue;
-            };
-            let stream_port = SESSION_MANAGER.read().settings().connection.stream_port;
-
             let maybe_status = alvr_adb::setup_wired_connection(
-                layout,
+                &FILESYSTEM_LAYOUT,
+                &SESSION_MANAGER,
                 CONTROL_PORT,
-                stream_port,
                 |downloaded, maybe_total| {
                     if let Some(total) = maybe_total {
                         alvr_events::send_event(EventType::Adb(alvr_events::AdbEvent {

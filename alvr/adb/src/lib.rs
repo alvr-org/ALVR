@@ -5,13 +5,17 @@ pub mod device;
 pub mod forwarded_port;
 pub mod transport_type;
 
-use std::{collections::HashSet, io::Cursor, path::PathBuf, process::Command, time::Duration};
+use std::{
+    collections::HashSet, io::Cursor, path::PathBuf, process::Command, sync::OnceLock,
+    time::Duration,
+};
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
-use alvr_common::dbg_connection;
+use alvr_common::{dbg_connection, once_cell::sync::Lazy, parking_lot::RwLock};
 use alvr_filesystem::Layout;
+use alvr_server_io::ServerSessionManager;
 use anyhow::{anyhow, Context, Result};
 use device::Device;
 use forwarded_port::ForwardedPort;
@@ -38,11 +42,14 @@ pub enum WiredConnectionStatus {
 }
 
 pub fn setup_wired_connection(
-    layout: &Layout,
+    filesystem_layout: &OnceLock<alvr_filesystem::Layout>,
+    session_manager: &Lazy<RwLock<ServerSessionManager>>,
     control_port: u16,
-    stream_port: u16,
     progress_callback: impl Fn(usize, Option<usize>),
 ) -> Result<WiredConnectionStatus> {
+    let layout = filesystem_layout
+        .get()
+        .context("Failed to get filesystem layout")?;
     let adb_path = require_adb(layout, progress_callback)?;
 
     let device_serial = match list_devices(&adb_path)?
@@ -58,6 +65,7 @@ pub fn setup_wired_connection(
         Some(serial) => serial,
     };
 
+    let stream_port = session_manager.read().settings().connection.stream_port;
     let ports = HashSet::from([control_port, stream_port]);
     let forwarded_ports: HashSet<u16> = list_forwarded_ports(&adb_path, &device_serial)?
         .into_iter()

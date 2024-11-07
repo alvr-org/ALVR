@@ -4,6 +4,7 @@ pub mod connection_state;
 pub mod device;
 pub mod forwarded_port;
 pub mod transport_type;
+pub mod wired_connection;
 
 use std::{
     collections::HashSet, io::Cursor, path::PathBuf, process::Command, sync::OnceLock,
@@ -19,6 +20,7 @@ use alvr_server_io::ServerSessionManager;
 use anyhow::{anyhow, Context, Result};
 use device::Device;
 use forwarded_port::ForwardedPort;
+use wired_connection::{WiredConnection, WiredConnectionStatus};
 use zip::ZipArchive;
 
 // https://developer.android.com/tools/releases/platform-tools#revisions
@@ -36,30 +38,27 @@ const PLATFORM_TOOLS_OS: &str = "windows";
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
-pub enum WiredConnectionStatus {
-    NotReady(String),
-    Ready,
-}
-
 pub fn setup_wired_connection(
     filesystem_layout: &OnceLock<alvr_filesystem::Layout>,
+    wired_connection: &mut WiredConnection,
     session_manager: &Lazy<RwLock<ServerSessionManager>>,
     control_port: u16,
     progress_callback: impl Fn(usize, Option<usize>),
-) -> Result<WiredConnectionStatus> {
+) -> Result<()> {
     let layout = filesystem_layout
         .get()
         .context("Failed to get filesystem layout")?;
     let adb_path = require_adb(layout, progress_callback)?;
+    wired_connection.maybe_adb_path = Some(adb_path.to_owned());
 
     let Some(device_serial) = list_devices(&adb_path)?
         .into_iter()
         .filter_map(|d| d.serial)
         .find(|s| !s.starts_with("127.0.0.1"))
     else {
-        return Ok(WiredConnectionStatus::NotReady(
-            "No wired devices found".to_owned(),
-        ));
+        wired_connection.status =
+            WiredConnectionStatus::NotReady("No wired devices found".to_owned());
+        return Ok(());
     };
 
     let stream_port = session_manager.read().settings().connection.stream_port;
@@ -79,24 +78,19 @@ pub fn setup_wired_connection(
     #[cfg(not(debug_assertions))]
     let process_name = "alvr.client.stable";
     if get_process_id(&adb_path, &device_serial, process_name)?.is_none() {
-        return Ok(WiredConnectionStatus::NotReady(
-            "ALVR client is not running".to_owned(),
-        ));
+        wired_connection.status =
+            WiredConnectionStatus::NotReady("ALVR client is not running".to_owned());
+        return Ok(());
     }
     if !is_activity_resumed(&adb_path, &device_serial, process_name)? {
-        return Ok(WiredConnectionStatus::NotReady(
-            "ALVR client is paused".to_owned(),
-        ));
+        wired_connection.status =
+            WiredConnectionStatus::NotReady("ALVR client is paused".to_owned());
+        return Ok(());
     }
 
-    Ok(WiredConnectionStatus::Ready)
-}
+    wired_connection.status = WiredConnectionStatus::Ready;
 
-pub fn teardown_wired_connection(layout: &Layout) -> Result<()> {
-    let adb_path = get_adb_path(layout).context("Failed to get ADB executable path")?;
-    kill_server(&adb_path)?;
-
-    Ok(())
+    return Ok(());
 }
 
 fn get_command(adb_path: &str, args: &[&str]) -> Command {

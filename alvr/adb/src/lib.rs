@@ -227,6 +227,18 @@ pub fn start_application(adb_path: &str, device_serial: &str, application_id: &s
     Ok(())
 }
 
+//////////
+// Devices
+
+pub fn list_devices(adb_path: &str) -> Result<Vec<Device>> {
+    let output = get_command(adb_path, &["devices", "-l"])
+        .output()
+        .context("Failed to list ADB devices")?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    let devices = text.lines().skip(1).filter_map(device::parse).collect();
+    Ok(devices)
+}
+
 ///////////
 // Packages
 
@@ -271,18 +283,6 @@ pub fn list_installed_packages(adb_path: &str, device_serial: &str) -> Result<Ha
     let text = String::from_utf8_lossy(&output.stdout);
     let packages = text.lines().map(|l| l.replace("package:", "")).collect();
     Ok(packages)
-}
-
-//////////
-// Devices
-
-pub fn list_devices(adb_path: &str) -> Result<Vec<Device>> {
-    let output = get_command(adb_path, &["devices", "-l"])
-        .output()
-        .context("Failed to list ADB devices")?;
-    let text = String::from_utf8_lossy(&output.stdout);
-    let devices = text.lines().skip(1).filter_map(device::parse).collect();
-    Ok(devices)
 }
 
 ////////

@@ -24,15 +24,15 @@ use alvr_packets::{
     VideoPacketHeader, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{
-    BodyTrackingConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize,
-    H264Profile, OpenvrConfig, SessionConfig, SocketProtocol,
+    BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile,
+    OpenvrConfig, SessionConfig,
 };
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSocketBuilder, CONTROL_PORT, KEEPALIVE_INTERVAL,
     KEEPALIVE_TIMEOUT,
 };
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     net::{IpAddr, Ipv4Addr},
     process::Command,
     sync::{mpsc::RecvTimeoutError, Arc},

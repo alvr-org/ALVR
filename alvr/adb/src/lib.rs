@@ -32,7 +32,7 @@ const PLATFORM_TOOLS_OS: &str = "windows";
 
 const PLATFORM_TOOLS_URL: &str = formatcp!("https://dl.google.com/android/repository/platform-tools{PLATFORM_TOOLS_VERSION}-{PLATFORM_TOOLS_OS}.zip");
 
-const REQUEST_TIMEOUT: Duration = Duration::from_millis(200);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 ///////////////////
 // ADB Installation

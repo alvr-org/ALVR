@@ -10,7 +10,7 @@ use std::{collections::HashSet, io::Cursor, path::PathBuf, process::Command, tim
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
-use alvr_common::{dbg_connection, debug};
+use alvr_common::dbg_connection;
 use alvr_filesystem::Layout;
 use anyhow::{anyhow, Context, Result};
 use device::Device;
@@ -170,18 +170,11 @@ pub fn require_adb(
     progress_callback: impl Fn(usize, Option<usize>) -> Result<()>,
 ) -> Result<String> {
     match get_adb_path(layout) {
-        Some(adb_path) => {
-            debug!("Found ADB executable at {adb_path}");
-            Ok(adb_path)
-        }
+        Some(path) => Ok(path),
         None => {
-            debug!("Couldn't find ADB, installing it...");
             install_adb(layout, progress_callback).context("Failed to install ADB")?;
-            debug!("Finished installing ADB");
-            let adb_path =
-                get_adb_path(layout).context("Failed to get ADB path after installation")?;
-            debug!("ADB installed at {adb_path:?}");
-            Ok(adb_path)
+            let path = get_adb_path(layout).context("Failed to get ADB path after installation")?;
+            Ok(path)
         }
     }
 }

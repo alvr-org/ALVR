@@ -41,17 +41,9 @@ pub fn setup_wired_connection(
     layout: &Layout,
     control_port: u16,
     stream_port: u16,
+    progress_callback: impl Fn(usize, Option<usize>) -> Result<()>,
 ) -> Result<WiredConnectionStatus> {
-    let adb_path = require_adb(layout, |downloaded, total| {
-        let total_display = match total {
-            Some(t) => t.to_string(),
-            None => "?".to_owned(),
-        };
-        dbg_connection!(
-            "setup_wired_connection: Downloading ADB: got {downloaded} bytes of {total_display}"
-        );
-        Ok(())
-    })?;
+    let adb_path = require_adb(layout, progress_callback)?;
 
     let device_serial = match list_devices(&adb_path)?
         .into_iter()

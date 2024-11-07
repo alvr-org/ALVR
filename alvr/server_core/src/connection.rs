@@ -271,7 +271,19 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                 Some(layout) => layout,
             };
             let stream_port = SESSION_MANAGER.read().settings().connection.stream_port;
-            let status = match alvr_adb::setup_wired_connection(layout, CONTROL_PORT, stream_port) {
+            let status = match alvr_adb::setup_wired_connection(
+                layout,
+                CONTROL_PORT,
+                stream_port,
+                |downloaded, maybe_total| {
+                    if let Some(total) = maybe_total {
+                        alvr_events::send_event(EventType::Adb(alvr_events::AdbEvent {
+                            download_progress: downloaded as f32 / total as f32,
+                        }));
+                    };
+                    Ok(())
+                },
+            ) {
                 Err(e) => {
                     error!("{e:?}");
                     thread::sleep(RETRY_CONNECT_MIN_INTERVAL);

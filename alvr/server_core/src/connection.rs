@@ -290,7 +290,11 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                         thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                         continue;
                     }
-                    Ok(devices) => devices,
+                    Ok(devices) => devices.into_iter().filter(|d| {
+                        d.serial
+                            .as_ref()
+                            .is_some_and(|s| !s.starts_with("127.0.0.1"))
+                    }),
                 };
                 let ports = [9943, 9944];
                 for device in devices {

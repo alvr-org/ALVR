@@ -69,9 +69,18 @@ pub fn setup_wired_connection(
     forward_ports(&adb_path, &device_serial, &ports)?;
     dbg_connection!("Forwarded ports {ports:?} of device {device_serial}");
 
-    if !is_activity_resumed(&adb_path, &device_serial, "alvr.client")? {
+    #[cfg(debug_assertions)]
+    let process_name = "alvr.client.dev";
+    #[cfg(not(debug_assertions))]
+    let process_name = "alvr.client.stable";
+    if let None = get_process_id(&adb_path, &device_serial, process_name)? {
         return Ok(WiredConnectionStatus::NotReady(
             "ALVR client is not running".to_owned(),
+        ));
+    }
+    if !is_activity_resumed(&adb_path, &device_serial, process_name)? {
+        return Ok(WiredConnectionStatus::NotReady(
+            "ALVR client is paused".to_owned(),
         ));
     }
 
@@ -121,6 +130,25 @@ fn download(
 
 ///////////
 // Activity
+
+pub fn get_process_id(
+    adb_path: &str,
+    device_serial: &str,
+    process_name: &str,
+) -> Result<Option<usize>> {
+    let output = get_command(
+        adb_path,
+        &["-s", &device_serial, "shell", "pidof", process_name],
+    )
+    .output()
+    .context(format!("Failed to get ID of process {process_name}"))?;
+    let text = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+    if text.len() == 0 {
+        return Ok(None);
+    }
+    let process_id = usize::from_str_radix(&text, 10).context("Failed to parse process ID")?;
+    Ok(Some(process_id))
+}
 
 pub fn is_activity_resumed(
     adb_path: &str,

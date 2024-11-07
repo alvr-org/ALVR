@@ -33,19 +33,12 @@ const PLATFORM_TOOLS_OS: &str = "windows";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub fn setup_wired_connection(layout: &Layout, control_port: u16, stream_port: u16) -> Result<()> {
-    let adb_path = match get_adb_path(layout) {
-        Some(adb_path) => {
-            debug!("Found ADB executable at {adb_path}");
-            adb_path
-        }
-        None => {
-            debug!("Couldn't find ADB, installing it...");
-            install_adb(layout, |downloaded, total| {
-                let total_display = match total {
-                    Some(t) => t.to_string(),
-                    None => "?".to_owned(),
-                };
-                debug!("Downloading ADB: got {downloaded} bytes of {total_display}");
+    let adb_path = require_adb(layout, |downloaded, total| {
+        let total_display = match total {
+            Some(t) => t.to_string(),
+            None => "?".to_owned(),
+        };
+        debug!("Downloading ADB: got {downloaded} bytes of {total_display}");
             })
             .context("Failed to install ADB")?;
             debug!("Finished installing ADB");
@@ -83,21 +76,10 @@ fn get_command(adb_path: &str, args: &[&str]) -> Command {
     command
 }
 
-///////////////////
-// ADB Installation
-
-type ProgressCallback = fn(usize, Option<usize>);
-
-pub fn install_adb(layout: &Layout, progress_callback: ProgressCallback) -> Result<()> {
-    let buffer = download_adb(progress_callback)?;
-    let mut reader = Cursor::new(buffer);
-    let path = get_installation_path(layout);
-    ZipArchive::new(&mut reader)?.extract(path)?;
-    Ok(())
-}
-
-fn download_adb(progress_callback: ProgressCallback) -> Result<Vec<u8>> {
-    let url = get_platform_tools_url();
+fn download(
+    url: &str,
+    progress_callback: impl Fn(usize, Option<usize>) -> Result<()>,
+) -> Result<Vec<u8>> {
     let agent = ureq::builder()
         .timeout_connect(REQUEST_TIMEOUT)
         .timeout_read(REQUEST_TIMEOUT)
@@ -120,9 +102,49 @@ fn download_adb(progress_callback: ProgressCallback) -> Result<Vec<u8>> {
         }
         result.extend_from_slice(&buffer[..read_count]);
         let current_size = result.len();
-        (progress_callback)(current_size, maybe_expected_size);
+        (progress_callback)(current_size, maybe_expected_size)?;
     }
     Ok(result)
+}
+
+///////////////////
+// ADB Installation
+
+pub fn require_adb(
+    layout: &Layout,
+    progress_callback: impl Fn(usize, Option<usize>) -> Result<()>,
+) -> Result<String> {
+    match get_adb_path(layout) {
+        Some(adb_path) => {
+            debug!("Found ADB executable at {adb_path}");
+            Ok(adb_path)
+        }
+        None => {
+            debug!("Couldn't find ADB, installing it...");
+            install_adb(layout, progress_callback).context("Failed to install ADB")?;
+            debug!("Finished installing ADB");
+            let adb_path =
+                get_adb_path(layout).context("Failed to get ADB path after installation")?;
+            debug!("ADB installed at {adb_path:?}");
+            Ok(adb_path)
+        }
+    }
+}
+
+fn install_adb(
+    layout: &Layout,
+    progress_callback: impl Fn(usize, Option<usize>) -> Result<()>,
+) -> Result<()> {
+    let buffer = download_adb(progress_callback)?;
+    let mut reader = Cursor::new(buffer);
+    let path = get_installation_path(layout);
+    ZipArchive::new(&mut reader)?.extract(path)?;
+    Ok(())
+}
+
+fn download_adb(progress_callback: impl Fn(usize, Option<usize>) -> Result<()>) -> Result<Vec<u8>> {
+    let url = get_platform_tools_url();
+    download(&url, progress_callback).with_context(|| format!("Failed to download ADB from {url}"))
 }
 
 fn get_platform_tools_url() -> String {

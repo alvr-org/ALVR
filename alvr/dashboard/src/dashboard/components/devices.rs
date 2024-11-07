@@ -13,6 +13,7 @@ struct EditPopupState {
     new_devices: bool,
     hostname: String,
     ips: Vec<String>,
+    wired: bool,
 }
 
 pub struct DevicesTab {
@@ -104,6 +105,8 @@ impl DevicesTab {
                             state.new_devices,
                             TextEdit::singleline(&mut state.hostname),
                         );
+                        ui[0].label("Wired:");
+                        alvr_gui_common::switch(&mut ui[1], &mut state.wired);
                         ui[0].label("IP Addresses:");
                         for address in &mut state.ips {
                             ui[1].text_edit_singleline(address);
@@ -127,12 +130,17 @@ impl DevicesTab {
                                     action: ClientListAction::AddIfMissing {
                                         trusted: true,
                                         manual_ips,
+                                        wired: state.wired,
                                     },
                                 });
                             } else {
                                 requests.push(ServerRequest::UpdateClientList {
-                                    hostname: state.hostname,
+                                    hostname: state.hostname.clone(),
                                     action: ClientListAction::SetManualIps(manual_ips),
+                                });
+                                requests.push(ServerRequest::UpdateClientList {
+                                    hostname: state.hostname,
+                                    action: ClientListAction::SetWiredMode(state.wired),
                                 });
                             }
                         } else {
@@ -264,6 +272,7 @@ fn trusted_clients_section(
                                                     .iter()
                                                     .map(|addr| addr.to_string())
                                                     .collect::<Vec<String>>(),
+                                                wired: data.wired,
                                             });
                                         }
                                     });
@@ -277,6 +286,7 @@ fn trusted_clients_section(
                     hostname: "XXXX.client.local.".into(),
                     new_devices: true,
                     ips: Vec::new(),
+                    wired: false,
                 });
             }
         });

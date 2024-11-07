@@ -19,7 +19,7 @@ use alvr_packets::{
     StreamConfigPacket, Tracking, VideoPacketHeader, VideoStreamingCapabilities, ViewParams, AUDIO,
     HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
-use alvr_session::settings_schema::Switch;
+use alvr_session::{settings_schema::Switch, SocketProtocol};
 use alvr_sockets::{
     ControlSocketSender, PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder,
     KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT,
@@ -237,11 +237,16 @@ fn connection_pipeline(
         }
     }
 
+    let stream_protocol = match negotiated_config.wired.is_some_and(|w| w) {
+        false => settings.connection.stream_protocol,
+        true => SocketProtocol::Tcp,
+    };
+
     dbg_connection!("connection_pipeline: create StreamSocket");
     let stream_socket_builder = StreamSocketBuilder::listen_for_server(
         Duration::from_secs(1),
         settings.connection.stream_port,
-        settings.connection.stream_protocol,
+        stream_protocol,
         settings.connection.dscp,
         settings.connection.client_send_buffer_bytes,
         settings.connection.client_recv_buffer_bytes,

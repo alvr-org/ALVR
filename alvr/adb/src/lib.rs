@@ -11,11 +11,6 @@ use device::Device;
 use forwarded_port::ForwardedPort;
 use zip::ZipArchive;
 
-#[cfg(not(windows))]
-const ADB_EXECUTABLE: &str = "adb";
-#[cfg(windows)]
-const ADB_EXECUTABLE: &str = "adb.exe";
-
 // https://developer.android.com/tools/releases/platform-tools#revisions
 // NOTE: At the time of writing this comment, the revisions section above
 // shows the latest version as 35.0.2, but the latest that can be downloaded
@@ -83,16 +78,16 @@ pub fn get_adb_path() -> Option<String> {
 }
 
 fn get_os_adb_path() -> Option<String> {
-    let path = ADB_EXECUTABLE.to_owned();
-    if Command::new(&path).output().is_ok() {
-        Some(path)
+    let name = get_executable_name().to_owned();
+    if Command::new(&name).output().is_ok() {
+        Some(name)
     } else {
         None
     }
 }
 
 fn get_local_adb_path() -> Option<String> {
-    let path = get_platform_tools_path().ok()?.join(ADB_EXECUTABLE);
+    let path = get_platform_tools_path().ok()?.join(get_executable_name());
     if path.try_exists().is_ok_and(|e| e) {
         Some(path.to_string_lossy().to_string())
     } else {
@@ -108,6 +103,10 @@ fn get_installation_path() -> anyhow::Result<PathBuf> {
 
 fn get_platform_tools_path() -> anyhow::Result<PathBuf> {
     Ok(get_installation_path()?.join("platform-tools"))
+}
+
+fn get_executable_name() -> String {
+    alvr_filesystem::exec_fname("adb")
 }
 
 //////////////////

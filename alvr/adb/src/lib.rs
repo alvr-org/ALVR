@@ -35,10 +35,10 @@ type ProgressCallback = fn(u64, usize);
 pub async fn install_adb(
     client: &reqwest::Client,
     progress_callback: ProgressCallback,
-    path: PathBuf,
 ) -> anyhow::Result<()> {
     let buffer = download_adb(&client, progress_callback).await?;
     let mut reader = Cursor::new(buffer);
+    let path = get_installation_path()?;
     ZipArchive::new(&mut reader)?.extract(path)?;
     Ok(())
 }
@@ -152,8 +152,14 @@ fn get_local_adb_path() -> Option<String> {
     }
 }
 
+fn get_installation_path() -> anyhow::Result<PathBuf> {
+    let mut path = std::env::current_exe()?;
+    path.pop();
+    Ok(path)
+}
+
 fn get_platform_tools_path() -> anyhow::Result<PathBuf> {
-    Ok(std::env::current_dir()?.join("platform-tools"))
+    Ok(get_installation_path()?.join("platform-tools"))
 }
 
 //////////////////

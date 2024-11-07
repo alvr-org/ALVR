@@ -24,25 +24,44 @@ const PLATFORM_TOOLS_OS: &str = "darwin";
 #[cfg(windows)]
 const PLATFORM_TOOLS_OS: &str = "windows";
 
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
 ///////////////////
 // ADB Installation
 
-pub fn install_adb() -> anyhow::Result<()> {
-    let buffer = download_adb()?;
+type ProgressCallback = fn(usize, Option<usize>);
+
+pub fn install_adb(progress_callback: ProgressCallback) -> anyhow::Result<()> {
+    let buffer = download_adb(progress_callback)?;
     let mut reader = Cursor::new(buffer);
     let path = get_installation_path()?;
     ZipArchive::new(&mut reader)?.extract(path)?;
     Ok(())
 }
 
-fn download_adb() -> anyhow::Result<Vec<u8>> {
+fn download_adb(progress_callback: ProgressCallback) -> anyhow::Result<Vec<u8>> {
     let url = get_platform_tools_url();
     let response = ureq::get(&url).timeout(REQUEST_TIMEOUT).call()?;
-    let mut buffer = Vec::<u8>::new();
-    response.into_reader().read_to_end(&mut buffer)?;
-    Ok(buffer)
+    let maybe_expected_size: Option<usize> = response
+        .header("Content-Length")
+        .map(|l| l.parse().ok())
+        .flatten();
+    let mut result = match maybe_expected_size {
+        Some(size) => Vec::with_capacity(size),
+        None => Vec::new(),
+    };
+    let mut reader = response.into_reader();
+    let mut buffer = [0; 65535];
+    loop {
+        let read_count: usize = reader.read(&mut buffer)?;
+        if read_count == 0 {
+            break;
+        }
+        result.extend_from_slice(&buffer[..read_count]);
+        let current_size = result.len();
+        (progress_callback)(current_size, maybe_expected_size);
+    }
+    Ok(result)
 }
 
 fn get_platform_tools_url() -> String {

@@ -268,7 +268,9 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                     Some(path) => path,
                     None => {
                         dbg_connection!("Couldn't find adb, installing it...");
-                        if let Err(e) = alvr_adb::install_adb() {
+                        if let Err(e) = alvr_adb::install_adb(|downloaded, total| {
+                            dbg_connection!("Downloaded {downloaded:?} bytes of {total:?}");
+                        }) {
                             error!("Failed to install adb: {e:?}");
                             thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                             continue;

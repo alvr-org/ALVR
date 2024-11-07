@@ -218,16 +218,14 @@ fn wired_client_section(
                             ui.add(ProgressBar::new(progress).animate(true).show_percentage());
                         });
                         ui.end_row();
-                    } else {
-                        if let Some((_, data)) = maybe_client {
-                            ui.horizontal(|ui| {
-                                ui.label(&data.display_name);
-                            });
-                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                connection_label(ui, &data.connection_state);
-                            });
-                            ui.end_row();
-                        }
+                    } else if let Some((_, data)) = maybe_client {
+                        ui.horizontal(|ui| {
+                            ui.label(&data.display_name);
+                        });
+                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                            connection_label(ui, &data.connection_state);
+                        });
+                        ui.end_row();
                     }
                 });
         });

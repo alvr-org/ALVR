@@ -8,9 +8,9 @@ pub enum TransportType {
 }
 
 pub fn parse(pair: &str) -> Option<TransportType> {
-    let mut slice = pair.split(":");
+    let mut slice = pair.split(':');
     let _key = slice.next();
-    if let Some(value) = slice.next()?.parse::<u8>().ok() {
+    if let Ok(value) = slice.next()?.parse::<u8>() {
         match value {
             0 => Some(TransportType::Usb),
             1 => Some(TransportType::Local),

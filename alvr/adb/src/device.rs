@@ -33,19 +33,17 @@ pub fn parse(line: &str) -> Option<Device> {
     let connection_state = if remaining.starts_with("no permissions") {
         // Since the current user's name can be printed in the error message,
         // we are gambling that there's not a "]" in it.
-        if let Some((_, right)) = remaining.split_once("]") {
+        if let Some((_, right)) = remaining.split_once(']') {
             remaining = right;
             Some(ConnectionState::NoPermissions)
         } else {
             None
         }
+    } else if let Some((left, right)) = remaining.split_once(' ') {
+        remaining = right;
+        connection_state::parse(left)
     } else {
-        if let Some((left, right)) = remaining.split_once(" ") {
-            remaining = right;
-            connection_state::parse(left)
-        } else {
-            None
-        }
+        None
     };
 
     let mut slices = remaining.split_whitespace();
@@ -65,11 +63,7 @@ pub fn parse(line: &str) -> Option<Device> {
 }
 
 fn parse_pair(pair: &str) -> Option<String> {
-    let mut slice = pair.split(":");
+    let mut slice = pair.split(':');
     let _key = slice.next();
-    if let Some(value) = slice.next() {
-        Some(value.to_string())
-    } else {
-        None
-    }
+    slice.next().map(|value| value.to_string())
 }

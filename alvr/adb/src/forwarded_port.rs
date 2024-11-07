@@ -22,7 +22,7 @@ pub fn parse(line: &str) -> Option<ForwardedPort> {
 }
 
 fn parse_port(value: &str) -> Option<u16> {
-    let mut slices = value.split(":");
+    let mut slices = value.split(':');
     let _protocol = slices.next();
     let maybe_port = slices.next();
     if let Some(port) = maybe_port {

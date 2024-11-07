@@ -10,7 +10,7 @@ use std::{collections::HashSet, io::Cursor, path::PathBuf, process::Command, tim
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
-use alvr_common::{dbg_connection, warn};
+use alvr_common::debug;
 use alvr_filesystem::Layout;
 use anyhow::{Context, Result};
 use device::Device;
@@ -35,23 +35,23 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 pub fn setup_wired_connection(layout: &Layout, control_port: u16, stream_port: u16) -> Result<()> {
     let adb_path = match get_adb_path(layout) {
         Some(adb_path) => {
-            dbg_connection!("Found ADB executable at {adb_path}");
+            debug!("Found ADB executable at {adb_path}");
             adb_path
         }
         None => {
-            dbg_connection!("Couldn't find ADB, installing it...");
+            debug!("Couldn't find ADB, installing it...");
             install_adb(layout, |downloaded, total| {
                 let total_display = match total {
                     Some(t) => t.to_string(),
                     None => "?".to_owned(),
                 };
-                warn!("Downloading ADB: got {downloaded} bytes of {total_display}");
+                debug!("Downloading ADB: got {downloaded} bytes of {total_display}");
             })
             .context("Failed to install ADB")?;
-            dbg_connection!("Finished installing ADB");
+            debug!("Finished installing ADB");
             let adb_path =
                 get_adb_path(layout).context("Failed to get ADB path after installation")?;
-            dbg_connection!("ADB installed at {adb_path:?}");
+            debug!("ADB installed at {adb_path:?}");
             adb_path
         }
     };
@@ -63,12 +63,12 @@ pub fn setup_wired_connection(layout: &Layout, control_port: u16, stream_port: u
     let ports = HashSet::from([control_port, stream_port]);
     for device in devices {
         let Some(device_serial) = device.serial else {
-            dbg_connection!("Skipping device without serial number");
+            debug!("Skipping device without serial number");
             continue;
         };
-        dbg_connection!("Forwarding ports {ports:?} of device {device_serial}...");
+        debug!("Forwarding ports {ports:?} of device {device_serial}...");
         forward_ports(&adb_path, &device_serial, &ports)?;
-        dbg_connection!("Forwarded ports {ports:?} of device {device_serial}");
+        debug!("Forwarded ports {ports:?} of device {device_serial}");
     }
     Ok(())
 }

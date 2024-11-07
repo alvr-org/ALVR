@@ -7,6 +7,7 @@ use crate::{
     tracking::{self, TrackingManager},
     ConnectionContext, ServerCoreEvent, ViewsConfig, SESSION_MANAGER,
 };
+use alvr_adb::forwarded_port::ForwardedPort;
 use alvr_audio::AudioDevice;
 use alvr_common::{
     con_bail, dbg_connection, debug, error,
@@ -262,16 +263,81 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
             manual_client_ips
         };
 
-        if !available_manual_client_ips.is_empty()
-            && try_connect(
+        if !available_manual_client_ips.is_empty() {
+            if available_manual_client_ips.keys().any(|i| i.is_loopback()) {
+                let adb_path = match alvr_adb::get_adb_path() {
+                    Some(path) => path,
+                    None => {
+                        dbg_connection!("Couldn't find adb, installing it...");
+                        if let Err(e) = alvr_adb::install_adb() {
+                            error!("Failed to install adb: {e:?}");
+                            thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                            continue;
+                        }
+                        dbg_connection!("Finished installing adb");
+                        let maybe_adb_path = alvr_adb::get_adb_path();
+                        let Some(adb_path) = maybe_adb_path else {
+                            error!("Failed to get adb path after installation");
+                            thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                            continue;
+                        };
+                        adb_path
+                    }
+                };
+                dbg_connection!("Found adb executable: {adb_path:?}");
+                let devices: Vec<alvr_adb::device::Device> = match alvr_adb::list_devices(&adb_path)
+                {
+                    Err(e) => {
+                        error!("Failed to list adb devices: {e:?}");
+                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                        continue;
+                    }
+                    Ok(devices) => devices,
+                };
+                for device in devices {
+                    let Some(device_serial) = device.serial else {
+                        dbg_connection!("Skipping device without serial number");
+                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                        continue;
+                    };
+                    match alvr_adb::list_forwarded_ports::<Vec<ForwardedPort>>(
+                        &adb_path,
+                        &device_serial,
+                    ) {
+                        Err(e) => error!(
+                            "Failed to list forwarded ports of device {device_serial}: {e:?}"
+                        ),
+                        Ok(forwarded_ports) => {
+                            let required = [9943, 9944];
+                            let ports: Vec<u16> = forwarded_ports
+                                .into_iter()
+                                .map(|f| f.local)
+                                .filter(|p| !required.contains(p))
+                                .collect();
+                            for port in ports {
+                                match alvr_adb::forward_port(&adb_path, &device_serial, port)
+                                {
+                                    Err(e) => error!("Failed to forward port {port:?} of device {device_serial}: {e:?}"),
+                                    Ok(()) => {
+                                        dbg_connection!("Forwarded port {port:?} of device {device_serial}");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if try_connect(
                 Arc::clone(&ctx),
                 Arc::clone(&lifecycle_state),
                 available_manual_client_ips,
             )
             .is_ok()
-        {
-            thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-            continue;
+            {
+                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                continue;
+            }
         }
 
         let discovery_config = SESSION_MANAGER

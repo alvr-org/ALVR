@@ -149,7 +149,7 @@ impl DevicesTab {
                                 });
                             } else {
                                 requests.push(ServerRequest::UpdateClientList {
-                                    hostname: state.hostname.clone(),
+                                    hostname: state.hostname,
                                     action: ClientListAction::SetManualIps(manual_ips),
                                 });
                             }

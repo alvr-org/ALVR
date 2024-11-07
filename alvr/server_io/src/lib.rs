@@ -267,13 +267,6 @@ impl ServerSessionManager {
                     }
                 }
             }
-            ClientListAction::SetWiredMode(wired) => {
-                if let Entry::Occupied(mut entry) = maybe_client_entry {
-                    entry.get_mut().wired = wired;
-
-                    updated = true;
-                }
-            }
         }
 
         if updated {

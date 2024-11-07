@@ -355,7 +355,6 @@ pub enum ClientListAction {
     RemoveEntry,
     UpdateCurrentIp(Option<IpAddr>),
     SetConnectionState(ConnectionState),
-    SetWiredMode(bool),
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]

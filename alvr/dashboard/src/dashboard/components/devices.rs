@@ -138,10 +138,6 @@ impl DevicesTab {
                                     hostname: state.hostname.clone(),
                                     action: ClientListAction::SetManualIps(manual_ips),
                                 });
-                                requests.push(ServerRequest::UpdateClientList {
-                                    hostname: state.hostname,
-                                    action: ClientListAction::SetWiredMode(state.wired),
-                                });
                             }
                         } else {
                             self.edit_popup_state = Some(state);

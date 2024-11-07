@@ -225,26 +225,7 @@ fn trusted_clients_section(
                                     ui.horizontal(|ui| {
                                         ui.with_layout(
                                             Layout::right_to_left(Align::Center),
-                                            |ui| match data.connection_state {
-                                                ConnectionState::Disconnected => {
-                                                    ui.colored_label(Color32::GRAY, "Disconnected")
-                                                }
-                                                ConnectionState::Connecting => ui.colored_label(
-                                                    log_colors::WARNING_LIGHT,
-                                                    "Connecting",
-                                                ),
-                                                ConnectionState::Connected => {
-                                                    ui.colored_label(theme::OK_GREEN, "Connected")
-                                                }
-                                                ConnectionState::Streaming => {
-                                                    ui.colored_label(theme::OK_GREEN, "Streaming")
-                                                }
-                                                ConnectionState::Disconnecting { .. } => ui
-                                                    .colored_label(
-                                                        log_colors::WARNING_LIGHT,
-                                                        "Disconnecting",
-                                                    ),
-                                            },
+                                            |ui| connection_label(ui, &data.connection_state),
                                         );
                                     });
 
@@ -292,4 +273,16 @@ fn trusted_clients_section(
         });
 
     request
+}
+
+fn connection_label(ui: &mut Ui, connection_state: &ConnectionState) {
+    match connection_state {
+        ConnectionState::Disconnected => ui.colored_label(Color32::GRAY, "Disconnected"),
+        ConnectionState::Connecting => ui.colored_label(log_colors::WARNING_LIGHT, "Connecting"),
+        ConnectionState::Connected => ui.colored_label(theme::OK_GREEN, "Connected"),
+        ConnectionState::Streaming => ui.colored_label(theme::OK_GREEN, "Streaming"),
+        ConnectionState::Disconnecting { .. } => {
+            ui.colored_label(log_colors::WARNING_LIGHT, "Disconnecting")
+        }
+    };
 }

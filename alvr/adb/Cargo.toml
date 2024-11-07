@@ -9,8 +9,5 @@ license.workspace = true
 [dependencies]
 anyhow = "1"
 const_format = "0.2"
-futures-util = "0.3"
-strum = "0.26"
-strum_macros = "0.26"
 ureq = "2.10"
 zip = "2"

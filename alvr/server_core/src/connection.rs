@@ -281,7 +281,6 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                             download_progress: downloaded as f32 / total as f32,
                         }));
                     };
-                    Ok(())
                 },
             ) {
                 Err(e) => {

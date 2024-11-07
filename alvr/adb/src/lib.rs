@@ -41,7 +41,7 @@ pub fn setup_wired_connection(
     layout: &Layout,
     control_port: u16,
     stream_port: u16,
-    progress_callback: impl Fn(usize, Option<usize>) -> Result<()>,
+    progress_callback: impl Fn(usize, Option<usize>),
 ) -> Result<WiredConnectionStatus> {
     let adb_path = require_adb(layout, progress_callback)?;
 
@@ -103,10 +103,7 @@ fn get_command(adb_path: &str, args: &[&str]) -> Command {
     command
 }
 
-fn download(
-    url: &str,
-    progress_callback: impl Fn(usize, Option<usize>) -> Result<()>,
-) -> Result<Vec<u8>> {
+fn download(url: &str, progress_callback: impl Fn(usize, Option<usize>)) -> Result<Vec<u8>> {
     let agent = ureq::builder()
         .timeout_connect(REQUEST_TIMEOUT)
         .timeout_read(REQUEST_TIMEOUT)
@@ -128,7 +125,7 @@ fn download(
         }
         result.extend_from_slice(&buffer[..read_count]);
         let current_size = result.len();
-        (progress_callback)(current_size, maybe_expected_size)?;
+        (progress_callback)(current_size, maybe_expected_size);
     }
     Ok(result)
 }
@@ -202,7 +199,7 @@ pub fn is_activity_resumed(
 
 pub fn require_adb(
     layout: &Layout,
-    progress_callback: impl Fn(usize, Option<usize>) -> Result<()>,
+    progress_callback: impl Fn(usize, Option<usize>),
 ) -> Result<String> {
     match get_adb_path(layout) {
         Some(path) => Ok(path),
@@ -214,10 +211,7 @@ pub fn require_adb(
     }
 }
 
-fn install_adb(
-    layout: &Layout,
-    progress_callback: impl Fn(usize, Option<usize>) -> Result<()>,
-) -> Result<()> {
+fn install_adb(layout: &Layout, progress_callback: impl Fn(usize, Option<usize>)) -> Result<()> {
     let buffer = download_adb(progress_callback)?;
     let mut reader = Cursor::new(buffer);
     let path = get_installation_path(layout);
@@ -225,7 +219,7 @@ fn install_adb(
     Ok(())
 }
 
-fn download_adb(progress_callback: impl Fn(usize, Option<usize>) -> Result<()>) -> Result<Vec<u8>> {
+fn download_adb(progress_callback: impl Fn(usize, Option<usize>)) -> Result<Vec<u8>> {
     let url = get_platform_tools_url();
     download(&url, progress_callback).context(format!("Failed to download ADB from {url}"))
 }

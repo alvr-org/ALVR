@@ -52,17 +52,14 @@ pub fn setup_wired_connection(
         .context("Failed to get filesystem layout")?;
     let adb_path = require_adb(layout, progress_callback)?;
 
-    let device_serial = match list_devices(&adb_path)?
+    let Some(device_serial) = list_devices(&adb_path)?
         .into_iter()
         .filter_map(|d| d.serial)
         .find(|s| !s.starts_with("127.0.0.1"))
-    {
-        None => {
-            return Ok(WiredConnectionStatus::NotReady(
-                "No wired devices found".to_owned(),
-            ))
-        }
-        Some(serial) => serial,
+    else {
+        return Ok(WiredConnectionStatus::NotReady(
+            "No wired devices found".to_owned(),
+        ));
     };
 
     let stream_port = session_manager.read().settings().connection.stream_port;

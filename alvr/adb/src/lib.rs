@@ -67,10 +67,7 @@ pub fn install_apk(adb_path: &str, device_serial: &str, apk_path: &str) -> anyho
 //////////
 // Devices
 
-pub fn list_devices<B>(adb_path: &str) -> anyhow::Result<B>
-where
-    B: FromIterator<Device>,
-{
+pub fn list_devices(adb_path: &str) -> anyhow::Result<Vec<Device>> {
     let output = Command::new(adb_path).args(["devices", "-l"]).output()?;
     let text = String::from_utf8_lossy(&output.stdout);
     let devices = text.lines().filter_map(device::parse).collect();
@@ -116,10 +113,10 @@ fn get_platform_tools_path() -> anyhow::Result<PathBuf> {
 //////////////////
 // Port forwarding
 
-pub fn list_forwarded_ports<B>(adb_path: &str, device_serial: &str) -> anyhow::Result<B>
-where
-    B: FromIterator<ForwardedPort>,
-{
+pub fn list_forwarded_ports(
+    adb_path: &str,
+    device_serial: &str,
+) -> anyhow::Result<Vec<ForwardedPort>> {
     let output = Command::new(adb_path)
         .args(["-s", &device_serial, "forward", "--list"])
         .output()?;

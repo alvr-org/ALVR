@@ -285,8 +285,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                     }
                 };
                 dbg_connection!("Found adb executable: {adb_path:?}");
-                let devices: Vec<alvr_adb::device::Device> = match alvr_adb::list_devices(&adb_path)
-                {
+                let devices = match alvr_adb::list_devices(&adb_path) {
                     Err(e) => {
                         error!("Failed to list adb devices: {e:?}");
                         thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
@@ -300,10 +299,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                         thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                         continue;
                     };
-                    match alvr_adb::list_forwarded_ports::<Vec<ForwardedPort>>(
-                        &adb_path,
-                        &device_serial,
-                    ) {
+                    match alvr_adb::list_forwarded_ports(&adb_path, &device_serial) {
                         Err(e) => error!(
                             "Failed to list forwarded ports of device {device_serial}: {e:?}"
                         ),

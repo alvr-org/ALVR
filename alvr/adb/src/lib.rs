@@ -10,12 +10,12 @@ use std::{collections::HashSet, io::Cursor, path::PathBuf, process::Command, tim
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
+use alvr_common::{dbg_connection, warn};
+use alvr_filesystem::Layout;
 use anyhow::{Context, Result};
 use device::Device;
 use forwarded_port::ForwardedPort;
 use zip::ZipArchive;
-
-use alvr_common::{dbg_connection, warn};
 
 // https://developer.android.com/tools/releases/platform-tools#revisions
 // NOTE: At the time of writing this comment, the revisions section above
@@ -32,15 +32,15 @@ const PLATFORM_TOOLS_OS: &str = "windows";
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
-pub fn setup_wired_connection() -> Result<()> {
-    let adb_path = match get_adb_path() {
+pub fn setup_wired_connection(layout: &Layout) -> Result<()> {
+    let adb_path = match get_adb_path(layout) {
         Some(adb_path) => {
             dbg_connection!("Found ADB executable at {adb_path}");
             adb_path
         }
         None => {
             dbg_connection!("Couldn't find ADB, installing it...");
-            install_adb(|downloaded, total| {
+            install_adb(layout, |downloaded, total| {
                 let total_display = match total {
                     Some(t) => t.to_string(),
                     None => "?".to_owned(),
@@ -49,7 +49,8 @@ pub fn setup_wired_connection() -> Result<()> {
             })
             .context("Failed to install ADB")?;
             dbg_connection!("Finished installing ADB");
-            let adb_path = get_adb_path().context("Failed to get ADB path after installation")?;
+            let adb_path =
+                get_adb_path(layout).context("Failed to get ADB path after installation")?;
             dbg_connection!("ADB installed at {adb_path:?}");
             adb_path
         }
@@ -87,10 +88,10 @@ fn get_command(adb_path: &str, args: &[&str]) -> Command {
 
 type ProgressCallback = fn(usize, Option<usize>);
 
-pub fn install_adb(progress_callback: ProgressCallback) -> Result<()> {
+pub fn install_adb(layout: &Layout, progress_callback: ProgressCallback) -> Result<()> {
     let buffer = download_adb(progress_callback)?;
     let mut reader = Cursor::new(buffer);
-    let path = get_installation_path()?;
+    let path = get_installation_path(layout);
     ZipArchive::new(&mut reader)?.extract(path)?;
     Ok(())
 }
@@ -223,8 +224,8 @@ pub fn list_devices(adb_path: &str) -> Result<Vec<Device>> {
 // Paths
 
 /// Returns the path of a local (i.e. installed by ALVR) or OS version of `adb` if found, `None` otherwise.
-pub fn get_adb_path() -> Option<String> {
-    get_os_adb_path().or(get_local_adb_path())
+pub fn get_adb_path(layout: &Layout) -> Option<String> {
+    get_os_adb_path().or(get_local_adb_path(layout))
 }
 
 fn get_os_adb_path() -> Option<String> {
@@ -236,8 +237,8 @@ fn get_os_adb_path() -> Option<String> {
     }
 }
 
-fn get_local_adb_path() -> Option<String> {
-    let path = get_platform_tools_path().ok()?.join(get_executable_name());
+fn get_local_adb_path(layout: &Layout) -> Option<String> {
+    let path = get_platform_tools_path(layout).join(get_executable_name());
     if path.try_exists().is_ok_and(|e| e) {
         Some(path.to_string_lossy().to_string())
     } else {
@@ -245,14 +246,12 @@ fn get_local_adb_path() -> Option<String> {
     }
 }
 
-fn get_installation_path() -> Result<PathBuf> {
-    let root = alvr_server_io::get_driver_dir_from_registered()?;
-    let layout = alvr_filesystem::filesystem_layout_from_openvr_driver_root_dir(&root);
-    Ok(layout.executables_dir)
+fn get_installation_path(layout: &Layout) -> PathBuf {
+    layout.executables_dir.to_owned()
 }
 
-fn get_platform_tools_path() -> Result<PathBuf> {
-    Ok(get_installation_path()?.join("platform-tools"))
+fn get_platform_tools_path(layout: &Layout) -> PathBuf {
+    get_installation_path(layout).join("platform-tools")
 }
 
 fn get_executable_name() -> String {

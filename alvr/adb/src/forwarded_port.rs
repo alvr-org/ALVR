@@ -25,9 +25,5 @@ fn parse_port(value: &str) -> Option<u16> {
     let mut slices = value.split(':');
     let _protocol = slices.next();
     let maybe_port = slices.next();
-    if let Some(port) = maybe_port {
-        port.parse::<u16>().ok()
-    } else {
-        None
-    }
+    maybe_port.and_then(|p| p.parse::<u16>().ok())
 }

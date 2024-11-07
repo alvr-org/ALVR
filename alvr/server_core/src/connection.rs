@@ -262,16 +262,13 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                         && hostname.as_str() == WIRED_CLIENT_HOSTNAME
                 })
         {
-            let layout = match FILESYSTEM_LAYOUT.get() {
-                None => {
-                    error!("Failed to get filesystem layout");
-                    thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-                    continue;
-                }
-                Some(layout) => layout,
+            let Some(layout) = FILESYSTEM_LAYOUT.get() else {
+                error!("Failed to get filesystem layout");
+                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                continue;
             };
             let stream_port = SESSION_MANAGER.read().settings().connection.stream_port;
-            let status = match alvr_adb::setup_wired_connection(
+            let maybe_status = alvr_adb::setup_wired_connection(
                 layout,
                 CONTROL_PORT,
                 stream_port,
@@ -282,7 +279,8 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                         }));
                     };
                 },
-            ) {
+            );
+            let status = match maybe_status {
                 Err(e) => {
                     error!("{e:?}");
                     thread::sleep(RETRY_CONNECT_MIN_INTERVAL);

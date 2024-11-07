@@ -23,11 +23,9 @@ pub fn parse(line: &str) -> Option<Device> {
         return None;
     }
     let (left, right) = line.split_at(SERIAL_NUMBER_COLUMN_LENGTH);
-    let serial = if left.contains("(no serial number)") {
-        None
-    } else {
-        Some(left.trim().to_owned())
-    };
+    let serial = left
+        .contains("(no serial number)")
+        .then(|| left.trim().to_owned());
     let mut remaining = right.trim();
 
     let connection_state = if remaining.starts_with("no permissions") {

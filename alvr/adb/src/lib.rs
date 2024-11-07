@@ -112,10 +112,9 @@ fn download(url: &str, progress_callback: impl Fn(usize, Option<usize>)) -> Resu
     let maybe_expected_size: Option<usize> = response
         .header("Content-Length")
         .and_then(|l| l.parse().ok());
-    let mut result = match maybe_expected_size {
-        Some(size) => Vec::with_capacity(size),
-        None => Vec::new(),
-    };
+    let mut result = maybe_expected_size
+        .map(|s| Vec::with_capacity(s))
+        .unwrap_or_default();
     let mut reader = response.into_reader();
     let mut buffer = [0; 65535];
     loop {
@@ -316,20 +315,14 @@ pub fn get_adb_path(layout: &Layout) -> Option<String> {
 
 fn get_os_adb_path() -> Option<String> {
     let name = get_executable_name().to_owned();
-    if get_command(&name, &[]).output().is_ok() {
-        Some(name)
-    } else {
-        None
-    }
+    get_command(&name, &[]).output().is_ok().then_some(name)
 }
 
 fn get_local_adb_path(layout: &Layout) -> Option<String> {
     let path = get_platform_tools_path(layout).join(get_executable_name());
-    if path.try_exists().is_ok_and(|e| e) {
-        Some(path.to_string_lossy().to_string())
-    } else {
-        None
-    }
+    path.try_exists()
+        .is_ok_and(|e| e)
+        .then(|| path.to_string_lossy().to_string())
 }
 
 fn get_installation_path(layout: &Layout) -> PathBuf {

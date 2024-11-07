@@ -71,6 +71,61 @@ pub fn install_apk(adb_path: &str, apk_path: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
+//////////
+// Devices
+
+// https://cs.android.com/android/platform/superproject/main/+/7dbe542b9a93fb3cee6c528e16e2d02a26da7cc0:packages/modules/adb/transport.cpp;l=1398
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub struct Device {
+    device: String,
+    model: String,
+    path: String,
+    product: String,
+    serial: String,
+}
+
+pub fn list_devices<B>(adb_path: &str) -> anyhow::Result<B>
+where
+    B: FromIterator<Device>,
+{
+    let output = Command::new(adb_path).args(["devices", "-l"]).output()?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    let devices = text.lines().filter_map(parse_device).collect();
+    Ok(devices)
+}
+
+fn parse_device(line: &str) -> Option<Device> {
+    let mut slices = line.split_whitespace();
+    let serial = slices.next();
+    let path = slices.next();
+    let product = parse_device_pair(slices.next()?);
+    let model = parse_device_pair(slices.next()?);
+    let device = parse_device_pair(slices.next()?);
+    if let (Some(serial), Some(path), Some(product), Some(model), Some(device)) =
+        (serial, path, product, model, device)
+    {
+        Some(Device {
+            serial: serial.to_owned(),
+            path: path.to_owned(),
+            product,
+            model,
+            device,
+        })
+    } else {
+        None
+    }
+}
+
+fn parse_device_pair(pair: &str) -> Option<String> {
+    let mut slice = pair.split(":");
+    let _key = slice.next();
+    if let Some(value) = slice.next() {
+        Some(value.to_string())
+    } else {
+        None
+    }
+}
+
 ////////
 // Paths
 
@@ -91,7 +146,7 @@ fn get_os_adb_path() -> Option<String> {
 fn get_local_adb_path() -> Option<String> {
     let path = get_platform_tools_path().ok()?.join(ADB_EXECUTABLE);
     if path.try_exists().is_ok_and(|e| e) {
-        Some(path.to_string_lossy().to_owned().to_string())
+        Some(path.to_string_lossy().to_string())
     } else {
         None
     }

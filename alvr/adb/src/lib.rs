@@ -107,6 +107,49 @@ fn download(
     Ok(result)
 }
 
+///////////
+// Activity
+
+pub fn is_activity_resumed(
+    adb_path: &str,
+    device_serial: &str,
+    activity_name: &str,
+) -> Result<bool> {
+    let output = get_command(
+        adb_path,
+        &[
+            "-s",
+            &device_serial,
+            "shell",
+            "dumpsys",
+            "activity",
+            activity_name,
+        ],
+    )
+    .output()
+    .context(format!("Failed to get state of activity {activity_name}"))?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    if let Some(line) = text
+        .lines()
+        .map(|l| l.trim())
+        .find(|l| l.contains("mResumed"))
+    {
+        let (entry, _) = line
+            .split_once(" ")
+            .ok_or(anyhow!("Failed to split resumed state line"))?;
+        let (_, value) = entry
+            .split_once("=")
+            .ok_or(anyhow!("Failed to split resumed state entry"))?;
+        match value {
+            "true" => Ok(true),
+            "false" => Ok(false),
+            _ => Err(anyhow!("Failed to parse resumed state value"))?,
+        }
+    } else {
+        Err(anyhow!("Failed to find resumed state line"))
+    }
+}
+
 ///////////////////
 // ADB Installation
 

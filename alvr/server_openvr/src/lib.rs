@@ -382,16 +382,24 @@ extern "C" fn wait_for_vsync() {
         .video
         .optimize_game_render_latency
     {
-        SERVER_CORE_CONTEXT
-            .read()
-            .as_ref()
-            .and_then(|ctx| ctx.duration_until_next_vsync())
+        // We default to 10ms in the event that a headset hasn't connected,
+        // because otherwise systems can lock up with 100% GPU.
+        Some(
+            SERVER_CORE_CONTEXT
+                .read()
+                .as_ref()
+                .and_then(|ctx| ctx.duration_until_next_vsync())
+                .unwrap_or(Duration::from_millis(10)),
+        )
     } else {
         None
     };
 
     if let Some(duration) = sleep_duration {
         thread::sleep(duration);
+    } else {
+        // Don't deadlock people's systems even if they ask nicely
+        thread::sleep(Duration::from_millis(1));
     }
 }
 

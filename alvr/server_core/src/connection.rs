@@ -24,11 +24,12 @@ use alvr_packets::{
     VideoPacketHeader, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{
-    BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile,
-    OpenvrConfig, SessionConfig,
+    BodyTrackingConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize,
+    H264Profile, OpenvrConfig, SessionConfig, SocketProtocol,
 };
 use alvr_sockets::{
-    PeerType, ProtoControlSocket, StreamSocketBuilder, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT,
+    PeerType, ProtoControlSocket, StreamSocketBuilder, CONTROL_PORT, KEEPALIVE_INTERVAL,
+    KEEPALIVE_TIMEOUT,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -272,7 +273,9 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                     }
                     Some(layout) => layout,
                 };
-                if let Err(e) = alvr_adb::setup_wired_connection(layout) {
+                let stream_port = SESSION_MANAGER.read().settings().connection.stream_port;
+                if let Err(e) = alvr_adb::setup_wired_connection(layout, CONTROL_PORT, stream_port)
+                {
                     error!("{e:?}");
                     thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                     continue;

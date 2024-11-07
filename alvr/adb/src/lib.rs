@@ -65,9 +65,15 @@ pub fn setup_wired_connection(
     };
 
     let ports = HashSet::from([control_port, stream_port]);
-    dbg_connection!("Forwarding ports {ports:?} of device {device_serial}...");
-    forward_ports(&adb_path, &device_serial, &ports)?;
-    dbg_connection!("Forwarded ports {ports:?} of device {device_serial}");
+    let forwarded_ports: HashSet<u16> = list_forwarded_ports(&adb_path, &device_serial)?
+        .into_iter()
+        .map(|f| f.local)
+        .collect();
+    let missing_ports = ports.difference(&forwarded_ports);
+    for port in missing_ports {
+        forward_port(&adb_path, &device_serial, *port)?;
+        dbg_connection!("setup_wired_connection: Forwarded port {port} of device {device_serial}");
+    }
 
     #[cfg(debug_assertions)]
     let process_name = "alvr.client.dev";
@@ -354,18 +360,6 @@ fn list_forwarded_ports(adb_path: &str, device_serial: &str) -> Result<Vec<Forwa
     let text = String::from_utf8_lossy(&output.stdout);
     let forwarded_ports = text.lines().filter_map(forwarded_port::parse).collect();
     Ok(forwarded_ports)
-}
-
-fn forward_ports(adb_path: &str, device_serial: &str, ports: &HashSet<u16>) -> Result<()> {
-    let forwarded_ports: HashSet<u16> = list_forwarded_ports(&adb_path, &device_serial)?
-        .into_iter()
-        .map(|f| f.local)
-        .collect();
-    let missing_ports = ports.difference(&forwarded_ports);
-    for port in missing_ports {
-        forward_port(&adb_path, &device_serial, *port)?;
-    }
-    Ok(())
 }
 
 fn forward_port(adb_path: &str, device_serial: &str, port: u16) -> Result<()> {

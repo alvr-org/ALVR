@@ -7,6 +7,7 @@ pub mod transport_type;
 
 use std::{collections::HashSet, io::Cursor, path::PathBuf, process::Command, time::Duration};
 
+use anyhow::{Context, Result};
 use device::Device;
 use forwarded_port::ForwardedPort;
 use zip::ZipArchive;
@@ -31,7 +32,7 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
 type ProgressCallback = fn(usize, Option<usize>);
 
-pub fn install_adb(progress_callback: ProgressCallback) -> anyhow::Result<()> {
+pub fn install_adb(progress_callback: ProgressCallback) -> Result<()> {
     let buffer = download_adb(progress_callback)?;
     let mut reader = Cursor::new(buffer);
     let path = get_installation_path()?;
@@ -39,7 +40,7 @@ pub fn install_adb(progress_callback: ProgressCallback) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn download_adb(progress_callback: ProgressCallback) -> anyhow::Result<Vec<u8>> {
+fn download_adb(progress_callback: ProgressCallback) -> Result<Vec<u8>> {
     let url = get_platform_tools_url();
     let response = ureq::get(&url).timeout(REQUEST_TIMEOUT).call()?;
     let maybe_expected_size: Option<usize> = response
@@ -71,7 +72,7 @@ fn get_platform_tools_url() -> String {
 ///////////////////
 // APK installation
 
-pub fn install_apk(adb_path: &str, device_serial: &str, apk_path: &str) -> anyhow::Result<()> {
+pub fn install_apk(adb_path: &str, device_serial: &str, apk_path: &str) -> Result<()> {
     Command::new(adb_path)
         .args(["-s", &device_serial, "install", "-r", &apk_path])
         .output()?;
@@ -81,7 +82,7 @@ pub fn install_apk(adb_path: &str, device_serial: &str, apk_path: &str) -> anyho
 //////////
 // Devices
 
-pub fn list_devices(adb_path: &str) -> anyhow::Result<Vec<Device>> {
+pub fn list_devices(adb_path: &str) -> Result<Vec<Device>> {
     let output = Command::new(adb_path).args(["devices", "-l"]).output()?;
     let text = String::from_utf8_lossy(&output.stdout);
     let devices = text.lines().skip(1).filter_map(device::parse).collect();
@@ -114,13 +115,13 @@ fn get_local_adb_path() -> Option<String> {
     }
 }
 
-fn get_installation_path() -> anyhow::Result<PathBuf> {
+fn get_installation_path() -> Result<PathBuf> {
     let mut path = std::env::current_exe()?;
     path.pop();
     Ok(path)
 }
 
-fn get_platform_tools_path() -> anyhow::Result<PathBuf> {
+fn get_platform_tools_path() -> Result<PathBuf> {
     Ok(get_installation_path()?.join("platform-tools"))
 }
 
@@ -131,10 +132,7 @@ fn get_executable_name() -> String {
 //////////////////
 // Port forwarding
 
-pub fn list_forwarded_ports(
-    adb_path: &str,
-    device_serial: &str,
-) -> anyhow::Result<Vec<ForwardedPort>> {
+fn list_forwarded_ports(adb_path: &str, device_serial: &str) -> Result<Vec<ForwardedPort>> {
     let output = Command::new(adb_path)
         .args(["-s", &device_serial, "forward", "--list"])
         .output()?;
@@ -143,11 +141,7 @@ pub fn list_forwarded_ports(
     Ok(forwarded_ports)
 }
 
-pub fn forward_ports(
-    adb_path: &str,
-    device_serial: &str,
-    ports: &HashSet<u16>,
-) -> anyhow::Result<()> {
+fn forward_ports(adb_path: &str, device_serial: &str, ports: &HashSet<u16>) -> Result<()> {
     let forwarded_ports: HashSet<u16> = list_forwarded_ports(&adb_path, &device_serial)?
         .into_iter()
         .map(|f| f.local)
@@ -159,7 +153,7 @@ pub fn forward_ports(
     Ok(())
 }
 
-pub fn forward_port(adb_path: &str, device_serial: &str, port: u16) -> anyhow::Result<()> {
+fn forward_port(adb_path: &str, device_serial: &str, port: u16) -> Result<()> {
     Command::new(adb_path)
         .args([
             "-s",

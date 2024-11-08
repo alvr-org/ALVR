@@ -76,6 +76,11 @@ pub struct HapticsEvent {
     pub amplitude: f32,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct AdbEvent {
+    pub download_progress: f32,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "id", content = "data")]
 pub enum EventType {
@@ -90,6 +95,7 @@ pub enum EventType {
     AudioDevices(AudioDevicesList),
     DriversList(Vec<PathBuf>),
     ServerRequestsSelfRestart,
+    Adb(AdbEvent),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -117,6 +123,7 @@ impl Event {
             EventType::AudioDevices(_) => "AUDIO DEV".to_string(),
             EventType::DriversList(_) => "DRV LIST".to_string(),
             EventType::ServerRequestsSelfRestart => "RESTART".to_string(),
+            EventType::Adb(_) => "ADB".to_string(),
         }
     }
 
@@ -133,6 +140,7 @@ impl Event {
             EventType::AudioDevices(devices) => serde_json::to_string(devices).unwrap(),
             EventType::DriversList(drivers) => serde_json::to_string(drivers).unwrap(),
             EventType::ServerRequestsSelfRestart => "Request for server restart".into(),
+            EventType::Adb(adb) => serde_json::to_string(adb).unwrap(),
         }
     }
 }

@@ -13,6 +13,7 @@ crate-type = ["rlib", "cdylib"]
 trace-performance = ["profiling/profile-with-tracy"]
 
 [dependencies]
+alvr_adb.workspace = true
 alvr_audio.workspace = true
 alvr_common.workspace = true
 alvr_events.workspace = true

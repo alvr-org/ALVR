@@ -10,6 +10,7 @@ authors = ["alvr-org"]
 license = "MIT"
 
 [workspace.dependencies]
+alvr_adb = { path = "alvr/adb" }
 alvr_audio = { path = "alvr/audio" }
 alvr_client_core = { path = "alvr/client_core" }
 alvr_common = { path = "alvr/common" }

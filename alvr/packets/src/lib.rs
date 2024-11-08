@@ -131,6 +131,7 @@ pub struct NegotiatedStreamingConfig {
     pub use_multimodal_protocol: bool,
     pub encoding_gamma: f32,
     pub enable_hdr: bool,
+    pub wired: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -174,6 +175,7 @@ pub fn decode_stream_config(packet: &StreamConfigPacket) -> Result<StreamConfig>
         json::from_value(negotiated_json["use_multimodal_protocol"].clone()).unwrap_or(false);
     let encoding_gamma = json::from_value(negotiated_json["encoding_gamma"].clone()).unwrap_or(1.0);
     let enable_hdr = json::from_value(negotiated_json["enable_hdr"].clone()).unwrap_or(false);
+    let wired = json::from_value(negotiated_json["wired"].clone())?;
 
     Ok(StreamConfig {
         server_version: session_config.server_version,
@@ -186,6 +188,7 @@ pub fn decode_stream_config(packet: &StreamConfigPacket) -> Result<StreamConfig>
             use_multimodal_protocol,
             encoding_gamma,
             enable_hdr,
+            wired,
         },
     })
 }

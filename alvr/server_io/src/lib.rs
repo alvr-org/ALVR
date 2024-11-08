@@ -213,7 +213,6 @@ impl ServerSessionManager {
                         manual_ips: manual_ips.into_iter().collect(),
                         trusted,
                         connection_state: ConnectionState::Disconnected,
-                        cabled: false,
                     };
                     new_entry.insert(client_connection_desc);
 

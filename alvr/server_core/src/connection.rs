@@ -5,8 +5,9 @@ use crate::{
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
-    ConnectionContext, ServerCoreEvent, ViewsConfig, SESSION_MANAGER,
+    ConnectionContext, ServerCoreEvent, ViewsConfig, FILESYSTEM_LAYOUT, SESSION_MANAGER,
 };
+use alvr_adb::wired_connection::{WiredConnection, WiredConnectionStatus};
 use alvr_audio::AudioDevice;
 use alvr_common::{
     con_bail, dbg_connection, debug, error,
@@ -28,11 +29,12 @@ use alvr_session::{
     OpenvrConfig, SessionConfig,
 };
 use alvr_sockets::{
-    PeerType, ProtoControlSocket, StreamSocketBuilder, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT,
+    PeerType, ProtoControlSocket, StreamSocketBuilder, CONTROL_PORT, KEEPALIVE_INTERVAL,
+    KEEPALIVE_TIMEOUT, WIRED_CLIENT_HOSTNAME,
 };
 use std::{
     collections::HashMap,
-    net::IpAddr,
+    net::{IpAddr, Ipv4Addr},
     process::Command,
     sync::{mpsc::RecvTimeoutError, Arc},
     thread,
@@ -244,16 +246,75 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
         }
     };
 
+    let mut wired_connection: WiredConnection = Default::default();
+
     while *lifecycle_state.read() != LifecycleState::ShuttingDown {
+        dbg_connection!("handshake_loop: Try connect to wired device");
+
+        let mut wired_client_ips = HashMap::new();
+        if let Some((client_hostname, _)) =
+            SESSION_MANAGER
+                .read()
+                .client_list()
+                .iter()
+                .find(|(hostname, info)| {
+                    info.connection_state == ConnectionState::Disconnected
+                        && hostname.as_str() == WIRED_CLIENT_HOSTNAME
+                })
+        {
+            if let Err(e) = alvr_adb::setup_wired_connection(
+                &FILESYSTEM_LAYOUT,
+                &mut wired_connection,
+                &SESSION_MANAGER,
+                CONTROL_PORT,
+                |downloaded, maybe_total| {
+                    if let Some(total) = maybe_total {
+                        alvr_events::send_event(EventType::Adb(alvr_events::AdbEvent {
+                            download_progress: downloaded as f32 / total as f32,
+                        }));
+                    };
+                },
+            ) {
+                error!("{e:?}");
+                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                continue;
+            };
+
+            if let WiredConnectionStatus::NotReady(m) = &wired_connection.status {
+                dbg_connection!("handshake_loop: Wired connection not ready: {m}");
+                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                continue;
+            }
+
+            let client_ip = IpAddr::V4(Ipv4Addr::LOCALHOST);
+            wired_client_ips.insert(client_ip, client_hostname.to_owned());
+        }
+
+        if !wired_client_ips.is_empty()
+            && try_connect(
+                Arc::clone(&ctx),
+                Arc::clone(&lifecycle_state),
+                wired_client_ips,
+            )
+            .is_ok()
+        {
+            thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+            continue;
+        }
+
         dbg_connection!("handshake_loop: Try connect to manual IPs");
 
         let available_manual_client_ips = {
             let mut manual_client_ips = HashMap::new();
-            for (hostname, connection_info) in SESSION_MANAGER
-                .read()
-                .client_list()
-                .iter()
-                .filter(|(_, info)| info.connection_state == ConnectionState::Disconnected)
+            for (hostname, connection_info) in
+                SESSION_MANAGER
+                    .read()
+                    .client_list()
+                    .iter()
+                    .filter(|(hostname, info)| {
+                        info.connection_state == ConnectionState::Disconnected
+                            && hostname.as_str() != WIRED_CLIENT_HOSTNAME
+                    })
             {
                 for ip in &connection_info.manual_ips {
                     manual_client_ips.insert(*ip, hostname.clone());
@@ -659,6 +720,8 @@ fn connection_pipeline(
             0
         };
 
+    let wired = client_ip.is_loopback();
+
     dbg_connection!("connection_pipeline: send streaming config");
     let stream_config_packet = alvr_packets::encode_stream_config(
         session_manager_lock.session(),
@@ -670,6 +733,7 @@ fn connection_pipeline(
             use_multimodal_protocol: streaming_caps.multimodal_protocol,
             encoding_gamma: encoding_gamma,
             enable_hdr: enable_hdr,
+            wired,
         },
     )
     .to_con()?;

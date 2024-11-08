@@ -92,12 +92,15 @@ pub fn set_openvr_prop(device_id: u64, prop: OpenvrProperty) {
     };
 
     let Some(ffi_value) = maybe_value else {
-        warn!("Failed to parse {device_name} value for OpenVR property: {key:?}={value}");
+        warn!(
+            "Failed to parse {device_name} value for OpenVR property: {:?}={value}",
+            prop.key
+        );
 
         return;
     };
 
-    debug!("Setting {device_name} OpenVR prop: {key:?}={value}");
+    debug!("Setting {device_name} OpenVR prop: {:?}={value}", prop.key);
 
     unsafe {
         crate::SetOpenvrProperty(
@@ -546,7 +549,10 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 }
             }
 
-            set_prop(SupportedButtonsUint64, "0xFFFFFFFFFFFFFFFF");
+            set_prop(
+                SupportedButtonsUint64,
+                0xFFFFFFFFFFFFFFFF_u64.to_string().as_str(),
+            );
 
             // OpenXR does not support controller battery
             set_prop(DeviceProvidesBatteryStatusBool, "false");

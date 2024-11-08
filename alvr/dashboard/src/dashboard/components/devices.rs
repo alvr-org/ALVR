@@ -3,8 +3,9 @@ use alvr_common::ConnectionState;
 use alvr_gui_common::theme::{self, log_colors};
 use alvr_packets::ClientListAction;
 use alvr_session::{ClientConnectionConfig, SessionConfig};
+use alvr_sockets::WIRED_CLIENT_HOSTNAME;
 use eframe::{
-    egui::{self, Frame, Grid, Layout, RichText, TextEdit, Ui, Window},
+    egui::{self, Frame, Grid, Layout, ProgressBar, RichText, TextEdit, Ui, Window},
     emath::{Align, Align2},
     epaint::Color32,
 };
@@ -19,6 +20,7 @@ pub struct DevicesTab {
     new_devices: Option<Vec<(String, ClientConnectionConfig)>>,
     trusted_devices: Option<Vec<(String, ClientConnectionConfig)>>,
     edit_popup_state: Option<EditPopupState>,
+    adb_download_progress: Option<f32>,
 }
 
 impl DevicesTab {
@@ -27,6 +29,7 @@ impl DevicesTab {
             new_devices: None,
             trusted_devices: None,
             edit_popup_state: None,
+            adb_download_progress: None,
         }
     }
 
@@ -40,6 +43,10 @@ impl DevicesTab {
 
         self.trusted_devices = Some(trusted_clients);
         self.new_devices = Some(untrusted_clients);
+    }
+
+    pub fn update_adb_download_progress(&mut self, progress: f32) {
+        self.adb_download_progress = Some(progress);
     }
 
     pub fn ui(&mut self, ui: &mut Ui, connected_to_server: bool) -> Vec<ServerRequest> {
@@ -75,6 +82,19 @@ impl DevicesTab {
         }
 
         ui.vertical_centered_justified(|ui| {
+            if let Some(clients) = &mut self.trusted_devices {
+                let wired_client = clients
+                    .iter()
+                    .find(|(hostname, _)| hostname == WIRED_CLIENT_HOSTNAME);
+                if let Some(request) =
+                    wired_client_section(ui, wired_client, self.adb_download_progress)
+                {
+                    requests.push(request);
+                }
+            }
+
+            ui.add_space(10.0);
+
             if let Some(clients) = &self.new_devices {
                 if let Some(request) = new_clients_section(ui, clients) {
                     requests.push(request);
@@ -84,9 +104,15 @@ impl DevicesTab {
             ui.add_space(10.0);
 
             if let Some(clients) = &mut self.trusted_devices {
-                if let Some(request) =
-                    trusted_clients_section(ui, clients, &mut self.edit_popup_state)
-                {
+                let wireless_clients: Vec<&(String, ClientConnectionConfig)> = clients
+                    .iter()
+                    .filter(|(hostname, _)| hostname != WIRED_CLIENT_HOSTNAME)
+                    .collect();
+                if let Some(request) = trusted_clients_section(
+                    ui,
+                    wireless_clients.as_slice(),
+                    &mut self.edit_popup_state,
+                ) {
                     requests.push(request);
                 }
             }
@@ -146,6 +172,67 @@ impl DevicesTab {
     }
 }
 
+fn wired_client_section(
+    ui: &mut Ui,
+    maybe_client: Option<&(String, ClientConnectionConfig)>,
+    adb_download_progress: Option<f32>,
+) -> Option<ServerRequest> {
+    let mut request = None;
+
+    Frame::group(ui.style())
+        .fill(theme::SECTION_BG)
+        .show(ui, |ui| {
+            Grid::new("wired-client")
+                .num_columns(2)
+                .spacing(egui::vec2(8.0, 8.0))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.heading("Wired connection");
+                    });
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        let mut wired = maybe_client.is_some();
+                        if alvr_gui_common::switch(ui, &mut wired).changed() {
+                            if wired {
+                                request = Some(ServerRequest::UpdateClientList {
+                                    hostname: WIRED_CLIENT_HOSTNAME.to_owned(),
+                                    action: ClientListAction::AddIfMissing {
+                                        trusted: true,
+                                        manual_ips: Vec::new(),
+                                    },
+                                });
+                            } else {
+                                request = Some(ServerRequest::UpdateClientList {
+                                    hostname: WIRED_CLIENT_HOSTNAME.to_owned(),
+                                    action: ClientListAction::RemoveEntry,
+                                });
+                            }
+                        }
+                    });
+                    ui.end_row();
+
+                    if let Some(progress) = adb_download_progress.filter(|p| *p < 1.0) {
+                        ui.horizontal(|ui| {
+                            ui.label("ADB download progress");
+                        });
+                        ui.horizontal(|ui| {
+                            ui.add(ProgressBar::new(progress).animate(true).show_percentage());
+                        });
+                        ui.end_row();
+                    } else if let Some((_, data)) = maybe_client {
+                        ui.horizontal(|ui| {
+                            ui.label(&data.display_name);
+                        });
+                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                            connection_label(ui, &data.connection_state);
+                        });
+                        ui.end_row();
+                    }
+                });
+        });
+
+    request
+}
+
 fn new_clients_section(
     ui: &mut Ui,
     clients: &[(String, ClientConnectionConfig)],
@@ -157,7 +244,7 @@ fn new_clients_section(
         .show(ui, |ui| {
             ui.vertical_centered_justified(|ui| {
                 ui.add_space(5.0);
-                ui.heading("New devices");
+                ui.heading("New wireless devices");
             });
             for (hostname, _) in clients {
                 Frame::group(ui.style())
@@ -190,7 +277,7 @@ fn new_clients_section(
 
 fn trusted_clients_section(
     ui: &mut Ui,
-    clients: &mut [(String, ClientConnectionConfig)],
+    clients: &[&(String, ClientConnectionConfig)],
     edit_popup_state: &mut Option<EditPopupState>,
 ) -> Option<ServerRequest> {
     let mut request = None;
@@ -200,7 +287,7 @@ fn trusted_clients_section(
         .show(ui, |ui| {
             ui.vertical_centered_justified(|ui| {
                 ui.add_space(5.0);
-                ui.heading("Trusted devices");
+                ui.heading("Trusted wireless devices");
             });
 
             ui.vertical(|ui| {
@@ -217,26 +304,7 @@ fn trusted_clients_section(
                                     ui.horizontal(|ui| {
                                         ui.with_layout(
                                             Layout::right_to_left(Align::Center),
-                                            |ui| match data.connection_state {
-                                                ConnectionState::Disconnected => {
-                                                    ui.colored_label(Color32::GRAY, "Disconnected")
-                                                }
-                                                ConnectionState::Connecting => ui.colored_label(
-                                                    log_colors::WARNING_LIGHT,
-                                                    "Connecting",
-                                                ),
-                                                ConnectionState::Connected => {
-                                                    ui.colored_label(theme::OK_GREEN, "Connected")
-                                                }
-                                                ConnectionState::Streaming => {
-                                                    ui.colored_label(theme::OK_GREEN, "Streaming")
-                                                }
-                                                ConnectionState::Disconnecting { .. } => ui
-                                                    .colored_label(
-                                                        log_colors::WARNING_LIGHT,
-                                                        "Disconnecting",
-                                                    ),
-                                            },
+                                            |ui| connection_label(ui, &data.connection_state),
                                         );
                                     });
 
@@ -282,4 +350,16 @@ fn trusted_clients_section(
         });
 
     request
+}
+
+fn connection_label(ui: &mut Ui, connection_state: &ConnectionState) {
+    match connection_state {
+        ConnectionState::Disconnected => ui.colored_label(Color32::GRAY, "Disconnected"),
+        ConnectionState::Connecting => ui.colored_label(log_colors::WARNING_LIGHT, "Connecting"),
+        ConnectionState::Connected => ui.colored_label(theme::OK_GREEN, "Connected"),
+        ConnectionState::Streaming => ui.colored_label(theme::OK_GREEN, "Streaming"),
+        ConnectionState::Disconnecting { .. } => {
+            ui.colored_label(log_colors::WARNING_LIGHT, "Disconnecting")
+        }
+    };
 }

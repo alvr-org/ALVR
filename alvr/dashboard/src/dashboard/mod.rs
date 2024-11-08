@@ -150,6 +150,9 @@ impl eframe::App for Dashboard {
                 EventType::AudioDevices(list) => self.settings_tab.update_audio_devices(list),
                 #[cfg(not(target_arch = "wasm32"))]
                 EventType::DriversList(list) => self.installation_tab.update_drivers(list),
+                EventType::Adb(adb_event) => self
+                    .connections_tab
+                    .update_adb_download_progress(adb_event.download_progress),
                 _ => (),
             }
         }

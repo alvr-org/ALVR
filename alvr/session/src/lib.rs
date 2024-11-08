@@ -129,7 +129,6 @@ pub struct ClientConnectionConfig {
     pub manual_ips: HashSet<IpAddr>,
     pub trusted: bool,
     pub connection_state: ConnectionState,
-    pub cabled: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

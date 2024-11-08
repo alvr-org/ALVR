@@ -7,11 +7,13 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
+alvr_adb.workspace = true
 alvr_common.workspace = true
 alvr_events.workspace = true
 alvr_filesystem.workspace = true
 alvr_packets.workspace = true
 alvr_session.workspace = true
+alvr_sockets.workspace = true
 alvr_gui_common.workspace = true
 
 bincode = "1"

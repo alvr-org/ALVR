@@ -65,6 +65,14 @@ Put `DRI_PRIME=1 %command%` into SteamVR's commandline options and in those of a
 
 Put `__NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only __GLX_VENDOR_LIBRARY_NAME=nvidia %command%` into SteamVR's commandline options and in those of all VR games you intend to play with ALVR.
 
+### ALVR is using the wrong GPU (e.g., iGPU) for encoding
+
+Put `VK_DRIVER_FILES=<path to the required GPU driver's ICD>` to the SteamVR launch options. For example, for Nvidia:
+
+On:
+* Arch Linux: `VK_DRIVER_FILES=/usr/share/vulkan/icd.d/nvidia_icd.json`
+* NixOS: `VK_DRIVER_FILES=/usr/share/vulkan/icd.d/nvidia_icd.x86_64.json`
+
 ## Wayland
 
 When using hyprland or Gnome Wayland you need to put `WAYLAND_DISPLAY='' %command%` into the SteamVR commandline options to force XWayland.

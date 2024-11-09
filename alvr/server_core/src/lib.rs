@@ -199,9 +199,21 @@ impl ServerCoreContext {
 
         let (events_sender, events_receiver) = mpsc::channel();
 
+        // Create a temporary StatisticsManager until a headset connects
+        let initial_settings = SESSION_MANAGER.read().settings().clone();
+        let stats = StatisticsManager::new(
+            initial_settings.connection.statistics_history_size,
+            Duration::from_secs_f32(1.0 / 90.0),
+            if let Switch::Enabled(config) = &initial_settings.headset.controllers {
+                config.steamvr_pipeline_frames
+            } else {
+                0.0
+            },
+        );
+
         let connection_context = Arc::new(ConnectionContext {
             events_sender,
-            statistics_manager: RwLock::new(None),
+            statistics_manager: RwLock::new(Some(stats)),
             bitrate_manager: Mutex::new(BitrateManager::new(256, 60.0)),
             tracking_manager: RwLock::new(TrackingManager::new()),
             decoder_config: Mutex::new(None),

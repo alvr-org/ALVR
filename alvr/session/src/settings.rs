@@ -584,10 +584,6 @@ pub struct VideoConfig {
     #[schema(gui(slider(min = 0.50, max = 0.99, step = 0.01)))]
     pub buffering_history_weight: f32,
 
-    #[schema(strings(help = "This works only on Windows"))]
-    #[schema(flag = "real-time")]
-    pub optimize_game_render_latency: bool,
-
     #[schema(flag = "steamvr-restart")]
     pub encoder_config: EncoderConfig,
 
@@ -1347,7 +1343,6 @@ pub fn session_settings_default() -> SettingsDefault {
             preferred_fps: 72.,
             max_buffering_frames: 2.0,
             buffering_history_weight: 0.90,
-            optimize_game_render_latency: true,
             bitrate: BitrateConfigDefault {
                 gui_collapsed: false,
                 mode: BitrateModeDefault {

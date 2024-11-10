@@ -7,8 +7,7 @@ use crate::{
     tracking::{self, TrackingManager},
     ConnectionContext, ServerCoreEvent, ViewsConfig, FILESYSTEM_LAYOUT, SESSION_MANAGER,
 };
-use alvr_adb::wired_connection::{WiredConnection, WiredConnectionStatus};
-use alvr_audio::AudioDevice;
+use alvr_adb::{WiredConnection, WiredConnectionStatus};
 use alvr_common::{
     con_bail, dbg_connection, debug, error,
     glam::{Quat, UVec2, Vec2, Vec3},
@@ -18,7 +17,7 @@ use alvr_common::{
     warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, Pose,
     BUTTON_INFO, CONTROLLER_PROFILE_INFO, QUEST_CONTROLLER_PROFILE_PATH,
 };
-use alvr_events::{ButtonEvent, EventType};
+use alvr_events::{AdbEvent, ButtonEvent, EventType};
 use alvr_packets::{
     BatteryInfo, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
     NegotiatedStreamingConfig, ReservedClientControlPacket, ServerControlPacket, Tracking,
@@ -246,7 +245,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
         }
     };
 
-    let mut wired_connection: WiredConnection = Default::default();
+    let mut wired_connection = None;
 
     while *lifecycle_state.read() != LifecycleState::ShuttingDown {
         dbg_connection!("handshake_loop: Try connect to wired device");
@@ -262,25 +261,46 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                         && hostname.as_str() == WIRED_CLIENT_HOSTNAME
                 })
         {
-            if let Err(e) = alvr_adb::setup_wired_connection(
-                &FILESYSTEM_LAYOUT,
-                &mut wired_connection,
-                &SESSION_MANAGER,
-                CONTROL_PORT,
-                |downloaded, maybe_total| {
-                    if let Some(total) = maybe_total {
-                        alvr_events::send_event(EventType::Adb(alvr_events::AdbEvent {
-                            download_progress: downloaded as f32 / total as f32,
-                        }));
-                    };
-                },
-            ) {
-                error!("{e:?}");
-                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-                continue;
+            // Make sure the wired connection is created once and kept alive
+            let wired_connection = if let Some(connection) = &wired_connection {
+                connection
+            } else {
+                let connection = match WiredConnection::new(
+                    FILESYSTEM_LAYOUT.get().unwrap(),
+                    |downloaded, maybe_total| {
+                        if let Some(total) = maybe_total {
+                            alvr_events::send_event(EventType::Adb(AdbEvent {
+                                download_progress: downloaded as f32 / total as f32,
+                            }));
+                        };
+                    },
+                ) {
+                    Ok(connection) => connection,
+                    Err(e) => {
+                        error!("{e:?}");
+                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                        continue;
+                    }
+                };
+
+                wired_connection = Some(connection);
+
+                wired_connection.as_ref().unwrap()
             };
 
-            if let WiredConnectionStatus::NotReady(m) = &wired_connection.status {
+            let status = match wired_connection.setup(
+                CONTROL_PORT,
+                SESSION_MANAGER.read().settings().connection.stream_port,
+            ) {
+                Ok(status) => status,
+                Err(e) => {
+                    error!("{e:?}");
+                    thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                    continue;
+                }
+            };
+
+            if let WiredConnectionStatus::NotReady(m) = status {
                 dbg_connection!("handshake_loop: Wired connection not ready: {m}");
                 thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                 continue;
@@ -685,40 +705,42 @@ fn connection_pipeline(
     };
 
     #[cfg_attr(target_os = "linux", allow(unused_variables))]
-    let game_audio_sample_rate =
-        if let Switch::Enabled(game_audio_config) = &initial_settings.audio.game_audio {
-            #[cfg(not(target_os = "linux"))]
-            {
-                let game_audio_device =
-                    AudioDevice::new_output(game_audio_config.device.as_ref()).to_con()?;
-                if let Switch::Enabled(microphone_config) = &initial_settings.audio.microphone {
-                    let (sink, source) =
-                        AudioDevice::new_virtual_microphone_pair(microphone_config.devices.clone())
-                            .to_con()?;
-                    if matches!(
-                        microphone_config.devices,
-                        alvr_session::MicrophoneDevicesConfig::VBCable
-                    ) {
-                        // VoiceMeeter and Custom devices may have arbitrary internal routing.
-                        // Therefore, we cannot detect the loopback issue without knowing the routing.
-                        if alvr_audio::is_same_device(&game_audio_device, &sink)
-                            || alvr_audio::is_same_device(&game_audio_device, &source)
-                        {
-                            con_bail!("Game audio and microphone cannot point to the same device!");
-                        }
+    let game_audio_sample_rate = if let Switch::Enabled(game_audio_config) =
+        &initial_settings.audio.game_audio
+    {
+        #[cfg(not(target_os = "linux"))]
+        {
+            let game_audio_device =
+                alvr_audio::AudioDevice::new_output(game_audio_config.device.as_ref()).to_con()?;
+            if let Switch::Enabled(microphone_config) = &initial_settings.audio.microphone {
+                let (sink, source) = alvr_audio::AudioDevice::new_virtual_microphone_pair(
+                    microphone_config.devices.clone(),
+                )
+                .to_con()?;
+                if matches!(
+                    microphone_config.devices,
+                    alvr_session::MicrophoneDevicesConfig::VBCable
+                ) {
+                    // VoiceMeeter and Custom devices may have arbitrary internal routing.
+                    // Therefore, we cannot detect the loopback issue without knowing the routing.
+                    if alvr_audio::is_same_device(&game_audio_device, &sink)
+                        || alvr_audio::is_same_device(&game_audio_device, &source)
+                    {
+                        con_bail!("Game audio and microphone cannot point to the same device!");
                     }
-                    // else:
-                    // Stream played via VA-CABLE-X will be directly routed to VA-CABLE-X's virtual microphone.
-                    // Game audio will loop back to the game microphone if they are set to the same VA-CABLE-X device.
                 }
-
-                game_audio_device.input_sample_rate().to_con()?
+                // else:
+                // Stream played via VA-CABLE-X will be directly routed to VA-CABLE-X's virtual microphone.
+                // Game audio will loop back to the game microphone if they are set to the same VA-CABLE-X device.
             }
-            #[cfg(target_os = "linux")]
-            44100
-        } else {
-            0
-        };
+
+            game_audio_device.input_sample_rate().to_con()?
+        }
+        #[cfg(target_os = "linux")]
+        44100
+    } else {
+        0
+    };
 
     let wired = client_ip.is_loopback();
 
@@ -731,8 +753,8 @@ fn connection_pipeline(
             game_audio_sample_rate,
             enable_foveated_encoding,
             use_multimodal_protocol: streaming_caps.multimodal_protocol,
-            encoding_gamma: encoding_gamma,
-            enable_hdr: enable_hdr,
+            encoding_gamma,
+            enable_hdr,
             wired,
         },
     )
@@ -861,7 +883,7 @@ fn connection_pipeline(
 
                 #[cfg(not(target_os = "linux"))]
                 {
-                    let device = match AudioDevice::new_output(config.device.as_ref()) {
+                    let device = match alvr_audio::AudioDevice::new_output(config.device.as_ref()) {
                         Ok(data) => data,
                         Err(e) => {
                             warn!("New audio device failed: {e:?}");
@@ -900,7 +922,7 @@ fn connection_pipeline(
                     }
 
                     #[cfg(windows)]
-                    if let Ok(id) = AudioDevice::new_output(None)
+                    if let Ok(id) = alvr_audio::AudioDevice::new_output(None)
                         .and_then(|d| alvr_audio::get_windows_device_id(&d))
                     {
                         let prop = alvr_session::OpenvrProperty {
@@ -921,55 +943,55 @@ fn connection_pipeline(
         thread::spawn(|| ())
     };
 
-    let microphone_thread = if let Switch::Enabled(config) =
-        initial_settings.audio.microphone.clone()
-    {
-        #[cfg(not(target_os = "linux"))]
-        #[allow(unused_variables)]
-        let (sink, source) = AudioDevice::new_virtual_microphone_pair(config.devices).to_con()?;
-
-        #[cfg(windows)]
-        if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
-            ctx.events_sender
-                .send(ServerCoreEvent::SetOpenvrProperty {
-                    device_id: *alvr_common::HEAD_ID,
-                    prop: alvr_session::OpenvrProperty {
-                        key: alvr_session::OpenvrPropKey::AudioDefaultRecordingDeviceIdString,
-                        value: id,
-                    },
-                })
-                .ok();
-        }
-
-        let client_hostname = client_hostname.clone();
-        thread::spawn(move || {
+    let microphone_thread =
+        if let Switch::Enabled(config) = initial_settings.audio.microphone.clone() {
             #[cfg(not(target_os = "linux"))]
-            alvr_common::show_err(alvr_audio::play_audio_loop(
-                {
-                    let client_hostname = client_hostname.clone();
-                    move || is_streaming(&client_hostname)
-                },
-                &sink,
-                1,
-                streaming_caps.microphone_sample_rate,
-                config.buffering,
-                &mut microphone_receiver,
-            ));
-            #[cfg(target_os = "linux")]
-            alvr_common::show_err(alvr_audio::linux::play_microphone_loop_pipewire(
-                {
-                    let client_hostname = client_hostname.clone();
-                    move || is_streaming(&client_hostname)
-                },
-                1,
-                streaming_caps.microphone_sample_rate,
-                config.buffering,
-                &mut microphone_receiver,
-            ));
-        })
-    } else {
-        thread::spawn(|| ())
-    };
+            #[allow(unused_variables)]
+            let (sink, source) =
+                alvr_audio::AudioDevice::new_virtual_microphone_pair(config.devices).to_con()?;
+
+            #[cfg(windows)]
+            if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
+                ctx.events_sender
+                    .send(ServerCoreEvent::SetOpenvrProperty {
+                        device_id: *alvr_common::HEAD_ID,
+                        prop: alvr_session::OpenvrProperty {
+                            key: alvr_session::OpenvrPropKey::AudioDefaultRecordingDeviceIdString,
+                            value: id,
+                        },
+                    })
+                    .ok();
+            }
+
+            let client_hostname = client_hostname.clone();
+            thread::spawn(move || {
+                #[cfg(not(target_os = "linux"))]
+                alvr_common::show_err(alvr_audio::play_audio_loop(
+                    {
+                        let client_hostname = client_hostname.clone();
+                        move || is_streaming(&client_hostname)
+                    },
+                    &sink,
+                    1,
+                    streaming_caps.microphone_sample_rate,
+                    config.buffering,
+                    &mut microphone_receiver,
+                ));
+                #[cfg(target_os = "linux")]
+                alvr_common::show_err(alvr_audio::linux::play_microphone_loop_pipewire(
+                    {
+                        let client_hostname = client_hostname.clone();
+                        move || is_streaming(&client_hostname)
+                    },
+                    1,
+                    streaming_caps.microphone_sample_rate,
+                    config.buffering,
+                    &mut microphone_receiver,
+                ));
+            })
+        } else {
+            thread::spawn(|| ())
+        };
 
     *ctx.tracking_manager.write() = TrackingManager::new();
     let hand_gesture_manager = Arc::new(Mutex::new(HandGestureManager::new()));

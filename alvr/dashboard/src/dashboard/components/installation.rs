@@ -65,10 +65,17 @@ impl InstallationTab {
             Frame::group(ui.style())
                 .fill(theme::SECTION_BG)
                 .show(ui, |ui| {
-                    ui.label(RichText::new("Registered drivers").size(18.0));
+                    ui.vertical_centered(|ui| {
+                        ui.add_space(5.0);
+                        ui.label(RichText::new("Registered drivers").size(18.0));
+                    });
+
                     Grid::new(0).num_columns(2).show(ui, |ui| {
                         for driver_path in &self.drivers {
-                            ui.label(driver_path.to_string_lossy());
+                            ui.horizontal(|ui| {
+                                ui.add_space(5.0);
+                                ui.label(driver_path.to_string_lossy());
+                            });
                             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                 if ui.button("Remove").clicked() {
                                     requests.push(InstallationTabRequest::ServerRequest(

@@ -415,12 +415,12 @@ pub fn get_head_data(
     xr_session: &xr::Session<xr::OpenGlEs>,
     reference_space: &xr::Space,
     time: xr::Time,
-    last_ipd_m: &mut f32,
+    last_view_params: &[ViewParams; 2],
 ) -> Option<(DeviceMotion, Option<[ViewParams; 2]>)> {
     let (head_location, head_velocity) = xr_session
         .create_reference_space(xr::ReferenceSpaceType::VIEW, xr::Posef::IDENTITY)
         .ok()?
-        .relate(&reference_space, time)
+        .relate(reference_space, time)
         .ok()?;
 
     if !head_location
@@ -434,7 +434,7 @@ pub fn get_head_data(
         .locate_views(
             xr::ViewConfigurationType::PRIMARY_STEREO,
             time,
-            &reference_space,
+            reference_space,
         )
         .ok()?;
 
@@ -458,12 +458,13 @@ pub fn get_head_data(
             .unwrap_or_default(),
     };
 
-    let ipd_m = (crate::from_xr_vec3(views[1].pose.position)
-        - crate::from_xr_vec3(views[0].pose.position))
-    .length();
-    let view_params = if f32::abs(ipd_m - *last_ipd_m) > IPD_CHANGE_EPS {
-        *last_ipd_m = ipd_m;
-
+    let last_ipd_m = last_view_params[0]
+        .pose
+        .position
+        .distance(last_view_params[1].pose.position);
+    let current_ipd_m = crate::from_xr_vec3(views[1].pose.position)
+        .distance(crate::from_xr_vec3(views[0].pose.position));
+    let view_params = if f32::abs(current_ipd_m - last_ipd_m) > IPD_CHANGE_EPS {
         Some([
             ViewParams {
                 pose: motion.pose.inverse() * crate::from_xr_pose(views[0].pose),

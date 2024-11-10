@@ -124,13 +124,22 @@ impl DevicesTab {
                 .resizable(false)
                 .collapsible(false)
                 .show(ui.ctx(), |ui| {
+                    ui.add_space(5.0);
+
                     ui.columns(2, |ui| {
-                        ui[0].label("Hostname:");
+                        ui[0].horizontal(|ui| {
+                            ui.add_space(5.0);
+                            ui.label("Hostname:");
+                        });
                         ui[1].add_enabled(
                             state.new_devices,
                             TextEdit::singleline(&mut state.hostname),
                         );
-                        ui[0].label("IP Addresses:");
+
+                        ui[0].horizontal(|ui| {
+                            ui.add_space(5.0);
+                            ui.label("IP Addresses:");
+                        });
                         for address in &mut state.ips {
                             ui[1].text_edit_singleline(address);
                         }
@@ -138,6 +147,7 @@ impl DevicesTab {
                             state.ips.push("192.168.X.X".into());
                         }
                     });
+
                     ui.columns(2, |ui| {
                         if ui[0].button("Cancel").clicked() {
                             return;
@@ -181,14 +191,13 @@ fn wired_client_section(
 
     Frame::group(ui.style())
         .fill(theme::SECTION_BG)
+        .inner_margin(egui::vec2(15.0, 12.0))
         .show(ui, |ui| {
             Grid::new("wired-client")
                 .num_columns(2)
                 .spacing(egui::vec2(8.0, 8.0))
                 .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.heading("Wired connection");
-                    });
+                    ui.heading("Wired Connection");
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         let mut wired = maybe_client.is_some();
                         if alvr_gui_common::switch(ui, &mut wired).changed() {
@@ -244,7 +253,18 @@ fn new_clients_section(
         .show(ui, |ui| {
             ui.vertical_centered_justified(|ui| {
                 ui.add_space(5.0);
-                ui.heading("New wireless devices");
+                ui.horizontal(|ui| {
+                    ui.add_space(10.0);
+                    ui.heading("New Wireless Devices");
+
+                    // Extend to the right
+                    ui.with_layout(Layout::right_to_left(Align::Center), |_| ());
+                });
+
+                if clients.is_empty() {
+                    // for some reson any positive value adds too much space
+                    ui.add_space(-10.0);
+                }
             });
             for (hostname, _) in clients {
                 Frame::group(ui.style())
@@ -285,67 +305,68 @@ fn trusted_clients_section(
     Frame::group(ui.style())
         .fill(theme::SECTION_BG)
         .show(ui, |ui| {
-            ui.vertical_centered_justified(|ui| {
-                ui.add_space(5.0);
-                ui.heading("Trusted wireless devices");
+            Grid::new(0).num_columns(2).show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.add_space(10.0);
+                    ui.heading("Trusted Wireless Devices");
+                });
+
+                ui.with_layout(Layout::right_to_left(eframe::emath::Align::Center), |ui| {
+                    if ui.button("Add device manually").clicked() {
+                        *edit_popup_state = Some(EditPopupState {
+                            hostname: "XXXX.client.local.".into(),
+                            new_devices: true,
+                            ips: Vec::new(),
+                        });
+                    }
+                });
             });
 
-            ui.vertical(|ui| {
-                for (hostname, data) in clients {
-                    Frame::group(ui.style())
-                        .fill(theme::DARKER_BG)
-                        .inner_margin(egui::vec2(15.0, 12.0))
-                        .show(ui, |ui| {
-                            Grid::new(format!("{}-clients", hostname))
-                                .num_columns(2)
-                                .spacing(egui::vec2(8.0, 8.0))
-                                .show(ui, |ui| {
-                                    ui.label(&data.display_name);
-                                    ui.horizontal(|ui| {
-                                        ui.with_layout(
-                                            Layout::right_to_left(Align::Center),
-                                            |ui| connection_label(ui, &data.connection_state),
-                                        );
-                                    });
-
-                                    ui.end_row();
-
-                                    ui.label(format!(
-                                        "{hostname}: {}",
-                                        data.current_ip
-                                            .map(|ip| ip.to_string())
-                                            .unwrap_or_else(|| "Unknown IP".into()),
-                                    ));
+            for (hostname, data) in clients {
+                Frame::group(ui.style())
+                    .fill(theme::DARKER_BG)
+                    .inner_margin(egui::vec2(15.0, 12.0))
+                    .show(ui, |ui| {
+                        Grid::new(format!("{}-clients", hostname))
+                            .num_columns(2)
+                            .spacing(egui::vec2(8.0, 8.0))
+                            .show(ui, |ui| {
+                                ui.label(&data.display_name);
+                                ui.horizontal(|ui| {
                                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                        if ui.button("Remove").clicked() {
-                                            request = Some(ServerRequest::UpdateClientList {
-                                                hostname: hostname.clone(),
-                                                action: ClientListAction::RemoveEntry,
-                                            });
-                                        }
-                                        if ui.button("Edit").clicked() {
-                                            *edit_popup_state = Some(EditPopupState {
-                                                new_devices: false,
-                                                hostname: hostname.to_owned(),
-                                                ips: data
-                                                    .manual_ips
-                                                    .iter()
-                                                    .map(|addr| addr.to_string())
-                                                    .collect::<Vec<String>>(),
-                                            });
-                                        }
+                                        connection_label(ui, &data.connection_state)
                                     });
                                 });
-                        });
-                }
-            });
 
-            if ui.button("Add device manually").clicked() {
-                *edit_popup_state = Some(EditPopupState {
-                    hostname: "XXXX.client.local.".into(),
-                    new_devices: true,
-                    ips: Vec::new(),
-                });
+                                ui.end_row();
+
+                                ui.label(format!(
+                                    "{hostname}: {}",
+                                    data.current_ip
+                                        .map(|ip| ip.to_string())
+                                        .unwrap_or_else(|| "Unknown IP".into()),
+                                ));
+                                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                    if ui.button("Remove").clicked() {
+                                        request = Some(ServerRequest::UpdateClientList {
+                                            hostname: hostname.clone(),
+                                            action: ClientListAction::RemoveEntry,
+                                        });
+                                    }
+                                    if ui.button("Edit").clicked() {
+                                        *edit_popup_state = Some(EditPopupState {
+                                            new_devices: false,
+                                            hostname: hostname.to_owned(),
+                                            ips: data
+                                                .manual_ips
+                                                .iter()
+                                                .map(|addr| addr.to_string())
+                                                .collect::<Vec<String>>(),
+                                        });
+                                    }
+                                });
+                            });
+                    });
             }
         });
 

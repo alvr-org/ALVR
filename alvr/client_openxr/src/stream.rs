@@ -443,7 +443,7 @@ fn stream_input_loop(
 ) {
     let mut last_controller_poses = [Pose::default(); 2];
     let mut last_palm_poses = [Pose::default(); 2];
-    let mut last_ipd = 0.0;
+    let mut last_view_params = [ViewParams::default(); 2];
 
     let mut deadline = Instant::now();
     let frame_interval = Duration::from_secs_f32(1.0 / refresh_rate);
@@ -463,19 +463,23 @@ fn stream_input_loop(
             return;
         };
 
-        let mut device_motions = Vec::with_capacity(3);
-
-        let Some((head_motion, local_views)) =
-            interaction::get_head_data(&xr_ctx.session, &reference_space, xr_now, &mut last_ipd)
-        else {
+        let Some((head_motion, local_views)) = interaction::get_head_data(
+            &xr_ctx.session,
+            &reference_space,
+            xr_now,
+            &last_view_params,
+        ) else {
             continue;
         };
 
-        device_motions.push((*HEAD_ID, head_motion));
-
         if let Some(views) = local_views {
             core_ctx.send_view_params(views);
+            last_view_params = views;
         }
+
+        let mut device_motions = Vec::with_capacity(3);
+
+        device_motions.push((*HEAD_ID, head_motion));
 
         let (left_hand_motion, left_hand_skeleton) = crate::interaction::get_hand_data(
             &xr_ctx.session,

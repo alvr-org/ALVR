@@ -191,7 +191,7 @@ impl Lobby {
             &self.reference_space,
             [
                 xr::CompositionLayerProjectionView::new()
-                    .pose(views[0].pose)
+                    .pose(crate::to_xr_pose(Pose::default()))
                     .fov(views[0].fov)
                     .sub_image(
                         xr::SwapchainSubImage::new()
@@ -200,7 +200,7 @@ impl Lobby {
                             .image_rect(rect),
                     ),
                 xr::CompositionLayerProjectionView::new()
-                    .pose(views[1].pose)
+                    .pose(crate::to_xr_pose(Pose::default()))
                     .fov(views[1].fov)
                     .sub_image(
                         xr::SwapchainSubImage::new()

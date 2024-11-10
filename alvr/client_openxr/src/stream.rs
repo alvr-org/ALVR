@@ -401,7 +401,7 @@ impl StreamContext {
             &self.reference_space,
             [
                 xr::CompositionLayerProjectionView::new()
-                    .pose(crate::to_xr_pose(view_params[0].pose))
+                    .pose(crate::to_xr_pose(Pose::default()))
                     .fov(crate::to_xr_fov(view_params[0].fov))
                     .sub_image(
                         xr::SwapchainSubImage::new()
@@ -410,7 +410,7 @@ impl StreamContext {
                             .image_rect(rect),
                     ),
                 xr::CompositionLayerProjectionView::new()
-                    .pose(crate::to_xr_pose(view_params[1].pose))
+                    .pose(crate::to_xr_pose(Pose::default()))
                     .fov(crate::to_xr_fov(view_params[1].fov))
                     .sub_image(
                         xr::SwapchainSubImage::new()

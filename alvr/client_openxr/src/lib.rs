@@ -454,11 +454,16 @@ pub fn entry_point() {
                 (lobby.render(frame_state.predicted_display_time), vsync_time)
             };
 
+            let ref_space = xr_session
+                .create_reference_space(xr::ReferenceSpaceType::VIEW, xr::Posef::IDENTITY)
+                .unwrap();
+            let layer = layer.build().space(&ref_space);
+
             let layers: &[&xr::CompositionLayerBase<_>] =
                 if let Some(passthrough_layer) = &passthrough_layer {
-                    &[passthrough_layer, &layer.build()]
+                    &[passthrough_layer, &layer]
                 } else {
-                    &[&layer.build()]
+                    &[&layer]
                 };
 
             graphics_context.make_current();

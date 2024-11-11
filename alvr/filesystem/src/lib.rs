@@ -223,6 +223,22 @@ impl Layout {
         }
     }
 
+    pub fn connect_script(&self) -> PathBuf {
+        self.config_dir.join(if cfg!(windows) {
+            "on_connect.bat"
+        } else {
+            "on_connect.sh"
+        })
+    }
+
+    pub fn disconnect_script(&self) -> PathBuf {
+        self.config_dir.join(if cfg!(windows) {
+            "on_disconnect.bat"
+        } else {
+            "on_disconnect.sh"
+        })
+    }
+
     pub fn crash_log(&self) -> PathBuf {
         self.log_dir.join("crash_log.txt")
     }

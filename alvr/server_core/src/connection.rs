@@ -1361,10 +1361,12 @@ fn connection_pipeline(
     });
 
     {
-        let on_connect_script = initial_settings.connection.on_connect_script;
-
-        if !on_connect_script.is_empty() {
-            info!("Running on connect script (connect): {on_connect_script}");
+        if initial_settings.connection.enable_on_connect_script {
+            let on_connect_script = FILESYSTEM_LAYOUT.get().map(|l| l.connect_script()).unwrap();
+            info!(
+                "Running on connect script (connect): {}",
+                on_connect_script.display()
+            );
             if let Err(e) = Command::new(&on_connect_script)
                 .env("ACTION", "connect")
                 .spawn()
@@ -1403,13 +1405,19 @@ fn connection_pipeline(
         ClientListAction::SetConnectionState(ConnectionState::Disconnecting),
     );
 
-    let on_disconnect_script = session_manager_lock
+    let enable_on_disconnect_script = session_manager_lock
         .settings()
         .connection
-        .on_disconnect_script
-        .clone();
-    if !on_disconnect_script.is_empty() {
-        info!("Running on disconnect script (disconnect): {on_disconnect_script}");
+        .enable_on_disconnect_script;
+    if enable_on_disconnect_script {
+        let on_disconnect_script = FILESYSTEM_LAYOUT
+            .get()
+            .map(|l| l.disconnect_script())
+            .unwrap();
+        info!(
+            "Running on disconnect script (disconnect): {}",
+            on_disconnect_script.display()
+        );
         if let Err(e) = Command::new(&on_disconnect_script)
             .env("ACTION", "disconnect")
             .spawn()

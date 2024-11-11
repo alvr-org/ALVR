@@ -10,10 +10,15 @@ use alvr_events::{ButtonEvent, EventType};
 use alvr_packets::{ButtonEntry, ClientListAction, ServerRequest};
 use bytes::Buf;
 use futures::SinkExt;
-use headers::HeaderMapExt;
+use headers::{
+    AccessControlAllowHeaders, AccessControlAllowMethods, AccessControlRequestHeaders,
+    AccessControlRequestMethod, HeaderMapExt,
+};
 use hyper::{
-    header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL},
-    service, Body, Request, Response, StatusCode,
+    header::{
+        self, HeaderName, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_TYPE,
+    },
+    service, Body, Method, Request, Response, StatusCode,
 };
 use serde::de::DeserializeOwned;
 use serde_json as json;
@@ -88,6 +93,93 @@ async fn http_api(
     connection_context: &ConnectionContext,
     request: Request<Body>,
 ) -> Result<Response<Body>> {
+    let allow_untrusted_http = SESSION_MANAGER
+        .read()
+        .session()
+        .session_settings
+        .connection
+        .allow_untrusted_http;
+
+    const X_ALVR: &str = "X-ALVR";
+
+    // A browser is asking for CORS info
+    if request.method() == Method::OPTIONS {
+        let bad_request: Response<Body> = Response::builder()
+            .status(StatusCode::FORBIDDEN)
+            .body("".into())?;
+
+        if !allow_untrusted_http {
+            return Ok(bad_request);
+        }
+
+        if let Some(requested_method) = request.headers().typed_get::<AccessControlRequestMethod>()
+        {
+            if requested_method != Method::GET.into() && requested_method != Method::POST.into() {
+                return Ok(bad_request);
+            }
+        } else {
+            return Ok(bad_request);
+        }
+
+        if let Some(requested_headers) =
+            request.headers().typed_get::<AccessControlRequestHeaders>()
+        {
+            let mut found_x_alvr = false;
+            for header in requested_headers.iter() {
+                if header == HeaderName::from_static(X_ALVR) {
+                    found_x_alvr = true;
+                } else if header != CONTENT_TYPE {
+                    return Ok(bad_request);
+                }
+            }
+
+            // Ensure it actually requested the X-ALVR header, because we don't want to allow it
+            // if it never got asked for
+            if !found_x_alvr {
+                return Ok(bad_request);
+            }
+        } else {
+            return Ok(bad_request);
+        }
+
+        let allowed_methods = [Method::GET, Method::POST, Method::OPTIONS]
+            .into_iter()
+            .collect::<AccessControlAllowMethods>();
+        let allowed_headers = [CONTENT_TYPE, HeaderName::from_static(X_ALVR)]
+            .into_iter()
+            .collect::<AccessControlAllowHeaders>();
+
+        let mut response: Response<Body> = Response::builder()
+            .status(StatusCode::OK)
+            .header(CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+            .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+            .body("".into())?;
+
+        let headers = response.headers_mut();
+        headers.typed_insert(allowed_methods);
+        headers.typed_insert(allowed_headers);
+
+        return Ok(response);
+    }
+
+    if request.method() != Method::POST && request.method() != Method::GET {
+        return Ok(Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body("invalid method".into())?);
+    }
+
+    // This is the actual core part of cors
+    // We require the X-ALVR header, but the browser forces a cors preflight
+    // if the site tries to send a request with it set since it's not-whitelisted
+    //
+    // The dashboard can just set the header and be allowed through without the preflight
+    // thus not getting blocked by allow_untrusted_http being disabled
+    if request.headers().get(X_ALVR) != Some(&HeaderValue::from_static("true")) {
+        return Ok(Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body("missing X-ALVR header".into())?);
+    }
+
     let mut response = match request.uri().path() {
         // New unified requests
         "/api/dashboard-request" => {

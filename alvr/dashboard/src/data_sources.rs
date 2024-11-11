@@ -12,7 +12,10 @@ use std::{
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
-use tungstenite::http::Uri;
+use tungstenite::{
+    client::IntoClientRequest,
+    http::{HeaderValue, Uri},
+};
 
 const REQUEST_TIMEOUT: Duration = Duration::from_millis(200);
 
@@ -190,7 +193,11 @@ impl DataSources {
                                 }
                             }
                         } else {
-                            request_agent.get(&uri).send_json(&request).ok();
+                            request_agent
+                                .get(&uri)
+                                .set("X-ALVR", "true")
+                                .send_json(&request)
+                                .ok();
                         }
                     }
 
@@ -224,7 +231,11 @@ impl DataSources {
                         continue;
                     };
 
-                    let mut ws = if let Ok((ws, _)) = tungstenite::client(uri, socket) {
+                    let mut req = uri.into_client_request().unwrap();
+                    req.headers_mut()
+                        .insert("X-ALVR", HeaderValue::from_str("true").unwrap());
+
+                    let mut ws = if let Ok((ws, _)) = tungstenite::client(req, socket) {
                         ws
                     } else {
                         thread::sleep(Duration::from_millis(500));
@@ -281,6 +292,7 @@ impl DataSources {
                 loop {
                     let maybe_server_version = request_agent
                         .get(&uri)
+                        .set("X-ALVR", "true")
                         .call()
                         .ok()
                         .and_then(|r| Version::from_str(&r.into_string().ok()?).ok());

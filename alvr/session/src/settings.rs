@@ -1116,6 +1116,7 @@ pub enum SocketProtocol {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct DiscoveryConfig {
+    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
     #[schema(strings(
         help = "Allow untrusted clients to connect without confirmation. This is not recommended for security reasons."
     ))]
@@ -1149,16 +1150,40 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     ))]
     pub wired_client_autolaunch: bool,
 
-    #[schema(strings(
-        help = "This script will be ran when the headset connects. Env var ACTION will be set to `connect`."
-    ))]
-    pub on_connect_script: String,
+    #[cfg_attr(
+        windows,
+        schema(strings(
+            help = "If on_connect.bat exists alongside session.json, it will be run on headset connect. Env var ACTION will be set to `connect`."
+        ))
+    )]
+    #[cfg_attr(
+        not(windows),
+        schema(strings(
+            help = "If on_connect.sh exists alongside session.json, it will be run on headset connect. Env var ACTION will be set to `connect`."
+        ))
+    )]
+    pub enable_on_connect_script: bool,
+
+    #[cfg_attr(
+        windows,
+        schema(strings(
+            help = "If on_disconnect.bat exists alongside session.json, it will be run on headset disconnect. Env var ACTION will be set to `disconnect`."
+        ))
+    )]
+    #[cfg_attr(
+        not(windows),
+        schema(strings(
+            help = "If on_disconnect.sh exists alongside session.json, it will be run on headset disconnect. Env var ACTION will be set to `disconnect`."
+        ))
+    )]
+    #[schema(flag = "real-time")]
+    pub enable_on_disconnect_script: bool,
 
     #[schema(strings(
-        help = "This script will be ran when the headset disconnects, or when SteamVR shuts down. Env var ACTION will be set to `disconnect`."
+        help = "Allow cross-origin browser requests to control ALVR settings remotely."
     ))]
     #[schema(flag = "real-time")]
-    pub on_disconnect_script: String,
+    pub allow_untrusted_http: bool,
 
     #[schema(strings(
         help = r#"If the client, server or the network discarded one packet, discard packets until a IDR packet is found.
@@ -1834,8 +1859,9 @@ pub fn session_settings_default() -> SettingsDefault {
             max_queued_server_video_frames: 1024,
             avoid_video_glitching: false,
             minimum_idr_interval_ms: 100,
-            on_connect_script: "".into(),
-            on_disconnect_script: "".into(),
+            enable_on_connect_script: false,
+            enable_on_disconnect_script: false,
+            allow_untrusted_http: false,
             packet_size: 1400,
             statistics_history_size: 256,
         },

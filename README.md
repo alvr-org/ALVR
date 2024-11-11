@@ -28,12 +28,12 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 \* : Only works on some smartphones, not enough testing.  
 \** : Oculus Go support was dropped, the minimum supported OS is Android 8. Download the last compatible version [here](https://github.com/alvr-org/ALVR/releases/tag/v18.2.3).
 
-|     PC OS      |        Support        |
-| :------------: | :-------------------: |
-| Windows 10/11  |  :heavy_check_mark:   |
-| Windows XP/7/8 |          :x:          |
-|     Linux      | :heavy_check_mark:*** |
-|     macOS      |          :x:          |
+|     PC OS      |                                    Support                                    |
+| :------------: | :---------------------------------------------------------------------------: |
+| Windows 10/11  | :heavy_check_mark: ([store link](https://store.steampowered.com/app/3312710)) |
+| Windows XP/7/8 |                                      :x:                                      |
+|     Linux      |                             :heavy_check_mark:***                             |
+|     macOS      |                                      :x:                                      |
 
 \*** : Please check the wiki for compatibility info
 

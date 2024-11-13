@@ -1,6 +1,8 @@
 use crate::{
     build::{self, Profile},
-    command, version,
+    command,
+    dependencies::{self, OpenXRLoadersSelection},
+    version,
 };
 use alvr_filesystem as afs;
 use std::{
@@ -9,6 +11,12 @@ use std::{
     path::{Path, PathBuf},
 };
 use xshell::{cmd, Shell};
+
+pub enum ReleaseFlavor {
+    GitHub,
+    MetaStore,
+    PicoStore,
+}
 
 fn build_windows_installer() {
     let sh = Shell::new().unwrap();
@@ -203,12 +211,25 @@ pub fn replace_client_openxr_manifest(from_pattern: &str, to: &str) {
     fs::write(manifest_path, manifest_string).unwrap();
 }
 
-pub fn package_client_openxr(for_meta_store: bool) {
-    if for_meta_store {
+pub fn package_client_openxr(flavor: ReleaseFlavor) {
+    crate::clean();
+
+    let openxr_selection = match flavor {
+        ReleaseFlavor::GitHub => OpenXRLoadersSelection::All,
+        ReleaseFlavor::MetaStore => OpenXRLoadersSelection::OnlyGeneric,
+        ReleaseFlavor::PicoStore => OpenXRLoadersSelection::OnlyPico,
+    };
+
+    dependencies::build_android_deps(false, false, openxr_selection);
+
+    if !matches!(flavor, ReleaseFlavor::GitHub) {
         replace_client_openxr_manifest(
             r#"package = "alvr.client.stable""#,
             r#"package = "alvr.client""#,
         );
+    }
+
+    if matches!(flavor, ReleaseFlavor::MetaStore) {
         replace_client_openxr_manifest(r#"value = "all""#, r#"value = "quest2|questpro|quest3""#);
     }
 

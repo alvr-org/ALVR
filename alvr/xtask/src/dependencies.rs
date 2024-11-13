@@ -3,6 +3,12 @@ use alvr_filesystem as afs;
 use std::{fs, path::Path};
 use xshell::{cmd, Shell};
 
+pub enum OpenXRLoadersSelection {
+    OnlyGeneric,
+    OnlyPico,
+    All,
+}
+
 pub fn update_submodules(sh: &Shell) {
     let dir = sh.push_dir(afs::workspace_dir());
     cmd!(sh, "git submodule update --init --recursive")
@@ -293,7 +299,7 @@ pub fn prepare_macos_deps() {
     update_submodules(&sh);
 }
 
-fn get_android_openxr_loaders(only_khronos_loader: bool) {
+fn get_android_openxr_loaders(selection: OpenXRLoadersSelection) {
     fn get_openxr_loader(name: &str, url: &str, source_dir: &str) {
         let sh = Shell::new().unwrap();
         let temp_dir = afs::build_dir().join("temp_download");
@@ -320,34 +326,44 @@ fn get_android_openxr_loaders(only_khronos_loader: bool) {
         "prefab/modules/openxr_loader/libs/android.arm64-v8a",
     );
 
-    if !only_khronos_loader {
-        get_openxr_loader(
-            "_quest1",
-            "https://securecdn.oculus.com/binaries/download/?id=7577210995650755", // Version 64
-            "OpenXR/Libs/Android/arm64-v8a/Release",
-        );
-
-        get_openxr_loader(
-            "_pn3",
-            "https://sdk.picovr.com/developer-platform/sdk/PICO_OpenXR_SDK_220.zip",
-            "libs/android.arm64-v8a",
-        );
-
-        get_openxr_loader(
-            "_yvr",
-            "https://developer.yvrdream.com/yvrdoc/sdk/openxr/yvr_openxr_mobile_sdk_2.0.0.zip",
-            "yvr_openxr_mobile_sdk_2.0.0/OpenXR/Libs/Android/arm64-v8a",
-        );
-
-        get_openxr_loader(
-            "_lynx",
-            "https://portal.lynx-r.com/downloads/download/16", // version 1.0.0
-            "jni/arm64-v8a",
-        );
+    if matches!(selection, OpenXRLoadersSelection::OnlyGeneric) {
+        return;
     }
+
+    get_openxr_loader(
+        "_pico_old",
+        "https://sdk.picovr.com/developer-platform/sdk/PICO_OpenXR_SDK_220.zip",
+        "libs/android.arm64-v8a",
+    );
+
+    if matches!(selection, OpenXRLoadersSelection::OnlyPico) {
+        return;
+    }
+
+    get_openxr_loader(
+        "_quest1",
+        "https://securecdn.oculus.com/binaries/download/?id=7577210995650755", // Version 64
+        "OpenXR/Libs/Android/arm64-v8a/Release",
+    );
+
+    get_openxr_loader(
+        "_yvr",
+        "https://developer.yvrdream.com/yvrdoc/sdk/openxr/yvr_openxr_mobile_sdk_2.0.0.zip",
+        "yvr_openxr_mobile_sdk_2.0.0/OpenXR/Libs/Android/arm64-v8a",
+    );
+
+    get_openxr_loader(
+        "_lynx",
+        "https://portal.lynx-r.com/downloads/download/16", // version 1.0.0
+        "jni/arm64-v8a",
+    );
 }
 
-pub fn build_android_deps(skip_admin_priv: bool, all_targets: bool, only_khronos_loader: bool) {
+pub fn build_android_deps(
+    skip_admin_priv: bool,
+    all_targets: bool,
+    openxr_loaders_selection: OpenXRLoadersSelection,
+) {
     let sh = Shell::new().unwrap();
 
     update_submodules(&sh);
@@ -378,5 +394,5 @@ pub fn build_android_deps(skip_admin_priv: bool, all_targets: bool, only_khronos
     .run()
     .unwrap();
 
-    get_android_openxr_loaders(only_khronos_loader);
+    get_android_openxr_loaders(openxr_loaders_selection);
 }

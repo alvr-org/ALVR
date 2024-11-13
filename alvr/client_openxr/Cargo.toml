@@ -48,6 +48,7 @@ required = true
 [[package.metadata.android.uses_feature]]
 name = "android.hardware.vr.headtracking"
 required = true
+version = 1
 [[package.metadata.android.uses_feature]]
 opengles_version = [3, 2]
 required = true
@@ -71,6 +72,8 @@ name = "org.khronos.openxr.permission.OPENXR"
 [[package.metadata.android.uses_permission]]
 name = "org.khronos.openxr.permission.OPENXR_SYSTEM"
 
+[[package.metadata.android.queries.intent]]
+actions = ["org.khronos.openxr.OpenXRRuntimeService"]
 [[package.metadata.android.queries.provider]]
 name = "org.khronos.openxr"
 authorities = "org.khronos.openxr.runtime_broker;org.khronos.openxr.system_runtime_broker"
@@ -160,17 +163,26 @@ value = "3,6DoF"
 [[package.metadata.android.uses_permission]]
 name = "com.picovr.permission.EYE_TRACKING"
 [[package.metadata.android.application.meta_data]]
-name = "pvr.app.type"
-value = "vr"
-[[package.metadata.android.application.meta_data]]
-name = "picovr.software.eye_tracking"
-value = "true"
-[[package.metadata.android.application.meta_data]]
 name = "eyetracking_calibration"
 value = "true"
 [[package.metadata.android.application.meta_data]]
 name = "handtracking"
 value = "1"
+[[package.metadata.android.application.meta_data]]
+name = "picovr.software.eye_tracking"
+value = "1"
+[[package.metadata.android.application.meta_data]]
+name = "pvr.app.type"
+value = "vr"
+[[package.metadata.android.application.meta_data]]
+name = "pvr.display.orientation"
+value = "180"
+[[package.metadata.android.application.meta_data]]
+name = "pvr.sdk.version"
+value = "OpenXR"
+[[package.metadata.android.application.meta_data]]
+name = "pxr.sdk.version_code"
+value = "5900"
 
 # Yvr entries
 [[package.metadata.android.application.meta_data]]
@@ -178,8 +190,6 @@ name = "com.yvr.intent.category.VR"
 value = "vr_only"
 
 # Lynx entries
-[[package.metadata.android.queries.intent]]
-actions = ["org.khronos.openxr.OpenXRRuntimeService"]
 [[package.metadata.android.queries.package]]
 name = "com.ultraleap.tracking.service"
 [[package.metadata.android.queries.package]]

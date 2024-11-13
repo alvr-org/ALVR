@@ -8,6 +8,8 @@ mod version;
 use crate::build::Profile;
 use afs::Layout;
 use alvr_filesystem as afs;
+use dependencies::OpenXRLoadersSelection;
+use packaging::ReleaseFlavor;
 use pico_args::Arguments;
 use std::{fs, time::Instant};
 use xshell::{cmd, Shell};
@@ -27,7 +29,6 @@ SUBCOMMANDS:
     build-client        Build client, then copy binaries to build folder
     build-client-lib    Build a C-ABI ALVR client library and header
     build-client-xr-lib Build a C-ABI ALVR OpenXR entry point client library and header
-    build-meta-store    Prepare dependencies and build client for Meta Store
     run-streamer        Build streamer and then open the dashboard
     run-launcher        Build launcher and then open it
     format              Autoformat all code
@@ -55,6 +56,8 @@ FLAGS:
     --ci                Do some CI related tweaks. Depends on the other flags and subcommand
     --no-stdcpp         Disable linking to libc++_shared with build-client-lib
     --all-targets       For prepare-deps and build-client-lib subcommand, will build for all android supported ABI targets
+    --meta-store        For package-client subcommand, build for Meta Store
+    --pico-store        For package-client subcommand, build for Pico Store
 
 ARGS:
     --platform <NAME>   Name of the platform (operative system or hardware name). snake_case
@@ -176,6 +179,14 @@ fn main() {
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
         let root: Option<String> = args.opt_value_from_str("--root").unwrap();
 
+        let package_flavor = if args.contains("--meta-store") {
+            ReleaseFlavor::MetaStore
+        } else if args.contains("--pico-store") {
+            ReleaseFlavor::PicoStore
+        } else {
+            ReleaseFlavor::GitHub
+        };
+
         if args.finish().is_empty() {
             match subcommand.as_str() {
                 "prepare-deps" => {
@@ -184,9 +195,11 @@ fn main() {
                             "windows" => dependencies::prepare_windows_deps(for_ci),
                             "linux" => dependencies::prepare_linux_deps(!no_nvidia),
                             "macos" => dependencies::prepare_macos_deps(),
-                            "android" => {
-                                dependencies::build_android_deps(for_ci, all_targets, false)
-                            }
+                            "android" => dependencies::build_android_deps(
+                                for_ci,
+                                all_targets,
+                                OpenXRLoadersSelection::All,
+                            ),
                             _ => panic!("Unrecognized platform."),
                         }
                     } else {
@@ -196,7 +209,11 @@ fn main() {
                             dependencies::prepare_linux_deps(!no_nvidia);
                         }
 
-                        dependencies::build_android_deps(for_ci, all_targets, false);
+                        dependencies::build_android_deps(
+                            for_ci,
+                            all_targets,
+                            OpenXRLoadersSelection::All,
+                        );
                     }
                 }
                 "build-streamer" => {
@@ -233,7 +250,7 @@ fn main() {
                 }
                 "package-streamer" => packaging::package_streamer(gpl, root, appimage, zsync),
                 "package-launcher" => packaging::package_launcher(appimage),
-                "package-client" => build::build_android_client(Profile::Distribution),
+                "package-client" => packaging::package_client_openxr(package_flavor),
                 "package-client-lib" => packaging::package_client_lib(link_stdcpp, all_targets),
                 "format" => format::format(),
                 "check-format" => format::check_format(),
@@ -242,11 +259,6 @@ fn main() {
                 "clippy" => clippy(),
                 "check-msrv" => version::check_msrv(),
                 "kill-oculus" => kill_oculus_processes(),
-                "build-meta-store" => {
-                    clean();
-                    dependencies::build_android_deps(false, false, true);
-                    packaging::package_client_openxr(true);
-                }
                 _ => {
                     println!("\nUnrecognized subcommand.");
                     println!("{HELP_STR}");

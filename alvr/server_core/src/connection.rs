@@ -25,7 +25,7 @@ use alvr_packets::{
 };
 use alvr_session::{
     BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile,
-    OpenvrConfig, SessionConfig,
+    OpenvrConfig, SessionConfig, SocketProtocol,
 };
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSocketBuilder, CONTROL_PORT, KEEPALIVE_INTERVAL,
@@ -810,12 +810,18 @@ fn connection_pipeline(
     *ctx.bitrate_manager.lock() =
         BitrateManager::new(initial_settings.video.bitrate.history_size, fps);
 
+    let stream_protocol = if wired {
+        SocketProtocol::Tcp
+    } else {
+        initial_settings.connection.stream_protocol
+    };
+
     dbg_connection!("connection_pipeline: StreamSocket connect_to_client");
     let mut stream_socket = StreamSocketBuilder::connect_to_client(
         HANDSHAKE_ACTION_TIMEOUT,
         client_ip,
         initial_settings.connection.stream_port,
-        initial_settings.connection.stream_protocol,
+        stream_protocol,
         initial_settings.connection.dscp,
         initial_settings.connection.server_send_buffer_bytes,
         initial_settings.connection.server_recv_buffer_bytes,

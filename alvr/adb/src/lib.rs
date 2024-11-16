@@ -3,6 +3,7 @@ mod parse;
 
 use alvr_common::anyhow::Result;
 use alvr_common::{dbg_connection, error};
+use alvr_session::{ClientFlavor, Settings};
 use std::collections::HashSet;
 
 pub enum WiredConnectionStatus {
@@ -24,7 +25,7 @@ impl WiredConnection {
         Ok(Self { adb_path })
     }
 
-    pub fn setup(&self, control_port: u16, stream_port: u16) -> Result<WiredConnectionStatus> {
+    pub fn setup(&self, control_port: u16, settings: &Settings) -> Result<WiredConnectionStatus> {
         let Some(device_serial) = commands::list_devices(&self.adb_path)?
             .into_iter()
             .filter_map(|d| d.serial)
@@ -35,7 +36,7 @@ impl WiredConnection {
             ));
         };
 
-        let ports = HashSet::from([control_port, stream_port]);
+        let ports = HashSet::from([control_port, settings.connection.stream_port]);
         let forwarded_ports: HashSet<u16> =
             commands::list_forwarded_ports(&self.adb_path, &device_serial)?
                 .into_iter()
@@ -49,16 +50,32 @@ impl WiredConnection {
             );
         }
 
-        #[cfg(debug_assertions)]
-        let process_name = "alvr.client.dev";
-        #[cfg(not(debug_assertions))]
-        let process_name = "alvr.client.stable";
+        let process_name = match &settings.connection.client_flavor {
+            ClientFlavor::Store => if alvr_common::is_stable() {
+                "alvr.client"
+            } else {
+                "alvr.client.dev"
+            }
+            .to_owned(),
+            ClientFlavor::Github => if alvr_common::is_stable() {
+                "alvr.client.stable"
+            } else {
+                "alvr.client.dev"
+            }
+            .to_owned(),
+            ClientFlavor::Custom(name) => name.clone(),
+        };
 
-        if commands::get_process_id(&self.adb_path, &device_serial, process_name)?.is_none() {
+        if !commands::is_package_installed(&self.adb_path, &device_serial, &process_name)? {
+            Ok(WiredConnectionStatus::NotReady(
+                "ALVR client is not installed".to_owned(),
+            ))
+        } else if commands::get_process_id(&self.adb_path, &device_serial, &process_name)?.is_none()
+        {
             Ok(WiredConnectionStatus::NotReady(
                 "ALVR client is not running".to_owned(),
             ))
-        } else if !commands::is_activity_resumed(&self.adb_path, &device_serial, process_name)? {
+        } else if !commands::is_activity_resumed(&self.adb_path, &device_serial, &process_name)? {
             Ok(WiredConnectionStatus::NotReady(
                 "ALVR client is paused".to_owned(),
             ))

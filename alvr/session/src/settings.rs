@@ -1105,6 +1105,13 @@ pub enum SocketBufferSize {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum ClientFlavor {
+    Store,
+    Github,
+    Custom(String),
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ConnectionConfig {
     #[schema(strings(
         help = r#"UDP: Faster, but less stable than TCP. Try this if your network is well optimized and free of interference.
@@ -1113,6 +1120,11 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     pub stream_protocol: SocketProtocol,
 
     pub client_discovery: Switch<DiscoveryConfig>,
+
+    #[schema(strings(
+        help = r#"Which type of client should ALVR look for when establishing a wired connection."#
+    ))]
+    pub client_flavor: ClientFlavor,
 
     #[schema(strings(
         help = "This script will be ran when the headset connects. Env var ACTION will be set to `connect`."
@@ -1750,6 +1762,14 @@ pub fn session_settings_default() -> SettingsDefault {
                 enabled: true,
                 content: DiscoveryConfigDefault {
                     auto_trust_clients: cfg!(debug_assertions),
+                },
+            },
+            client_flavor: ClientFlavorDefault {
+                Custom: "alvr.client".to_owned(),
+                variant: if alvr_common::is_stable() {
+                    ClientFlavorDefaultVariant::Store
+                } else {
+                    ClientFlavorDefaultVariant::Github
                 },
             },
             web_server_port: 8082,

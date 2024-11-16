@@ -171,6 +171,7 @@ dependencies = [
  "alvr_common",
  "alvr_filesystem",
  "alvr_server_io",
+ "alvr_session",
  "anyhow",
  "ureq",
  "zip",

@@ -288,17 +288,15 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                 wired_connection.as_ref().unwrap()
             };
 
-            let status = match wired_connection.setup(
-                CONTROL_PORT,
-                SESSION_MANAGER.read().settings().connection.stream_port,
-            ) {
-                Ok(status) => status,
-                Err(e) => {
-                    error!("{e:?}");
-                    thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-                    continue;
-                }
-            };
+            let status =
+                match wired_connection.setup(CONTROL_PORT, SESSION_MANAGER.read().settings()) {
+                    Ok(status) => status,
+                    Err(e) => {
+                        error!("{e:?}");
+                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                        continue;
+                    }
+                };
 
             if let WiredConnectionStatus::NotReady(m) = status {
                 dbg_connection!("handshake_loop: Wired connection not ready: {m}");

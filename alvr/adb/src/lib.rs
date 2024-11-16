@@ -72,9 +72,16 @@ impl WiredConnection {
             ))
         } else if commands::get_process_id(&self.adb_path, &device_serial, &process_name)?.is_none()
         {
-            Ok(WiredConnectionStatus::NotReady(
-                "ALVR client is not running".to_owned(),
-            ))
+            if settings.connection.client_autolaunch {
+                commands::start_application(&self.adb_path, &device_serial, &process_name)?;
+                Ok(WiredConnectionStatus::NotReady(
+                    "Starting ALVR client".to_owned(),
+                ))
+            } else {
+                Ok(WiredConnectionStatus::NotReady(
+                    "ALVR client is not running".to_owned(),
+                ))
+            }
         } else if !commands::is_activity_resumed(&self.adb_path, &device_serial, &process_name)? {
             Ok(WiredConnectionStatus::NotReady(
                 "ALVR client is paused".to_owned(),

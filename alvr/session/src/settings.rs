@@ -1122,6 +1122,11 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     pub client_discovery: Switch<DiscoveryConfig>,
 
     #[schema(strings(
+        help = r#"Wether ALVR should try to automatically launch the client when establishing a wired connection."#
+    ))]
+    pub client_autolaunch: bool,
+
+    #[schema(strings(
         help = r#"Which type of client should ALVR look for when establishing a wired connection."#
     ))]
     pub client_flavor: ClientFlavor,
@@ -1764,6 +1769,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     auto_trust_clients: cfg!(debug_assertions),
                 },
             },
+            client_autolaunch: true,
             client_flavor: ClientFlavorDefault {
                 Custom: "alvr.client".to_owned(),
                 variant: if alvr_common::is_stable() {

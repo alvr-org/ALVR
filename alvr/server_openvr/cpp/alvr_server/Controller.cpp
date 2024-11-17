@@ -240,7 +240,7 @@ bool Controller::OnPoseUpdate(uint64_t targetTimestampNs, float predictionS, Ffi
         double linearVelocity[3] = { 0.0, 0.0, 0.0 };
         vr::HmdVector3d_t angularVelocity = { 0.0, 0.0, 0.0 };
 
-        if (this->last_pose.poseIsValid) {
+        if (handData.predictHandSkeleton && this->last_pose.poseIsValid) {
             double dt = ((double)targetTimestampNs - (double)m_poseTargetTimestampNs) / NS_PER_S;
 
             if (dt > 0.0) {

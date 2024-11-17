@@ -941,6 +941,12 @@ pub struct HandSkeletonConfig {
         help = r"Enabling this will use separate tracker objects with the full skeletal tracking level when hand tracking is detected. This is required for VRChat hand tracking."
     ))]
     pub steamvr_input_2_0: bool,
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = r"Predict hand skeleton to make it less floaty. It may make hands too jittery."
+    ))]
+    pub predict: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1628,6 +1634,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         enabled: true,
                         content: HandSkeletonConfigDefault {
                             steamvr_input_2_0: true,
+                            predict: false,
                         },
                     },
                     multimodal_tracking: false,

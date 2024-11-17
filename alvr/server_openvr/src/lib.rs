@@ -138,6 +138,7 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                             use_separate_hand_trackers,
                             ffi_left_hand_skeleton,
                             ffi_right_hand_skeleton,
+                            predict_hand_skeleton,
                         ) = if let Some(ControllersConfig {
                             hand_skeleton: Switch::Enabled(hand_skeleton_config),
                             ..
@@ -166,9 +167,10 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                                 hand_skeleton_config.steamvr_input_2_0,
                                 tracked.then_some(left_hand_skeleton).flatten(),
                                 tracked.then_some(right_hand_skeleton).flatten(),
+                                hand_skeleton_config.predict,
                             )
                         } else {
-                            (false, None, None)
+                            (false, None, None, false)
                         };
 
                         let ffi_left_hand_data = FfiHandData {
@@ -185,6 +187,7 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                             isHandTracker: use_separate_hand_trackers
                                 && ffi_left_controller_motion.is_none()
                                 && ffi_left_hand_skeleton.is_some(),
+                            predictHandSkeleton: predict_hand_skeleton,
                         };
                         let ffi_right_hand_data = FfiHandData {
                             controllerMotion: if let Some(motion) = &ffi_right_controller_motion {
@@ -200,6 +203,7 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                             isHandTracker: use_separate_hand_trackers
                                 && ffi_right_controller_motion.is_none()
                                 && ffi_right_hand_skeleton.is_some(),
+                            predictHandSkeleton: predict_hand_skeleton,
                         };
 
                         let ffi_body_tracker_motions = if track_body {

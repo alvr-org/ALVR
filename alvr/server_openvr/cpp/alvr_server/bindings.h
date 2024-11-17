@@ -31,6 +31,7 @@ struct FfiHandData {
     const FfiDeviceMotion* controllerMotion;
     const FfiHandSkeleton* handSkeleton;
     bool isHandTracker;
+    bool predictHandSkeleton;
 };
 
 enum FfiOpenvrPropertyType {

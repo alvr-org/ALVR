@@ -943,6 +943,9 @@ pub struct HandSkeletonConfig {
     pub steamvr_input_2_0: bool,
 
     #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = r"Predict hand skeleton to make it less floaty. It may make hands too jittery."
+    ))]
     pub predict: bool,
 }
 

@@ -62,7 +62,7 @@ impl WiredConnection {
             get_process_name(&self.adb_path, &device_serial, &config.wired_client_type)
         else {
             return Ok(WiredConnectionStatus::NotReady(
-                "No ALVR client is not installed".to_owned(),
+                "No suitable ALVR client is installed".to_owned(),
             ));
         };
 

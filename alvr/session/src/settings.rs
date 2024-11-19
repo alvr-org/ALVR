@@ -1122,7 +1122,7 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     pub client_discovery: Switch<DiscoveryConfig>,
 
     #[schema(strings(
-        help = r#"Which type of release of the client should ALVR look for when establishing a wired connection."#
+        help = r#"Which release type of client should ALVR look for when establishing a wired connection."#
     ))]
     pub wired_client_type: ClientFlavor,
 

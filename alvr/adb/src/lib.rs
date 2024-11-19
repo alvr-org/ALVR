@@ -3,7 +3,12 @@ mod parse;
 
 use alvr_common::anyhow::Result;
 use alvr_common::{dbg_connection, error};
+use alvr_session::{ClientFlavor, ConnectionConfig};
 use std::collections::HashSet;
+
+const PACKAGE_NAME_STORE: &str = "alvr.client";
+const PACKAGE_NAME_GITHUB_DEV: &str = "alvr.client.dev";
+const PACKAGE_NAME_GITHUB_STABLE: &str = "alvr.client.stable";
 
 pub enum WiredConnectionStatus {
     Ready,
@@ -24,7 +29,11 @@ impl WiredConnection {
         Ok(Self { adb_path })
     }
 
-    pub fn setup(&self, control_port: u16, stream_port: u16) -> Result<WiredConnectionStatus> {
+    pub fn setup(
+        &self,
+        control_port: u16,
+        config: &ConnectionConfig,
+    ) -> Result<WiredConnectionStatus> {
         let Some(device_serial) = commands::list_devices(&self.adb_path)?
             .into_iter()
             .filter_map(|d| d.serial)
@@ -35,7 +44,7 @@ impl WiredConnection {
             ));
         };
 
-        let ports = HashSet::from([control_port, stream_port]);
+        let ports = HashSet::from([control_port, config.stream_port]);
         let forwarded_ports: HashSet<u16> =
             commands::list_forwarded_ports(&self.adb_path, &device_serial)?
                 .into_iter()
@@ -49,16 +58,26 @@ impl WiredConnection {
             );
         }
 
-        #[cfg(debug_assertions)]
-        let process_name = "alvr.client.dev";
-        #[cfg(not(debug_assertions))]
-        let process_name = "alvr.client.stable";
+        let Some(process_name) =
+            get_process_name(&self.adb_path, &device_serial, &config.wired_client_type)
+        else {
+            return Ok(WiredConnectionStatus::NotReady(
+                "No suitable ALVR client is installed".to_owned(),
+            ));
+        };
 
-        if commands::get_process_id(&self.adb_path, &device_serial, process_name)?.is_none() {
-            Ok(WiredConnectionStatus::NotReady(
-                "ALVR client is not running".to_owned(),
-            ))
-        } else if !commands::is_activity_resumed(&self.adb_path, &device_serial, process_name)? {
+        if commands::get_process_id(&self.adb_path, &device_serial, &process_name)?.is_none() {
+            if config.wired_client_autolaunch {
+                commands::start_application(&self.adb_path, &device_serial, &process_name)?;
+                Ok(WiredConnectionStatus::NotReady(
+                    "Starting ALVR client".to_owned(),
+                ))
+            } else {
+                Ok(WiredConnectionStatus::NotReady(
+                    "ALVR client is not running".to_owned(),
+                ))
+            }
+        } else if !commands::is_activity_resumed(&self.adb_path, &device_serial, &process_name)? {
             Ok(WiredConnectionStatus::NotReady(
                 "ALVR client is paused".to_owned(),
             ))
@@ -75,4 +94,42 @@ impl Drop for WiredConnection {
             error!("{e:?}");
         }
     }
+}
+
+pub fn get_process_name(
+    adb_path: &str,
+    device_serial: &str,
+    flavor: &ClientFlavor,
+) -> Option<String> {
+    let fallbacks = match flavor {
+        ClientFlavor::Store => {
+            if alvr_common::is_stable() {
+                vec![PACKAGE_NAME_STORE, PACKAGE_NAME_GITHUB_STABLE]
+            } else {
+                vec![PACKAGE_NAME_GITHUB_DEV]
+            }
+        }
+        ClientFlavor::Github => {
+            if alvr_common::is_stable() {
+                vec![PACKAGE_NAME_GITHUB_STABLE, PACKAGE_NAME_STORE]
+            } else {
+                vec![PACKAGE_NAME_GITHUB_DEV]
+            }
+        }
+        ClientFlavor::Custom(name) => {
+            if alvr_common::is_stable() {
+                vec![name, PACKAGE_NAME_STORE, PACKAGE_NAME_GITHUB_STABLE]
+            } else {
+                vec![name, PACKAGE_NAME_GITHUB_DEV]
+            }
+        }
+    };
+
+    fallbacks
+        .iter()
+        .find(|name| {
+            commands::is_package_installed(adb_path, device_serial, name)
+                .is_ok_and(|installed| installed)
+        })
+        .map(|name| name.to_string())
 }

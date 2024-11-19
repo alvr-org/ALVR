@@ -288,10 +288,9 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                 wired_connection.as_ref().unwrap()
             };
 
-            let status = match wired_connection.setup(
-                CONTROL_PORT,
-                SESSION_MANAGER.read().settings().connection.stream_port,
-            ) {
+            let status = match wired_connection
+                .setup(CONTROL_PORT, &SESSION_MANAGER.read().settings().connection)
+            {
                 Ok(status) => status,
                 Err(e) => {
                     error!("{e:?}");

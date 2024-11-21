@@ -1,8 +1,5 @@
 * text=auto eol=lf
 
-alvr/client_core/cpp/VrApi_* linguist-vendored
-alvr/client_core/cpp/glm/** linguist-vendored
-alvr/client_core/cpp/tinygltf/** linguist-vendored
 alvr/server_openvr/cpp/alvr_server/include/** linguist-vendored
 alvr/server_openvr/cpp/alvr_server/nvEncodeAPI.h linguist-vendored
 alvr/server_openvr/cpp/platform/win32/NvCodecUtils.h linguist-vendored

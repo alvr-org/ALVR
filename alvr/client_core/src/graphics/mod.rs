@@ -1,5 +1,4 @@
 mod lobby;
-mod opengl;
 mod staging;
 mod stream;
 
@@ -282,11 +281,6 @@ impl GraphicsContext {
                 )
             })
         };
-
-        #[cfg(all(target_os = "android", feature = "use-cpp"))]
-        unsafe {
-            opengl::initGraphicsNative();
-        }
 
         Self {
             _instance: instance,

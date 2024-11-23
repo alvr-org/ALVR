@@ -52,34 +52,42 @@ pub fn create_swapchain(
     session.create_swapchain(&swapchain_info).unwrap()
 }
 
+pub struct ProjectionLayerAlphaConfig {
+    pub premultiplied: bool,
+}
+
 // This is needed to work around lifetime limitations. Deref cannot be implemented because there are
 // nested references, and in a way or the other I would get `cannot return reference to temporary
 // value`
 pub struct ProjectionLayerBuilder<'a> {
     reference_space: &'a xr::Space,
     layers: [xr::CompositionLayerProjectionView<'a, xr::OpenGlEs>; 2],
-    enable_alpha: bool,
+    alpha: Option<ProjectionLayerAlphaConfig>,
 }
 
 impl<'a> ProjectionLayerBuilder<'a> {
     pub fn new(
         reference_space: &'a xr::Space,
         layers: [xr::CompositionLayerProjectionView<'a, xr::OpenGlEs>; 2],
-        enable_alpha: bool,
+        alpha: Option<ProjectionLayerAlphaConfig>,
     ) -> Self {
         Self {
             reference_space,
             layers,
-            enable_alpha,
+            alpha,
         }
     }
 
     pub fn build(&self) -> xr::CompositionLayerProjection<xr::OpenGlEs> {
-        let flags = if self.enable_alpha {
-            xr::CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA
-        } else {
-            xr::CompositionLayerFlags::EMPTY
-        };
+        let mut flags = xr::CompositionLayerFlags::EMPTY;
+
+        if let Some(alpha) = &self.alpha {
+            flags |= xr::CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA;
+
+            if !alpha.premultiplied {
+                flags |= xr::CompositionLayerFlags::UNPREMULTIPLIED_ALPHA;
+            }
+        }
 
         xr::CompositionLayerProjection::new()
             .layer_flags(flags)

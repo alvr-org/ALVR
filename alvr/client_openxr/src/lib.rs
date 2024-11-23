@@ -371,22 +371,28 @@ pub fn entry_point() {
 
                             xr_session.request_exit().ok();
                         } else {
-                            stream_context = Some(StreamContext::new(
+                            let context = StreamContext::new(
                                 Arc::clone(&core_context),
                                 xr_context.clone(),
                                 Rc::clone(&graphics_context),
                                 Arc::clone(&interaction_context),
                                 platform,
                                 new_config.clone(),
-                            ));
+                            );
+
+                            if !context.uses_passthrough() {
+                                passthrough_layer = None;
+                            }
+
+                            stream_context = Some(context);
 
                             parsed_stream_config = Some(new_config);
                         }
-
-                        passthrough_layer = None;
                     }
                     ClientCoreEvent::StreamingStopped => {
-                        passthrough_layer = PassthroughLayer::new(&xr_session).ok();
+                        if passthrough_layer.is_none() {
+                            passthrough_layer = PassthroughLayer::new(&xr_session).ok();
+                        }
 
                         stream_context = None;
                     }

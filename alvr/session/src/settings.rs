@@ -555,8 +555,25 @@ pub enum H264Profile {
     Baseline = 2,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[schema(gui = "button_group")]
+pub enum PassthroughMode {
+    AugmentedReality {
+        #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
+        brightness: f32,
+    },
+    Blend {
+        #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
+        opacity: f32,
+    },
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct VideoConfig {
+    #[schema(strings(help = r"Augmented reality: corresponds to premultiplied alpha
+Blend: corresponds to un-premultiplied alpha"))]
+    pub passthrough: Switch<PassthroughMode>,
+
     pub bitrate: BitrateConfig,
 
     #[schema(strings(
@@ -1360,6 +1377,14 @@ pub fn session_settings_default() -> SettingsDefault {
 
     SettingsDefault {
         video: VideoConfigDefault {
+            passthrough: SwitchDefault {
+                enabled: false,
+                content: PassthroughModeDefault {
+                    variant: PassthroughModeDefaultVariant::AugmentedReality,
+                    AugmentedReality: PassthroughModeAugmentedRealityDefault { brightness: 0.4 },
+                    Blend: PassthroughModeBlendDefault { opacity: 0.5 },
+                },
+            },
             adapter_index: 0,
             transcoding_view_resolution: view_resolution.clone(),
             emulated_headset_view_resolution: view_resolution,

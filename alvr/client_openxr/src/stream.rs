@@ -1,5 +1,5 @@
 use crate::{
-    graphics::{self, ProjectionLayerBuilder},
+    graphics::{self, ProjectionLayerAlphaConfig, ProjectionLayerBuilder},
     interaction::{self, InteractionContext},
     XrContext,
 };
@@ -17,7 +17,7 @@ use alvr_common::{
 use alvr_packets::{FaceData, StreamConfig, ViewParams};
 use alvr_session::{
     BodyTrackingSourcesConfig, ClientsideFoveationConfig, ClientsideFoveationMode, CodecType,
-    FaceTrackingSourcesConfig, FoveatedEncodingConfig, MediacodecProperty,
+    FaceTrackingSourcesConfig, FoveatedEncodingConfig, MediacodecProperty, PassthroughMode,
 };
 use openxr as xr;
 use std::{
@@ -36,6 +36,7 @@ pub struct ParsedStreamConfig {
     pub refresh_rate_hint: f32,
     pub encoding_gamma: f32,
     pub enable_hdr: bool,
+    pub passthrough: Option<PassthroughMode>,
     pub foveated_encoding_config: Option<FoveatedEncodingConfig>,
     pub clientside_foveation_config: Option<ClientsideFoveationConfig>,
     pub face_sources_config: Option<FaceTrackingSourcesConfig>,
@@ -54,6 +55,7 @@ impl ParsedStreamConfig {
             refresh_rate_hint: config.negotiated_config.refresh_rate_hint,
             encoding_gamma: config.negotiated_config.encoding_gamma,
             enable_hdr: config.negotiated_config.enable_hdr,
+            passthrough: config.settings.video.passthrough.as_option().cloned(),
             foveated_encoding_config: config
                 .negotiated_config
                 .enable_foveated_encoding
@@ -196,6 +198,7 @@ impl StreamContext {
             platform != Platform::Lynx && !((platform.is_pico()) && config.enable_hdr),
             !config.enable_hdr,
             config.encoding_gamma,
+            config.passthrough.clone(),
         );
 
         core_ctx.send_playspace(
@@ -254,6 +257,10 @@ impl StreamContext {
             renderer,
             decoder: None,
         }
+    }
+
+    pub fn uses_passthrough(&self) -> bool {
+        self.config.passthrough.is_some()
     }
 
     pub fn update_reference_space(&mut self) {
@@ -419,7 +426,12 @@ impl StreamContext {
                             .image_rect(rect),
                     ),
             ],
-            false,
+            self.config
+                .passthrough
+                .clone()
+                .map(|mode| ProjectionLayerAlphaConfig {
+                    premultiplied: !matches!(mode, PassthroughMode::Blend { .. }),
+                }),
         );
 
         (layer, timestamp)

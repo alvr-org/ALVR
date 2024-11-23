@@ -40,6 +40,8 @@ override B_RIGHT_Y: f32 = 0.;
 override C_RIGHT_X: f32 = 0.;
 override C_RIGHT_Y: f32 = 0.;
 
+override COLOR_ALPHA: f32 = 1.0;
+
 struct VertexOutput {
     @builtin(position) position: vec4f,
     @location(0) uv: vec2f,
@@ -111,26 +113,26 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         }
     }
 
-    var result: vec3f = textureSample(stream_texture, stream_sampler, corrected_uv).rgb;
+    var color = textureSample(stream_texture, stream_sampler, corrected_uv).rgb;
 
     if FIX_LIMITED_RANGE {
         // For some reason, the encoder shifts full-range color into the negatives and over one.
-        result = LIMITED_MIN + ((LIMITED_MAX - LIMITED_MIN) * result);
+        color = LIMITED_MIN + ((LIMITED_MAX - LIMITED_MIN) * color);
     }
 
     if ENABLE_SRGB_CORRECTION {
-        let condition = vec3f(f32(result.r < THRESHOLD), f32(result.g < THRESHOLD), f32(result.b < THRESHOLD));
-        let lowValues = result * DIV12;
-        let highValues = pow((result + vec3f(0.055)) * DIV1, GAMMA);
-        result = condition * lowValues + (1.0 - condition) * highValues;
+        let condition = vec3f(f32(color.r < THRESHOLD), f32(color.g < THRESHOLD), f32(color.b < THRESHOLD));
+        let lowValues = color * DIV12;
+        let highValues = pow((color + vec3f(0.055)) * DIV1, GAMMA);
+        color = condition * lowValues + (1.0 - condition) * highValues;
     }
 
     if ENCODING_GAMMA != 0.0 {
-        let enc_condition = vec3f(f32(result.r < 0.0), f32(result.g < 0.0), f32(result.b < 0.0));
-        let enc_lowValues = result;
-        let enc_highValues = pow(result, vec3f(ENCODING_GAMMA));
-        result = enc_condition * enc_lowValues + (1.0 - enc_condition) * enc_highValues;
+        let enc_condition = vec3f(f32(color.r < 0.0), f32(color.g < 0.0), f32(color.b < 0.0));
+        let enc_lowValues = color;
+        let enc_highValues = pow(color, vec3f(ENCODING_GAMMA));
+        color = enc_condition * enc_lowValues + (1.0 - enc_condition) * enc_highValues;
     }
 
-    return vec4f(result, 1.0);
+    return vec4f(color, COLOR_ALPHA);
 }

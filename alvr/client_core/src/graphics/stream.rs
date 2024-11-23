@@ -1,6 +1,6 @@
 use super::{staging::StagingRenderer, GraphicsContext};
 use alvr_common::glam::{self, UVec2};
-use alvr_session::FoveatedEncodingConfig;
+use alvr_session::{FoveatedEncodingConfig, PassthroughMode};
 use std::{collections::HashMap, ffi::c_void, iter, rc::Rc};
 use wgpu::{
     hal::{api, gles},
@@ -37,6 +37,7 @@ impl StreamRenderer {
         enable_srgb_correction: bool,
         fix_limited_range: bool,
         encoding_gamma: f32,
+        passthrough: Option<PassthroughMode>,
     ) -> Self {
         let device = &context.device;
 
@@ -67,7 +68,9 @@ impl StreamRenderer {
         let shader_module =
             device.create_shader_module(include_wgsl!("../../resources/stream.wgsl"));
 
-        let mut constants = HashMap::from([
+        let mut constants = HashMap::new();
+
+        constants.extend([
             (
                 "ENABLE_SRGB_CORRECTION".into(),
                 enable_srgb_correction.into(),
@@ -76,14 +79,23 @@ impl StreamRenderer {
             ("ENCODING_GAMMA".into(), encoding_gamma.into()),
         ]);
 
-        let (staging_resolution, extra_constants) =
-            if let Some(foveated_encoding) = foveated_encoding {
-                foveated_encoding_shader_constants(view_resolution, foveated_encoding)
-            } else {
-                (view_resolution, HashMap::from([("ENABLE_FFE".into(), 0.)]))
+        if let Some(mode) = passthrough {
+            let ps_alpha = match mode {
+                PassthroughMode::AugmentedReality { brightness } => brightness,
+                PassthroughMode::Blend { opacity } => opacity,
             };
+            constants.extend([("COLOR_ALPHA".into(), (1. - ps_alpha).into())]);
+        }
 
-        constants.extend(extra_constants);
+        let staging_resolution = if let Some(foveated_encoding) = foveated_encoding {
+            let (staging_resolution, ffe_constants) =
+                foveated_encoding_shader_constants(view_resolution, foveated_encoding);
+            constants.extend(ffe_constants);
+
+            staging_resolution
+        } else {
+            view_resolution
+        };
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: None,

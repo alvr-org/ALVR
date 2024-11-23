@@ -1,5 +1,5 @@
 use crate::{
-    graphics::{self, ProjectionLayerBuilder},
+    graphics::{self, ProjectionLayerAlphaConfig, ProjectionLayerBuilder},
     interaction::{self, InteractionContext},
     XrContext,
 };
@@ -209,7 +209,9 @@ impl Lobby {
                             .image_rect(rect),
                     ),
             ],
-            true,
+            Some(ProjectionLayerAlphaConfig {
+                premultiplied: true,
+            }),
         )
     }
 }

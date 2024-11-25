@@ -253,13 +253,6 @@ pub fn entry_point() {
             exts.other
                 .contains(&META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME.to_owned()),
         )));
-        interaction_context
-            .write()
-            .select_sources(InteractionSourcesConfig {
-                face_tracking: None,
-                body_tracking: None,
-                prefers_multimodal_input: true,
-            });
 
         let mut lobby = Lobby::new(
             xr_session.clone(),
@@ -268,6 +261,15 @@ pub fn entry_point() {
             default_view_resolution,
             &last_lobby_message,
         );
+        let lobby_interaction_sources = InteractionSourcesConfig {
+            face_tracking: None,
+            body_tracking: None,
+            prefers_multimodal_input: true,
+        };
+        interaction_context
+            .write()
+            .select_sources(&lobby_interaction_sources);
+
         let mut session_running = false;
         let mut stream_context = None::<StreamContext>;
         let mut passthrough_layer = None;
@@ -369,6 +371,10 @@ pub fn entry_point() {
                         if passthrough_layer.is_none() {
                             passthrough_layer = PassthroughLayer::new(&xr_session).ok();
                         }
+
+                        interaction_context
+                            .write()
+                            .select_sources(&lobby_interaction_sources);
 
                         stream_context = None;
                     }

@@ -98,7 +98,7 @@ impl StreamContext {
     ) -> StreamContext {
         interaction_ctx
             .write()
-            .select_sources(config.interaction_sources.clone());
+            .select_sources(&config.interaction_sources);
 
         let xr_exts = xr_session.instance().exts();
 
@@ -488,12 +488,12 @@ fn stream_input_loop(
 
         // Note: When multimodal input is enabled, we are sure that when free hands are used
         // (not holding controllers) the controller data is None.
-        if int_ctx.multimodal_hands_handle.is_some() || left_hand_skeleton.is_none() {
+        if int_ctx.multimodal_hands_enabled || left_hand_skeleton.is_none() {
             if let Some(motion) = left_hand_motion {
                 device_motions.push((*HAND_LEFT_ID, motion));
             }
         }
-        if int_ctx.multimodal_hands_handle.is_some() || right_hand_skeleton.is_none() {
+        if int_ctx.multimodal_hands_enabled || right_hand_skeleton.is_none() {
             if let Some(motion) = right_hand_motion {
                 device_motions.push((*HAND_RIGHT_ID, motion));
             }

@@ -39,79 +39,60 @@ pub type PauseSimultaneousHandsAndControllersTrackingMETA =
         *const SimultaneousHandsAndControllersTrackingPauseInfoMETA,
     ) -> sys::Result;
 
-pub struct MultimodalHandsHandle {
-    session: xr::Session<xr::AnyGraphics>,
-    pause_simultaneous_hands_and_controllers_tracking_meta:
-        PauseSimultaneousHandsAndControllersTrackingMETA,
-}
+pub fn resume_simultaneous_hands_and_controllers_tracking_meta<G>(
+    session: &xr::Session<G>,
+) -> xr::Result<()> {
+    let resume_simultaneous_hands_and_controllers_tracking_meta = unsafe {
+        let mut resume_simultaneous_hands_and_controllers_tracking_meta = None;
+        let _ = (session.instance().fp().get_instance_proc_addr)(
+            session.instance().as_raw(),
+            c"xrResumeSimultaneousHandsAndControllersTrackingMETA".as_ptr(),
+            &mut resume_simultaneous_hands_and_controllers_tracking_meta,
+        );
 
-impl MultimodalHandsHandle {
-    pub fn new<G>(session: xr::Session<G>) -> xr::Result<Self> {
-        let session = session.into_any_graphics();
-
-        let resume_simultaneous_hands_and_controllers_tracking_meta = unsafe {
-            let mut resume_simultaneous_hands_and_controllers_tracking_meta = None;
-            let _ = (session.instance().fp().get_instance_proc_addr)(
-                session.instance().as_raw(),
-                c"xrResumeSimultaneousHandsAndControllersTrackingMETA".as_ptr(),
-                &mut resume_simultaneous_hands_and_controllers_tracking_meta,
-            );
-
-            resume_simultaneous_hands_and_controllers_tracking_meta.map(|pfn| {
-                mem::transmute::<VoidFunction, ResumeSimultaneousHandsAndControllersTrackingMETA>(
-                    pfn,
-                )
-            })
-        }
-        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
-
-        let pause_simultaneous_hands_and_controllers_tracking_meta = unsafe {
-            let mut pause_simultaneous_hands_and_controllers_tracking_meta = None;
-            let _ = (session.instance().fp().get_instance_proc_addr)(
-                session.instance().as_raw(),
-                c"xrPauseSimultaneousHandsAndControllersTrackingMETA".as_ptr(),
-                &mut pause_simultaneous_hands_and_controllers_tracking_meta,
-            );
-
-            pause_simultaneous_hands_and_controllers_tracking_meta.map(|pfn| {
-                mem::transmute::<VoidFunction, PauseSimultaneousHandsAndControllersTrackingMETA>(
-                    pfn,
-                )
-            })
-        }
-        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
-
-        let resume_info = SimultaneousHandsAndControllersTrackingResumeInfoMETA {
-            ty: *TYPE_SIMULTANEOUS_HANDS_AND_CONTROLLERS_TRACKING_RESUME_INFO_META,
-            next: ptr::null(),
-        };
-        unsafe {
-            super::xr_res(resume_simultaneous_hands_and_controllers_tracking_meta(
-                session.as_raw(),
-                &resume_info,
-            ))?;
-        }
-
-        Ok(Self {
-            session,
-            pause_simultaneous_hands_and_controllers_tracking_meta,
+        resume_simultaneous_hands_and_controllers_tracking_meta.map(|pfn| {
+            mem::transmute::<VoidFunction, ResumeSimultaneousHandsAndControllersTrackingMETA>(pfn)
         })
+    }
+    .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
+
+    let resume_info = SimultaneousHandsAndControllersTrackingResumeInfoMETA {
+        ty: *TYPE_SIMULTANEOUS_HANDS_AND_CONTROLLERS_TRACKING_RESUME_INFO_META,
+        next: ptr::null(),
+    };
+    unsafe {
+        super::xr_res(resume_simultaneous_hands_and_controllers_tracking_meta(
+            session.as_raw(),
+            &resume_info,
+        ))
     }
 }
 
-impl Drop for MultimodalHandsHandle {
-    fn drop(&mut self) {
-        let pause_info = SimultaneousHandsAndControllersTrackingPauseInfoMETA {
-            ty: *TYPE_SIMULTANEOUS_HANDS_AND_CONTROLLERS_TRACKING_PAUSE_INFO_META,
-            next: ptr::null(),
-        };
-        unsafe {
-            super::xr_res((self
-                .pause_simultaneous_hands_and_controllers_tracking_meta)(
-                self.session.as_raw(),
-                &pause_info,
-            ))
-            .ok();
-        }
+pub fn pause_simultaneous_hands_and_controllers_tracking_meta<G>(
+    session: &xr::Session<G>,
+) -> xr::Result<()> {
+    let pause_simultaneous_hands_and_controllers_tracking_meta = unsafe {
+        let mut pause_simultaneous_hands_and_controllers_tracking_meta = None;
+        let _ = (session.instance().fp().get_instance_proc_addr)(
+            session.instance().as_raw(),
+            c"xrPauseSimultaneousHandsAndControllersTrackingMETA".as_ptr(),
+            &mut pause_simultaneous_hands_and_controllers_tracking_meta,
+        );
+
+        pause_simultaneous_hands_and_controllers_tracking_meta.map(|pfn| {
+            mem::transmute::<VoidFunction, PauseSimultaneousHandsAndControllersTrackingMETA>(pfn)
+        })
+    }
+    .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
+
+    let pause_info = SimultaneousHandsAndControllersTrackingPauseInfoMETA {
+        ty: *TYPE_SIMULTANEOUS_HANDS_AND_CONTROLLERS_TRACKING_PAUSE_INFO_META,
+        next: ptr::null(),
+    };
+    unsafe {
+        super::xr_res(pause_simultaneous_hands_and_controllers_tracking_meta(
+            session.as_raw(),
+            &pause_info,
+        ))
     }
 }

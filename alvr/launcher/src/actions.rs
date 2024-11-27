@@ -53,7 +53,7 @@ pub fn worker(
                         install_server(&worker_message_sender, release, &client).await
                     }
                     UiMessage::InstallClient(release_info) => {
-                        install_apk(&worker_message_sender, release_info)
+                        install_and_launch_apk(&worker_message_sender, release_info)
                     }
                 };
                 match res {
@@ -122,7 +122,7 @@ pub fn get_release(
         })
 }
 
-fn install_apk(
+fn install_and_launch_apk(
     worker_message_sender: &Sender<WorkerMessage>,
     release: ReleaseInfo,
 ) -> anyhow::Result<()> {
@@ -141,10 +141,12 @@ fn install_apk(
             .ok_or(anyhow::anyhow!("Unable to determine download URL"))?;
         let apk_buffer = alvr_adb::commands::download(apk_url, |downloaded, total| {
             let progress = total.map(|t| downloaded as f32 / t as f32).unwrap_or(0.0);
-            let _ = worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
-                message: "Downloading Client APK".into(),
-                progress,
-            }));
+            worker_message_sender
+                .send(WorkerMessage::ProgressUpdate(Progress {
+                    message: "Downloading Client APK".into(),
+                    progress,
+                }))
+                .ok();
         })?;
         let mut file = File::create(&apk_path)?;
         file.write_all(&apk_buffer)?;
@@ -153,10 +155,12 @@ fn install_apk(
     let layout = alvr_filesystem::Layout::new(&root);
     let adb_path = alvr_adb::commands::require_adb(&layout, |downloaded, total| {
         let progress = total.map(|t| downloaded as f32 / t as f32).unwrap_or(0.0);
-        let _ = worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
-            message: "Downloading ADB".into(),
-            progress,
-        }));
+        worker_message_sender
+            .send(WorkerMessage::ProgressUpdate(Progress {
+                message: "Downloading ADB".into(),
+                progress,
+            }))
+            .ok();
     })?;
 
     let device_serial = alvr_adb::commands::list_devices(&adb_path)?
@@ -190,6 +194,8 @@ fn install_apk(
         progress: 0.0,
     }))?;
     alvr_adb::commands::install_package(&adb_path, &device_serial, &apk_path.to_string_lossy())?;
+
+    alvr_adb::commands::start_application(&adb_path, &device_serial, application_id)?;
 
     Ok(())
 }

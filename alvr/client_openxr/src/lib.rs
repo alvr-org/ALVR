@@ -13,12 +13,15 @@ use alvr_client_core::{
 use alvr_common::{
     error,
     glam::{Quat, UVec2, Vec3},
-    info, Fov, Pose, HAND_LEFT_ID,
+    info,
+    parking_lot::RwLock,
+    Fov, Pose, HAND_LEFT_ID,
 };
 use extra_extensions::{
     META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME, META_DETACHED_CONTROLLERS_EXTENSION_NAME,
     META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,
 };
+use interaction::{InteractionContext, InteractionSourcesConfig};
 use lobby::Lobby;
 use openxr as xr;
 use passthrough::PassthroughLayer;
@@ -84,13 +87,6 @@ fn to_xr_fov(f: Fov) -> xr::Fovf {
 
 fn to_xr_time(timestamp: Duration) -> xr::Time {
     xr::Time::from_nanos(timestamp.as_nanos() as _)
-}
-
-#[derive(Clone)]
-pub struct XrContext {
-    instance: xr::Instance,
-    system: xr::SystemId,
-    session: xr::Session<xr::OpenGlEs>,
 }
 
 fn default_view() -> xr::View {
@@ -194,7 +190,6 @@ pub fn entry_point() {
     let graphics_context = Rc::new(GraphicsContext::new_gl());
 
     let mut last_lobby_message = String::new();
-    let mut parsed_stream_config = None::<ParsedStreamConfig>;
 
     'session_loop: loop {
         let xr_system = xr_instance
@@ -210,12 +205,6 @@ pub fn entry_point() {
             xr_instance
                 .create_session(xr_system, &graphics::session_create_info(&graphics_context))
                 .unwrap()
-        };
-
-        let xr_context = XrContext {
-            instance: xr_instance.clone(),
-            system: xr_system,
-            session: xr_session.clone(),
         };
 
         let views_config = xr_instance
@@ -258,28 +247,29 @@ pub fn entry_point() {
         };
         let core_context = Arc::new(ClientCoreContext::new(capabilities));
 
-        let interaction_context = Arc::new(interaction::initialize_interaction(
-            &xr_context,
+        let interaction_context = Arc::new(RwLock::new(InteractionContext::new(
+            xr_session.clone(),
             platform,
-            parsed_stream_config
-                .as_ref()
-                .map(|c| c.prefers_multimodal_input)
-                .unwrap_or(false),
-            parsed_stream_config
-                .as_ref()
-                .and_then(|c| c.face_sources_config.clone()),
-            parsed_stream_config
-                .as_ref()
-                .and_then(|c| c.body_sources_config.clone()),
-        ));
+            exts.other
+                .contains(&META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME.to_owned()),
+        )));
 
         let mut lobby = Lobby::new(
-            &xr_context,
+            xr_session.clone(),
             Rc::clone(&graphics_context),
             Arc::clone(&interaction_context),
             default_view_resolution,
             &last_lobby_message,
         );
+        let lobby_interaction_sources = InteractionSourcesConfig {
+            face_tracking: None,
+            body_tracking: None,
+            prefers_multimodal_input: true,
+        };
+        interaction_context
+            .write()
+            .select_sources(&lobby_interaction_sources);
+
         let mut session_running = false;
         let mut stream_context = None::<StreamContext>;
         let mut passthrough_layer = None;
@@ -360,39 +350,31 @@ pub fn entry_point() {
                         lobby.update_hud_message(&message);
                     }
                     ClientCoreEvent::StreamingStarted(config) => {
-                        let new_config = ParsedStreamConfig::new(&config);
+                        let config = ParsedStreamConfig::new(&config);
 
-                        // combined_eye_gaze is a setting that needs to be enabled at session
-                        // creation. Since HTC headsets don't support session reinitialization, skip
-                        // all elements that need it, that is face and eye tracking.
-                        if parsed_stream_config.as_ref() != Some(&new_config) && !platform.is_vive()
-                        {
-                            parsed_stream_config = Some(new_config);
+                        let context = StreamContext::new(
+                            Arc::clone(&core_context),
+                            xr_session.clone(),
+                            Rc::clone(&graphics_context),
+                            Arc::clone(&interaction_context),
+                            platform,
+                            config,
+                        );
 
-                            xr_session.request_exit().ok();
-                        } else {
-                            let context = StreamContext::new(
-                                Arc::clone(&core_context),
-                                xr_context.clone(),
-                                Rc::clone(&graphics_context),
-                                Arc::clone(&interaction_context),
-                                platform,
-                                new_config.clone(),
-                            );
-
-                            if !context.uses_passthrough() {
-                                passthrough_layer = None;
-                            }
-
-                            stream_context = Some(context);
-
-                            parsed_stream_config = Some(new_config);
+                        if !context.uses_passthrough() {
+                            passthrough_layer = None;
                         }
+
+                        stream_context = Some(context);
                     }
                     ClientCoreEvent::StreamingStopped => {
                         if passthrough_layer.is_none() {
                             passthrough_layer = PassthroughLayer::new(&xr_session).ok();
                         }
+
+                        interaction_context
+                            .write()
+                            .select_sources(&lobby_interaction_sources);
 
                         stream_context = None;
                     }
@@ -402,11 +384,9 @@ pub fn entry_point() {
                         frequency,
                         amplitude,
                     } => {
-                        let action = if device_id == *HAND_LEFT_ID {
-                            &interaction_context.hands_interaction[0].vibration_action
-                        } else {
-                            &interaction_context.hands_interaction[1].vibration_action
-                        };
+                        let idx = if device_id == *HAND_LEFT_ID { 0 } else { 1 };
+                        let action =
+                            &interaction_context.read().hands_interaction[idx].vibration_action;
 
                         action
                             .apply_feedback(

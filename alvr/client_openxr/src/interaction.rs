@@ -5,16 +5,38 @@ use crate::{
         FULL_BODY_JOINT_LEFT_FOOT_BALL_META, FULL_BODY_JOINT_LEFT_LOWER_LEG_META,
         FULL_BODY_JOINT_RIGHT_FOOT_BALL_META, FULL_BODY_JOINT_RIGHT_LOWER_LEG_META,
     },
-    Platform, XrContext,
+    Platform,
 };
 use alvr_common::{glam::Vec3, *};
-use alvr_packets::{ButtonEntry, ButtonValue, ViewParams};
+use alvr_packets::{ButtonEntry, ButtonValue, StreamConfig, ViewParams};
 use alvr_session::{BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
 use std::collections::HashMap;
 use xr::SpaceLocationFlags;
 
 const IPD_CHANGE_EPS: f32 = 0.001;
+
+fn create_ext_object<T>(
+    name: &str,
+    enabled: Option<bool>,
+    create_cb: impl FnOnce() -> xr::Result<T>,
+) -> Option<T> {
+    enabled
+        .unwrap_or(false)
+        .then(|| match create_cb() {
+            Ok(obj) => Some(obj),
+            Err(xr::sys::Result::ERROR_FEATURE_UNSUPPORTED) => {
+                warn!("Cannot create unsupported {name}");
+                None
+            }
+            Err(xr::sys::Result::ERROR_EXTENSION_NOT_PRESENT) => None,
+            Err(e) => {
+                warn!("Failed to create {name}: {e}");
+                None
+            }
+        })
+        .flatten()
+}
 
 pub enum ButtonAction {
     Binary(xr::Action<bool>),
@@ -43,223 +65,222 @@ pub struct BodySources {
     pub body_tracker_fb: Option<(BodyTrackerFB, usize)>,
 }
 
+#[derive(Clone)]
+pub struct InteractionSourcesConfig {
+    pub face_tracking: Option<FaceTrackingSourcesConfig>,
+    pub body_tracking: Option<BodyTrackingSourcesConfig>,
+    pub prefers_multimodal_input: bool,
+}
+
+impl InteractionSourcesConfig {
+    pub fn new(config: &StreamConfig) -> Self {
+        Self {
+            face_tracking: config
+                .settings
+                .headset
+                .face_tracking
+                .as_option()
+                .map(|c| c.sources.clone()),
+            body_tracking: config
+                .settings
+                .headset
+                .body_tracking
+                .as_option()
+                .map(|c| c.sources.clone()),
+            prefers_multimodal_input: config
+                .settings
+                .headset
+                .controllers
+                .as_option()
+                .map(|c| c.multimodal_tracking)
+                .unwrap_or(false),
+        }
+    }
+}
+
 pub struct InteractionContext {
+    xr_session: xr::Session<xr::OpenGlEs>,
+    platform: Platform,
     pub action_set: xr::ActionSet,
     pub button_actions: HashMap<u64, ButtonAction>,
     pub hands_interaction: [HandInteraction; 2],
-    pub uses_multimodal_hands: bool,
+    pub multimodal_hands_enabled: bool,
     pub face_sources: FaceSources,
     pub body_sources: BodySources,
 }
 
-pub fn initialize_interaction(
-    xr_ctx: &XrContext,
-    platform: Platform,
-    prefer_multimodal_input: bool,
-    face_tracking_sources: Option<FaceTrackingSourcesConfig>,
-    body_tracking_sources: Option<BodyTrackingSourcesConfig>,
-) -> InteractionContext {
-    // todo: check which permissions are needed for htc
-    #[cfg(target_os = "android")]
-    if let Some(config) = &face_tracking_sources {
-        if (config.combined_eye_gaze || config.eye_tracking_fb)
-            && matches!(platform, Platform::QuestPro)
-        {
-            alvr_system_info::try_get_permission("com.oculus.permission.EYE_TRACKING")
+impl InteractionContext {
+    pub fn new(
+        xr_session: xr::Session<xr::OpenGlEs>,
+        platform: Platform,
+        supports_multimodal: bool,
+    ) -> Self {
+        let xr_instance = xr_session.instance();
+
+        let action_set = xr_instance
+            .create_action_set("alvr_interaction", "ALVR interaction", 0)
+            .unwrap();
+
+        let mut bindings = vec![];
+
+        fn binding<'a, T: xr::ActionTy>(action: &'a xr::Action<T>, path: &str) -> xr::Binding<'a> {
+            xr::Binding::new(action, action.instance().string_to_path(path).unwrap())
         }
-        if config.combined_eye_gaze && platform.is_pico() {
-            alvr_system_info::try_get_permission("com.picovr.permission.EYE_TRACKING")
-        }
-        if config.face_tracking_fb && matches!(platform, Platform::QuestPro) {
-            alvr_system_info::try_get_permission("android.permission.RECORD_AUDIO");
-            alvr_system_info::try_get_permission("com.oculus.permission.FACE_TRACKING")
-        }
-    }
 
-    #[cfg(target_os = "android")]
-    if let Some(config) = &body_tracking_sources {
-        if (config.body_tracking_fb.enabled())
-            && platform.is_quest()
-            && platform != Platform::Quest1
-        {
-            alvr_system_info::try_get_permission("com.oculus.permission.BODY_TRACKING")
-        }
-    }
-
-    let action_set = xr_ctx
-        .instance
-        .create_action_set("alvr_interaction", "ALVR interaction", 0)
-        .unwrap();
-
-    let mut bindings = vec![];
-
-    fn binding<'a, T: xr::ActionTy>(action: &'a xr::Action<T>, path: &str) -> xr::Binding<'a> {
-        xr::Binding::new(action, action.instance().string_to_path(path).unwrap())
-    }
-
-    let controllers_profile_path = match platform {
-        p if p.is_quest() => QUEST_CONTROLLER_PROFILE_PATH, // todo: create new controller profile for quest pro and 3
-        Platform::PicoNeo3 => PICO_NEO3_CONTROLLER_PROFILE_PATH,
-        p if p.is_pico() => PICO4_CONTROLLER_PROFILE_PATH,
-        p if p.is_vive() => FOCUS3_CONTROLLER_PROFILE_PATH,
-        Platform::Yvr => YVR_CONTROLLER_PROFILE_PATH,
-        _ => QUEST_CONTROLLER_PROFILE_PATH,
-    };
-    let controllers_profile_id = alvr_common::hash_string(controllers_profile_path);
-
-    // Create actions:
-
-    let mut button_actions = HashMap::new();
-    for button_id in &CONTROLLER_PROFILE_INFO
-        .get(&controllers_profile_id)
-        .unwrap()
-        .button_set
-    {
-        let info = BUTTON_INFO.get(button_id).unwrap();
-
-        let name = info.path[1..].replace('/', "_");
-        let display_name = format!(
-            "{}{}",
-            name[0..1].to_uppercase(),
-            name[1..].replace('_', " ")
-        );
-
-        let action = match info.button_type {
-            ButtonType::Binary => {
-                ButtonAction::Binary(action_set.create_action(&name, &display_name, &[]).unwrap())
-            }
-            ButtonType::Scalar => {
-                ButtonAction::Scalar(action_set.create_action(&name, &display_name, &[]).unwrap())
-            }
+        let controllers_profile_path = match platform {
+            p if p.is_quest() => QUEST_CONTROLLER_PROFILE_PATH, // todo: create new controller profile for quest pro and 3
+            Platform::PicoNeo3 => PICO_NEO3_CONTROLLER_PROFILE_PATH,
+            p if p.is_pico() => PICO4_CONTROLLER_PROFILE_PATH,
+            p if p.is_vive() => FOCUS3_CONTROLLER_PROFILE_PATH,
+            Platform::Yvr => YVR_CONTROLLER_PROFILE_PATH,
+            _ => QUEST_CONTROLLER_PROFILE_PATH,
         };
-        button_actions.insert(*button_id, action);
-    }
+        let controllers_profile_id = alvr_common::hash_string(controllers_profile_path);
 
-    let left_grip_action = action_set
-        .create_action("left_grip_pose", "Left grip pose", &[])
-        .unwrap();
-    let right_grip_action = action_set
-        .create_action("right_grip_pose", "Right grip pose", &[])
-        .unwrap();
+        // Create actions:
 
-    let left_aim_action = action_set
-        .create_action("left_aim_pose", "Left aim pose", &[])
-        .unwrap();
-    let right_aim_action = action_set
-        .create_action("right_aim_pose", "Right aim pose", &[])
-        .unwrap();
+        let mut button_actions = HashMap::new();
+        for button_id in &CONTROLLER_PROFILE_INFO
+            .get(&controllers_profile_id)
+            .unwrap()
+            .button_set
+        {
+            let info = BUTTON_INFO.get(button_id).unwrap();
 
-    let left_vibration_action = action_set
-        .create_action("left_hand_vibration", "Left hand vibration", &[])
-        .unwrap();
-    let right_vibration_action = action_set
-        .create_action("right_hand_vibration", "Right hand vibration", &[])
-        .unwrap();
+            let name = info.path[1..].replace('/', "_");
+            let display_name = format!(
+                "{}{}",
+                name[0..1].to_uppercase(),
+                name[1..].replace('_', " ")
+            );
 
-    // Create action bindings:
+            let action = match info.button_type {
+                ButtonType::Binary => ButtonAction::Binary(
+                    action_set.create_action(&name, &display_name, &[]).unwrap(),
+                ),
+                ButtonType::Scalar => ButtonAction::Scalar(
+                    action_set.create_action(&name, &display_name, &[]).unwrap(),
+                ),
+            };
+            button_actions.insert(*button_id, action);
+        }
 
-    for (id, action) in &button_actions {
-        let path = &BUTTON_INFO.get(id).unwrap().path;
-        match action {
-            ButtonAction::Binary(action) => {
-                bindings.push(binding(action, path));
-            }
-            ButtonAction::Scalar(action) => {
-                bindings.push(binding(action, path));
+        let left_grip_action = action_set
+            .create_action("left_grip_pose", "Left grip pose", &[])
+            .unwrap();
+        let right_grip_action = action_set
+            .create_action("right_grip_pose", "Right grip pose", &[])
+            .unwrap();
+
+        let left_aim_action = action_set
+            .create_action("left_aim_pose", "Left aim pose", &[])
+            .unwrap();
+        let right_aim_action = action_set
+            .create_action("right_aim_pose", "Right aim pose", &[])
+            .unwrap();
+
+        let left_vibration_action = action_set
+            .create_action("left_hand_vibration", "Left hand vibration", &[])
+            .unwrap();
+        let right_vibration_action = action_set
+            .create_action("right_hand_vibration", "Right hand vibration", &[])
+            .unwrap();
+
+        // Create action bindings:
+
+        for (id, action) in &button_actions {
+            let path = &BUTTON_INFO.get(id).unwrap().path;
+            match action {
+                ButtonAction::Binary(action) => {
+                    bindings.push(binding(action, path));
+                }
+                ButtonAction::Scalar(action) => {
+                    bindings.push(binding(action, path));
+                }
             }
         }
-    }
-
-    bindings.push(binding(
-        &left_grip_action,
-        "/user/hand/left/input/grip/pose",
-    ));
-    bindings.push(binding(
-        &right_grip_action,
-        "/user/hand/right/input/grip/pose",
-    ));
-
-    bindings.push(binding(&left_aim_action, "/user/hand/left/input/aim/pose"));
-    bindings.push(binding(
-        &right_aim_action,
-        "/user/hand/right/input/aim/pose",
-    ));
-
-    bindings.push(binding(
-        &left_vibration_action,
-        "/user/hand/left/output/haptic",
-    ));
-    bindings.push(binding(
-        &right_vibration_action,
-        "/user/hand/right/output/haptic",
-    ));
-
-    // Note: We cannot enable multimodal if fb body tracking is active. It would result in a
-    // ERROR_RUNTIME_FAILURE crash.
-    let uses_multimodal_hands = prefer_multimodal_input
-        && !body_tracking_sources
-            .as_ref()
-            .map(|s| s.body_tracking_fb.enabled())
-            .unwrap_or(false)
-        && extra_extensions::resume_simultaneous_hands_and_controllers_tracking(&xr_ctx.session)
-            .is_ok();
-
-    let left_detached_controller_pose_action;
-    let right_detached_controller_pose_action;
-    if uses_multimodal_hands {
-        // Note: when multimodal input is enabled, both controllers and hands will always be active.
-        // To be able to detect when controllers are actually held, we have to register detached
-        // controllers pose; the controller pose will be diverted to the detached controllers when
-        // they are not held. Currently the detached controllers pose is ignored
-        left_detached_controller_pose_action = action_set
-            .create_action::<xr::Posef>(
-                "left_detached_controller_pose",
-                "Left detached controller pose",
-                &[],
-            )
-            .unwrap();
-        right_detached_controller_pose_action = action_set
-            .create_action::<xr::Posef>(
-                "right_detached_controller_pose",
-                "Right detached controller pose",
-                &[],
-            )
-            .unwrap();
 
         bindings.push(binding(
-            &left_detached_controller_pose_action,
-            "/user/detached_controller_meta/left/input/grip/pose",
+            &left_grip_action,
+            "/user/hand/left/input/grip/pose",
         ));
         bindings.push(binding(
-            &right_detached_controller_pose_action,
-            "/user/detached_controller_meta/right/input/grip/pose",
+            &right_grip_action,
+            "/user/hand/right/input/grip/pose",
         ));
-    }
 
-    // Apply bindings:
-    xr_ctx
-        .instance
-        .suggest_interaction_profile_bindings(
-            xr_ctx
-                .instance
-                .string_to_path(controllers_profile_path)
-                .unwrap(),
-            &bindings,
-        )
-        .unwrap();
+        bindings.push(binding(&left_aim_action, "/user/hand/left/input/aim/pose"));
+        bindings.push(binding(
+            &right_aim_action,
+            "/user/hand/right/input/aim/pose",
+        ));
 
-    let combined_eyes_source = face_tracking_sources
-        .as_ref()
-        .map(|s| s.combined_eye_gaze)
-        .unwrap_or(false)
-        .then(|| {
+        bindings.push(binding(
+            &left_vibration_action,
+            "/user/hand/left/output/haptic",
+        ));
+        bindings.push(binding(
+            &right_vibration_action,
+            "/user/hand/right/output/haptic",
+        ));
+
+        let left_detached_controller_pose_action;
+        let right_detached_controller_pose_action;
+        if supports_multimodal {
+            // Note: when multimodal input is enabled, both controllers and hands will always be active.
+            // To be able to detect when controllers are actually held, we have to register detached
+            // controllers pose; the controller pose will be diverted to the detached controllers when
+            // they are not held. Currently the detached controllers pose is ignored
+            left_detached_controller_pose_action = action_set
+                .create_action::<xr::Posef>(
+                    "left_detached_controller_pose",
+                    "Left detached controller pose",
+                    &[],
+                )
+                .unwrap();
+            right_detached_controller_pose_action = action_set
+                .create_action::<xr::Posef>(
+                    "right_detached_controller_pose",
+                    "Right detached controller pose",
+                    &[],
+                )
+                .unwrap();
+
+            bindings.push(binding(
+                &left_detached_controller_pose_action,
+                "/user/detached_controller_meta/left/input/grip/pose",
+            ));
+            bindings.push(binding(
+                &right_detached_controller_pose_action,
+                "/user/detached_controller_meta/right/input/grip/pose",
+            ));
+        }
+
+        // Apply bindings:
+        xr_instance
+            .suggest_interaction_profile_bindings(
+                xr_instance
+                    .string_to_path(controllers_profile_path)
+                    .unwrap(),
+                &bindings,
+            )
+            .unwrap();
+
+        let combined_eyes_source = if xr_instance.exts().ext_eye_gaze_interaction.is_some()
+            && !platform.is_quest()
+            && !platform.is_vive()
+        {
+            #[cfg(target_os = "android")]
+            if platform.is_pico() {
+                alvr_system_info::try_get_permission("com.picovr.permission.EYE_TRACKING")
+            }
+
             let action = action_set
                 .create_action("combined_eye_gaze", "Combined eye gaze", &[])
                 .unwrap();
 
-            let res = xr_ctx.instance.suggest_interaction_profile_bindings(
-                xr_ctx
-                    .instance
+            let res = xr_instance.suggest_interaction_profile_bindings(
+                xr_instance
                     .string_to_path("/interaction_profiles/ext/eye_gaze_interaction")
                     .unwrap(),
                 &[binding(&action, "/user/eyes_ext/input/gaze_ext/pose")],
@@ -269,136 +290,166 @@ pub fn initialize_interaction(
             }
 
             let space = action
-                .create_space(xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+                .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
                 .unwrap();
 
             Some((action, space))
-        })
-        .flatten();
+        } else {
+            None
+        };
 
-    xr_ctx.session.attach_action_sets(&[&action_set]).unwrap();
+        xr_session.attach_action_sets(&[&action_set]).unwrap();
 
-    let left_grip_space = left_grip_action
-        .create_space(xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
-        .unwrap();
-    let right_grip_space = right_grip_action
-        .create_space(xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
-        .unwrap();
+        let left_grip_space = left_grip_action
+            .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+            .unwrap();
+        let right_grip_space = right_grip_action
+            .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+            .unwrap();
 
-    let left_aim_space = left_aim_action
-        .create_space(xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
-        .unwrap();
-    let right_aim_space = right_aim_action
-        .create_space(xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
-        .unwrap();
+        let left_aim_space = left_aim_action
+            .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+            .unwrap();
+        let right_aim_space = right_aim_action
+            .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+            .unwrap();
 
-    fn create_ext_object<T>(
-        name: &str,
-        enabled: Option<bool>,
-        create_cb: impl FnOnce() -> xr::Result<T>,
-    ) -> Option<T> {
-        enabled
-            .unwrap_or(false)
-            .then(|| match create_cb() {
-                Ok(obj) => Some(obj),
-                Err(xr::sys::Result::ERROR_FEATURE_UNSUPPORTED) => {
-                    warn!("Cannot create unsupported {name}");
-                    None
-                }
-                Err(xr::sys::Result::ERROR_EXTENSION_NOT_PRESENT) => None,
-                Err(e) => {
-                    warn!("Failed to create {name}: {e}");
-                    None
-                }
-            })
-            .flatten()
+        let left_hand_tracker = create_ext_object("HandTracker (left)", Some(true), || {
+            xr_session.create_hand_tracker(xr::Hand::LEFT)
+        });
+        let right_hand_tracker = create_ext_object("HandTracker (right)", Some(true), || {
+            xr_session.create_hand_tracker(xr::Hand::RIGHT)
+        });
+
+        Self {
+            xr_session,
+            platform,
+            action_set,
+            button_actions,
+            hands_interaction: [
+                HandInteraction {
+                    controllers_profile_id,
+                    grip_action: left_grip_action,
+                    grip_space: left_grip_space,
+                    aim_action: left_aim_action,
+                    aim_space: left_aim_space,
+                    vibration_action: left_vibration_action,
+                    skeleton_tracker: left_hand_tracker,
+                },
+                HandInteraction {
+                    controllers_profile_id,
+                    grip_action: right_grip_action,
+                    grip_space: right_grip_space,
+                    aim_action: right_aim_action,
+                    aim_space: right_aim_space,
+                    vibration_action: right_vibration_action,
+                    skeleton_tracker: right_hand_tracker,
+                },
+            ],
+            multimodal_hands_enabled: false,
+            face_sources: FaceSources {
+                combined_eyes_source,
+                eye_tracker_fb: None,
+                face_tracker_fb: None,
+                eye_tracker_htc: None,
+                lip_tracker_htc: None,
+            },
+            body_sources: BodySources {
+                body_tracker_fb: None,
+            },
+        }
     }
 
-    let left_hand_tracker = create_ext_object("HandTracker (left)", Some(true), || {
-        xr_ctx.session.create_hand_tracker(xr::Hand::LEFT)
-    });
-    let right_hand_tracker = create_ext_object("HandTracker (right)", Some(true), || {
-        xr_ctx.session.create_hand_tracker(xr::Hand::RIGHT)
-    });
+    pub fn select_sources(&mut self, config: &InteractionSourcesConfig) {
+        // First of all, disable/delete all sources. This ensures there are no conflicts
+        extra_extensions::pause_simultaneous_hands_and_controllers_tracking_meta(&self.xr_session)
+            .ok();
+        self.multimodal_hands_enabled = false;
+        self.face_sources.eye_tracker_fb = None;
+        self.face_sources.face_tracker_fb = None;
+        self.face_sources.eye_tracker_htc = None;
+        self.face_sources.lip_tracker_htc = None;
+        self.body_sources.body_tracker_fb = None;
 
-    let eye_tracker_fb = create_ext_object(
-        "EyeTrackerSocial",
-        face_tracking_sources.as_ref().map(|s| s.eye_tracking_fb),
-        || EyeTrackerSocial::new(&xr_ctx.session),
-    );
+        // todo: check which permissions are needed for htc
+        #[cfg(target_os = "android")]
+        if let Some(config) = &config.face_tracking {
+            if (config.eye_tracking_fb) && matches!(self.platform, Platform::QuestPro) {
+                alvr_system_info::try_get_permission("com.oculus.permission.EYE_TRACKING")
+            }
+            if config.face_tracking_fb && matches!(self.platform, Platform::QuestPro) {
+                alvr_system_info::try_get_permission("android.permission.RECORD_AUDIO");
+                alvr_system_info::try_get_permission("com.oculus.permission.FACE_TRACKING")
+            }
+        }
 
-    let face_tracker_fb = create_ext_object(
-        "FaceTracker2FB",
-        face_tracking_sources.as_ref().map(|s| s.face_tracking_fb),
-        || FaceTracker2FB::new(&xr_ctx.session, true, true),
-    );
+        #[cfg(target_os = "android")]
+        if let Some(config) = &config.body_tracking {
+            if (config.body_tracking_fb.enabled())
+                && self.platform.is_quest()
+                && self.platform != Platform::Quest1
+            {
+                alvr_system_info::try_get_permission("com.oculus.permission.BODY_TRACKING")
+            }
+        }
 
-    let eye_tracker_htc = create_ext_object(
-        "FacialTrackerHTC (eyes)",
-        face_tracking_sources
-            .as_ref()
-            .map(|s| s.eye_expressions_htc),
-        || FacialTrackerHTC::new(&xr_ctx.session, xr::FacialTrackingTypeHTC::EYE_DEFAULT),
-    );
+        // Note: We cannot enable multimodal if fb body tracking is active. It would result in a
+        // ERROR_RUNTIME_FAILURE crash.
+        if config.body_tracking.is_none()
+            && config.prefers_multimodal_input
+            && extra_extensions::resume_simultaneous_hands_and_controllers_tracking_meta(
+                &self.xr_session,
+            )
+            .is_ok()
+        {
+            self.multimodal_hands_enabled = true;
+        }
 
-    let lip_tracker_htc = create_ext_object(
-        "FacialTrackerHTC (lips)",
-        face_tracking_sources
-            .as_ref()
-            .map(|s| s.lip_expressions_htc),
-        || FacialTrackerHTC::new(&xr_ctx.session, xr::FacialTrackingTypeHTC::LIP_DEFAULT),
-    );
+        self.face_sources.eye_tracker_fb = create_ext_object(
+            "EyeTrackerSocial",
+            config.face_tracking.as_ref().map(|s| s.eye_tracking_fb),
+            || EyeTrackerSocial::new(&self.xr_session),
+        );
 
-    let body_tracker_fb = create_ext_object(
-        "BodyTrackerFB (full set)",
-        body_tracking_sources
-            .clone()
-            .and_then(|s| s.body_tracking_fb.into_option())
-            .map(|c| c.full_body),
-        || BodyTrackerFB::new(&xr_ctx.session, *BODY_JOINT_SET_FULL_BODY_META),
-    )
-    .map(|tracker| (tracker, FULL_BODY_JOINT_COUNT_META))
-    .or_else(|| {
-        create_ext_object(
-            "BodyTrackerFB (default set)",
-            body_tracking_sources.map(|s| s.body_tracking_fb.enabled()),
-            || BodyTrackerFB::new(&xr_ctx.session, xr::BodyJointSetFB::DEFAULT),
+        self.face_sources.face_tracker_fb = create_ext_object(
+            "FaceTracker2FB",
+            config.face_tracking.as_ref().map(|s| s.face_tracking_fb),
+            || FaceTracker2FB::new(&self.xr_session, true, true),
+        );
+
+        self.face_sources.eye_tracker_htc = create_ext_object(
+            "FacialTrackerHTC (eyes)",
+            config.face_tracking.as_ref().map(|s| s.eye_expressions_htc),
+            || FacialTrackerHTC::new(&self.xr_session, xr::FacialTrackingTypeHTC::EYE_DEFAULT),
+        );
+
+        self.face_sources.lip_tracker_htc = create_ext_object(
+            "FacialTrackerHTC (lips)",
+            config.face_tracking.as_ref().map(|s| s.lip_expressions_htc),
+            || FacialTrackerHTC::new(&self.xr_session, xr::FacialTrackingTypeHTC::LIP_DEFAULT),
+        );
+
+        self.body_sources.body_tracker_fb = create_ext_object(
+            "BodyTrackerFB (full set)",
+            config
+                .body_tracking
+                .clone()
+                .and_then(|s| s.body_tracking_fb.into_option())
+                .map(|c| c.full_body),
+            || BodyTrackerFB::new(&self.xr_session, *BODY_JOINT_SET_FULL_BODY_META),
         )
-        .map(|tracker| (tracker, xr::BodyJointFB::COUNT.into_raw() as usize))
-    });
-
-    InteractionContext {
-        action_set,
-        button_actions,
-        hands_interaction: [
-            HandInteraction {
-                controllers_profile_id,
-                grip_action: left_grip_action,
-                grip_space: left_grip_space,
-                aim_action: left_aim_action,
-                aim_space: left_aim_space,
-                vibration_action: left_vibration_action,
-                skeleton_tracker: left_hand_tracker,
-            },
-            HandInteraction {
-                controllers_profile_id,
-                grip_action: right_grip_action,
-                grip_space: right_grip_space,
-                aim_action: right_aim_action,
-                aim_space: right_aim_space,
-                vibration_action: right_vibration_action,
-                skeleton_tracker: right_hand_tracker,
-            },
-        ],
-        uses_multimodal_hands,
-        face_sources: FaceSources {
-            combined_eyes_source,
-            eye_tracker_fb,
-            face_tracker_fb,
-            eye_tracker_htc,
-            lip_tracker_htc,
-        },
-        body_sources: BodySources { body_tracker_fb },
+        .map(|tracker| (tracker, FULL_BODY_JOINT_COUNT_META))
+        .or_else(|| {
+            create_ext_object(
+                "BodyTrackerFB (default set)",
+                config
+                    .body_tracking
+                    .as_ref()
+                    .map(|s| s.body_tracking_fb.enabled()),
+                || BodyTrackerFB::new(&self.xr_session, xr::BodyJointSetFB::DEFAULT),
+            )
+            .map(|tracker| (tracker, xr::BodyJointFB::COUNT.into_raw() as usize))
+        });
     }
 }
 

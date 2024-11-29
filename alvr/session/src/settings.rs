@@ -724,7 +724,6 @@ pub enum HeadsetEmulationMode {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct FaceTrackingSourcesConfig {
-    pub combined_eye_gaze: bool,
     pub eye_tracking_fb: bool,
     pub face_tracking_fb: bool,
     pub eye_expressions_htc: bool,
@@ -1628,7 +1627,6 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: FaceTrackingConfigDefault {
                     gui_collapsed: true,
                     sources: FaceTrackingSourcesConfigDefault {
-                        combined_eye_gaze: true,
                         eye_tracking_fb: true,
                         face_tracking_fb: true,
                         eye_expressions_htc: true,

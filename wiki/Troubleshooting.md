@@ -1,4 +1,4 @@
-# If you're looking for Linux troubleshooting, please check [here](https://github.com/alvr-org/ALVR/wiki/Linux-Troubleshooting) first, and only then this page.
+## If you're looking for Linux troubleshooting, please check [here](https://github.com/alvr-org/ALVR/wiki/Linux-Troubleshooting) first, and only then this page.
 
 For ALVR 20.0.0 and later
 ===

@@ -1,4 +1,4 @@
-## (! Mandatory, apply fix if not applied yet !) Black screen even when SteamVR shows movement. Alvr is not detected by alvr.
+## (! Mandatory, apply fix if not applied yet !) Black screen even when SteamVR shows movement, Dashboard not detecting launched ALVR/SteamVR
 
 The steam runtimes SteamVR runs in break the alvr driver loaded by SteamVR.
 This causes the screen to stay black on the headset or an error to be reported that the pipewire device is missing or can even result in SteamVR crashing.
@@ -36,7 +36,8 @@ If you have Amdvlk installed on your system, it overrides other vulkan drivers a
 
 ### Fix
 
-Check if amdvlk or other vulkan drivers are installed by seeing if `ls /usr/share/vulkan/icd.d/ | grep amd_icd` shows anything. If so, uninstall amdvlk from your system.
+Check if amdvlk or amdgpu-pro are installed by seeing if `ls /usr/share/vulkan/icd.d/ | grep -e amd_icd -e amd_pro` shows anything.
+If so, uninstall amdvlk and/or the amdgpu-pro drivers from your system. (This method may not catch all installations due to distro variations)
 
 On arch, first install `vulkan-radeon` and uninstall other drivers.
 
@@ -52,6 +53,9 @@ For fedora:
 For arch (don't use vaapi for nvidia):
  * Follow through [this](https://wiki.archlinux.org/title/Hardware_video_acceleration#Installation) page
 Then reboot your machine.
+
+For other distros (e.g. Manjaro):
+ * Install the nonfree version of the mesa/vaapi drivers that include the proprietary codecs needed for h264/hevc encoding
 
 ## Nvidia driver version requirements
 

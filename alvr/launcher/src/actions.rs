@@ -1,8 +1,8 @@
 use crate::{
     InstallationInfo, Progress, ReleaseChannelsInfo, ReleaseInfo, UiMessage, WorkerMessage,
 };
-use alvr_common::{anyhow::Result, ToAny};
-use anyhow::bail;
+use alvr_common::{anyhow::Result, semver::Version, ToAny};
+use anyhow::{bail, Context};
 use flate2::read::GzDecoder;
 use futures_util::StreamExt;
 use std::{
@@ -13,21 +13,6 @@ use std::{
     process::Command,
     sync::mpsc::{Receiver, Sender},
 };
-
-#[cfg(not(windows))]
-const ADB_EXECUTABLE: &str = "adb";
-#[cfg(windows)]
-const ADB_EXECUTABLE: &str = "adb.exe";
-
-#[cfg(target_os = "linux")]
-const PLATFORM_TOOLS_DL_LINK: &str =
-    "https://dl.google.com/android/repository/platform-tools-latest-linux.zip";
-#[cfg(target_os = "macos")]
-const PLATFORM_TOOLS_DL_LINK: &str =
-    "https://dl.google.com/android/repository/platform-tools-latest-macos.zip";
-#[cfg(windows)]
-const PLATFORM_TOOLS_DL_LINK: &str =
-    "https://dl.google.com/android/repository/platform-tools-latest-windows.zip";
 
 const APK_NAME: &str = "client.apk";
 
@@ -68,7 +53,7 @@ pub fn worker(
                         install_server(&worker_message_sender, release, &client).await
                     }
                     UiMessage::InstallClient(release_info) => {
-                        install_apk(&worker_message_sender, release_info, &client).await
+                        install_and_launch_apk(&worker_message_sender, release_info)
                     }
                 };
                 match res {
@@ -137,85 +122,82 @@ pub fn get_release(
         })
 }
 
-async fn install_apk(
+fn install_and_launch_apk(
     worker_message_sender: &Sender<WorkerMessage>,
     release: ReleaseInfo,
-    client: &reqwest::Client,
 ) -> anyhow::Result<()> {
     worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
         message: "Starting install".into(),
         progress: 0.0,
     }))?;
 
-    let installation_dir = installations_dir().join(&release.version);
-
-    let apk_path = installation_dir.clone().join(APK_NAME);
-
+    let root = installations_dir().join(&release.version);
+    let apk_name = "alvr_client_android.apk";
+    let apk_path = root.join(apk_name);
     if !apk_path.exists() {
-        let apk_buffer = download(
-            worker_message_sender,
-            "Downloading Client APK",
-            release
-                .assets
-                .get("alvr_client_android.apk")
-                .ok_or(anyhow::anyhow!("Unable to determine download URL"))?,
-            client,
-        )
-        .await?;
-
+        let apk_url = release
+            .assets
+            .get(apk_name)
+            .ok_or(anyhow::anyhow!("Unable to determine download URL"))?;
+        let apk_buffer = alvr_adb::commands::download(apk_url, |downloaded, total| {
+            let progress = total.map(|t| downloaded as f32 / t as f32).unwrap_or(0.0);
+            worker_message_sender
+                .send(WorkerMessage::ProgressUpdate(Progress {
+                    message: "Downloading Client APK".into(),
+                    progress,
+                }))
+                .ok();
+        })?;
         let mut file = File::create(&apk_path)?;
         file.write_all(&apk_buffer)?;
     }
 
+    let layout = alvr_filesystem::Layout::new(&root);
+    let adb_path = alvr_adb::commands::require_adb(&layout, |downloaded, total| {
+        let progress = total.map(|t| downloaded as f32 / t as f32).unwrap_or(0.0);
+        worker_message_sender
+            .send(WorkerMessage::ProgressUpdate(Progress {
+                message: "Downloading ADB".into(),
+                progress,
+            }))
+            .ok();
+    })?;
+
+    let device_serial = alvr_adb::commands::list_devices(&adb_path)?
+        .iter()
+        .find_map(|d| d.serial.clone())
+        .ok_or(anyhow::anyhow!("Failed to find connected device"))?;
+
+    let v = if release.version.starts_with('v') {
+        release.version[1..].to_string()
+    } else {
+        release.version
+    };
+    let version = Version::parse(&v).context("Failed to parse release version")?;
+    let stable = version.pre.is_empty() && !version.build.contains("nightly");
+    let application_id = if stable {
+        alvr_adb::PACKAGE_NAME_GITHUB_STABLE
+    } else {
+        alvr_adb::PACKAGE_NAME_GITHUB_DEV
+    };
+
+    if alvr_adb::commands::is_package_installed(&adb_path, &device_serial, application_id)? {
+        worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
+            message: "Uninstalling old APK".into(),
+            progress: 0.0,
+        }))?;
+        alvr_adb::commands::uninstall_package(&adb_path, &device_serial, application_id)?;
+    }
+
     worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
-        message: "Installing APK".into(),
+        message: "Installing new APK".into(),
         progress: 0.0,
     }))?;
+    alvr_adb::commands::install_package(&adb_path, &device_serial, &apk_path.to_string_lossy())?;
 
-    let res = match Command::new(ADB_EXECUTABLE)
-        .arg("install")
-        .arg("-d")
-        .arg(&apk_path)
-        .output()
-    {
-        Ok(res) => res,
-        Err(_) => {
-            let adb_path = data_dir().join("platform-tools").join(ADB_EXECUTABLE);
+    alvr_adb::commands::start_application(&adb_path, &device_serial, application_id)?;
 
-            if !adb_path.exists() {
-                let mut buffer = Cursor::new(
-                    download(
-                        worker_message_sender,
-                        "Downloading Android Platform Tools",
-                        PLATFORM_TOOLS_DL_LINK,
-                        client,
-                    )
-                    .await?,
-                );
-
-                zip::ZipArchive::new(&mut buffer)?.extract(data_dir())?;
-            }
-
-            worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
-                message: "Installing APK".into(),
-                progress: 0.0,
-            }))?;
-
-            Command::new(adb_path)
-                .arg("install")
-                .arg("-r")
-                .arg(&apk_path)
-                .output()?
-        }
-    };
-    if res.status.success() {
-        Ok(())
-    } else {
-        Err(anyhow::anyhow!(
-            "ADB install failed: {}",
-            String::from_utf8_lossy(&res.stderr)
-        ))
-    }
+    Ok(())
 }
 
 async fn download(

@@ -1,4 +1,4 @@
-mod commands;
+pub mod commands;
 mod parse;
 
 use alvr_common::anyhow::Result;
@@ -6,9 +6,9 @@ use alvr_common::{dbg_connection, error};
 use alvr_session::{ClientFlavor, ConnectionConfig};
 use std::collections::HashSet;
 
-const PACKAGE_NAME_STORE: &str = "alvr.client";
-const PACKAGE_NAME_GITHUB_DEV: &str = "alvr.client.dev";
-const PACKAGE_NAME_GITHUB_STABLE: &str = "alvr.client.stable";
+pub const PACKAGE_NAME_STORE: &str = "alvr.client";
+pub const PACKAGE_NAME_GITHUB_DEV: &str = "alvr.client.dev";
+pub const PACKAGE_NAME_GITHUB_STABLE: &str = "alvr.client.stable";
 
 pub enum WiredConnectionStatus {
     Ready,

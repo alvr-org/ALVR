@@ -34,7 +34,7 @@ fn get_command(adb_path: &str, args: &[&str]) -> Command {
     command
 }
 
-fn download(url: &str, progress_callback: impl Fn(usize, Option<usize>)) -> Result<Vec<u8>> {
+pub fn download(url: &str, progress_callback: impl Fn(usize, Option<usize>)) -> Result<Vec<u8>> {
     let agent = ureq::builder()
         .timeout_connect(REQUEST_TIMEOUT)
         .timeout_read(REQUEST_TIMEOUT)

@@ -1,4 +1,4 @@
-## Black screen even when SteamVR shows movement
+## (! Mandatory, apply fix if not applied yet !) Black screen even when SteamVR shows movement, Dashboard not detecting launched ALVR/SteamVR
 
 The steam runtimes SteamVR runs in break the alvr driver loaded by SteamVR.
 This causes the screen to stay black on the headset or an error to be reported that the pipewire device is missing or can even result in SteamVR crashing.
@@ -11,7 +11,7 @@ This path might differ based on your Steam installation, in that case SteamVR wi
 Then pick the storage location with the star emoji (⭐) and take the path directly above the usage statistics. Prepend this path to `steamapps/common/SteamVR/bin/vrmonitor.sh`.
 Finally put this entire path into the SteamVR commandline options instead of the other one.
 
-### Hyprland/Sway/Wlroots Fix
+### Hyprland/Sway/Wlroots Qt fix
 
 If you're on hyprland, sway, or other wlroots-based wayland compositor, you might have to prepend `QT_QPA_PLATFORM=xcb` before commandline, which results in full commandline for steamvr being something like this:
 `QT_QPA_PLATFORM=xcb ~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%`.
@@ -19,26 +19,43 @@ If you're on hyprland, sway, or other wlroots-based wayland compositor, you migh
 Related issue:
 [[BUG] No SteamVR UI on wlroots-based wayland compositors (sway, hyprland, ...) with workaround](https://github.com/ValveSoftware/SteamVR-for-Linux/issues/637).
 
+
+## The alvr driver doesn't get detected by SteamVR (even after vrmonitor fix)
+
+Could be related to Arch AUR package (either installed not for nvidia on nvidia based system (`alvr-nvidia`), or just in general).
+
+### Fix
+
+Try using a launcher or portable .tar.gz release from the Releases page.
+
 ## Artifacting, no SteamVR Overlay or graphical glitches in streaming view
 
-Could be related to AMD amdvlk driver being present on your system.
+Could be related to AMD amdvlk or amdgpu-pro driver being present on your system.
 
 If you have Amdvlk installed on your system, it overrides other vulkan drivers and causes SteamVR to break. Use the `vulkan-radeon` driver (aka radv) instead.
 
 ### Fix
 
-Check if Amdvlk is installed by seeing if `ls /usr/share/vulkan/icd.d/ | grep amd_icd` shows anything. If so, uninstall Amdvlk from your system.
+Check if amdvlk or amdgpu-pro are installed by seeing if `ls /usr/share/vulkan/icd.d/ | grep -e amd_icd -e amd_pro` shows anything.
+If so, uninstall amdvlk and/or the amdgpu-pro drivers from your system. (This method may not catch all installations due to distro variations)
 
-## Failed to create VAAPI encoder (fedora)
+On arch, first install `vulkan-radeon` and uninstall other drivers.
+
+## Failed to create VAAPI encoder
 
 Blocky or crashing streams of gameplay and then an error window on your desktop saying:
 > Failed to create VAAPI encoder: Cannot open video encoder codec: Function not implemented. Please make sure you have installed VAAPI runtime.
 
-This seems to be an issue for AMD GPU fedora 39+ users, but maybe others.
-
 ### Fix
 
-Switch from `mesa-va-drivers` to `mesa-va-drivers-freeworld`. [Guide on how to do so](https://fostips.com/hardware-acceleration-video-fedora/) or [the RPM docs](https://rpmfusion.org/Howto/Multimedia). Then reboot your machine.
+For fedora:
+ * Switch from `mesa-va-drivers` to `mesa-va-drivers-freeworld`. [Guide on how to do so](https://fostips.com/hardware-acceleration-video-fedora/) or [the RPM docs](https://rpmfusion.org/Howto/Multimedia)
+For arch (don't use vaapi for nvidia):
+ * Follow through [this](https://wiki.archlinux.org/title/Hardware_video_acceleration#Installation) page
+Then reboot your machine.
+
+For other distros (e.g. Manjaro):
+ * Install the nonfree version of the mesa/vaapi drivers that include the proprietary codecs needed for h264/hevc encoding
 
 ## Nvidia driver version requirements
 
@@ -67,11 +84,11 @@ Put `__NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only __GLX_VENDOR_
 
 ## Wayland
 
-When using hyprland or Gnome Wayland you need to put `WAYLAND_DISPLAY='' %command%` into the SteamVR commandline options to force XWayland.
+When using old Gnome (< 47 version) under Wayland you might need to put `WAYLAND_DISPLAY='' %command%` into the SteamVR commandline options to force XWayland on SteamVR. This fixes issue with drm leasing not being available.
 
 ## The view shakes
 
-SlimeVR related, will be fixed in future updates of ALVR
+SlimeVR related, might be fixed in future updates of ALVR
 
 ### Fix
 
@@ -87,20 +104,13 @@ Start Steam first before starting SteamVR through alvr. If SteamVR is already st
 
 ## No audio or microphone
 
-Even though audio or microphone are enabled in presets, neither seems to appear in devices list
+Even though audio or microphone are enabled in presets, still can't hear audio or no one can hear me
 
 ### Fix
 
-Check if you have `pipewire` installed and it's at least version `0.3.49` by using command `pipewire --version`
+Make sure you select `ALVR Audio` and `ALVR Microphone` in device list as default **after** connecting headset. As soon as headset disconnected, devices will be removed. If you set it as default, they will be automatically chosen whenever they show up and you don't need to do it manually ever again.
+If you don't appear to have audio devices, or have pipewire errors in logs, check if you have `pipewire` installed and it's at least version `0.3.49` by using command `pipewire --version`
 For older (<=22.04 or debian <=11) ubuntu or debian based distributions you can check [pipewire-upstream](https://github.com/pipewire-debian/pipewire-debian) page for installing newer pipewire version
-
-## The alvr driver doesn't get detected by SteamVR
-
-Could be related to Arch AUR package.
-
-### Fix
-
-Try using a launcher or portable .tar.gz release from the Releases page.
 
 ## Low AMDGPU performance and shutters
 
@@ -125,3 +135,4 @@ This issue is caused by SteamVR's webserver spamming requests that stall the chr
 ### Fix
 
 Apply the following patch: `https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide/blob/main/patch_bindings_spam.sh`
+Assuming default path for Arch, Fedora - one-liner: `curl -s https://raw.githubusercontent.com/alvr-org/ALVR-Distrobox-Linux-Guide/main/patch_bindings_spam.sh | sh -s ~/.steam/steam/steamapps/common/SteamVR`

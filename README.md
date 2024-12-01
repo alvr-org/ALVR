@@ -1,10 +1,10 @@
-<p align="center"> <img width="500" src="resources/alvr_combined_logo_hq.png"/> </p>
+<p align="center"> <img width="500" src="resources/ALVR-Grey.svg"/> </p>
 
 # ALVR - Air Light VR
 
 [![badge-discord][]][link-discord] [![badge-matrix][]][link-matrix] [![badge-opencollective][]][link-opencollective]
 
-Stream VR games from your PC to your headset via Wi-Fi.  
+Stream VR games from your PC to your headset via Wi-Fi.
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
 ### Direct download to the lastest version:
@@ -25,7 +25,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 |        GearVR         |                                    :construction: (maybe)                                    |
 |       Oculus Go       |                                            :x: **                                            |
 
-\* : Only works on some smartphones, not enough testing.  
+\* : Only works on some smartphones, not enough testing.
 \** : Oculus Go support was dropped, the minimum supported OS is Android 8. Download the last compatible version [here](https://github.com/alvr-org/ALVR/releases/tag/v18.2.3).
 
 |     PC OS      |                                    Support                                    |
@@ -48,8 +48,8 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
     -   NVIDIA GPU that supports NVENC (1000 GTX Series or higher) (or with an AMD GPU that supports AMF VCE) with the latest driver.
     -   Laptops with an onboard (Intel HD, AMD iGPU) and an additional dedicated GPU (NVidia GTX/RTX, AMD HD/R5/R7): you should assign the dedicated GPU or "high performance graphics adapter" to the applications ALVR, SteamVR for best performance and compatibility. (NVidia: Nvidia control panel->3d settings->application settings; AMD: similiar way)
 
--   802.11ac 5Ghz wireless or ethernet wired connection  
-    -   It is recommended to use 802.11ac 5Ghz for the headset and ethernet for PC  
+-   802.11ac 5Ghz wireless or ethernet wired connection
+    -   It is recommended to use 802.11ac 5Ghz for the headset and ethernet for PC
     -   You need to connect both the PC and the headset to same router (or use a routed connection as described [here](https://github.com/alvr-org/ALVR/wiki/ALVR-v14-and-Above))
 
 ## Install

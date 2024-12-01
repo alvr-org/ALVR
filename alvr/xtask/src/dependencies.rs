@@ -1,4 +1,4 @@
-use crate::command;
+use crate::{command, BuildPlatform};
 use alvr_filesystem as afs;
 use std::{fs, path::Path};
 use xshell::{cmd, Shell};
@@ -297,6 +297,30 @@ pub fn prepare_macos_deps() {
     let sh = Shell::new().unwrap();
 
     update_submodules(&sh);
+}
+
+pub fn prepare_server_deps(
+    platform: Option<BuildPlatform>,
+    skip_admin_priv: bool,
+    enable_nvenc: bool,
+) {
+    match platform {
+        Some(BuildPlatform::Windows) => prepare_windows_deps(skip_admin_priv),
+        Some(BuildPlatform::Linux) => prepare_linux_deps(enable_nvenc),
+        Some(BuildPlatform::Macos) => prepare_macos_deps(),
+        Some(BuildPlatform::Android) => panic!("Android is not supported"),
+        None => {
+            if cfg!(windows) {
+                prepare_windows_deps(skip_admin_priv);
+            } else if cfg!(target_os = "linux") {
+                prepare_linux_deps(enable_nvenc);
+            } else if cfg!(target_os = "macos") {
+                prepare_macos_deps();
+            } else {
+                panic!("Unsupported platform");
+            }
+        }
+    }
 }
 
 fn get_android_openxr_loaders(selection: OpenXRLoadersSelection) {

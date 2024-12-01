@@ -11,6 +11,7 @@ alvr_adb.workspace = true
 alvr_common.workspace = true
 alvr_filesystem.workspace = true
 alvr_gui_common.workspace = true
+alvr_system_info.workspace = true
 
 anyhow = "1"
 eframe = "0.28"

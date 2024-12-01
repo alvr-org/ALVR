@@ -31,7 +31,8 @@
       "build-commands": [
         "mkdir -p /app/utils/alvr/bin",
         "cd alvr/launcher",
-        "cargo xtask build-launcher",
+        "cargo xtask prepare-deps --platform linux --no-nvidia",
+        "cargo xtask build-launcher --release",
         "mv '/run/build/alvr/build/alvr_launcher_linux/ALVR Launcher' /app/utils/alvr/bin/alvr_launcher",
         " # get read-only errors from following lines - because this is an extension - so leave as comments until someone figures this out",
         " # install -D dashboard.ico /app/share/icons/alvr_launcher.ico",

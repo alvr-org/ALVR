@@ -49,8 +49,6 @@ FLAGS:
     --release           Optimized build with less debug checks. For build subcommands
     --profiling         Enable Profiling
     --gpl               Bundle GPL libraries (FFmpeg). Only for Windows
-    --appimage          Package as AppImage. For package-streamer subcommand
-    --zsync             For --appimage, create .zsync update file and build AppImage with embedded update information. For package-streamer subcommand
     --nightly           Append nightly tag to versions. For bump subcommand
     --no-rebuild        Do not rebuild the streamer with run-streamer
     --ci                Do some CI related tweaks. Depends on the other flags and subcommand
@@ -60,11 +58,18 @@ FLAGS:
     --pico-store        For package-client subcommand, build for Pico Store
 
 ARGS:
-    --platform <NAME>   Name of the platform (operative system or hardware name). snake_case
+    --platform <NAME>   Name of the platform (operative system name)
     --version <VERSION> Specify version to set with the bump-versions subcommand
     --root <PATH>       Installation root. By default no root is set and paths are calculated using
                         relative paths, which requires conforming to FHS on Linux.
 "#;
+
+enum BuildPlatform {
+    Windows,
+    Linux,
+    Macos,
+    Android,
+}
 
 pub fn run_streamer() {
     let sh = Shell::new().unwrap();
@@ -170,12 +175,18 @@ fn main() {
         let no_rebuild = args.contains("--no-rebuild");
         let for_ci = args.contains("--ci");
         let keep_config = args.contains("--keep-config");
-        let appimage = args.contains("--appimage");
-        let zsync = args.contains("--zsync");
         let link_stdcpp = !args.contains("--no-stdcpp");
         let all_targets = args.contains("--all-targets");
 
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
+        let platform = platform.as_deref().map(|platform| match platform {
+            "windows" => BuildPlatform::Windows,
+            "linux" => BuildPlatform::Linux,
+            "macos" => BuildPlatform::Macos,
+            "android" => BuildPlatform::Android,
+            _ => panic!("Unrecognized platform."),
+        });
+
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
         let root: Option<String> = args.opt_value_from_str("--root").unwrap();
 
@@ -191,23 +202,17 @@ fn main() {
             match subcommand.as_str() {
                 "prepare-deps" => {
                     if let Some(platform) = platform {
-                        match platform.as_str() {
-                            "windows" => dependencies::prepare_windows_deps(for_ci),
-                            "linux" => dependencies::prepare_linux_deps(!no_nvidia),
-                            "macos" => dependencies::prepare_macos_deps(),
-                            "android" => dependencies::build_android_deps(
+                        if matches!(platform, BuildPlatform::Android) {
+                            dependencies::build_android_deps(
                                 for_ci,
                                 all_targets,
                                 OpenXRLoadersSelection::All,
-                            ),
-                            _ => panic!("Unrecognized platform."),
+                            );
+                        } else {
+                            dependencies::prepare_server_deps(Some(platform), for_ci, !no_nvidia);
                         }
                     } else {
-                        if cfg!(windows) {
-                            dependencies::prepare_windows_deps(for_ci);
-                        } else if cfg!(target_os = "linux") {
-                            dependencies::prepare_linux_deps(!no_nvidia);
-                        }
+                        dependencies::prepare_server_deps(platform, for_ci, !no_nvidia);
 
                         dependencies::build_android_deps(
                             for_ci,
@@ -217,10 +222,10 @@ fn main() {
                     }
                 }
                 "build-streamer" => {
-                    build::build_streamer(profile, true, gpl, None, false, profiling, keep_config)
+                    build::build_streamer(profile, gpl, None, false, profiling, keep_config)
                 }
-                "build-launcher" => build::build_launcher(profile, true, false),
-                "build-server-lib" => build::build_server_lib(profile, true, None, false),
+                "build-launcher" => build::build_launcher(profile, false),
+                "build-server-lib" => build::build_server_lib(profile, None, false),
                 "build-client" => build::build_android_client(profile),
                 "build-client-lib" => {
                     build::build_android_client_core_lib(profile, link_stdcpp, all_targets)
@@ -230,27 +235,21 @@ fn main() {
                 }
                 "run-streamer" => {
                     if !no_rebuild {
-                        build::build_streamer(
-                            profile,
-                            true,
-                            gpl,
-                            None,
-                            false,
-                            profiling,
-                            keep_config,
-                        );
+                        build::build_streamer(profile, gpl, None, false, profiling, keep_config);
                     }
                     run_streamer();
                 }
                 "run-launcher" => {
                     if !no_rebuild {
-                        build::build_launcher(profile, true, false);
+                        build::build_launcher(profile, false);
                     }
                     run_launcher();
                 }
-                "package-streamer" => packaging::package_streamer(gpl, root, appimage, zsync),
-                "package-launcher" => packaging::package_launcher(appimage),
-                "package-client" => packaging::package_client_openxr(package_flavor),
+                "package-streamer" => {
+                    packaging::package_streamer(platform, for_ci, !no_nvidia, gpl, root)
+                }
+                "package-launcher" => packaging::package_launcher(platform, for_ci),
+                "package-client" => packaging::package_client_openxr(package_flavor, for_ci),
                 "package-client-lib" => packaging::package_client_lib(link_stdcpp, all_targets),
                 "format" => format::format(),
                 "check-format" => format::check_format(),

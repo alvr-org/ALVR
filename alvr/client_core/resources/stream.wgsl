@@ -42,23 +42,26 @@ override C_RIGHT_Y: f32 = 0.;
 
 override COLOR_ALPHA: f32 = 1.0;
 
+struct PushConstant {
+    reprojection_transform: mat4x4f,
+    view_idx: u32,
+}
+var<push_constant> pc: PushConstant;
+
+@group(0) @binding(0) var stream_texture: texture_2d<f32>;
+@group(0) @binding(1) var stream_sampler: sampler;
+
 struct VertexOutput {
     @builtin(position) position: vec4f,
     @location(0) uv: vec2f,
 }
 
-@group(0) @binding(0) var stream_texture: texture_2d<f32>;
-@group(0) @binding(1) var stream_sampler: sampler;
-
-var<push_constant> view_idx: u32;
-
 @vertex
 fn vertex_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     var result: VertexOutput;
 
-    let screen_uv = vec2f(f32(vertex_index & 1), f32(vertex_index >> 1));
-    result.position = vec4f((screen_uv - 0.5) * 2.0, 0.0, 1.0);
-    result.uv = vec2f(screen_uv.x, screen_uv.y);
+    result.uv = vec2f(f32(vertex_index & 1), f32(vertex_index >> 1));
+    result.position = pc.reprojection_transform * vec4f(result.uv.x - 0.5, 0.5 - result.uv.y, 0.0, 1.0);
 
     return result;
 }
@@ -82,7 +85,7 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         let b_right = vec2f(B_RIGHT_X, B_RIGHT_Y);
         let c_right = vec2f(C_RIGHT_X, C_RIGHT_Y);
 
-        if view_idx == 1 {
+        if pc.view_idx == 1 {
             corrected_uv.x = 1.0 - corrected_uv.x;
         }
 
@@ -108,7 +111,7 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
 
         corrected_uv = corrected_uv * view_size_ratio;
 
-        if view_idx == 1 {
+        if pc.view_idx == 1 {
             corrected_uv.x = 1.0 - corrected_uv.x;
         }
     }

@@ -3,14 +3,14 @@ use crate::{
     interaction::{self, InteractionContext, InteractionSourcesConfig},
 };
 use alvr_client_core::{
-    graphics::{GraphicsContext, StreamRenderer},
+    graphics::{GraphicsContext, StreamRenderer, StreamViewParams},
     video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
     ClientCoreContext, Platform,
 };
 use alvr_common::{
     anyhow::Result,
     error,
-    glam::{UVec2, Vec2},
+    glam::{Quat, UVec2, Vec2},
     parking_lot::RwLock,
     Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
@@ -76,6 +76,7 @@ impl ParsedStreamConfig {
 pub struct StreamContext {
     core_context: Arc<ClientCoreContext>,
     xr_session: xr::Session<xr::OpenGlEs>,
+    platform: Platform,
     interaction_context: Arc<RwLock<InteractionContext>>,
     reference_space: Arc<xr::Space>,
     swapchains: [xr::Swapchain<xr::OpenGlEs>; 2],
@@ -229,6 +230,7 @@ impl StreamContext {
         StreamContext {
             core_context: core_ctx,
             xr_session,
+            platform,
             interaction_context: interaction_ctx,
             reference_space,
             swapchains,
@@ -361,8 +363,21 @@ impl StreamContext {
             .unwrap();
 
         unsafe {
-            self.renderer
-                .render(buffer_ptr, [left_swapchain_idx, right_swapchain_idx])
+            self.renderer.render(
+                buffer_ptr,
+                [
+                    StreamViewParams {
+                        swapchain_index: left_swapchain_idx,
+                        reprojection_rotation: Quat::IDENTITY,
+                        fov: view_params[0].fov,
+                    },
+                    StreamViewParams {
+                        swapchain_index: right_swapchain_idx,
+                        reprojection_rotation: Quat::IDENTITY,
+                        fov: view_params[1].fov,
+                    },
+                ],
+            )
         };
 
         self.swapchains[0].release_image().unwrap();

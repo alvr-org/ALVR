@@ -1,17 +1,26 @@
 use super::{staging::StagingRenderer, GraphicsContext};
-use alvr_common::glam::{self, UVec2};
+use alvr_common::{
+    glam::{self, Mat4, Quat, UVec2, Vec3},
+    Fov,
+};
 use alvr_session::{FoveatedEncodingConfig, PassthroughMode};
 use std::{collections::HashMap, ffi::c_void, iter, rc::Rc};
 use wgpu::{
     hal::{api, gles},
     include_wgsl, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingResource, BindingType, ColorTargetState, ColorWrites,
+    BindGroupLayoutEntry, BindingResource, BindingType, Color, ColorTargetState, ColorWrites,
     FragmentState, LoadOp, PipelineCompilationOptions, PipelineLayoutDescriptor, PrimitiveState,
     PrimitiveTopology, PushConstantRange, RenderPassColorAttachment, RenderPassDescriptor,
     RenderPipeline, RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages,
     StoreOp, TextureSampleType, TextureView, TextureViewDescriptor, TextureViewDimension,
     VertexState,
 };
+
+pub struct StreamViewParams {
+    pub swapchain_index: u32,
+    pub reprojection_rotation: Quat,
+    pub fov: Fov,
+}
 
 #[derive(Debug)]
 struct ViewObjects {
@@ -105,7 +114,7 @@ impl StreamRenderer {
                 bind_group_layouts: &[&bind_group_layout],
                 push_constant_ranges: &[PushConstantRange {
                     stages: ShaderStages::VERTEX_FRAGMENT,
-                    range: 0..4,
+                    range: 0..68,
                 }],
             })),
             vertex: VertexState {
@@ -204,8 +213,7 @@ impl StreamRenderer {
         }
     }
 
-    #[allow(unused_variables)]
-    pub unsafe fn render(&self, hardware_buffer: *mut c_void, swapchain_indices: [u32; 2]) {
+    pub unsafe fn render(&self, hardware_buffer: *mut c_void, view_params: [StreamViewParams; 2]) {
         // if hardware_buffer is available copy stream to staging texture
         if !hardware_buffer.is_null() {
             self.staging_renderer.render(hardware_buffer);
@@ -216,24 +224,51 @@ impl StreamRenderer {
             .device
             .create_command_encoder(&Default::default());
 
-        for (view_idx, swapchain_idx) in swapchain_indices.iter().enumerate() {
+        for (view_idx, view_params) in view_params.iter().enumerate() {
             let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: None,
                 color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &self.views_objects[view_idx].render_target[*swapchain_idx as usize],
+                    view: &self.views_objects[view_idx].render_target
+                        [view_params.swapchain_index as usize],
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: LoadOp::Clear(wgpu::Color::RED),
+                        load: LoadOp::Clear(Color::BLACK),
                         store: StoreOp::Store,
                     },
                 })],
                 ..Default::default()
             });
 
+            let fov = view_params.fov;
+
+            let tanl = f32::tan(fov.left);
+            let tanr = f32::tan(fov.right);
+            let tanu = f32::tan(fov.up);
+            let tand = f32::tan(fov.down);
+
+            let width = tanr - tanl;
+            let height = tanu - tand;
+
+            // The image is at z = -1.0, so we use tangents for the size
+            let model_mat =
+                Mat4::from_translation(Vec3::new(width / 2.0 + tanl, height / 2.0 + tand, -1.0))
+                    * Mat4::from_scale(Vec3::new(width, height, 1.));
+            let view_mat = Mat4::from_quat(view_params.reprojection_rotation).inverse();
+            let proj_mat = super::projection_from_fov(view_params.fov);
+
+            let transform = proj_mat * view_mat * model_mat;
+
+            let transform_bytes = transform
+                .to_cols_array()
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect::<Vec<u8>>();
+
             render_pass.set_pipeline(&self.pipeline);
+            render_pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, 0, &transform_bytes);
             render_pass.set_push_constants(
                 ShaderStages::VERTEX_FRAGMENT,
-                0,
+                64,
                 &(view_idx as u32).to_le_bytes(),
             );
             render_pass.set_bind_group(0, &self.views_objects[view_idx].bind_group, &[]);

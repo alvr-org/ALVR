@@ -1,5 +1,5 @@
 use crate::{
-    graphics::{GraphicsContext, LobbyRenderer, RenderViewInput, StreamRenderer},
+    graphics::{GraphicsContext, LobbyRenderer, LobbyViewParams, StreamRenderer, StreamViewParams},
     storage,
     video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
     ClientCapabilities, ClientCoreContext, ClientCoreEvent,
@@ -675,10 +675,16 @@ thread_local! {
 }
 
 #[repr(C)]
-pub struct AlvrViewInput {
+pub struct AlvrLobbyViewParams {
+    swapchain_index: u32,
     pose: AlvrPose,
     fov: AlvrFov,
+}
+
+pub struct AlvrStreamViewParams {
     swapchain_index: u32,
+    reprojection_rotation: AlvrQuat,
+    fov: AlvrFov,
 }
 
 #[repr(C)]
@@ -788,19 +794,19 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
 // todo: support hands
 #[no_mangle]
 pub unsafe extern "C" fn alvr_render_lobby_opengl(
-    view_inputs: *const AlvrViewInput,
+    view_inputs: *const AlvrLobbyViewParams,
     render_background: bool,
 ) {
     let view_inputs = [
-        RenderViewInput {
+        LobbyViewParams {
+            swapchain_index: (*view_inputs).swapchain_index,
             pose: from_capi_pose((*view_inputs).pose),
             fov: from_capi_fov((*view_inputs).fov),
-            swapchain_index: (*view_inputs).swapchain_index,
         },
-        RenderViewInput {
+        LobbyViewParams {
+            swapchain_index: (*view_inputs.offset(1)).swapchain_index,
             pose: from_capi_pose((*view_inputs.offset(1)).pose),
             fov: from_capi_fov((*view_inputs.offset(1)).fov),
-            swapchain_index: (*view_inputs.offset(1)).swapchain_index,
         },
     ];
 
@@ -816,16 +822,30 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(
     });
 }
 
+/// view_params: array of 2
 #[no_mangle]
 pub unsafe extern "C" fn alvr_render_stream_opengl(
     hardware_buffer: *mut c_void,
-    swapchain_indices: *const u32,
+    view_params: *const AlvrStreamViewParams,
 ) {
     STREAM_RENDERER.with_borrow(|renderer| {
         if let Some(renderer) = renderer {
+            let left_params = &*view_params;
+            let right_params = &*view_params.offset(1);
             renderer.render(
                 hardware_buffer,
-                [*swapchain_indices, *swapchain_indices.offset(1)],
+                [
+                    StreamViewParams {
+                        swapchain_index: left_params.swapchain_index,
+                        reprojection_rotation: from_capi_quat(left_params.reprojection_rotation),
+                        fov: from_capi_fov(left_params.fov),
+                    },
+                    StreamViewParams {
+                        swapchain_index: right_params.swapchain_index,
+                        reprojection_rotation: from_capi_quat(right_params.reprojection_rotation),
+                        fov: from_capi_fov(right_params.fov),
+                    },
+                ],
             );
         }
     });
@@ -966,4 +986,9 @@ pub extern "C" fn alvr_get_frame(
     } else {
         false
     }
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_rotation_delta(source: AlvrQuat, destination: AlvrQuat) -> AlvrQuat {
+    to_capi_quat(from_capi_quat(source).inverse() * from_capi_quat(destination))
 }

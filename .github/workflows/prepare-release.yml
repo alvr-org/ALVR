@@ -87,9 +87,8 @@ jobs:
         env:
           RUST_BACKTRACE: 1
         run: |
-          cargo xtask prepare-deps --platform windows --ci
-          cargo xtask package-streamer --gpl
-          cargo xtask package-launcher
+          cargo xtask package-streamer --gpl --ci
+          cargo xtask package-launcher --ci
 
       - name: Upload streamer
         uses: actions/upload-release-asset@v1
@@ -132,15 +131,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install libfuse2 build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libffmpeg-nvenc-dev nvidia-cuda-toolkit libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
           cp alvr/xtask/deb/cuda.pc /usr/share/pkgconfig
-          cargo xtask prepare-deps --platform linux
 
       - name: Build and package ALVR (.tar.gz)
         id: build
         env:
           RUST_BACKTRACE: 1
         run: |
-          cargo xtask package-streamer --gpl
-          cargo xtask package-launcher
+          cargo xtask package-streamer --gpl --ci
+          cargo xtask package-launcher --ci
 
       - name: Upload streamer (tar.gz)
         uses: actions/upload-release-asset@v1
@@ -223,9 +221,7 @@ jobs:
         env:
           RUST_BACKTRACE: 1
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-        run: |
-          cargo xtask prepare-deps --platform android --ci
-          cargo xtask package-client
+        run: cargo xtask package-client --ci
 
       - name: Sign APK
         uses: ilharp/sign-android-release@v1

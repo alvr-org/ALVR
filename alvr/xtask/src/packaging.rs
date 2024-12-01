@@ -2,11 +2,10 @@ use crate::{
     build::{self, Profile},
     command,
     dependencies::{self, OpenXRLoadersSelection},
-    version,
+    version, BuildPlatform,
 };
 use alvr_filesystem as afs;
 use std::{
-    env::consts::OS,
     fs,
     path::{Path, PathBuf},
 };
@@ -59,67 +58,6 @@ fn build_windows_installer() {
     .unwrap();
 }
 
-fn package_streamer_appimage(release: bool, update: bool) {
-    let sh = Shell::new().unwrap();
-
-    let appdir = &afs::build_dir().join("ALVR.AppDir");
-    let bin = &afs::build_dir().join("alvr_streamer_linux");
-
-    let icon = &afs::workspace_dir().join("resources/alvr.png");
-    let desktop = &afs::workspace_dir().join("alvr/xtask/resources/alvr.desktop");
-
-    let linuxdeploy = afs::build_dir().join("linuxdeploy-x86_64.AppImage");
-
-    if !sh.path_exists(&linuxdeploy) {
-        command::download(&sh, "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage", &linuxdeploy).ok();
-    }
-    cmd!(&sh, "chmod a+x {linuxdeploy}").run().ok();
-
-    if sh.path_exists(appdir) {
-        sh.remove_path(appdir).ok();
-    }
-
-    cmd!(&sh, "{linuxdeploy} --appdir={appdir}").run().ok();
-
-    sh.cmd("sh")
-        .arg("-c")
-        .arg(format!(
-            "cp -r {}/* {}/usr",
-            bin.to_string_lossy(),
-            appdir.to_string_lossy()
-        ))
-        .run()
-        .ok();
-
-    sh.set_var("ARCH", "x86_64");
-    sh.set_var("OUTPUT", "ALVR-x86_64.AppImage");
-
-    if release {
-        let version = version::version();
-        sh.set_var("VERSION", &version);
-
-        if update {
-            let repo = if version.contains("nightly") {
-                "ALVR-nightly"
-            } else {
-                "ALVR"
-            };
-            sh.set_var(
-                "UPDATE_INFORMATION",
-                format!("gh-releases-zsync|alvr-org|{repo}|latest|ALVR-x86_64.AppImage.zsync"),
-            );
-        }
-    }
-
-    sh.set_var("VERBOSE", "1");
-    sh.set_var("NO_APPSTREAM", "1");
-    // sh.set_var("APPIMAGE_COMP", "xz");
-
-    sh.change_dir(afs::build_dir());
-
-    cmd!(&sh, "{linuxdeploy} --appdir={appdir} -i{icon} -d{desktop} --deploy-deps-only={appdir}/usr/lib64/alvr/bin/linux64/driver_alvr_server.so --deploy-deps-only={appdir}/usr/lib64/libalvr_vulkan_layer.so --output appimage").run().unwrap();
-}
-
 pub fn include_licenses(root_path: &Path, gpl: bool) {
     let sh = Shell::new().unwrap();
 
@@ -156,51 +94,47 @@ pub fn include_licenses(root_path: &Path, gpl: bool) {
         .unwrap();
 }
 
-pub fn package_streamer(gpl: bool, root: Option<String>, appimage: bool, zsync: bool) {
+pub fn package_streamer(
+    platform: Option<BuildPlatform>,
+    skip_admin_priv: bool,
+    enable_nvenc: bool,
+    gpl: bool,
+    root: Option<String>,
+) {
     let sh = Shell::new().unwrap();
 
-    build::build_streamer(
-        Profile::Distribution,
-        !appimage,
-        gpl,
-        root,
-        true,
-        false,
-        false,
-    );
+    fs::remove_dir_all(afs::streamer_build_dir()).ok();
+
+    dependencies::prepare_server_deps(platform, skip_admin_priv, enable_nvenc);
+
+    build::build_streamer(Profile::Distribution, gpl, root, true, false, false);
 
     include_licenses(&afs::streamer_build_dir(), gpl);
 
-    if OS == "windows" {
+    if cfg!(windows) {
         command::zip(&sh, &afs::streamer_build_dir()).unwrap();
-
-        // todo: remove installer
-        // note: wix package is broken, find alternative
-        //build_windows_installer();
     } else {
         command::targz(&sh, &afs::streamer_build_dir()).unwrap();
-
-        if appimage {
-            package_streamer_appimage(true, zsync);
-        }
     }
 }
 
-pub fn package_launcher(appimage: bool) {
+pub fn package_launcher(platform: Option<BuildPlatform>, skip_admin_priv: bool) {
     let sh = Shell::new().unwrap();
 
-    build::build_launcher(Profile::Distribution, !appimage, true);
+    fs::remove_dir_all(afs::launcher_build_dir()).ok();
+
+    dependencies::prepare_server_deps(platform, skip_admin_priv, false);
+
+    build::build_launcher(Profile::Distribution, true);
 
     include_licenses(&afs::launcher_build_dir(), false);
 
-    if OS == "windows" {
+    if cfg!(windows) {
         command::zip(&sh, &afs::launcher_build_dir()).unwrap();
 
         // todo: installer
     } else {
         command::targz(&sh, &afs::launcher_build_dir()).unwrap();
-
-        // todo: appimage
     }
 }
 
@@ -213,8 +147,8 @@ pub fn replace_client_openxr_manifest(from_pattern: &str, to: &str) {
     fs::write(manifest_path, manifest_string).unwrap();
 }
 
-pub fn package_client_openxr(flavor: ReleaseFlavor) {
-    crate::clean();
+pub fn package_client_openxr(flavor: ReleaseFlavor, skip_admin_priv: bool) {
+    fs::remove_dir_all(afs::deps_dir().join("android_openxr")).ok();
 
     let openxr_selection = match flavor {
         ReleaseFlavor::GitHub => OpenXRLoadersSelection::All,
@@ -222,7 +156,7 @@ pub fn package_client_openxr(flavor: ReleaseFlavor) {
         ReleaseFlavor::PicoStore => OpenXRLoadersSelection::OnlyPico,
     };
 
-    dependencies::build_android_deps(false, false, openxr_selection);
+    dependencies::build_android_deps(skip_admin_priv, false, openxr_selection);
 
     if !matches!(flavor, ReleaseFlavor::GitHub) {
         replace_client_openxr_manifest(

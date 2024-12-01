@@ -8,6 +8,7 @@ license.workspace = true
 
 [dependencies]
 alvr_common.workspace = true
+alvr_system_info.workspace = true
 
 bytemuck = { version = "1", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }

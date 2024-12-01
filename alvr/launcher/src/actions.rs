@@ -272,9 +272,11 @@ pub fn data_dir() -> PathBuf {
         PathBuf::from(env::var("HOME").expect("Failed to determine home directory"))
             .join(".local/share/ALVR-Launcher")
     } else {
-        env::current_dir()
+        env::current_exe()
             .expect("Unable to determine executable directory")
-            .join("ALVR-Launcher")
+            .parent()
+            .unwrap()
+            .to_owned()
     }
 }
 

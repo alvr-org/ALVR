@@ -119,6 +119,8 @@ pub fn package_streamer(
 pub fn package_launcher() {
     let sh = Shell::new().unwrap();
 
+    sh.remove_path(afs::launcher_build_dir()).ok();
+
     build::build_launcher(Profile::Distribution, true);
 
     include_licenses(&afs::launcher_build_dir(), false);

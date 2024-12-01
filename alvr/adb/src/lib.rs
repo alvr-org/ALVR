@@ -3,12 +3,10 @@ mod parse;
 
 use alvr_common::anyhow::Result;
 use alvr_common::{dbg_connection, error};
-use alvr_session::{ClientFlavor, ConnectionConfig};
+use alvr_system_info::{
+    ClientFlavor, PACKAGE_NAME_GITHUB_DEV, PACKAGE_NAME_GITHUB_STABLE, PACKAGE_NAME_STORE,
+};
 use std::collections::HashSet;
-
-pub const PACKAGE_NAME_STORE: &str = "alvr.client";
-pub const PACKAGE_NAME_GITHUB_DEV: &str = "alvr.client.dev";
-pub const PACKAGE_NAME_GITHUB_STABLE: &str = "alvr.client.stable";
 
 pub enum WiredConnectionStatus {
     Ready,
@@ -32,7 +30,9 @@ impl WiredConnection {
     pub fn setup(
         &self,
         control_port: u16,
-        config: &ConnectionConfig,
+        stream_port: u16,
+        client_type: &ClientFlavor,
+        client_autolaunch: bool,
     ) -> Result<WiredConnectionStatus> {
         let Some(device_serial) = commands::list_devices(&self.adb_path)?
             .into_iter()
@@ -44,7 +44,7 @@ impl WiredConnection {
             ));
         };
 
-        let ports = HashSet::from([control_port, config.stream_port]);
+        let ports = HashSet::from([control_port, stream_port]);
         let forwarded_ports: HashSet<u16> =
             commands::list_forwarded_ports(&self.adb_path, &device_serial)?
                 .into_iter()
@@ -58,8 +58,7 @@ impl WiredConnection {
             );
         }
 
-        let Some(process_name) =
-            get_process_name(&self.adb_path, &device_serial, &config.wired_client_type)
+        let Some(process_name) = get_process_name(&self.adb_path, &device_serial, client_type)
         else {
             return Ok(WiredConnectionStatus::NotReady(
                 "No suitable ALVR client is installed".to_owned(),
@@ -67,7 +66,7 @@ impl WiredConnection {
         };
 
         if commands::get_process_id(&self.adb_path, &device_serial, &process_name)?.is_none() {
-            if config.wired_client_autolaunch {
+            if client_autolaunch {
                 commands::start_application(&self.adb_path, &device_serial, &process_name)?;
                 Ok(WiredConnectionStatus::NotReady(
                     "Starting ALVR client".to_owned(),

@@ -170,8 +170,7 @@ version = "21.0.0-dev01"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
- "alvr_server_io",
- "alvr_session",
+ "alvr_system_info",
  "anyhow",
  "ureq",
  "zip",
@@ -342,6 +341,7 @@ dependencies = [
  "alvr_common",
  "alvr_filesystem",
  "alvr_gui_common",
+ "alvr_system_info",
  "anyhow",
  "eframe",
  "flate2",
@@ -439,6 +439,7 @@ version = "20.11.1"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
+ "alvr_system_info",
  "bytemuck",
  "regex",
  "serde",
@@ -469,6 +470,8 @@ dependencies = [
  "ndk 0.9.0",
  "ndk-context",
  "ndk-sys 0.6.0+11769913",
+ "serde",
+ "settings-schema",
 ]
 
 [[package]]

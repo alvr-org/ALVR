@@ -176,9 +176,9 @@ fn install_and_launch_apk(
     let version = Version::parse(&v).context("Failed to parse release version")?;
     let stable = version.pre.is_empty() && !version.build.contains("nightly");
     let application_id = if stable {
-        alvr_adb::PACKAGE_NAME_GITHUB_STABLE
+        alvr_system_info::PACKAGE_NAME_GITHUB_STABLE
     } else {
-        alvr_adb::PACKAGE_NAME_GITHUB_DEV
+        alvr_system_info::PACKAGE_NAME_GITHUB_DEV
     };
 
     if alvr_adb::commands::is_package_installed(&adb_path, &device_serial, application_id)? {

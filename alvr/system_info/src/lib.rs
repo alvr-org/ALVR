@@ -4,7 +4,13 @@ pub mod android;
 #[cfg(target_os = "android")]
 pub use android::*;
 
+use alvr_common::settings_schema::SettingsSchema;
+use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
+
+pub const PACKAGE_NAME_STORE: &str = "alvr.client";
+pub const PACKAGE_NAME_GITHUB_DEV: &str = "alvr.client.dev";
+pub const PACKAGE_NAME_GITHUB_STABLE: &str = "alvr.client.stable";
 
 // Platform of the device. It is used to match the VR runtime and enable features conditionally.
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -160,4 +166,11 @@ pub fn local_ip() -> std::net::IpAddr {
     use std::net::{IpAddr, Ipv4Addr};
 
     local_ip_address::local_ip().unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED))
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum ClientFlavor {
+    Store,
+    Github,
+    Custom(String),
 }

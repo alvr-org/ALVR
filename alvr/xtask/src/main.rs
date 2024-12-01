@@ -248,7 +248,7 @@ fn main() {
                 "package-streamer" => {
                     packaging::package_streamer(platform, for_ci, !no_nvidia, gpl, root)
                 }
-                "package-launcher" => packaging::package_launcher(platform, for_ci),
+                "package-launcher" => packaging::package_launcher(),
                 "package-client" => packaging::package_client_openxr(package_flavor, for_ci),
                 "package-client-lib" => packaging::package_client_lib(link_stdcpp, all_targets),
                 "format" => format::format(),

@@ -11,6 +11,8 @@ alvr_common.workspace = true
 
 jni = "0.21"
 local-ip-address = "0.6"
+serde = { version = "1", features = ["derive"] }
+settings-schema = { git = "https://github.com/alvr-org/settings-schema-rs", rev = "676185f" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 ndk = { version = "0.9", features = ["api-level-26", "media"] }

@@ -103,8 +103,6 @@ pub fn package_streamer(
 ) {
     let sh = Shell::new().unwrap();
 
-    fs::remove_dir_all(afs::streamer_build_dir()).ok();
-
     dependencies::prepare_server_deps(platform, skip_admin_priv, enable_nvenc);
 
     build::build_streamer(Profile::Distribution, gpl, root, true, false, false);
@@ -118,12 +116,8 @@ pub fn package_streamer(
     }
 }
 
-pub fn package_launcher(platform: Option<BuildPlatform>, skip_admin_priv: bool) {
+pub fn package_launcher() {
     let sh = Shell::new().unwrap();
-
-    fs::remove_dir_all(afs::launcher_build_dir()).ok();
-
-    dependencies::prepare_server_deps(platform, skip_admin_priv, false);
 
     build::build_launcher(Profile::Distribution, true);
 

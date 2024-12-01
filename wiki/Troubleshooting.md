@@ -179,3 +179,20 @@ Solution:
 Symptoms: image is not always smooth especially in high motion or fast scenes.
 
 Solution: increase maxBufferingFrames.
+
+
+### Possible temporary fix for Meta framerate scaling for throttling feature
+
+#### Problem  
+The current version of ALVR does not support Meta's framerate scaling for throttling feature. This can cause issues where the framerate between the headset and the streamer application does not align, potentially leading to stuttering or throttling. A future update to ALVR is expected to address this issue, but a workaround is available in the meantime.
+
+#### Temporary Fix  
+1. **Reboot Your Headset**  
+   - Start by rebooting your VR headset. This may resolve the issue without further adjustments.
+
+2. **Manually Set the Framerate**  
+   - Use the **SideQuest Desktop application** to manually adjust the framerate of the ALVR Android client on your headset to match the framerate set in the ALVR streamer application.  
+     - Example: If the ALVR streamer is configured to 90Hz, set the headset's refresh rate to 90Hz in SideQuest.
+     - for more information see issue [#2537] (https://github.com/alvr-org/ALVR/issues/2537).
+
+This adjustment bypasses the framerate scaling for throttling feature, ensuring smoother performance.

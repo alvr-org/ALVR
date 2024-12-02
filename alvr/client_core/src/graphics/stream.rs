@@ -80,11 +80,23 @@ impl StreamRenderer {
         ]);
 
         if let Some(mode) = passthrough {
-            let ps_alpha = match mode {
-                PassthroughMode::AugmentedReality { brightness } => brightness,
-                PassthroughMode::Blend { opacity } => opacity,
-            };
-            constants.extend([("COLOR_ALPHA".into(), (1. - ps_alpha).into())]);
+            match mode {
+                PassthroughMode::ChromaKey { red, green, blue } => {
+                    constants.extend([("CHROMA_KEY_RED".into(), red.into())]);
+                    constants.extend([("CHROMA_KEY_GREEN".into(), green.into())]);
+                    constants.extend([("CHROMA_KEY_BLUE".into(), blue.into())]);
+                    constants.extend([("CHROMA_KEY_STRENGTH".into(), 1.0)]);
+                    constants.extend([("COLOR_ALPHA".into(), 1.0)]);
+                },
+                _ => {
+                    let ps_alpha = match mode {
+                        PassthroughMode::AugmentedReality { brightness } => brightness,
+                        PassthroughMode::Blend { opacity } => opacity,
+                        PassthroughMode::ChromaKey { red, green, blue } => green,
+                    };
+                    constants.extend([("COLOR_ALPHA".into(), (1. - ps_alpha).into())]);
+                }
+            }
         }
 
         let staging_resolution = if let Some(foveated_encoding) = foveated_encoding {

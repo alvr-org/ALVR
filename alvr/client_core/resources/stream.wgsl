@@ -41,6 +41,10 @@ override C_RIGHT_X: f32 = 0.;
 override C_RIGHT_Y: f32 = 0.;
 
 override COLOR_ALPHA: f32 = 1.0;
+override CHROMA_KEY_STRENGTH: f32 = 0.0;
+override CHROMA_KEY_RED: f32 = 0.0;
+override CHROMA_KEY_GREEN: f32 = 0.0;
+override CHROMA_KEY_BLUE: f32 = 0.0;
 
 struct VertexOutput {
     @builtin(position) position: vec4f,
@@ -133,6 +137,17 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         let enc_highValues = pow(color, vec3f(ENCODING_GAMMA));
         color = enc_condition * enc_lowValues + (1.0 - enc_condition) * enc_highValues;
     }
+    
+    let keyRGB = vec3f(CHROMA_KEY_RED, CHROMA_KEY_GREEN, CHROMA_KEY_BLUE); 
+    let keyCC = RGBToCC(keyRGB);
+    let CC = RGBToCC(color);
+    let mask = f32(sqrt(pow(keyCC.r - CC.r, 2.0) + pow(keyCC.g - CC.g, 2.0)));
+    let final_opacity = max((1.0 - CHROMA_KEY_STRENGTH), f32(smoothstep(0.3, 0.4, mask)));
 
-    return vec4f(color, COLOR_ALPHA);
+    return vec4f(color, COLOR_ALPHA * final_opacity);
+}
+
+fn RGBToCC(in_rgb : vec3f) -> vec2f {
+    let Y = f32(0.299 * in_rgb.r + 0.587 * in_rgb.g + 0.114 * in_rgb.b);
+    return vec2f((in_rgb.b - Y) * 0.565, (in_rgb.r - Y) * 0.713);
 }

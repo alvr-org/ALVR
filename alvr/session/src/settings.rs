@@ -567,6 +567,14 @@ pub enum PassthroughMode {
         #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
         opacity: f32,
     },
+    ChromaKey {
+        #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
+        red: f32,
+        #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
+        green: f32,
+        #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
+        blue: f32,
+    },
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1376,6 +1384,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     variant: PassthroughModeDefaultVariant::AugmentedReality,
                     AugmentedReality: PassthroughModeAugmentedRealityDefault { brightness: 0.4 },
                     Blend: PassthroughModeBlendDefault { opacity: 0.5 },
+                    ChromaKey: PassthroughModeChromaKeyDefault { red: 0.0, green: 1.0, blue: 0.0 }
                 },
             },
             adapter_index: 0,

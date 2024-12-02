@@ -1384,7 +1384,11 @@ pub fn session_settings_default() -> SettingsDefault {
                     variant: PassthroughModeDefaultVariant::AugmentedReality,
                     AugmentedReality: PassthroughModeAugmentedRealityDefault { brightness: 0.4 },
                     Blend: PassthroughModeBlendDefault { opacity: 0.5 },
-                    ChromaKey: PassthroughModeChromaKeyDefault { red: 0.0, green: 1.0, blue: 0.0 }
+                    ChromaKey: PassthroughModeChromaKeyDefault {
+                        red: 0.0,
+                        green: 1.0,
+                        blue: 0.0,
+                    },
                 },
             },
             adapter_index: 0,

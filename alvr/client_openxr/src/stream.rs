@@ -411,7 +411,10 @@ impl StreamContext {
                 .passthrough
                 .clone()
                 .map(|mode| ProjectionLayerAlphaConfig {
-                    premultiplied: !matches!(mode, PassthroughMode::Blend { .. } | PassthroughMode::ChromaKey { .. }),
+                    premultiplied: !matches!(
+                        mode,
+                        PassthroughMode::Blend { .. } | PassthroughMode::ChromaKey { .. }
+                    ),
                 }),
         );
 

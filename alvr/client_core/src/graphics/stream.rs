@@ -87,7 +87,7 @@ impl StreamRenderer {
                     constants.extend([("CHROMA_KEY_BLUE".into(), blue.into())]);
                     constants.extend([("CHROMA_KEY_STRENGTH".into(), 1.0)]);
                     constants.extend([("COLOR_ALPHA".into(), 1.0)]);
-                },
+                }
                 _ => {
                     let ps_alpha = match mode {
                         PassthroughMode::AugmentedReality { brightness } => brightness,

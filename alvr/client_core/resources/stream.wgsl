@@ -138,11 +138,15 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         color = enc_condition * enc_lowValues + (1.0 - enc_condition) * enc_highValues;
     }
     
-    let keyRGB = vec3f(CHROMA_KEY_RED, CHROMA_KEY_GREEN, CHROMA_KEY_BLUE); 
-    let keyCC = RGBToCC(keyRGB);
-    let CC = RGBToCC(color);
-    let mask = f32(sqrt(pow(keyCC.r - CC.r, 2.0) + pow(keyCC.g - CC.g, 2.0)));
-    let final_opacity = max((1.0 - CHROMA_KEY_STRENGTH), f32(smoothstep(0.3, 0.4, mask)));
+    var final_opacity = 1.0;
+
+    if CHROMA_KEY_STRENGTH > 0.0 {
+        let keyRGB = vec3f(CHROMA_KEY_RED, CHROMA_KEY_GREEN, CHROMA_KEY_BLUE); 
+        let keyCC = RGBToCC(keyRGB);
+        let CC = RGBToCC(color);
+        let mask = f32(sqrt(pow(keyCC.r - CC.r, 2.0) + pow(keyCC.g - CC.g, 2.0)));
+        final_opacity = f32(smoothstep(0.3, 0.4, mask));
+    }
 
     return vec4f(color, COLOR_ALPHA * final_opacity);
 }

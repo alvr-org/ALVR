@@ -1,4 +1,4 @@
-use alvr_common::{debug, error, info, parking_lot::Mutex, warn, RelaxedAtomic};
+use alvr_common::{debug, error, info, parking_lot::Mutex, semver::Version, warn, RelaxedAtomic};
 use alvr_events::{Event, EventType};
 use alvr_packets::ServerRequest;
 use alvr_server_io::ServerSessionManager;
@@ -201,8 +201,15 @@ impl DataSources {
 
         let events_thread = thread::spawn({
             let running = Arc::clone(&running);
+            let session_source = Arc::clone(&session_source);
             move || {
                 while running.value() {
+                    if matches!(*session_source.lock(), SessionSource::Local(_)) {
+                        thread::sleep(Duration::from_millis(100));
+
+                        continue;
+                    }
+
                     let uri = Uri::from_str(&format!("ws://127.0.0.1:{port}/api/events")).unwrap();
 
                     let maybe_socket = TcpStream::connect_timeout(
@@ -260,28 +267,49 @@ impl DataSources {
 
         let ping_thread = thread::spawn({
             let running = Arc::clone(&running);
-            let data_source = Arc::clone(&session_source);
+            let session_source = Arc::clone(&session_source);
             let server_connected = Arc::clone(&server_connected);
             move || {
                 const PING_INTERVAL: Duration = Duration::from_secs(1);
                 let mut deadline = Instant::now();
-                let uri = format!("http://127.0.0.1:{port}/api/ping");
+                let uri = format!("http://127.0.0.1:{port}/api/version");
 
                 let request_agent = ureq::AgentBuilder::new()
                     .timeout_connect(REQUEST_TIMEOUT)
                     .build();
 
                 loop {
-                    let connected = request_agent.get(&uri).call().is_ok();
+                    let maybe_server_version = request_agent
+                        .get(&uri)
+                        .call()
+                        .ok()
+                        .and_then(|r| Version::from_str(&r.into_string().ok()?).ok());
+
+                    let connected = if let Some(version) = maybe_server_version {
+                        // We need exact match because we don't do session extrapolation at the
+                        // dashboard level. In the future we may relax the contraint and consider
+                        // protocol compatibility check for dashboard.
+                        let matches = version == *alvr_common::ALVR_VERSION;
+
+                        if !matches {
+                            error!("Server version mismatch: found {version}. Please remove all previous ALVR installations");
+                        }
+
+                        matches
+                    } else {
+                        false
+                    };
 
                     {
-                        let mut data_source_lock = data_source.lock();
-                        if connected && matches!(*data_source_lock, SessionSource::Local(_)) {
+                        let mut session_source_lock = session_source.lock();
+                        if connected && matches!(*session_source_lock, SessionSource::Local(_)) {
                             info!("Server connected");
-                            *data_source_lock = SessionSource::Remote;
-                        } else if !connected && matches!(*data_source_lock, SessionSource::Remote) {
+                            *session_source_lock = SessionSource::Remote;
+                        } else if !connected
+                            && matches!(*session_source_lock, SessionSource::Remote)
+                        {
                             info!("Server disconnected");
-                            *data_source_lock =
+                            *session_source_lock =
                                 SessionSource::Local(Box::new(get_local_session_source()));
                         }
                     }

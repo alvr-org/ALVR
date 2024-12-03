@@ -2,7 +2,7 @@ use crate::{
     graphics::{self, ProjectionLayerAlphaConfig, ProjectionLayerBuilder},
     interaction::{self, InteractionContext},
 };
-use alvr_client_core::graphics::{GraphicsContext, LobbyRenderer, RenderViewInput, SDR_FORMAT_GL};
+use alvr_client_core::graphics::{GraphicsContext, LobbyRenderer, LobbyViewParams, SDR_FORMAT_GL};
 use alvr_common::{glam::UVec2, parking_lot::RwLock, Pose};
 use openxr as xr;
 use std::{rc::Rc, sync::Arc};
@@ -144,12 +144,12 @@ impl Lobby {
 
         self.renderer.render(
             [
-                RenderViewInput {
+                LobbyViewParams {
                     pose: crate::from_xr_pose(views[0].pose),
                     fov: crate::from_xr_fov(views[0].fov),
                     swapchain_index: left_swapchain_idx,
                 },
-                RenderViewInput {
+                LobbyViewParams {
                     pose: crate::from_xr_pose(views[1].pose),
                     fov: crate::from_xr_fov(views[1].fov),
                     swapchain_index: right_swapchain_idx,

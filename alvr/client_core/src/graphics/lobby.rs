@@ -1,6 +1,6 @@
 use super::{GraphicsContext, SDR_FORMAT};
 use alvr_common::{
-    glam::{IVec2, Mat4, Quat, UVec2, Vec3, Vec4},
+    glam::{IVec2, Mat4, Quat, UVec2, Vec3},
     Fov, Pose,
 };
 use glyph_brush_layout::{
@@ -103,29 +103,6 @@ const BODY_SKELETON_BONES_FB: [(usize, usize); 30] = [
     (82, 83),
 ];
 
-fn projection_from_fov(fov: Fov) -> Mat4 {
-    const NEAR: f32 = 0.1;
-
-    let tanl = f32::tan(fov.left);
-    let tanr = f32::tan(fov.right);
-    let tanu = f32::tan(fov.up);
-    let tand = f32::tan(fov.down);
-    let a = 2.0 / (tanr - tanl);
-    let b = 2.0 / (tanu - tand);
-    let c = (tanr + tanl) / (tanr - tanl);
-    let d = (tanu + tand) / (tanu - tand);
-
-    // note: for wgpu compatibility, the b and d components should be flipped. Maybe a bug in the
-    // viewport handling in wgpu?
-    Mat4::from_cols(
-        Vec4::new(a, 0.0, c, 0.0),
-        Vec4::new(0.0, -b, -d, 0.0),
-        Vec4::new(0.0, 0.0, -1.0, -NEAR),
-        Vec4::new(0.0, 0.0, -1.0, 0.0),
-    )
-    .transpose()
-}
-
 fn create_pipeline(
     device: &Device,
     label: &str,
@@ -183,10 +160,10 @@ fn create_pipeline(
     })
 }
 
-pub struct RenderViewInput {
+pub struct LobbyViewParams {
+    pub swapchain_index: u32,
     pub pose: Pose,
     pub fov: Fov,
-    pub swapchain_index: u32,
 }
 
 pub struct LobbyRenderer {
@@ -374,7 +351,7 @@ impl LobbyRenderer {
 
     pub fn render(
         &self,
-        view_inputs: [RenderViewInput; 2],
+        view_params: [LobbyViewParams; 2],
         hand_data: [(Option<Pose>, Option<[Pose; 26]>); 2],
         body_skeleton_fb: Option<Vec<Option<Pose>>>,
         render_background: bool,
@@ -386,13 +363,13 @@ impl LobbyRenderer {
                 label: Some("lobby_command_encoder"),
             });
 
-        for (view_idx, view_input) in view_inputs.iter().enumerate() {
+        for (view_idx, view_input) in view_params.iter().enumerate() {
             let view = Mat4::from_rotation_translation(
                 view_input.pose.orientation,
                 view_input.pose.position,
             )
             .inverse();
-            let view_proj = projection_from_fov(view_input.fov) * view;
+            let view_proj = super::projection_from_fov(view_input.fov) * view;
 
             let clear_color = if render_background {
                 Color {

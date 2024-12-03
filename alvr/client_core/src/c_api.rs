@@ -1,5 +1,5 @@
 use crate::{
-    graphics::{GraphicsContext, LobbyRenderer, RenderViewInput, StreamRenderer},
+    graphics::{GraphicsContext, LobbyRenderer, LobbyViewParams, StreamRenderer, StreamViewParams},
     storage,
     video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
     ClientCapabilities, ClientCoreContext, ClientCoreEvent,
@@ -159,8 +159,8 @@ pub fn to_capi_pose(pose: Pose) -> AlvrPose {
 
 #[repr(C)]
 pub struct AlvrViewParams {
-    pub pose: AlvrPose,
-    pub fov: AlvrFov,
+    pose: AlvrPose,
+    fov: AlvrFov,
 }
 
 #[repr(C)]
@@ -675,25 +675,32 @@ thread_local! {
 }
 
 #[repr(C)]
-pub struct AlvrViewInput {
+pub struct AlvrLobbyViewParams {
+    swapchain_index: u32,
     pose: AlvrPose,
     fov: AlvrFov,
+}
+
+#[repr(C)]
+pub struct AlvrStreamViewParams {
     swapchain_index: u32,
+    reprojection_rotation: AlvrQuat,
+    fov: AlvrFov,
 }
 
 #[repr(C)]
 pub struct AlvrStreamConfig {
-    pub view_resolution_width: u32,
-    pub view_resolution_height: u32,
-    pub swapchain_textures: *mut *const u32,
-    pub swapchain_length: u32,
-    pub enable_foveation: bool,
-    pub foveation_center_size_x: f32,
-    pub foveation_center_size_y: f32,
-    pub foveation_center_shift_x: f32,
-    pub foveation_center_shift_y: f32,
-    pub foveation_edge_ratio_x: f32,
-    pub foveation_edge_ratio_y: f32,
+    view_resolution_width: u32,
+    view_resolution_height: u32,
+    swapchain_textures: *mut *const u32,
+    swapchain_length: u32,
+    enable_foveation: bool,
+    foveation_center_size_x: f32,
+    foveation_center_size_y: f32,
+    foveation_center_shift_x: f32,
+    foveation_center_shift_y: f32,
+    foveation_edge_ratio_x: f32,
+    foveation_edge_ratio_y: f32,
 }
 
 #[no_mangle]
@@ -788,19 +795,19 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
 // todo: support hands
 #[no_mangle]
 pub unsafe extern "C" fn alvr_render_lobby_opengl(
-    view_inputs: *const AlvrViewInput,
+    view_inputs: *const AlvrLobbyViewParams,
     render_background: bool,
 ) {
     let view_inputs = [
-        RenderViewInput {
+        LobbyViewParams {
+            swapchain_index: (*view_inputs).swapchain_index,
             pose: from_capi_pose((*view_inputs).pose),
             fov: from_capi_fov((*view_inputs).fov),
-            swapchain_index: (*view_inputs).swapchain_index,
         },
-        RenderViewInput {
+        LobbyViewParams {
+            swapchain_index: (*view_inputs.offset(1)).swapchain_index,
             pose: from_capi_pose((*view_inputs.offset(1)).pose),
             fov: from_capi_fov((*view_inputs.offset(1)).fov),
-            swapchain_index: (*view_inputs.offset(1)).swapchain_index,
         },
     ];
 
@@ -816,16 +823,30 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(
     });
 }
 
+/// view_params: array of 2
 #[no_mangle]
 pub unsafe extern "C" fn alvr_render_stream_opengl(
     hardware_buffer: *mut c_void,
-    swapchain_indices: *const u32,
+    view_params: *const AlvrStreamViewParams,
 ) {
     STREAM_RENDERER.with_borrow(|renderer| {
         if let Some(renderer) = renderer {
+            let left_params = &*view_params;
+            let right_params = &*view_params.offset(1);
             renderer.render(
                 hardware_buffer,
-                [*swapchain_indices, *swapchain_indices.offset(1)],
+                [
+                    StreamViewParams {
+                        swapchain_index: left_params.swapchain_index,
+                        reprojection_rotation: from_capi_quat(left_params.reprojection_rotation),
+                        fov: from_capi_fov(left_params.fov),
+                    },
+                    StreamViewParams {
+                        swapchain_index: right_params.swapchain_index,
+                        reprojection_rotation: from_capi_quat(right_params.reprojection_rotation),
+                        fov: from_capi_fov(right_params.fov),
+                    },
+                ],
             );
         }
     });
@@ -966,4 +987,9 @@ pub extern "C" fn alvr_get_frame(
     } else {
         false
     }
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_rotation_delta(source: AlvrQuat, destination: AlvrQuat) -> AlvrQuat {
+    to_capi_quat(from_capi_quat(source).inverse() * from_capi_quat(destination))
 }

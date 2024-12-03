@@ -3,12 +3,23 @@ use serde::{Deserialize, Serialize};
 use std::ops::Mul;
 
 // Field of view in radians
-#[derive(Serialize, Deserialize, PartialEq, Default, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
 pub struct Fov {
     pub left: f32,
     pub right: f32,
     pub up: f32,
     pub down: f32,
+}
+
+impl Default for Fov {
+    fn default() -> Self {
+        Fov {
+            left: -1.0,
+            right: 1.0,
+            up: 1.0,
+            down: -1.0,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]

@@ -159,8 +159,8 @@ pub fn to_capi_pose(pose: Pose) -> AlvrPose {
 
 #[repr(C)]
 pub struct AlvrViewParams {
-    pub pose: AlvrPose,
-    pub fov: AlvrFov,
+    pose: AlvrPose,
+    fov: AlvrFov,
 }
 
 #[repr(C)]
@@ -681,6 +681,7 @@ pub struct AlvrLobbyViewParams {
     fov: AlvrFov,
 }
 
+#[repr(C)]
 pub struct AlvrStreamViewParams {
     swapchain_index: u32,
     reprojection_rotation: AlvrQuat,
@@ -689,17 +690,17 @@ pub struct AlvrStreamViewParams {
 
 #[repr(C)]
 pub struct AlvrStreamConfig {
-    pub view_resolution_width: u32,
-    pub view_resolution_height: u32,
-    pub swapchain_textures: *mut *const u32,
-    pub swapchain_length: u32,
-    pub enable_foveation: bool,
-    pub foveation_center_size_x: f32,
-    pub foveation_center_size_y: f32,
-    pub foveation_center_shift_x: f32,
-    pub foveation_center_shift_y: f32,
-    pub foveation_edge_ratio_x: f32,
-    pub foveation_edge_ratio_y: f32,
+    view_resolution_width: u32,
+    view_resolution_height: u32,
+    swapchain_textures: *mut *const u32,
+    swapchain_length: u32,
+    enable_foveation: bool,
+    foveation_center_size_x: f32,
+    foveation_center_size_y: f32,
+    foveation_center_shift_x: f32,
+    foveation_center_shift_y: f32,
+    foveation_edge_ratio_x: f32,
+    foveation_edge_ratio_y: f32,
 }
 
 #[no_mangle]

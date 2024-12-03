@@ -1,11 +1,3 @@
-struct VertexOutput {
-    @builtin(position) position: vec4f,
-    @location(0) uv: vec2f,
-}
-
-@group(0) @binding(0) var hud_texture: texture_2d<f32>;
-@group(0) @binding(1) var hud_sampler: sampler;
-
 struct PushConstant {
     transform: mat4x4f,
     object_type: u32,
@@ -13,14 +5,19 @@ struct PushConstant {
 }
 var<push_constant> pc: PushConstant;
 
+@group(0) @binding(0) var hud_texture: texture_2d<f32>;
+@group(0) @binding(1) var hud_sampler: sampler;
+
+struct VertexOutput {
+    @builtin(position) position: vec4f,
+    @location(0) uv: vec2f,
+}
+
 @vertex
 fn vertex_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     var result: VertexOutput;
 
-    let norm_vert_a = f32(vertex_index & 1);
-    let norm_vert_b = f32(vertex_index >> 1);
-
-    result.uv = vec2f(norm_vert_a, norm_vert_b);
+    result.uv = vec2f(f32(vertex_index & 1), f32(vertex_index >> 1));
     result.position = pc.transform * vec4f(result.uv.x - 0.5, 0.5 - result.uv.y, 0.0, 1.0);
 
     return result;

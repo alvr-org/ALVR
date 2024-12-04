@@ -5,17 +5,17 @@ use crate::{
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
-    ConnectionContext, ServerCoreEvent, ViewsConfig, FILESYSTEM_LAYOUT, SESSION_MANAGER,
+    ConnectionContext, ServerCoreEvent, FILESYSTEM_LAYOUT, SESSION_MANAGER,
 };
 use alvr_adb::{WiredConnection, WiredConnectionStatus};
 use alvr_common::{
     con_bail, dbg_connection, debug, error,
-    glam::{Quat, UVec2, Vec2, Vec3},
+    glam::{UVec2, Vec2},
     info,
     parking_lot::{Condvar, Mutex, RwLock},
     settings_schema::Switch,
-    warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, Pose,
-    BUTTON_INFO, CONTROLLER_PROFILE_INFO, QUEST_CONTROLLER_PROFILE_PATH,
+    warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, BUTTON_INFO,
+    CONTROLLER_PROFILE_INFO, QUEST_CONTROLLER_PROFILE_PATH,
 };
 use alvr_events::{AdbEvent, ButtonEvent, EventType};
 use alvr_packets::{
@@ -1176,21 +1176,9 @@ fn connection_pipeline(
                         }
                         ctx.events_sender.send(ServerCoreEvent::RequestIDR).ok();
                     }
-                    ClientControlPacket::ViewsConfig(config) => {
+                    ClientControlPacket::ViewsParams(view_params) => {
                         ctx.events_sender
-                            .send(ServerCoreEvent::ViewsConfig(ViewsConfig {
-                                local_view_transforms: [
-                                    Pose {
-                                        position: Vec3::new(-config.ipd_m / 2., 0., 0.),
-                                        orientation: Quat::IDENTITY,
-                                    },
-                                    Pose {
-                                        position: Vec3::new(config.ipd_m / 2., 0., 0.),
-                                        orientation: Quat::IDENTITY,
-                                    },
-                                ],
-                                fov: config.fov,
-                            }))
+                            .send(ServerCoreEvent::ViewsParams(view_params))
                             .ok();
                     }
                     ClientControlPacket::Battery(packet) => {

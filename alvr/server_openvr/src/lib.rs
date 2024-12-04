@@ -19,14 +19,15 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
-    warn, BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID,
-    HEAD_ID,
+    warn, Pose, BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID,
+    HAND_TRACKER_RIGHT_ID, HEAD_ID,
 };
 use alvr_filesystem as afs;
-use alvr_packets::{ButtonValue, Haptics};
+use alvr_packets::{ButtonValue, Haptics, ViewParams};
 use alvr_server_core::{HandType, ServerCoreContext, ServerCoreEvent};
 use alvr_session::{CodecType, ControllersConfig};
 use std::{
+    collections::VecDeque,
     ffi::{c_char, c_void, CString},
     ptr,
     sync::{mpsc, Once},
@@ -44,6 +45,12 @@ static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> =
     Lazy::new(|| RwLock::new(None));
 static EVENTS_RECEIVER: Lazy<Mutex<Option<mpsc::Receiver<ServerCoreEvent>>>> =
     Lazy::new(|| Mutex::new(None));
+
+// local frame of reference
+static VIEWS_PARAMS: Lazy<RwLock<[ViewParams; 2]>> =
+    Lazy::new(|| RwLock::new([ViewParams::default(); 2]));
+static HEAD_POSE_QUEUE: Lazy<Mutex<VecDeque<(Duration, Pose)>>> =
+    Lazy::new(|| Mutex::new(VecDeque::new()));
 
 extern "C" fn driver_ready_idle(set_default_chap: bool) {
     thread::spawn(move || {
@@ -88,25 +95,26 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                 ServerCoreEvent::PlayspaceSync(bounds) => unsafe {
                     SetChaperoneArea(bounds.x, bounds.y)
                 },
-                ServerCoreEvent::ViewsConfig(config) => unsafe {
+                ServerCoreEvent::ViewsParams(params) => unsafe {
+                    *VIEWS_PARAMS.write() = params;
+
                     SetViewsConfig(FfiViewsConfig {
                         fov: [
                             FfiFov {
-                                left: config.fov[0].left,
-                                right: config.fov[0].right,
-                                up: config.fov[0].up,
-                                down: config.fov[0].down,
+                                left: params[0].fov.left,
+                                right: params[0].fov.right,
+                                up: params[0].fov.up,
+                                down: params[0].fov.down,
                             },
                             FfiFov {
-                                left: config.fov[1].left,
-                                right: config.fov[1].right,
-                                up: config.fov[1].up,
-                                down: config.fov[1].down,
+                                left: params[1].fov.left,
+                                right: params[1].fov.right,
+                                up: params[1].fov.up,
+                                down: params[1].fov.down,
                             },
                         ],
                         // todo: send full matrix to steamvr
-                        ipd_m: config.local_view_transforms[1].position.x
-                            - config.local_view_transforms[0].position.x,
+                        ipd_m: params[1].pose.position.x - params[0].pose.position.x,
                     });
                 },
                 ServerCoreEvent::Tracking { sample_timestamp } => {
@@ -127,15 +135,29 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                         let controllers_timestamp =
                             target_timestamp.saturating_sub(controllers_pose_time_offset);
 
-                        let ffi_head_motion = context
-                            .get_device_motion(*HEAD_ID, target_timestamp)
-                            .map(|m| tracking::to_ffi_motion(*HEAD_ID, m))
-                            .unwrap_or_else(FfiDeviceMotion::default);
+                        let predicted_head_motion = context
+                            .get_predicted_device_motion(
+                                *HEAD_ID,
+                                sample_timestamp,
+                                target_timestamp,
+                            )
+                            .unwrap_or_default();
+
+                        let ffi_head_motion =
+                            tracking::to_ffi_motion(*HEAD_ID, predicted_head_motion);
                         let ffi_left_controller_motion = context
-                            .get_device_motion(*HAND_LEFT_ID, controllers_timestamp)
+                            .get_predicted_device_motion(
+                                *HAND_LEFT_ID,
+                                sample_timestamp,
+                                controllers_timestamp,
+                            )
                             .map(|m| tracking::to_ffi_motion(*HAND_LEFT_ID, m));
                         let ffi_right_controller_motion = context
-                            .get_device_motion(*HAND_RIGHT_ID, controllers_timestamp)
+                            .get_predicted_device_motion(
+                                *HAND_RIGHT_ID,
+                                sample_timestamp,
+                                controllers_timestamp,
+                            )
                             .map(|m| tracking::to_ffi_motion(*HAND_RIGHT_ID, m));
 
                         let (
@@ -239,6 +261,17 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                                 ffi_body_tracker_motions.len() as i32,
                             )
                         };
+
+                        {
+                            let mut head_pose_queue_lock = HEAD_POSE_QUEUE.lock();
+
+                            head_pose_queue_lock
+                                .push_back((target_timestamp, predicted_head_motion.pose));
+
+                            if head_pose_queue_lock.len() > 1024 {
+                                head_pose_queue_lock.pop_front();
+                            }
+                        }
                     }
                 }
                 ServerCoreEvent::Buttons(entries) => {
@@ -346,7 +379,25 @@ extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32)
 extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_idr: bool) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         let buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
-        context.send_video_nal(Duration::from_nanos(timestamp_ns), buffer.to_vec(), is_idr);
+
+        let mut head_pose = Pose::default();
+        for (timestamp, pose) in &*HEAD_POSE_QUEUE.lock() {
+            if *timestamp == Duration::from_nanos(timestamp_ns) {
+                head_pose = *pose;
+                break;
+            }
+        }
+
+        let mut view_params = *VIEWS_PARAMS.read();
+        view_params[0].pose = head_pose * view_params[0].pose;
+        view_params[1].pose = head_pose * view_params[1].pose;
+
+        context.send_video_nal(
+            Duration::from_nanos(timestamp_ns),
+            view_params,
+            is_idr,
+            buffer.to_vec(),
+        );
     }
 }
 

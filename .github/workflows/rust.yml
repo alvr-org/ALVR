@@ -28,7 +28,7 @@ jobs:
           RUST_BACKTRACE: 1
         run: cargo xtask prepare-deps --platform windows
 
-      - run: cargo clippy
+      - run: cargo xtask clippy --ci
 
   check-linux:
     runs-on: ubuntu-24.04
@@ -51,7 +51,7 @@ jobs:
           RUST_BACKTRACE: 1
         run:  cargo xtask prepare-deps --platform linux --no-nvidia
 
-      - run: cargo clippy
+      - run: cargo xtask clippy --ci
 
   check-macos:
     runs-on: macos-latest
@@ -146,7 +146,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       # Fix actions rust install and msrv both being stupid
-      - run: rustup update --no-self-update
+      - run: rustup update
 
       - name: Prepare deps
         env:

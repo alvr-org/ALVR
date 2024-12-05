@@ -374,7 +374,7 @@ pub fn build_android_client(profile: Profile) {
     {
         let keystore_path = build_dir.join("debug.keystore");
         if !keystore_path.exists() {
-            let keytool = PathBuf::from(env::var("JAVA_HOME").unwrap())
+            let keytool = PathBuf::from(env::var("JAVA_HOME").expect("Env var JAVA_HOME not set"))
                 .join("bin")
                 .join(afs::exec_fname("keytool"));
             let pass = "alvrclient";

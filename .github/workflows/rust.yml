@@ -57,12 +57,15 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
 
-      - run: cargo xtask prepare-deps --platform macos
+      # This step currently does nothing on macos, but might in the future
+      # - run: cargo xtask prepare-deps --platform macos
 
       - run: cargo clippy
 

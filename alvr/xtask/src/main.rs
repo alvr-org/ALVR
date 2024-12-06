@@ -257,7 +257,6 @@ fn main() {
                 "clean" => clean(),
                 "bump" => version::bump_version(version, is_nightly),
                 "clippy" => {
-                    // Slightly stupid api but what gives
                     if for_ci {
                         ci::clippy_ci()
                     } else {

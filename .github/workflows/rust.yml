@@ -11,9 +11,9 @@ env:
 
 jobs:
   check-windows:
-    runs-on: windows-2019
+    runs-on: windows-2022
     env:
-      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
+      LIBCLANG_PATH: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
+          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
 
       - name: Prepare deps
         env:
@@ -70,6 +70,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android
@@ -89,18 +91,14 @@ jobs:
       - name: Install deps
         run: cargo install cargo-apk
 
-        # TODO: Do we still need this?
         # Create folder without content to make the build succeed
-      - run: |
-          mkdir -p deps/android_openxr/arm64-v8a
-          cargo xtask prepare-deps --platform android
+      - run: mkdir -p deps/android_openxr/arm64-v8a
 
       - name: Build client
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         working-directory: ./alvr/client_openxr
-        run:
-          cargo xtask build-client
+        run: cargo xtask build-client
 
   tests:
     runs-on: ubuntu-24.04
@@ -110,16 +108,6 @@ jobs:
           submodules: true
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-
-      # - name: Install dependencies
-      #   run: |
-      #     sudo apt update
-      #     sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
-
-      # - name: Prepare deps
-      #   env:
-      #     RUST_BACKTRACE: 1
-      #   run:  cargo xtask prepare-deps --platform linux --no-nvidia
 
       - name: Run tests
         run: cargo test -p alvr_session
@@ -135,9 +123,9 @@ jobs:
       - run: cargo xtask check-format
 
   check-msrv-windows:
-    runs-on: windows-2019
+    runs-on: windows-2022
     env:
-      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
+      LIBCLANG_PATH: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -167,7 +155,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
+          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
 
       - name: Prepare deps
         env:

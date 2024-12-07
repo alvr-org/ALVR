@@ -4,7 +4,7 @@ use std::{env, fmt::Write, fs, path::PathBuf};
 fn main() {
     let openvr_driver_header_string =
         fs::read_to_string(alvr_filesystem::workspace_dir().join("openvr/headers/openvr_driver.h"))
-            .unwrap();
+            .expect("Missing openvr header files, did you clone the submodule?\n");
 
     let property_finder = Regex::new(
         r"\tProp_([A-Za-z\d_]+)_(Bool|Int32|Uint64|Float|String|Vector3)[\t ]+= ([0-9]+)",

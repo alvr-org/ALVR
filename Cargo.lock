@@ -503,6 +503,8 @@ dependencies = [
  "alvr_filesystem",
  "pico-args",
  "pkg-config",
+ "serde",
+ "serde_json",
  "walkdir",
  "xshell",
 ]

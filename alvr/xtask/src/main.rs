@@ -1,4 +1,5 @@
 mod build;
+mod ci;
 mod command;
 mod dependencies;
 mod format;
@@ -255,7 +256,13 @@ fn main() {
                 "check-format" => format::check_format(),
                 "clean" => clean(),
                 "bump" => version::bump_version(version, is_nightly),
-                "clippy" => clippy(),
+                "clippy" => {
+                    if for_ci {
+                        ci::clippy_ci()
+                    } else {
+                        clippy()
+                    }
+                }
                 "check-msrv" => version::check_msrv(),
                 "kill-oculus" => kill_oculus_processes(),
                 _ => {

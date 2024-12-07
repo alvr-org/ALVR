@@ -6,7 +6,10 @@ Preferred IDE (optional): Visual Studio Code with rust-analyzer extension
 
 You need to install [rustup](https://www.rust-lang.org/tools/install).
 
-On Windows you need also [Chocolatey](https://chocolatey.org/install).
+On Windows you also need [Chocolatey](https://chocolatey.org/install).
+
+To clone the repository use `git clone --recurse-submodules https://github.com/alvr-org/ALVR.git`.
+If you previously cloned the repo without submodules, simply run `git submodule update --init --checkout --recursive` in it.
 
 # Streamer Building
 

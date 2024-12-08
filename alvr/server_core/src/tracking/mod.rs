@@ -52,8 +52,8 @@ struct MotionConfig {
 }
 
 pub struct TrackingManager {
-    last_head_pose: Pose,             // client's reference space
-    inverse_recentering_origin: Pose, // client's reference space
+    last_head_pose: Pose,                 // client's reference space
+    client_to_server_recenter_pose: Pose, // client's reference space
     device_motions_history: HashMap<u64, VecDeque<(Duration, DeviceMotion)>>,
     hand_skeletons_history: [VecDeque<(Duration, [Pose; 26])>; 2],
     last_face_data: FaceData,
@@ -63,7 +63,7 @@ impl TrackingManager {
     pub fn new() -> TrackingManager {
         TrackingManager {
             last_head_pose: Pose::default(),
-            inverse_recentering_origin: Pose::default(),
+            client_to_server_recenter_pose: Pose::default(),
             device_motions_history: HashMap::new(),
             hand_skeletons_history: [VecDeque::new(), VecDeque::new()],
             last_face_data: FaceData::default(),
@@ -103,7 +103,7 @@ impl TrackingManager {
             RotationRecenteringMode::Tilted => self.last_head_pose.orientation,
         };
 
-        self.inverse_recentering_origin = Pose {
+        self.client_to_server_recenter_pose = Pose {
             position,
             orientation,
         }
@@ -111,14 +111,20 @@ impl TrackingManager {
     }
 
     pub fn recenter_pose(&self, pose: Pose) -> Pose {
-        self.inverse_recentering_origin * pose
+        self.client_to_server_recenter_pose * pose
+    }
+
+    pub fn server_to_client_pose(&self, pose: Pose) -> Pose {
+        self.client_to_server_recenter_pose.inverse() * pose
     }
 
     pub fn recenter_motion(&self, motion: DeviceMotion) -> DeviceMotion {
         DeviceMotion {
             pose: self.recenter_pose(motion.pose),
-            linear_velocity: self.inverse_recentering_origin.orientation * motion.linear_velocity,
-            angular_velocity: self.inverse_recentering_origin.orientation * motion.angular_velocity,
+            linear_velocity: self.client_to_server_recenter_pose.orientation
+                * motion.linear_velocity,
+            angular_velocity: self.client_to_server_recenter_pose.orientation
+                * motion.angular_velocity,
         }
     }
 
@@ -243,6 +249,35 @@ impl TrackingManager {
                     .find(|(timestamp, _)| *timestamp == sample_timestamp)
                     .map(|(_, motion)| *motion)
             })
+    }
+
+    pub fn get_predicted_device_motion(
+        &self,
+        device_id: u64,
+        sample_timestamp: Duration,
+        target_timestamp: Duration,
+    ) -> Option<DeviceMotion> {
+        let motion = self.get_device_motion(device_id, sample_timestamp)?;
+
+        // There is no simple sub for Duration, this is needed to get signed difference
+        let delta_time_s = target_timestamp
+            .saturating_sub(sample_timestamp)
+            .as_secs_f32()
+            - sample_timestamp
+                .saturating_sub(target_timestamp)
+                .as_secs_f32();
+
+        let delta_position = motion.linear_velocity * delta_time_s;
+        let delta_orientation = Quat::from_scaled_axis(motion.angular_velocity * delta_time_s);
+
+        Some(DeviceMotion {
+            pose: Pose {
+                orientation: delta_orientation * motion.pose.orientation,
+                position: motion.pose.position + delta_position,
+            },
+            linear_velocity: motion.linear_velocity,
+            angular_velocity: motion.angular_velocity,
+        })
     }
 
     pub fn report_hand_skeleton(

@@ -382,7 +382,7 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
     }
 }
 
-// Returns the length of the message. message_buffer can be null.
+/// Returns the length of the message. message_buffer can be null.
 #[no_mangle]
 pub extern "C" fn alvr_hud_message(message_buffer: *mut c_char) -> u64 {
     let cstring = CString::new(HUD_MESSAGE.lock().clone()).unwrap();
@@ -472,6 +472,7 @@ pub extern "C" fn alvr_send_button(path_id: u64, value: AlvrButtonValue) {
 }
 
 /// The view poses need to be in local space, as if the head is at the origin.
+/// Must be sent when the IPD or FoV changes.
 /// view_params: array of 2
 #[no_mangle]
 pub extern "C" fn alvr_send_view_params(view_params: *const AlvrViewParams) {
@@ -703,11 +704,13 @@ pub struct AlvrStreamConfig {
     foveation_edge_ratio_y: f32,
 }
 
+/// Requires calling glMakeContext again after this function
 #[no_mangle]
 pub extern "C" fn alvr_initialize_opengl() {
     GRAPHICS_CONTEXT.set(Some(Rc::new(GraphicsContext::new_gl())));
 }
 
+/// Requires calling glMakeContext again after this function
 #[no_mangle]
 pub extern "C" fn alvr_destroy_opengl() {
     GRAPHICS_CONTEXT.set(None);
@@ -734,6 +737,7 @@ unsafe fn convert_swapchain_array(
     [left_swapchain, right_swapchain]
 }
 
+/// Requires calling glMakeContext again after this function
 #[no_mangle]
 pub unsafe extern "C" fn alvr_resume_opengl(
     preferred_view_width: u32,
@@ -749,12 +753,14 @@ pub unsafe extern "C" fn alvr_resume_opengl(
     )));
 }
 
+/// Requires calling glMakeContext again after this function
 #[no_mangle]
 pub extern "C" fn alvr_pause_opengl() {
     STREAM_RENDERER.set(None);
     LOBBY_RENDERER.set(None)
 }
 
+/// Requires calling glMakeContext again after this function
 #[no_mangle]
 pub unsafe extern "C" fn alvr_update_hud_message_opengl(message: *const c_char) {
     LOBBY_RENDERER.with_borrow(|renderer| {
@@ -764,6 +770,7 @@ pub unsafe extern "C" fn alvr_update_hud_message_opengl(message: *const c_char) 
     });
 }
 
+/// Requires calling glMakeContext again after this function
 #[no_mangle]
 pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
     let view_resolution = UVec2::new(config.view_resolution_width, config.view_resolution_height);
@@ -823,6 +830,7 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(
     });
 }
 
+/// Requires calling glMakeContext again after this function
 /// view_params: array of 2
 #[no_mangle]
 pub unsafe extern "C" fn alvr_render_stream_opengl(
@@ -967,7 +975,7 @@ pub extern "C" fn alvr_destroy_decoder() {
     *DECODER_SOURCE.lock() = None;
 }
 
-// Returns true if the timestamp and buffer has been written to
+/// Returns true if the timestamp and buffer has been written to
 #[no_mangle]
 pub extern "C" fn alvr_get_frame(
     out_timestamp_ns: *mut u64,

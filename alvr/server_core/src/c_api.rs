@@ -157,6 +157,7 @@ pub struct AlvrBatteryInfo {
     pub is_plugged: bool,
 }
 
+#[repr(C)]
 pub struct AlvrViewParams {
     pub pose: AlvrPose,
     pub fov: AlvrFov,

@@ -16,8 +16,8 @@
 #include <windows.h>
 
 #include "FFR.h"
-#include "d3d-render-utils/RenderPipelineYUV.h"
 #include "alvr_server/openvr_driver_wrap.h"
+#include "d3d-render-utils/RenderPipelineYUV.h"
 #include "shared/d3drender.h"
 
 #define GPU_PRIORITY_VAL 7

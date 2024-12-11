@@ -496,13 +496,13 @@ pub fn tracking_loop(
                 let tracking_manager_lock = ctx.tracking_manager.read();
                 let device_motions = device_motion_keys
                     .iter()
-                    .filter_map(move |id| {
-                        Some((
+                    .map(move |id| {
+                        (
                             *id,
                             tracking_manager_lock
                                 .get_device_motion(*id, timestamp)
                                 .unwrap(),
-                        ))
+                        )
                     })
                     .collect::<Vec<(u64, DeviceMotion)>>();
 
@@ -525,13 +525,13 @@ pub fn tracking_loop(
                 let tracking_manager_lock = ctx.tracking_manager.read();
                 let device_motions = device_motion_keys
                     .iter()
-                    .filter_map(move |id| {
-                        Some((
+                    .map(move |id| {
+                        (
                             *id,
                             tracking_manager_lock
                                 .get_device_motion(*id, timestamp)
                                 .unwrap(),
-                        ))
+                        )
                     })
                     .collect::<Vec<_>>();
                 sink.send_tracking(&device_motions);

@@ -76,7 +76,6 @@ impl ParsedStreamConfig {
 pub struct StreamContext {
     core_context: Arc<ClientCoreContext>,
     xr_session: xr::Session<xr::OpenGlEs>,
-    platform: Platform,
     interaction_context: Arc<RwLock<InteractionContext>>,
     reference_space: Arc<xr::Space>,
     swapchains: [xr::Swapchain<xr::OpenGlEs>; 2],
@@ -230,7 +229,6 @@ impl StreamContext {
         StreamContext {
             core_context: core_ctx,
             xr_session,
-            platform,
             interaction_context: interaction_ctx,
             reference_space,
             swapchains,
@@ -384,7 +382,7 @@ impl StreamContext {
         self.swapchains[1].release_image().unwrap();
 
         if !buffer_ptr.is_null() {
-            if let Some(xr_now) = crate::xr_runtime_now(&self.xr_session.instance()) {
+            if let Some(xr_now) = crate::xr_runtime_now(self.xr_session.instance()) {
                 self.core_context.report_submit(
                     timestamp,
                     vsync_time.saturating_sub(Duration::from_nanos(xr_now.as_nanos() as u64)),
@@ -464,7 +462,7 @@ fn stream_input_loop(
             return;
         }
 
-        let Some(xr_now) = crate::xr_runtime_now(&xr_session.instance()) else {
+        let Some(xr_now) = crate::xr_runtime_now(xr_session.instance()) else {
             error!("Cannot poll tracking: invalid time");
             return;
         };

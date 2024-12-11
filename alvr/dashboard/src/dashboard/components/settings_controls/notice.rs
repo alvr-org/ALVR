@@ -5,6 +5,7 @@ use eframe::{
 };
 
 // Returns true if buttons was clicked
+#[expect(dead_code)]
 pub fn notice(ui: &mut Ui, text: &str) {
     Frame::group(ui.style())
         .inner_margin(0.0)

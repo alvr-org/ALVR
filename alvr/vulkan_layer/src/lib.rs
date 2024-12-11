@@ -1,5 +1,7 @@
 #![cfg(target_os = "linux")]
 #![allow(clippy::missing_safety_doc)]
+#![allow(clippy::too_many_arguments)]
+#![allow(unused_imports)]
 
 use std::ffi::CString;
 

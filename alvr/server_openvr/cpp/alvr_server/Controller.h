@@ -41,5 +41,7 @@ private:
 
     // TrackedDevice
     bool activate() final;
-    void* get_component(const char* component_name_and_version) final { return nullptr; }
+    void* get_component([[maybe_unused]] const char* component_name_and_version) final {
+        return nullptr;
+    }
 };

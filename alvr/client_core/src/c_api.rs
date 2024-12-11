@@ -1,3 +1,5 @@
+#![expect(dead_code)]
+
 use crate::{
     graphics::{GraphicsContext, LobbyRenderer, LobbyViewParams, StreamRenderer, StreamViewParams},
     storage,

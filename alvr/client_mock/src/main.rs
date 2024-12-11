@@ -155,7 +155,7 @@ fn tracking_thread(
             down: -1.0,
         },
     };
-    context.send_view_params([views_params.clone(), views_params]);
+    context.send_view_params([views_params, views_params]);
 
     let mut loop_deadline = Instant::now();
     while streaming.value() {

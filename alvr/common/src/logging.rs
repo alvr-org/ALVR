@@ -214,7 +214,7 @@ pub fn show_w<W: Display + Send + 'static>(w: W) {
     std::thread::spawn(move || {
         rfd::MessageDialog::new()
             .set_title("ALVR warning")
-            .set_description(&w.to_string())
+            .set_description(w.to_string())
             .set_level(rfd::MessageLevel::Warning)
             .show()
     });

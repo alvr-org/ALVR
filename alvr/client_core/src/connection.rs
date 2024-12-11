@@ -63,6 +63,8 @@ const STREAMING_RECV_TIMEOUT: Duration = Duration::from_millis(500);
 
 const MAX_UNREAD_PACKETS: usize = 10; // Applies per stream
 
+pub type DecoderCallback = dyn FnMut(Duration, &[u8]) -> bool + Send;
+
 #[derive(Default)]
 pub struct ConnectionContext {
     pub state: RwLock<ConnectionState>,
@@ -71,7 +73,7 @@ pub struct ConnectionContext {
     pub tracking_sender: Mutex<Option<StreamSender<Tracking>>>,
     pub statistics_sender: Mutex<Option<StreamSender<ClientStatistics>>>,
     pub statistics_manager: Mutex<Option<StatisticsManager>>,
-    pub decoder_callback: Mutex<Option<Box<dyn FnMut(Duration, &[u8]) -> bool + Send>>>,
+    pub decoder_callback: Mutex<Option<Box<DecoderCallback>>>,
     pub head_pose_queue: RwLock<VecDeque<(Duration, Pose)>>,
     pub last_good_head_pose: RwLock<Pose>,
     pub view_params: RwLock<[ViewParams; 2]>,

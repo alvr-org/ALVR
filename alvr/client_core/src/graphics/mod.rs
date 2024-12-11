@@ -11,11 +11,11 @@ use alvr_common::{
 };
 use glow::{self as gl, HasContext};
 use khronos_egl as egl;
-use std::{ffi::c_void, mem, num::NonZeroU32, ptr};
+use std::{ffi::c_void, num::NonZeroU32, ptr};
 use wgpu::{
     hal::{self, api, MemoryFlags, TextureUses},
-    Adapter, Device, Extent3d, Instance, InstanceDescriptor, InstanceFlags, Queue, Texture,
-    TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView,
+    Adapter, Device, Extent3d, Instance, Queue, Texture, TextureDescriptor, TextureDimension,
+    TextureFormat, TextureUsages, TextureView,
 };
 
 pub const SDR_FORMAT: TextureFormat = TextureFormat::Rgba8Unorm;
@@ -189,14 +189,20 @@ pub fn create_gl_swapchain(
 
 pub struct GraphicsContext {
     _instance: Instance,
+
+    #[cfg_attr(windows, expect(dead_code))]
     adapter: Adapter,
+
     device: Device,
     queue: Queue,
     pub egl_display: egl::Display,
     pub egl_config: egl::Config,
     pub egl_context: egl::Context,
     pub gl_context: gl::Context,
+
+    #[cfg_attr(windows, expect(dead_code))]
     dummy_surface: egl::Surface,
+
     create_image: CreateImageFn,
     destroy_image: DestroyImageFn,
     get_native_client_buffer: GetNativeClientBufferFn,
@@ -206,7 +212,10 @@ pub struct GraphicsContext {
 impl GraphicsContext {
     #[cfg(not(windows))]
     pub fn new_gl() -> Self {
-        use wgpu::{Backends, DeviceDescriptor, Features, Limits};
+        use std::mem;
+        use wgpu::{
+            Backends, DeviceDescriptor, Features, InstanceDescriptor, InstanceFlags, Limits,
+        };
 
         const CREATE_IMAGE_FN_STR: &str = "eglCreateImageKHR";
         const DESTROY_IMAGE_FN_STR: &str = "eglDestroyImageKHR";

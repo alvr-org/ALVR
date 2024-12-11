@@ -2,60 +2,16 @@ use crate::{
     build::{self, Profile},
     command,
     dependencies::{self, OpenXRLoadersSelection},
-    version, BuildPlatform,
+    BuildPlatform,
 };
 use alvr_filesystem as afs;
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::{fs, path::Path};
 use xshell::{cmd, Shell};
 
 pub enum ReleaseFlavor {
     GitHub,
     MetaStore,
     PicoStore,
-}
-
-fn build_windows_installer() {
-    let sh = Shell::new().unwrap();
-
-    let wix_path = PathBuf::from(r"C:\Program Files (x86)\WiX Toolset v3.11\bin");
-    let heat_cmd = wix_path.join("heat.exe");
-    let candle_cmd = wix_path.join("candle.exe");
-    let light_cmd = wix_path.join("light.exe");
-
-    // Clear away build and prerelease version specifiers, MSI can have only dot-separated numbers.
-    let mut version = version::version();
-    if let Some(idx) = version.find('-') {
-        version.drain(idx..);
-    }
-    if let Some(idx) = version.find('+') {
-        version.drain(idx..);
-    }
-
-    let streamer_build_dir = afs::streamer_build_dir();
-    let wix_source_dir = afs::crate_dir("xtask").join("wix");
-    let wix_target_dir = afs::target_dir().join("wix");
-    let main_source = wix_source_dir.join("main.wxs");
-    let main_object = wix_target_dir.join("main.wixobj");
-    let harvested_source = wix_target_dir.join("harvested.wxs");
-    let harvested_object = wix_target_dir.join("harvested.wixobj");
-    let alvr_msi = afs::build_dir().join("alvr_streamer_windows.msi");
-    let bundle_source = wix_source_dir.join("bundle.wxs");
-    let bundle_object = wix_target_dir.join("bundle.wixobj");
-    let installer = afs::build_dir().join(format!("ALVR_Installer_v{version}.exe"));
-
-    cmd!(sh, "{heat_cmd} dir {streamer_build_dir} -ag -sreg -srd -dr APPLICATIONFOLDER -cg BuildFiles -var var.BuildRoot -o {harvested_source}").run().unwrap();
-    cmd!(sh, "{candle_cmd} -arch x64 -dBuildRoot={streamer_build_dir} -ext WixUtilExtension -dVersion={version} {main_source} {harvested_source} -o {wix_target_dir}\\").run().unwrap();
-    cmd!(sh, "{light_cmd} {main_object} {harvested_object} -ext WixUIExtension -ext WixUtilExtension -o {alvr_msi}").run().unwrap();
-    cmd!(sh, "{candle_cmd} -arch x64 -dBuildRoot={streamer_build_dir} -ext WixUtilExtension -ext WixBalExtension {bundle_source} -o {wix_target_dir}\\").run().unwrap();
-    cmd!(
-        sh,
-        "{light_cmd} {bundle_object} -ext WixUtilExtension -ext WixBalExtension -o {installer}"
-    )
-    .run()
-    .unwrap();
 }
 
 pub fn include_licenses(root_path: &Path, gpl: bool) {

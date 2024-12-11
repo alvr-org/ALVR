@@ -234,16 +234,24 @@ impl ClientCoreContext {
     ) {
         dbg_client_core!("send_tracking");
 
-        let target_timestamp =
+        let (target_timestamp, head_predilection_factor) =
             if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
-                poll_timestamp + stats.average_total_pipeline_latency()
+                (
+                    poll_timestamp + stats.average_total_pipeline_latency(),
+                    stats.get_head_predilection_scaler(),
+                )
             } else {
-                poll_timestamp
+                (poll_timestamp, 1.0)
             };
 
         for (id, motion) in &mut device_motions {
             if *id == *HEAD_ID {
-                *motion = predict_motion(target_timestamp, poll_timestamp, *motion);
+                *motion = predict_motion(
+                    target_timestamp,
+                    poll_timestamp,
+                    head_predilection_factor,
+                    *motion,
+                );
 
                 let mut head_pose_queue = self.connection_context.head_pose_queue.write();
 
@@ -260,7 +268,7 @@ impl ClientCoreContext {
             } else if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
                 let tracker_timestamp = poll_timestamp + stats.tracker_prediction_offset();
 
-                *motion = predict_motion(tracker_timestamp, poll_timestamp, *motion);
+                *motion = predict_motion(tracker_timestamp, poll_timestamp, 1.0, *motion);
             }
         }
 
@@ -399,11 +407,13 @@ impl Drop for ClientCoreContext {
 pub fn predict_motion(
     target_timestamp: Duration,
     current_timestamp: Duration,
+    predict_factor: f32,
     motion: DeviceMotion,
 ) -> DeviceMotion {
     let delta_time_s = target_timestamp
         .saturating_sub(current_timestamp)
-        .as_secs_f32();
+        .as_secs_f32()
+        * predict_factor;
 
     let delta_position = motion.linear_velocity * delta_time_s;
     let delta_orientation = Quat::from_scaled_axis(motion.angular_velocity * delta_time_s);

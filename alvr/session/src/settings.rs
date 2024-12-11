@@ -1078,6 +1078,9 @@ Tilted: the world gets tilted when long pressing the oculus button. This is usef
     #[schema(flag = "real-time")]
     pub rotation_recentering_mode: RotationRecenteringMode,
 
+    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
+    pub head_prediction_scaler: f32,
+
     #[schema(flag = "steamvr-restart")]
     pub controllers: Switch<ControllersConfig>,
 
@@ -1782,6 +1785,7 @@ pub fn session_settings_default() -> SettingsDefault {
             rotation_recentering_mode: RotationRecenteringModeDefault {
                 variant: RotationRecenteringModeDefaultVariant::Yaw,
             },
+            head_prediction_scaler: 1.0,
         },
         connection: ConnectionConfigDefault {
             stream_protocol: SocketProtocolDefault {

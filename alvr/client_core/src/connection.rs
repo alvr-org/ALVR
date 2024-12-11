@@ -209,6 +209,7 @@ fn connection_pipeline(
         } else {
             0.0
         },
+        settings.headset.head_prediction_scaler,
     ));
 
     let (mut control_sender, mut control_receiver) = proto_control_socket

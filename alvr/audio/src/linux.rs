@@ -222,7 +222,7 @@ pub fn record_audio_blocking_pipewire(
     sender: StreamSender<()>,
     channels_count: u16,
     sample_rate: u32,
-) -> Result<(), ()> {
+) -> Result<()> {
     let (pw_sender, pw_receiver) = pw::channel::channel();
     let is_running_clone_for_pw_terminate: Arc<dyn Fn() -> bool + Send + Sync> =
         Arc::clone(&is_running);

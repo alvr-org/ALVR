@@ -47,8 +47,12 @@ pub struct HandInteraction {
     pub controllers_profile_id: u64,
     pub grip_action: xr::Action<xr::Posef>,
     pub grip_space: xr::Space,
+
+    #[expect(dead_code)]
     pub aim_action: xr::Action<xr::Posef>,
+    #[expect(dead_code)]
     pub aim_space: xr::Space,
+
     pub vibration_action: xr::Action<xr::Haptic>,
     pub skeleton_tracker: Option<xr::HandTracker>,
 }
@@ -372,23 +376,26 @@ impl InteractionContext {
         self.body_sources.body_tracker_fb = None;
 
         // todo: check which permissions are needed for htc
-        #[cfg(target_os = "android")]
         if let Some(config) = &config.face_tracking {
             if (config.eye_tracking_fb) && matches!(self.platform, Platform::QuestPro) {
+                #[cfg(target_os = "android")]
                 alvr_system_info::try_get_permission("com.oculus.permission.EYE_TRACKING")
             }
             if config.face_tracking_fb && matches!(self.platform, Platform::QuestPro) {
-                alvr_system_info::try_get_permission("android.permission.RECORD_AUDIO");
-                alvr_system_info::try_get_permission("com.oculus.permission.FACE_TRACKING")
+                #[cfg(target_os = "android")]
+                {
+                    alvr_system_info::try_get_permission("android.permission.RECORD_AUDIO");
+                    alvr_system_info::try_get_permission("com.oculus.permission.FACE_TRACKING")
+                }
             }
         }
 
-        #[cfg(target_os = "android")]
         if let Some(config) = &config.body_tracking {
             if (config.body_tracking_fb.enabled())
                 && self.platform.is_quest()
                 && self.platform != Platform::Quest1
             {
+                #[cfg(target_os = "android")]
                 alvr_system_info::try_get_permission("com.oculus.permission.BODY_TRACKING")
             }
         }

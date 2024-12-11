@@ -5,7 +5,7 @@
 #include <set>
 #include <vector>
 
-#include "openvr_driver.h"
+#include "openvr_driver_wrap.h"
 
 extern uint64_t HEAD_ID;
 extern uint64_t HAND_LEFT_ID;

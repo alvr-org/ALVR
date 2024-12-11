@@ -24,7 +24,7 @@
 #include <math.h>
 
 #include "ALVR-common/packet_types.h"
-#include "openvr_driver.h"
+#include "openvr_driver_wrap.h"
 
 const float DEG_TO_RAD = (float)(M_PI / 180.);
 const double NS_PER_S = 1000000000.0;

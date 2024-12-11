@@ -109,6 +109,23 @@ fn default_view() -> xr::View {
     }
 }
 
+// This exists to circumvent dead-code analysis
+fn create_session(
+    xr_instance: &xr::Instance,
+    xr_system: xr::SystemId,
+    graphics_context: &GraphicsContext,
+) -> (
+    xr::Session<xr::OpenGlEs>,
+    xr::FrameWaiter,
+    xr::FrameStream<xr::OpenGlEs>,
+) {
+    unsafe {
+        xr_instance
+            .create_session(xr_system, &graphics::session_create_info(graphics_context))
+            .unwrap()
+    }
+}
+
 pub fn entry_point() {
     alvr_client_core::init_logging();
 
@@ -201,11 +218,8 @@ pub fn entry_point() {
             .graphics_requirements::<xr::OpenGlEs>(xr_system)
             .unwrap();
 
-        let (xr_session, mut xr_frame_waiter, mut xr_frame_stream) = unsafe {
-            xr_instance
-                .create_session(xr_system, &graphics::session_create_info(&graphics_context))
-                .unwrap()
-        };
+        let (xr_session, mut xr_frame_waiter, mut xr_frame_stream) =
+            create_session(&xr_instance, xr_system, &graphics_context);
 
         let views_config = xr_instance
             .enumerate_view_configuration_views(

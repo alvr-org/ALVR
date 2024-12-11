@@ -21,7 +21,6 @@ Controller::Controller(uint64_t deviceID, vr::EVRSkeletalTrackingLevel skeletonL
 bool Controller::activate() {
     Debug("Controller::Activate deviceID=%llu", this->device_id);
 
-    auto vr_properties = vr::VRProperties();
     auto vr_driver_input = vr::VRDriverInput();
 
     SetOpenvrProps(this->device_id);

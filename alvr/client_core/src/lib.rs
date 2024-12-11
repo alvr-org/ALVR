@@ -30,7 +30,7 @@ use alvr_packets::{
     StreamConfig, Tracking, ViewParams, ViewsConfig,
 };
 use alvr_session::CodecType;
-use connection::ConnectionContext;
+use connection::{ConnectionContext, DecoderCallback};
 use std::{
     collections::{HashSet, VecDeque},
     sync::Arc,
@@ -307,10 +307,7 @@ impl ClientCoreContext {
     }
 
     /// The callback should return true if the frame was successfully submitted to the decoder
-    pub fn set_decoder_input_callback(
-        &self,
-        callback: Box<dyn FnMut(Duration, &[u8]) -> bool + Send>,
-    ) {
+    pub fn set_decoder_input_callback(&self, callback: Box<DecoderCallback>) {
         dbg_client_core!("set_decoder_input_callback");
 
         *self.connection_context.decoder_callback.lock() = Some(callback);
@@ -350,7 +347,8 @@ impl ClientCoreContext {
             }
         }
         let view_params = self.connection_context.view_params.read();
-        let view_params = [
+
+        [
             ViewParams {
                 pose: head_pose * view_params[0].pose,
                 fov: view_params[0].fov,
@@ -359,9 +357,7 @@ impl ClientCoreContext {
                 pose: head_pose * view_params[1].pose,
                 fov: view_params[1].fov,
             },
-        ];
-
-        view_params
+        ]
     }
 
     pub fn report_submit(&self, timestamp: Duration, vsync_queue: Duration) {

@@ -1,9 +1,10 @@
 #pragma once
 
 #include "ALVR-common/packet_types.h"
+#include "ovr_driver.h"
+
 #include <list>
 #include <mutex>
-#include <openvr_driver.h>
 #include <optional>
 
 class PoseHistory {

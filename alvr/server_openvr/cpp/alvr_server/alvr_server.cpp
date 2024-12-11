@@ -16,7 +16,7 @@
 #include "TrackedDevice.h"
 #include "bindings.h"
 #include "driverlog.h"
-#include "openvr_driver.h"
+#include "ovr_driver.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>

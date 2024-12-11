@@ -2,7 +2,7 @@
 
 #include "ALVR-common/packet_types.h"
 #include "TrackedDevice.h"
-#include "openvr_driver.h"
+#include "ovr_driver.h"
 #include <map>
 
 class Controller : public TrackedDevice {

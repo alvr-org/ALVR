@@ -2,7 +2,7 @@
 #include "CEncoder.h"
 #include "alvr_server/PoseHistory.h"
 #include "alvr_server/Utils.h"
-#include "openvr_driver.h"
+#include "alvr_server/ovr_driver.h"
 
 #include "alvr_server/Settings.h"
 

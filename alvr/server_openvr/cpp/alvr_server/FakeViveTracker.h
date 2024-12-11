@@ -2,7 +2,7 @@
 
 #include "TrackedDevice.h"
 #include "bindings.h"
-#include <openvr_driver.h>
+#include "ovr_driver.h"
 
 class FakeViveTracker : public TrackedDevice {
 public:

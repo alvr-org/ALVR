@@ -1,7 +1,7 @@
 #pragma once
 
 #include "bindings.h"
-#include "openvr_driver.h"
+#include "openvr_driver_wrap.h"
 #include <map>
 
 class TrackedDevice : vr::ITrackedDeviceServerDriver {

@@ -2,7 +2,7 @@
 
 #include "ALVR-common/packet_types.h"
 #include "TrackedDevice.h"
-#include "openvr_driver.h"
+#include "openvr_driver_wrap.h"
 #include <memory>
 #ifdef _WIN32
 #include "platform/win32/OvrDirectModeComponent.h"

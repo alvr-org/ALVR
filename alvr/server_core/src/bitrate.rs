@@ -130,7 +130,7 @@ impl BitrateManager {
 
                 if self.decoder_latency_overstep_count == config.latency_overstep_frames {
                     self.dynamic_decoder_max_bytes_per_frame = f32::min(
-                        self.packet_bytes_average.get_average() as f32,
+                        self.packet_bytes_average.get_average(),
                         self.dynamic_decoder_max_bytes_per_frame,
                     ) * config
                         .latency_overstep_multiplier;

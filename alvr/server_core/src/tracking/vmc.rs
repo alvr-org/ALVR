@@ -28,6 +28,8 @@ static DEVICE_MOTIONS_VMC_MAP: Lazy<HashMap<u64, &'static str>> = Lazy::new(|| {
     ])
 });
 
+// These values were measured, so having them with full precision makes sense
+#[expect(clippy::excessive_precision)]
 static DEVICE_MOTIONS_ROTATION_MAP: Lazy<HashMap<u64, Quat>> = Lazy::new(|| {
     HashMap::from([
         (

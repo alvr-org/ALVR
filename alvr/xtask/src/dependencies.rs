@@ -84,14 +84,7 @@ pub fn prepare_windows_deps(skip_admin_priv: bool) {
     if !skip_admin_priv {
         choco_install(
             &sh,
-            &[
-                "zip",
-                "unzip",
-                "llvm",
-                "vulkan-sdk",
-                "wixtoolset",
-                "pkgconfiglite",
-            ],
+            &["zip", "unzip", "llvm", "vulkan-sdk", "pkgconfiglite"],
         )
         .unwrap();
     }

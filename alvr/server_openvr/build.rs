@@ -61,15 +61,14 @@ fn main() {
     let mut build = cc::Build::new();
     build
         .cpp(true)
+        .std("c++17")
         .files(source_files_paths)
-        .flag_if_supported("-std=c++17")
         .include(alvr_filesystem::workspace_dir().join("openvr/headers"))
         .include("cpp");
 
     if platform_name == "windows" {
         build
             .debug(false) // This is because we cannot link to msvcrtd (see below)
-            .flag("/std:c++17")
             .flag("/permissive-")
             .define("NOMINMAX", None)
             .define("_WINSOCKAPI_", None)

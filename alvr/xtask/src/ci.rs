@@ -34,10 +34,12 @@ struct CompilerMessage {
 
 pub fn clippy_ci() {
     let sh = Shell::new().unwrap();
-    let out = cmd!(sh, "cargo clippy --message-format=json")
+    let out = cmd!(sh, "cargo clippy --message-format=json --color=always")
         .ignore_status()
         .output()
         .unwrap();
+
+    std::print!("{}", String::from_utf8_lossy(&out.stderr));
 
     let stream = Deserializer::from_slice(&out.stdout).into_iter::<Value>();
 

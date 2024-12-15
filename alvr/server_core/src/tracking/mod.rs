@@ -115,11 +115,7 @@ impl TrackingManager {
     }
 
     pub fn recenter_motion(&self, motion: DeviceMotion) -> DeviceMotion {
-        DeviceMotion {
-            pose: self.recenter_pose(motion.pose),
-            linear_velocity: self.inverse_recentering_origin.orientation * motion.linear_velocity,
-            angular_velocity: self.inverse_recentering_origin.orientation * motion.angular_velocity,
-        }
+        self.inverse_recentering_origin * motion
     }
 
     // Performs all kinds of tracking transformations, driven by settings.

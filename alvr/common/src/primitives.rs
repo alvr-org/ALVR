@@ -55,3 +55,15 @@ pub struct DeviceMotion {
     pub linear_velocity: Vec3,
     pub angular_velocity: Vec3,
 }
+
+impl Mul<DeviceMotion> for Pose {
+    type Output = DeviceMotion;
+
+    fn mul(self, rhs: DeviceMotion) -> DeviceMotion {
+        DeviceMotion {
+            pose: self * rhs.pose,
+            linear_velocity: self.orientation * rhs.linear_velocity,
+            angular_velocity: self.orientation * rhs.angular_velocity,
+        }
+    }
+}

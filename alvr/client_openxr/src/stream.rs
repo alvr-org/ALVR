@@ -77,7 +77,8 @@ pub struct StreamContext {
     core_context: Arc<ClientCoreContext>,
     xr_session: xr::Session<xr::OpenGlEs>,
     interaction_context: Arc<RwLock<InteractionContext>>,
-    reference_space: Arc<xr::Space>,
+    stage_reference_space: Arc<xr::Space>,
+    view_reference_space: Arc<xr::Space>,
     swapchains: [xr::Swapchain<xr::OpenGlEs>; 2],
     last_good_view_params: [ViewParams; 2],
     input_thread: Option<JoinHandle<()>>,
@@ -184,13 +185,6 @@ impl StreamContext {
             config.passthrough.clone(),
         );
 
-        core_ctx.send_playspace(
-            xr_session
-                .reference_space_bounds_rect(xr::ReferenceSpaceType::STAGE)
-                .unwrap()
-                .map(|a| Vec2::new(a.width, a.height)),
-        );
-
         core_ctx.send_active_interaction_profile(
             *HAND_LEFT_ID,
             interaction_ctx.read().hands_interaction[0].controllers_profile_id,
@@ -200,45 +194,35 @@ impl StreamContext {
             interaction_ctx.read().hands_interaction[1].controllers_profile_id,
         );
 
-        let input_thread_running = Arc::new(RelaxedAtomic::new(true));
+        let input_thread_running = Arc::new(RelaxedAtomic::new(false));
 
-        let reference_space = Arc::new(interaction::get_reference_space(
+        let stage_reference_space = Arc::new(interaction::get_reference_space(
             &xr_session,
             xr::ReferenceSpaceType::STAGE,
         ));
+        let view_reference_space = Arc::new(interaction::get_reference_space(
+            &xr_session,
+            xr::ReferenceSpaceType::VIEW,
+        ));
 
-        let input_thread = thread::spawn({
-            let core_ctx = Arc::clone(&core_ctx);
-            let xr_session = xr_session.clone();
-            let interaction_ctx = Arc::clone(&interaction_ctx);
-            let reference_space = Arc::clone(&reference_space);
-            let refresh_rate = config.refresh_rate_hint;
-            let running = Arc::clone(&input_thread_running);
-            move || {
-                stream_input_loop(
-                    &core_ctx,
-                    xr_session,
-                    &interaction_ctx,
-                    Arc::clone(&reference_space),
-                    refresh_rate,
-                    running,
-                )
-            }
-        });
-
-        StreamContext {
+        let mut this = StreamContext {
             core_context: core_ctx,
             xr_session,
             interaction_context: interaction_ctx,
-            reference_space,
+            stage_reference_space,
+            view_reference_space,
             swapchains,
             last_good_view_params: [ViewParams::default(); 2],
-            input_thread: Some(input_thread),
+            input_thread: None,
             input_thread_running,
             config,
             renderer,
             decoder: None,
-        }
+        };
+
+        this.update_reference_space();
+
+        this
     }
 
     pub fn uses_passthrough(&self) -> bool {
@@ -248,9 +232,13 @@ impl StreamContext {
     pub fn update_reference_space(&mut self) {
         self.input_thread_running.set(false);
 
-        self.reference_space = Arc::new(interaction::get_reference_space(
+        self.stage_reference_space = Arc::new(interaction::get_reference_space(
             &self.xr_session,
             xr::ReferenceSpaceType::STAGE,
+        ));
+        self.view_reference_space = Arc::new(interaction::get_reference_space(
+            &self.xr_session,
+            xr::ReferenceSpaceType::VIEW,
         ));
 
         self.core_context.send_playspace(
@@ -270,7 +258,8 @@ impl StreamContext {
             let core_ctx = Arc::clone(&self.core_context);
             let xr_session = self.xr_session.clone();
             let interaction_ctx = Arc::clone(&self.interaction_context);
-            let reference_space = Arc::clone(&self.reference_space);
+            let stage_reference_space = Arc::clone(&self.stage_reference_space);
+            let view_reference_space = Arc::clone(&self.view_reference_space);
             let refresh_rate = self.config.refresh_rate_hint;
             let running = Arc::clone(&self.input_thread_running);
             move || {
@@ -278,7 +267,8 @@ impl StreamContext {
                     &core_ctx,
                     xr_session,
                     &interaction_ctx,
-                    Arc::clone(&reference_space),
+                    &stage_reference_space,
+                    &view_reference_space,
                     refresh_rate,
                     running,
                 )
@@ -399,7 +389,7 @@ impl StreamContext {
         };
 
         let layer = ProjectionLayerBuilder::new(
-            &self.reference_space,
+            &self.stage_reference_space,
             [
                 xr::CompositionLayerProjectionView::new()
                     .pose(crate::to_xr_pose(view_params[0].pose))
@@ -443,7 +433,8 @@ fn stream_input_loop(
     core_ctx: &ClientCoreContext,
     xr_session: xr::Session<xr::OpenGlEs>,
     interaction_ctx: &RwLock<InteractionContext>,
-    reference_space: Arc<xr::Space>,
+    stage_reference_space: &xr::Space,
+    view_reference_space: &xr::Space,
     refresh_rate: f32,
     running: Arc<RelaxedAtomic>,
 ) {
@@ -467,9 +458,13 @@ fn stream_input_loop(
             return;
         };
 
-        let Some((head_motion, local_views)) =
-            interaction::get_head_data(&xr_session, &reference_space, xr_now, &last_view_params)
-        else {
+        let Some((head_motion, local_views)) = interaction::get_head_data(
+            &xr_session,
+            &stage_reference_space,
+            &view_reference_space,
+            xr_now,
+            &last_view_params,
+        ) else {
             continue;
         };
 
@@ -484,7 +479,7 @@ fn stream_input_loop(
 
         let (left_hand_motion, left_hand_skeleton) = crate::interaction::get_hand_data(
             &xr_session,
-            &reference_space,
+            &stage_reference_space,
             xr_now,
             &int_ctx.hands_interaction[0],
             &mut last_controller_poses[0],
@@ -492,7 +487,7 @@ fn stream_input_loop(
         );
         let (right_hand_motion, right_hand_skeleton) = crate::interaction::get_hand_data(
             &xr_session,
-            &reference_space,
+            &stage_reference_space,
             xr_now,
             &int_ctx.hands_interaction[1],
             &mut last_controller_poses[1],
@@ -516,7 +511,7 @@ fn stream_input_loop(
             eye_gazes: interaction::get_eye_gazes(
                 &xr_session,
                 &int_ctx.face_sources,
-                &reference_space,
+                &stage_reference_space,
                 xr_now,
             ),
             fb_face_expression: interaction::get_fb_face_expression(&int_ctx.face_sources, xr_now),
@@ -526,7 +521,7 @@ fn stream_input_loop(
 
         if let Some((tracker, joint_count)) = &int_ctx.body_sources.body_tracker_fb {
             device_motions.append(&mut interaction::get_fb_body_tracking_points(
-                &reference_space,
+                &stage_reference_space,
                 xr_now,
                 tracker,
                 *joint_count,

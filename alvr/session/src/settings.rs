@@ -1325,7 +1325,10 @@ pub struct ExtraConfig {
     pub logging: LoggingConfig,
     pub patches: Patches,
 
-    #[schema(strings(help = "Linear and angular velocity multiplier for debug purposes."))]
+    #[schema(
+        strings(help = "Linear and angular velocity multiplier for debug purposes.
+It does not update in real time.")
+    )]
     pub velocities_multiplier: f32,
 
     pub open_setup_wizard: bool,

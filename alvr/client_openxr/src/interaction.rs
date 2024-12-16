@@ -471,6 +471,7 @@ pub fn get_reference_space(
 
 pub fn get_head_data(
     xr_session: &xr::Session<xr::OpenGlEs>,
+    platform: Platform,
     stage_reference_space: &xr::Space,
     view_reference_space: &xr::Space,
     time: xr::Time,
@@ -501,7 +502,7 @@ pub fn get_head_data(
         return None;
     }
 
-    let motion = DeviceMotion {
+    let mut motion = DeviceMotion {
         pose: crate::from_xr_pose(head_location.pose),
         linear_velocity: head_velocity
             .velocity_flags
@@ -514,6 +515,12 @@ pub fn get_head_data(
             .then(|| crate::from_xr_vec3(head_velocity.angular_velocity))
             .unwrap_or_default(),
     };
+
+    // Angular velocity should be in global reference frame as per spec but Pico and Vive use local
+    // reference frame
+    if platform.is_pico() || platform.is_vive() {
+        motion.angular_velocity = motion.pose.orientation * motion.angular_velocity;
+    }
 
     let last_ipd_m = last_view_params[0]
         .pose

@@ -69,6 +69,7 @@ pub struct ConnectionContext {
     pub last_good_head_pose: RwLock<Pose>,
     pub view_params: RwLock<[ViewParams; 2]>,
     pub uses_multimodal_protocol: RelaxedAtomic,
+    pub velocities_multiplier: RwLock<f32>,
 }
 
 fn set_hud_message(event_queue: &Mutex<VecDeque<ClientCoreEvent>>, message: &str) {
@@ -202,6 +203,8 @@ fn connection_pipeline(
 
     let settings = stream_config.settings;
     let negotiated_config = stream_config.negotiated_config;
+
+    *ctx.velocities_multiplier.write() = settings.extra.velocities_multiplier;
 
     *ctx.statistics_manager.lock() = Some(StatisticsManager::new(
         settings.connection.statistics_history_size,

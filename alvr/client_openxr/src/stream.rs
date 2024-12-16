@@ -438,6 +438,8 @@ fn stream_input_loop(
     refresh_rate: f32,
     running: Arc<RelaxedAtomic>,
 ) {
+    let platform = alvr_system_info::platform();
+
     let mut last_controller_poses = [Pose::default(); 2];
     let mut last_palm_poses = [Pose::default(); 2];
     let mut last_view_params = [ViewParams::default(); 2];
@@ -460,6 +462,7 @@ fn stream_input_loop(
 
         let Some((head_motion, local_views)) = interaction::get_head_data(
             &xr_session,
+            platform,
             stage_reference_space,
             view_reference_space,
             xr_now,

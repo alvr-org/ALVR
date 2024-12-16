@@ -242,6 +242,10 @@ impl ClientCoreContext {
             };
 
         for (id, motion) in &mut device_motions {
+            let velocity_multiplier = *self.connection_context.velocities_multiplier.read();
+            motion.linear_velocity *= velocity_multiplier;
+            motion.angular_velocity *= velocity_multiplier;
+
             if *id == *HEAD_ID {
                 *motion = predict_motion(target_timestamp, poll_timestamp, *motion);
 

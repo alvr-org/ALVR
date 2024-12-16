@@ -1324,6 +1324,10 @@ pub struct ExtraConfig {
     pub capture: CaptureConfig,
     pub logging: LoggingConfig,
     pub patches: Patches,
+
+    #[schema(strings(help = "Linear and angular velocity multiplier for debug purposes."))]
+    pub velocities_multiplier: f32,
+
     pub open_setup_wizard: bool,
 }
 
@@ -1892,6 +1896,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 linux_async_compute: false,
                 linux_async_reprojection: false,
             },
+            velocities_multiplier: 1.0,
             open_setup_wizard: alvr_common::is_stable() || alvr_common::is_nightly(),
         },
     }

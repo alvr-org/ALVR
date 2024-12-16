@@ -471,14 +471,13 @@ pub fn get_reference_space(
 
 pub fn get_head_data(
     xr_session: &xr::Session<xr::OpenGlEs>,
-    reference_space: &xr::Space,
+    stage_reference_space: &xr::Space,
+    view_reference_space: &xr::Space,
     time: xr::Time,
     last_view_params: &[ViewParams; 2],
 ) -> Option<(DeviceMotion, Option<[ViewParams; 2]>)> {
-    let (head_location, head_velocity) = xr_session
-        .create_reference_space(xr::ReferenceSpaceType::VIEW, xr::Posef::IDENTITY)
-        .ok()?
-        .relate(reference_space, time)
+    let (head_location, head_velocity) = view_reference_space
+        .relate(stage_reference_space, time)
         .ok()?;
 
     if !head_location
@@ -492,7 +491,7 @@ pub fn get_head_data(
         .locate_views(
             xr::ViewConfigurationType::PRIMARY_STEREO,
             time,
-            reference_space,
+            stage_reference_space,
         )
         .ok()?;
 

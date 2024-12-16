@@ -460,8 +460,8 @@ fn stream_input_loop(
 
         let Some((head_motion, local_views)) = interaction::get_head_data(
             &xr_session,
-            &stage_reference_space,
-            &view_reference_space,
+            stage_reference_space,
+            view_reference_space,
             xr_now,
             &last_view_params,
         ) else {
@@ -479,7 +479,7 @@ fn stream_input_loop(
 
         let (left_hand_motion, left_hand_skeleton) = crate::interaction::get_hand_data(
             &xr_session,
-            &stage_reference_space,
+            stage_reference_space,
             xr_now,
             &int_ctx.hands_interaction[0],
             &mut last_controller_poses[0],
@@ -487,7 +487,7 @@ fn stream_input_loop(
         );
         let (right_hand_motion, right_hand_skeleton) = crate::interaction::get_hand_data(
             &xr_session,
-            &stage_reference_space,
+            stage_reference_space,
             xr_now,
             &int_ctx.hands_interaction[1],
             &mut last_controller_poses[1],
@@ -511,7 +511,7 @@ fn stream_input_loop(
             eye_gazes: interaction::get_eye_gazes(
                 &xr_session,
                 &int_ctx.face_sources,
-                &stage_reference_space,
+                stage_reference_space,
                 xr_now,
             ),
             fb_face_expression: interaction::get_fb_face_expression(&int_ctx.face_sources, xr_now),
@@ -521,7 +521,7 @@ fn stream_input_loop(
 
         if let Some((tracker, joint_count)) = &int_ctx.body_sources.body_tracker_fb {
             device_motions.append(&mut interaction::get_fb_body_tracking_points(
-                &stage_reference_space,
+                stage_reference_space,
                 xr_now,
                 tracker,
                 *joint_count,

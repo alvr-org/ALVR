@@ -12,6 +12,7 @@ accepted = [
     "OFL-1.1",
     "OpenSSL",
     "Unicode-DFS-2016",
+    "Unicode-3.0",
     "Unlicense",
     "Zlib",
     "zlib-acknowledgement",

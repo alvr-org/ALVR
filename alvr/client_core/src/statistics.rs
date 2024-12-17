@@ -17,6 +17,7 @@ pub struct StatisticsManager {
     prev_vsync: Instant,
     total_pipeline_latency_average: SlidingWindowAverage<Duration>,
     steamvr_pipeline_latency: Duration,
+    head_prediction_scaler: f32,
 }
 
 impl StatisticsManager {
@@ -24,6 +25,7 @@ impl StatisticsManager {
         max_history_size: usize,
         nominal_server_frame_interval: Duration,
         steamvr_pipeline_frames: f32,
+        head_prediction_scaler: f32,
     ) -> Self {
         Self {
             max_history_size,
@@ -36,6 +38,7 @@ impl StatisticsManager {
             steamvr_pipeline_latency: Duration::from_secs_f32(
                 steamvr_pipeline_frames * nominal_server_frame_interval.as_secs_f32(),
             ),
+            head_prediction_scaler,
         }
     }
 
@@ -138,5 +141,9 @@ impl StatisticsManager {
         self.total_pipeline_latency_average
             .get_average()
             .saturating_sub(self.steamvr_pipeline_latency)
+    }
+
+    pub fn get_head_predilection_scaler(&self) -> f32 {
+        self.head_prediction_scaler
     }
 }

@@ -276,11 +276,11 @@ pub fn microphone_schema(devices: Vec<String>) -> PresetSchemaNode {
     if cfg!(windows) {
         for (key, display_name) in [
             ("Automatic", "Automatic"),
-            ("VAC", "Virtual Audio Cable"),
             ("VBCable", "VB Cable"),
             ("VoiceMeeter", "VoiceMeeter"),
             ("VoiceMeeterAux", "VoiceMeeter Aux"),
             ("VoiceMeeterVaio3", "VoiceMeeter VAIO3"),
+            ("VAC", "Virtual Audio Cable"),
         ] {
             microhone_options.push(HigherOrderChoiceOption {
                 display_name: display_name.into(),

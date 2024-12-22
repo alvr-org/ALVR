@@ -3,7 +3,7 @@ mod ui;
 
 use eframe::egui::{IconData, ViewportBuilder};
 use ico::IconDir;
-use std::{collections::BTreeMap, io::Cursor, sync::mpsc, thread};
+use std::{collections::BTreeMap, env, fs, io::Cursor, sync::mpsc, thread};
 use ui::Launcher;
 
 pub struct ReleaseChannelsInfo {
@@ -52,6 +52,14 @@ fn main() {
     )))
     .unwrap();
     let image = ico.entries().first().unwrap().decode().unwrap();
+
+    // Workaround for the steam deck
+    if fs::read_to_string("/sys/devices/virtual/dmi/id/board_vendor")
+        .map(|vendor| vendor.trim() == "Valve")
+        .unwrap_or(false)
+    {
+        env::set_var("WINIT_X11_SCALE_FACTOR", "1");
+    }
 
     eframe::run_native(
         "ALVR Launcher",

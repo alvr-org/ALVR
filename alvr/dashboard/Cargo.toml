@@ -6,6 +6,9 @@ rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 
+[features]
+steam-store = []
+
 [dependencies]
 alvr_adb.workspace = true
 alvr_common.workspace = true

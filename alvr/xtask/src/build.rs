@@ -78,6 +78,7 @@ pub fn build_streamer(
     reproducible: bool,
     profiling: bool,
     keep_config: bool,
+    steam_store: bool,
 ) {
     let sh = Shell::new().unwrap();
 
@@ -162,8 +163,17 @@ pub fn build_streamer(
 
     // Build dashboard
     {
+        let steam_store_flag = steam_store
+            .then(|| vec!["--features", "steam-store"])
+            .unwrap_or_default();
+
         let _push_guard = sh.push_dir(afs::crate_dir("dashboard"));
-        cmd!(sh, "cargo build {common_flags_ref...}").run().unwrap();
+        cmd!(
+            sh,
+            "cargo build {common_flags_ref...} {steam_store_flag...}"
+        )
+        .run()
+        .unwrap();
 
         sh.copy_file(
             artifacts_dir.join(afs::exec_fname("alvr_dashboard")),

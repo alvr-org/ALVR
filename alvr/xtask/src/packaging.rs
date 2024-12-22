@@ -8,7 +8,12 @@ use alvr_filesystem as afs;
 use std::{fs, path::Path};
 use xshell::{cmd, Shell};
 
-pub enum ReleaseFlavor {
+pub enum StreamerReleaseFlavor {
+    GitHub,
+    SteamStore,
+}
+
+pub enum ClientReleaseFlavor {
     GitHub,
     MetaStore,
     PicoStore,
@@ -50,20 +55,29 @@ pub fn include_licenses(root_path: &Path, gpl: bool) {
         .unwrap();
 }
 
+// Note: all packaged release flavors we support are GPL
 pub fn package_streamer(
+    release_flavor: StreamerReleaseFlavor,
     platform: Option<BuildPlatform>,
     skip_admin_priv: bool,
     enable_nvenc: bool,
-    gpl: bool,
     root: Option<String>,
 ) {
     let sh = Shell::new().unwrap();
 
-    dependencies::prepare_server_deps(platform, skip_admin_priv, enable_nvenc);
+    dependencies::prepare_server_deps(platform, skip_admin_priv, enable_nvenc, true);
 
-    build::build_streamer(Profile::Distribution, gpl, root, true, false, false);
+    build::build_streamer(
+        Profile::Distribution,
+        true,
+        root,
+        true,
+        false,
+        false,
+        matches!(release_flavor, StreamerReleaseFlavor::SteamStore),
+    );
 
-    include_licenses(&afs::streamer_build_dir(), gpl);
+    include_licenses(&afs::streamer_build_dir(), true);
 
     if cfg!(windows) {
         command::zip(&sh, &afs::streamer_build_dir()).unwrap();
@@ -99,25 +113,25 @@ pub fn replace_client_openxr_manifest(from_pattern: &str, to: &str) {
     fs::write(manifest_path, manifest_string).unwrap();
 }
 
-pub fn package_client_openxr(flavor: ReleaseFlavor, skip_admin_priv: bool) {
+pub fn package_client_openxr(flavor: ClientReleaseFlavor, skip_admin_priv: bool) {
     fs::remove_dir_all(afs::deps_dir().join("android_openxr")).ok();
 
     let openxr_selection = match flavor {
-        ReleaseFlavor::GitHub => OpenXRLoadersSelection::All,
-        ReleaseFlavor::MetaStore => OpenXRLoadersSelection::OnlyGeneric,
-        ReleaseFlavor::PicoStore => OpenXRLoadersSelection::OnlyPico,
+        ClientReleaseFlavor::GitHub => OpenXRLoadersSelection::All,
+        ClientReleaseFlavor::MetaStore => OpenXRLoadersSelection::OnlyGeneric,
+        ClientReleaseFlavor::PicoStore => OpenXRLoadersSelection::OnlyPico,
     };
 
     dependencies::build_android_deps(skip_admin_priv, false, openxr_selection);
 
-    if !matches!(flavor, ReleaseFlavor::GitHub) {
+    if !matches!(flavor, ClientReleaseFlavor::GitHub) {
         replace_client_openxr_manifest(
             r#"package = "alvr.client.stable""#,
             r#"package = "alvr.client""#,
         );
     }
 
-    if matches!(flavor, ReleaseFlavor::MetaStore) {
+    if matches!(flavor, ClientReleaseFlavor::MetaStore) {
         replace_client_openxr_manifest(r#"value = "all""#, r#"value = "quest2|questpro|quest3""#);
     }
 

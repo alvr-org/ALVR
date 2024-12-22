@@ -10,7 +10,7 @@ use crate::build::Profile;
 use afs::Layout;
 use alvr_filesystem as afs;
 use dependencies::OpenXRLoadersSelection;
-use packaging::ReleaseFlavor;
+use packaging::{ClientReleaseFlavor, StreamerReleaseFlavor};
 use pico_args::Arguments;
 use std::{fs, time::Instant};
 use xshell::{cmd, Shell};
@@ -57,6 +57,7 @@ FLAGS:
     --all-targets       For prepare-deps and build-client-lib subcommand, will build for all android supported ABI targets
     --meta-store        For package-client subcommand, build for Meta Store
     --pico-store        For package-client subcommand, build for Pico Store
+    --steam-store       For package-server subcommand, build for Steam Store
 
 ARGS:
     --platform <NAME>   Name of the platform (operative system name)
@@ -191,12 +192,17 @@ fn main() {
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
         let root: Option<String> = args.opt_value_from_str("--root").unwrap();
 
-        let package_flavor = if args.contains("--meta-store") {
-            ReleaseFlavor::MetaStore
-        } else if args.contains("--pico-store") {
-            ReleaseFlavor::PicoStore
+        let streamer_release_flavor = if args.contains("--steam-store") {
+            StreamerReleaseFlavor::SteamStore
         } else {
-            ReleaseFlavor::GitHub
+            StreamerReleaseFlavor::GitHub
+        };
+        let client_release_flavor = if args.contains("--meta-store") {
+            ClientReleaseFlavor::MetaStore
+        } else if args.contains("--pico-store") {
+            ClientReleaseFlavor::PicoStore
+        } else {
+            ClientReleaseFlavor::GitHub
         };
 
         if args.finish().is_empty() {
@@ -210,10 +216,15 @@ fn main() {
                                 OpenXRLoadersSelection::All,
                             );
                         } else {
-                            dependencies::prepare_server_deps(Some(platform), for_ci, !no_nvidia);
+                            dependencies::prepare_server_deps(
+                                Some(platform),
+                                for_ci,
+                                !no_nvidia,
+                                gpl,
+                            );
                         }
                     } else {
-                        dependencies::prepare_server_deps(platform, for_ci, !no_nvidia);
+                        dependencies::prepare_server_deps(platform, for_ci, !no_nvidia, gpl);
 
                         dependencies::build_android_deps(
                             for_ci,
@@ -223,7 +234,7 @@ fn main() {
                     }
                 }
                 "build-streamer" => {
-                    build::build_streamer(profile, gpl, None, false, profiling, keep_config)
+                    build::build_streamer(profile, gpl, None, false, profiling, keep_config, false)
                 }
                 "build-launcher" => build::build_launcher(profile, false),
                 "build-server-lib" => build::build_server_lib(profile, None, false),
@@ -236,7 +247,15 @@ fn main() {
                 }
                 "run-streamer" => {
                     if !no_rebuild {
-                        build::build_streamer(profile, gpl, None, false, profiling, keep_config);
+                        build::build_streamer(
+                            profile,
+                            gpl,
+                            None,
+                            false,
+                            profiling,
+                            keep_config,
+                            false,
+                        );
                     }
                     run_streamer();
                 }
@@ -246,11 +265,15 @@ fn main() {
                     }
                     run_launcher();
                 }
-                "package-streamer" => {
-                    packaging::package_streamer(platform, for_ci, !no_nvidia, gpl, root)
-                }
+                "package-streamer" => packaging::package_streamer(
+                    streamer_release_flavor,
+                    platform,
+                    for_ci,
+                    !no_nvidia,
+                    root,
+                ),
                 "package-launcher" => packaging::package_launcher(),
-                "package-client" => packaging::package_client_openxr(package_flavor, for_ci),
+                "package-client" => packaging::package_client_openxr(client_release_flavor, for_ci),
                 "package-client-lib" => packaging::package_client_lib(link_stdcpp, all_targets),
                 "format" => format::format(),
                 "check-format" => format::check_format(),

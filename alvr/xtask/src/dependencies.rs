@@ -74,7 +74,7 @@ pub fn prepare_ffmpeg_windows(deps_path: &Path) {
     .unwrap();
 }
 
-pub fn prepare_windows_deps(skip_admin_priv: bool) {
+pub fn prepare_windows_deps(skip_admin_priv: bool, gpl: bool) {
     let sh = Shell::new().unwrap();
 
     let deps_path = afs::deps_dir().join("windows");
@@ -89,8 +89,10 @@ pub fn prepare_windows_deps(skip_admin_priv: bool) {
         .unwrap();
     }
 
-    prepare_x264_windows(&deps_path);
-    prepare_ffmpeg_windows(&deps_path);
+    if gpl {
+        prepare_x264_windows(&deps_path);
+        prepare_ffmpeg_windows(&deps_path);
+    }
 }
 
 pub fn prepare_linux_deps(enable_nvenc: bool) {
@@ -280,15 +282,16 @@ pub fn prepare_server_deps(
     platform: Option<BuildPlatform>,
     skip_admin_priv: bool,
     enable_nvenc: bool,
+    gpl: bool,
 ) {
     match platform {
-        Some(BuildPlatform::Windows) => prepare_windows_deps(skip_admin_priv),
+        Some(BuildPlatform::Windows) => prepare_windows_deps(skip_admin_priv, gpl),
         Some(BuildPlatform::Linux) => prepare_linux_deps(enable_nvenc),
         Some(BuildPlatform::Macos) => prepare_macos_deps(),
         Some(BuildPlatform::Android) => panic!("Android is not supported"),
         None => {
             if cfg!(windows) {
-                prepare_windows_deps(skip_admin_priv);
+                prepare_windows_deps(skip_admin_priv, gpl);
             } else if cfg!(target_os = "linux") {
                 prepare_linux_deps(enable_nvenc);
             } else if cfg!(target_os = "macos") {

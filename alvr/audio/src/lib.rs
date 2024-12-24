@@ -30,6 +30,7 @@ use std::{
 
 static VIRTUAL_MICROPHONE_PAIRS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     [
+        ("Virtual Cable 1", "Virtual Cable 2"),
         ("CABLE Input", "CABLE Output"),
         ("VoiceMeeter Input", "VoiceMeeter Output"),
         ("VoiceMeeter Aux Input", "VoiceMeeter Aux Output"),
@@ -135,6 +136,9 @@ impl AudioDevice {
                 }
 
                 pair?
+            }
+            MicrophoneDevicesConfig::VAC => {
+                microphone_pair_from_sink_name(&host, "Virtual Cable 1")?
             }
             MicrophoneDevicesConfig::VBCable => {
                 microphone_pair_from_sink_name(&host, "CABLE Input")?

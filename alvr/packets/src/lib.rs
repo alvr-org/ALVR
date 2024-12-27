@@ -211,13 +211,6 @@ pub enum ServerControlPacket {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct ViewsConfig {
-    // Note: the head-to-eye transform is always a translation along the x axis
-    pub ipd_m: f32,
-    pub fov: [Fov; 2],
-}
-
-#[derive(Serialize, Deserialize, Clone)]
 pub struct BatteryInfo {
     pub device_id: u64,
     pub gauge_value: f32, // range [0, 1]
@@ -257,7 +250,7 @@ pub enum ClientControlPacket {
     RequestIdr,
     KeepAlive,
     StreamReady, // This flag notifies the server the client streaming socket is ready listening
-    ViewsConfig(ViewsConfig),
+    ViewsParams([ViewParams; 2]), // Local frame of reference
     Battery(BatteryInfo),
     VideoErrorReport, // legacy
     Buttons(Vec<ButtonEntry>),
@@ -278,6 +271,8 @@ pub struct FaceData {
 #[derive(Serialize, Deserialize)]
 pub struct VideoPacketHeader {
     pub timestamp: Duration,
+    // These view params are in global reference frame
+    pub views_params: [ViewParams; 2],
     pub is_idr: bool,
 }
 

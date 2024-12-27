@@ -23,11 +23,10 @@ use alvr_common::{
     glam::{Quat, UVec2, Vec2, Vec3},
     parking_lot::{Mutex, RwLock},
     warn, ConnectionState, DeviceMotion, LifecycleState, Pose, HAND_LEFT_ID, HAND_RIGHT_ID,
-    HEAD_ID,
 };
 use alvr_packets::{
     BatteryInfo, ButtonEntry, ClientControlPacket, FaceData, ReservedClientControlPacket,
-    StreamConfig, Tracking, ViewParams, ViewsConfig,
+    StreamConfig, Tracking, ViewParams,
 };
 use alvr_session::CodecType;
 use connection::{ConnectionContext, DecoderCallback};
@@ -213,15 +212,8 @@ impl ClientCoreContext {
     pub fn send_view_params(&self, views: [ViewParams; 2]) {
         dbg_client_core!("send_view_params");
 
-        *self.connection_context.view_params.write() = views;
-
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
-            sender
-                .send(&ClientControlPacket::ViewsConfig(ViewsConfig {
-                    fov: [views[0].fov, views[1].fov],
-                    ipd_m: (views[0].pose.position - views[1].pose.position).length(),
-                }))
-                .ok();
+            sender.send(&ClientControlPacket::ViewsParams(views)).ok();
         }
     }
 
@@ -241,30 +233,13 @@ impl ClientCoreContext {
                 poll_timestamp
             };
 
-        for (id, motion) in &mut device_motions {
+        {
             let velocity_multiplier = *self.connection_context.velocities_multiplier.read();
-            motion.linear_velocity *= velocity_multiplier;
-            motion.angular_velocity *= velocity_multiplier;
-
-            if *id == *HEAD_ID {
-                *motion = predict_motion(target_timestamp, poll_timestamp, *motion);
-
-                let mut head_pose_queue = self.connection_context.head_pose_queue.write();
-
-                head_pose_queue.push_back((target_timestamp, motion.pose));
-
-                while head_pose_queue.len() > 1024 {
-                    head_pose_queue.pop_front();
+            if velocity_multiplier != 1.0 {
+                for (_, motion) in &mut device_motions {
+                    motion.linear_velocity *= velocity_multiplier;
+                    motion.angular_velocity *= velocity_multiplier;
                 }
-
-                // This is done for backward compatibiity for the v20 protocol. Will be removed with the
-                // tracking rewrite protocol extension.
-                motion.linear_velocity = Vec3::ZERO;
-                motion.angular_velocity = Vec3::ZERO;
-            } else if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
-                let tracker_timestamp = poll_timestamp + stats.tracker_prediction_offset();
-
-                *motion = predict_motion(tracker_timestamp, poll_timestamp, *motion);
             }
         }
 
@@ -343,25 +318,15 @@ impl ClientCoreContext {
             stats.report_compositor_start(timestamp);
         }
 
-        let mut head_pose = *self.connection_context.last_good_head_pose.read();
-        for (ts, pose) in &*self.connection_context.head_pose_queue.read() {
+        let mut view_params = [ViewParams::default(); 2];
+        for (ts, vp) in &*self.connection_context.view_params_queue.read() {
             if *ts == timestamp {
-                head_pose = *pose;
+                view_params = *vp;
                 break;
             }
         }
-        let view_params = self.connection_context.view_params.read();
 
-        [
-            ViewParams {
-                pose: head_pose * view_params[0].pose,
-                fov: view_params[0].fov,
-            },
-            ViewParams {
-                pose: head_pose * view_params[1].pose,
-                fov: view_params[1].fov,
-            },
-        ]
+        view_params
     }
 
     pub fn report_submit(&self, timestamp: Duration, vsync_queue: Duration) {

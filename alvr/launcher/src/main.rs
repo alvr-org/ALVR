@@ -65,6 +65,7 @@ fn main() {
         "ALVR Launcher",
         eframe::NativeOptions {
             viewport: ViewportBuilder::default()
+                .with_app_id("alvr.launcher")
                 .with_inner_size((700.0, 400.0))
                 .with_icon(IconData {
                     rgba: image.rgba_data().to_owned(),

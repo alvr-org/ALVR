@@ -92,6 +92,7 @@ fn main() {
         &format!("ALVR Dashboard (streamer v{})", *ALVR_VERSION),
         NativeOptions {
             viewport: ViewportBuilder::default()
+                .with_app_id("alvr.dashboard")
                 .with_inner_size((870.0, 600.0))
                 .with_icon(IconData {
                     rgba: image.rgba_data().to_owned(),

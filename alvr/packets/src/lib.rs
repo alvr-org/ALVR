@@ -129,6 +129,7 @@ pub struct NegotiatedStreamingConfig {
     // This is needed to detect when to use SteamVR hand trackers. This does NOT imply if multimodal
     // input is supported
     pub use_multimodal_protocol: bool,
+    pub use_full_range: bool,
     pub encoding_gamma: f32,
     pub enable_hdr: bool,
     pub wired: bool,
@@ -173,6 +174,8 @@ pub fn decode_stream_config(packet: &StreamConfigPacket) -> Result<StreamConfig>
             .unwrap_or_else(|_| settings.video.foveated_encoding.enabled());
     let use_multimodal_protocol =
         json::from_value(negotiated_json["use_multimodal_protocol"].clone()).unwrap_or(false);
+    let use_full_range = json::from_value(negotiated_json["use_full_range"].clone())
+        .unwrap_or_else(|_| settings.video.encoder_config.use_full_range);
     let encoding_gamma = json::from_value(negotiated_json["encoding_gamma"].clone()).unwrap_or(1.0);
     let enable_hdr = json::from_value(negotiated_json["enable_hdr"].clone()).unwrap_or(false);
     let wired = json::from_value(negotiated_json["wired"].clone())?;
@@ -186,6 +189,7 @@ pub fn decode_stream_config(packet: &StreamConfigPacket) -> Result<StreamConfig>
             game_audio_sample_rate,
             enable_foveated_encoding,
             use_multimodal_protocol,
+            use_full_range,
             encoding_gamma,
             enable_hdr,
             wired,

@@ -129,15 +129,17 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                             .unwrap_or_else(FfiDeviceMotion::default);
                         let ffi_left_controller_motion = context
                             .get_device_motion(*HAND_LEFT_ID, sample_timestamp)
-                            .map(|m| tracking::to_ffi_motion(*HAND_LEFT_ID, m));
+                            .map(|m| tracking::to_ffi_motion(*HAND_LEFT_ID, m))
+                            .filter(|_| tracked);
                         let ffi_right_controller_motion = context
                             .get_device_motion(*HAND_RIGHT_ID, sample_timestamp)
-                            .map(|m| tracking::to_ffi_motion(*HAND_RIGHT_ID, m));
+                            .map(|m| tracking::to_ffi_motion(*HAND_RIGHT_ID, m))
+                            .filter(|_| tracked);
 
                         let (
-                            use_separate_hand_trackers,
                             ffi_left_hand_skeleton,
                             ffi_right_hand_skeleton,
+                            use_separate_hand_trackers,
                             predict_hand_skeleton,
                         ) = if let Some(ControllersConfig {
                             hand_skeleton: Switch::Enabled(hand_skeleton_config),
@@ -164,13 +166,13 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                                 });
 
                             (
-                                hand_skeleton_config.steamvr_input_2_0,
                                 tracked.then_some(left_hand_skeleton).flatten(),
                                 tracked.then_some(right_hand_skeleton).flatten(),
+                                hand_skeleton_config.steamvr_input_2_0,
                                 hand_skeleton_config.predict,
                             )
                         } else {
-                            (false, None, None, false)
+                            (None, None, false, false)
                         };
 
                         let ffi_left_hand_data = FfiHandData {

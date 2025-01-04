@@ -54,7 +54,7 @@ pub struct StatisticsManager {
     packets_lost_partial_sum: usize,
     battery_gauges: HashMap<u64, BatteryData>,
     steamvr_pipeline_latency: Duration,
-    total_pipeline_latency_average: SlidingWindowAverage<Duration>,
+    motion_to_photon_latency_average: SlidingWindowAverage<Duration>,
     last_vsync_time: Instant,
     frame_interval: Duration,
     last_throughput_directives: BitrateDirectives,
@@ -83,7 +83,7 @@ impl StatisticsManager {
             steamvr_pipeline_latency: Duration::from_secs_f32(
                 steamvr_pipeline_frames * nominal_server_frame_interval.as_secs_f32(),
             ),
-            total_pipeline_latency_average: SlidingWindowAverage::new(
+            motion_to_photon_latency_average: SlidingWindowAverage::new(
                 Duration::ZERO,
                 max_history_size,
             ),
@@ -184,6 +184,9 @@ impl StatisticsManager {
     // Called every frame. Some statistics are reported once every frame
     // Returns (network latency, game time latency)
     pub fn report_statistics(&mut self, client_stats: ClientStatistics) -> (Duration, Duration) {
+        self.motion_to_photon_latency_average
+            .submit_sample(client_stats.total_pipeline_latency);
+
         if let Some(frame) = self
             .history_buffer
             .iter_mut()
@@ -297,14 +300,13 @@ impl StatisticsManager {
         }
     }
 
-    pub fn video_pipeline_latency_average(&self) -> Duration {
-        self.total_pipeline_latency_average.get_average()
+    pub fn motion_to_photon_latency_average(&self) -> Duration {
+        self.motion_to_photon_latency_average.get_average()
     }
 
     pub fn tracker_pose_time_offset(&self) -> Duration {
         // This is the opposite of the client's StatisticsManager::tracker_prediction_offset().
         self.steamvr_pipeline_latency
-            .saturating_sub(self.total_pipeline_latency_average.get_average())
     }
 
     // NB: this call is non-blocking, waiting should be done externally

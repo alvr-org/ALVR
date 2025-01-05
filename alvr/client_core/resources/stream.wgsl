@@ -4,11 +4,6 @@ const DIV1: f32 = 0.94786729857; // 1.0 / 1.055
 const THRESHOLD: f32 = 0.04045;
 const GAMMA: vec3f = vec3f(2.4);
 
-// Convert from limited colors to full
-const LIMITED_MIN: f32 = 0.06274509803; // 16.0 / 255.0
-const LIMITED_MAX: f32 = 0.92156862745; // 235.0 / 255.0
-
-override FIX_LIMITED_RANGE: bool;
 override ENABLE_SRGB_CORRECTION: bool;
 override ENCODING_GAMMA: f32;
 

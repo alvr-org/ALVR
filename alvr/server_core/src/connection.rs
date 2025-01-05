@@ -766,6 +766,7 @@ fn connection_pipeline(
             game_audio_sample_rate,
             enable_foveated_encoding,
             use_multimodal_protocol: streaming_caps.multimodal_protocol,
+            use_full_range,
             encoding_gamma,
             enable_hdr,
             wired,

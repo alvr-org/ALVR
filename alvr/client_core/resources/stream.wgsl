@@ -118,11 +118,6 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
 
     var color = textureSample(stream_texture, stream_sampler, corrected_uv).rgb;
 
-    if FIX_LIMITED_RANGE {
-        // For some reason, the encoder shifts full-range color into the negatives and over one.
-        color = LIMITED_MIN + ((LIMITED_MAX - LIMITED_MIN) * color);
-    }
-
     if ENABLE_SRGB_CORRECTION {
         let condition = vec3f(f32(color.r < THRESHOLD), f32(color.g < THRESHOLD), f32(color.b < THRESHOLD));
         let lowValues = color * DIV12;

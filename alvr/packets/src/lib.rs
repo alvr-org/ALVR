@@ -175,7 +175,7 @@ pub fn decode_stream_config(packet: &StreamConfigPacket) -> Result<StreamConfig>
     let use_multimodal_protocol =
         json::from_value(negotiated_json["use_multimodal_protocol"].clone()).unwrap_or(false);
     let use_full_range = json::from_value(negotiated_json["use_full_range"].clone())
-        .unwrap_or_else(|_| settings.video.encoder_config.use_full_range);
+        .unwrap_or(settings.video.encoder_config.use_full_range);
     let encoding_gamma = json::from_value(negotiated_json["encoding_gamma"].clone()).unwrap_or(1.0);
     let enable_hdr = json::from_value(negotiated_json["enable_hdr"].clone()).unwrap_or(false);
     let wired = json::from_value(negotiated_json["wired"].clone())?;

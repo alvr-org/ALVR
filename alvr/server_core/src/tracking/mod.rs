@@ -435,37 +435,41 @@ pub fn tracking_loop(
         ) {
             let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
 
-            if let Some(hand_skeleton) = tracking.hand_skeletons[0] {
-                ctx.events_sender
-                    .send(ServerCoreEvent::Buttons(
-                        hand_gestures::trigger_hand_gesture_actions(
-                            gestures_button_mapping_manager,
-                            *HAND_LEFT_ID,
-                            &hand_gesture_manager_lock.get_active_gestures(
-                                hand_skeleton,
-                                gestures_config,
+            if !device_motion_keys.contains(&*HAND_LEFT_ID) {
+                if let Some(hand_skeleton) = tracking.hand_skeletons[0] {
+                    ctx.events_sender
+                        .send(ServerCoreEvent::Buttons(
+                            hand_gestures::trigger_hand_gesture_actions(
+                                gestures_button_mapping_manager,
                                 *HAND_LEFT_ID,
+                                &hand_gesture_manager_lock.get_active_gestures(
+                                    hand_skeleton,
+                                    gestures_config,
+                                    *HAND_LEFT_ID,
+                                ),
+                                gestures_config.only_touch,
                             ),
-                            gestures_config.only_touch,
-                        ),
-                    ))
-                    .ok();
+                        ))
+                        .ok();
+                }
             }
-            if let Some(hand_skeleton) = tracking.hand_skeletons[1] {
-                ctx.events_sender
-                    .send(ServerCoreEvent::Buttons(
-                        hand_gestures::trigger_hand_gesture_actions(
-                            gestures_button_mapping_manager,
-                            *HAND_RIGHT_ID,
-                            &hand_gesture_manager_lock.get_active_gestures(
-                                hand_skeleton,
-                                gestures_config,
+            if !device_motion_keys.contains(&*HAND_RIGHT_ID) {
+                if let Some(hand_skeleton) = tracking.hand_skeletons[1] {
+                    ctx.events_sender
+                        .send(ServerCoreEvent::Buttons(
+                            hand_gestures::trigger_hand_gesture_actions(
+                                gestures_button_mapping_manager,
                                 *HAND_RIGHT_ID,
+                                &hand_gesture_manager_lock.get_active_gestures(
+                                    hand_skeleton,
+                                    gestures_config,
+                                    *HAND_RIGHT_ID,
+                                ),
+                                gestures_config.only_touch,
                             ),
-                            gestures_config.only_touch,
-                        ),
-                    ))
-                    .ok();
+                        ))
+                        .ok();
+                }
             }
         }
 

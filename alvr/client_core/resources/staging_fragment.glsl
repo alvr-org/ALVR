@@ -4,8 +4,8 @@
 uniform samplerExternalOES tex;
 
 // Convert from limited colors to full
-const float LIMITED_MIN = 0.06274509803; // 16.0 / 255.0
-const float LIMITED_MAX = 0.92156862745; // 235.0 / 255.0
+const float LIMITED_MIN = 16.0 / 255.0;
+const float LIMITED_MAX = 235.0 / 255.0;
 
 in vec2 uv;
 out vec4 out_color;

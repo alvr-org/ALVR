@@ -1,7 +1,7 @@
 use super::{GraphicsContext, SDR_FORMAT};
 use alvr_common::{
     glam::{IVec2, Mat4, Quat, UVec2, Vec3},
-    Fov, Pose,
+    DeviceMotion, Fov, Pose,
 };
 use glyph_brush_layout::{
     ab_glyph::{Font, FontRef, ScaleFont},
@@ -222,7 +222,7 @@ impl LobbyRenderer {
             device,
             "lobby_line",
             &[],
-            64,
+            68,
             include_wgsl!("../../resources/lobby_line.wgsl"),
             PrimitiveTopology::LineList,
         );
@@ -352,7 +352,7 @@ impl LobbyRenderer {
     pub fn render(
         &self,
         view_params: [LobbyViewParams; 2],
-        hand_data: [(Option<Pose>, Option<[Pose; 26]>); 2],
+        hand_data: [(Option<DeviceMotion>, Option<[Pose; 26]>); 2],
         body_skeleton_fb: Option<Vec<Option<Pose>>>,
         render_background: bool,
     ) {
@@ -436,8 +436,14 @@ impl LobbyRenderer {
 
             // Render hands and body skeleton
             pass.set_pipeline(&self.line_pipeline);
-            for (maybe_pose, maybe_skeleton) in &hand_data {
+            for (maybe_motion, maybe_skeleton) in &hand_data {
                 if let Some(skeleton) = maybe_skeleton {
+                    pass.set_push_constants(
+                        ShaderStages::VERTEX_FRAGMENT,
+                        64,
+                        &[255, 255, 255, 255],
+                    );
+
                     for (joint1_idx, joint2_idx) in HAND_SKELETON_BONES {
                         let j1_pose = skeleton[joint1_idx];
                         let j2_pose = skeleton[joint2_idx];
@@ -451,18 +457,24 @@ impl LobbyRenderer {
                     }
                 }
 
-                if let Some(pose) = maybe_pose {
+                if let Some(motion) = maybe_motion {
                     let hand_transform = Mat4::from_scale_rotation_translation(
                         Vec3::ONE * 0.2,
-                        pose.orientation,
-                        pose.position,
+                        motion.pose.orientation,
+                        motion.pose.position,
                     );
 
+                    // Draw crossair
                     let segment_rotations = [
                         Mat4::IDENTITY,
                         Mat4::from_rotation_y(FRAC_PI_2),
                         Mat4::from_rotation_x(FRAC_PI_2),
                     ];
+                    pass.set_push_constants(
+                        ShaderStages::VERTEX_FRAGMENT,
+                        64,
+                        &[255, 255, 255, 255],
+                    );
                     for rot in &segment_rotations {
                         let transform = hand_transform
                             * *rot
@@ -470,6 +482,24 @@ impl LobbyRenderer {
                             * Mat4::from_translation(Vec3::Z * 0.5);
                         transform_draw(&mut pass, view_proj * transform, 2);
                     }
+
+                    // Draw linear velocity
+                    let transform = Mat4::from_scale_rotation_translation(
+                        Vec3::ONE * motion.linear_velocity.length() * 0.2,
+                        Quat::from_rotation_arc(-Vec3::Z, motion.linear_velocity.normalize()),
+                        motion.pose.position,
+                    );
+                    pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, 64, &[255, 0, 0, 255]);
+                    transform_draw(&mut pass, view_proj * transform, 2);
+
+                    // Draw angular velocity
+                    let transform = Mat4::from_scale_rotation_translation(
+                        Vec3::ONE * motion.angular_velocity.length() * 0.01,
+                        Quat::from_rotation_arc(-Vec3::Z, motion.angular_velocity.normalize()),
+                        motion.pose.position,
+                    );
+                    pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, 64, &[0, 255, 0, 255]);
+                    transform_draw(&mut pass, view_proj * transform, 2);
                 }
             }
             if let Some(skeleton) = &body_skeleton_fb {

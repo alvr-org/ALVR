@@ -548,6 +548,7 @@ pub fn get_head_data(
 
 pub fn get_hand_data(
     xr_session: &xr::Session<xr::OpenGlEs>,
+    platform: Platform,
     reference_space: &xr::Space,
     time: xr::Time,
     hand_source: &HandInteraction,
@@ -574,10 +575,18 @@ pub fn get_hand_data(
                 last_controller_pose.position = crate::from_xr_vec3(location.pose.position);
             }
 
+            let linear_velocity = crate::from_xr_vec3(velocity.linear_velocity);
+            let mut angular_velocity = crate::from_xr_vec3(velocity.angular_velocity);
+
+            // Some headsets use wrong frame of reference
+            if matches!(platform, Platform::PicoNeo3 | Platform::Pico4) || platform.is_vive() {
+                angular_velocity = last_controller_pose.orientation * angular_velocity;
+            };
+
             Some(DeviceMotion {
                 pose: *last_controller_pose,
-                linear_velocity: crate::from_xr_vec3(velocity.linear_velocity),
-                angular_velocity: crate::from_xr_vec3(velocity.angular_velocity),
+                linear_velocity,
+                angular_velocity,
             })
         } else {
             None

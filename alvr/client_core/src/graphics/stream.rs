@@ -84,7 +84,6 @@ impl StreamRenderer {
                 "ENABLE_SRGB_CORRECTION".into(),
                 enable_srgb_correction.into(),
             ),
-            ("FIX_LIMITED_RANGE".into(), fix_limited_range.into()),
             ("ENCODING_GAMMA".into(), encoding_gamma.into()),
         ]);
 
@@ -203,6 +202,7 @@ impl StreamRenderer {
             Rc::clone(&context),
             staging_textures_gl.try_into().unwrap(),
             staging_resolution,
+            fix_limited_range,
         );
 
         Self {

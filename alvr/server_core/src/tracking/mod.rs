@@ -27,6 +27,7 @@ use alvr_session::{
 };
 use alvr_sockets::StreamReceiver;
 use std::{
+    cmp::Ordering,
     collections::{HashMap, VecDeque},
     f32::consts::PI,
     sync::Arc,
@@ -34,7 +35,9 @@ use std::{
 };
 
 const DEG_TO_RAD: f32 = PI / 180.0;
-const MAX_HISTORY_SIZE: usize = 8;
+// A small history size is used, we just need to cover the time from packet received to data
+// processed.
+const MAX_HISTORY_SIZE: usize = 16;
 
 #[derive(Debug)]
 pub enum HandType {
@@ -214,10 +217,10 @@ impl TrackingManager {
             }
 
             if let Some(motions) = self.device_motions_history.get_mut(&device_id) {
-                motions.push_back((timestamp, motion));
+                motions.push_front((timestamp, motion));
 
                 if motions.len() > MAX_HISTORY_SIZE {
-                    motions.pop_front();
+                    motions.pop_back();
                 }
             } else {
                 self.device_motions_history
@@ -226,6 +229,8 @@ impl TrackingManager {
         }
     }
 
+    // If the exact sample_timestamp is not found, use the closest one if it's not older. This makes
+    // sure that we return None if there is no newer sample and always return Some otherwise.
     pub fn get_device_motion(
         &self,
         device_id: u64,
@@ -234,10 +239,30 @@ impl TrackingManager {
         self.device_motions_history
             .get(&device_id)
             .and_then(|motions| {
-                motions
-                    .iter()
-                    .find(|(timestamp, _)| *timestamp == sample_timestamp)
-                    .map(|(_, motion)| *motion)
+                // Get first element to initialize a valid motion reference
+                if let Some((_, motion)) = motions.front() {
+                    let mut best_timestamp_diff = Duration::MAX;
+                    let mut best_motion_ref = motion;
+
+                    // Note: we are iterating from most recent to oldest
+                    for (ts, m) in motions {
+                        match ts.cmp(&sample_timestamp) {
+                            Ordering::Equal => return Some(*best_motion_ref),
+                            Ordering::Greater => {
+                                let diff = ts.saturating_sub(sample_timestamp);
+                                if diff < best_timestamp_diff {
+                                    best_timestamp_diff = diff;
+                                    best_motion_ref = m;
+                                }
+                            }
+                            Ordering::Less => continue,
+                        }
+                    }
+
+                    (best_timestamp_diff != Duration::MAX).then_some(*best_motion_ref)
+                } else {
+                    None
+                }
             })
     }
 

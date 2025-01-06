@@ -164,6 +164,7 @@ impl Lobby {
             [left_hand_data, right_hand_data],
             body_skeleton_fb,
             false,
+            cfg!(debug_assertions),
         );
 
         self.swapchains[0].release_image().unwrap();

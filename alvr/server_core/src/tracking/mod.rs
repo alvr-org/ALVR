@@ -27,6 +27,7 @@ use alvr_session::{
 };
 use alvr_sockets::StreamReceiver;
 use std::{
+    cmp::Ordering,
     collections::{HashMap, VecDeque},
     f32::consts::PI,
     sync::Arc,
@@ -245,14 +246,16 @@ impl TrackingManager {
 
                     // Note: we are iterating from most recent to oldest
                     for (ts, m) in motions {
-                        if *ts == sample_timestamp {
-                            return Some(*best_motion_ref);
-                        } else if *ts > sample_timestamp {
-                            let diff = ts.saturating_sub(sample_timestamp);
-                            if diff < best_timestamp_diff {
-                                best_timestamp_diff = diff;
-                                best_motion_ref = m;
+                        match ts.cmp(&sample_timestamp) {
+                            Ordering::Equal => return Some(*best_motion_ref),
+                            Ordering::Greater => {
+                                let diff = ts.saturating_sub(sample_timestamp);
+                                if diff < best_timestamp_diff {
+                                    best_timestamp_diff = diff;
+                                    best_motion_ref = m;
+                                }
                             }
+                            Ordering::Less => continue,
                         }
                     }
 

@@ -1,10 +1,10 @@
-use super::{staging::StagingRenderer, GraphicsContext};
+use super::{staging::StagingRenderer, GraphicsContext, MAX_PUSH_CONSTANTS_SIZE};
 use alvr_common::{
     glam::{self, Mat4, Quat, UVec2, Vec3},
     Fov,
 };
 use alvr_session::{FoveatedEncodingConfig, PassthroughMode};
-use std::{collections::HashMap, ffi::c_void, iter, rc::Rc};
+use std::{collections::HashMap, ffi::c_void, iter, mem, rc::Rc};
 use wgpu::{
     hal::{api, gles},
     include_wgsl, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
@@ -15,6 +15,18 @@ use wgpu::{
     StoreOp, TextureSampleType, TextureView, TextureViewDescriptor, TextureViewDimension,
     VertexState,
 };
+
+const TRANSFORM_CONST_SIZE: u32 = mem::size_of::<Mat4>() as u32;
+const VIEW_INDEX_CONST_SIZE: u32 = mem::size_of::<u32>() as u32;
+
+const PUSH_CONSTANTS_SIZE: u32 = TRANSFORM_CONST_SIZE + VIEW_INDEX_CONST_SIZE;
+const _: () = assert!(
+    PUSH_CONSTANTS_SIZE <= MAX_PUSH_CONSTANTS_SIZE,
+    "Push constants size exceeds the maximum size"
+);
+
+const TRANSFORM_CONST_OFFSET: u32 = 0;
+const VIEW_INDEX_CONST_OFFSET: u32 = TRANSFORM_CONST_SIZE;
 
 pub struct StreamViewParams {
     pub swapchain_index: u32,
@@ -113,7 +125,7 @@ impl StreamRenderer {
                 bind_group_layouts: &[&bind_group_layout],
                 push_constant_ranges: &[PushConstantRange {
                     stages: ShaderStages::VERTEX_FRAGMENT,
-                    range: 0..68,
+                    range: 0..PUSH_CONSTANTS_SIZE,
                 }],
             })),
             vertex: VertexState {
@@ -265,10 +277,14 @@ impl StreamRenderer {
                 .collect::<Vec<u8>>();
 
             render_pass.set_pipeline(&self.pipeline);
-            render_pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, 0, &transform_bytes);
             render_pass.set_push_constants(
                 ShaderStages::VERTEX_FRAGMENT,
-                64,
+                TRANSFORM_CONST_OFFSET,
+                &transform_bytes,
+            );
+            render_pass.set_push_constants(
+                ShaderStages::VERTEX_FRAGMENT,
+                VIEW_INDEX_CONST_OFFSET,
                 &(view_idx as u32).to_le_bytes(),
             );
             render_pass.set_bind_group(0, &self.views_objects[view_idx].bind_group, &[]);

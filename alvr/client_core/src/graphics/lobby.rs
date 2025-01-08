@@ -1,4 +1,4 @@
-use super::{GraphicsContext, SDR_FORMAT};
+use super::{GraphicsContext, MAX_PUSH_CONSTANTS_SIZE, SDR_FORMAT};
 use alvr_common::{
     glam::{IVec2, Mat4, Quat, UVec2, Vec3},
     DeviceMotion, Fov, Pose,
@@ -7,7 +7,7 @@ use glyph_brush_layout::{
     ab_glyph::{Font, FontRef, ScaleFont},
     FontId, GlyphPositioner, HorizontalAlign, Layout, SectionGeometry, SectionText, VerticalAlign,
 };
-use std::{f32::consts::FRAC_PI_2, rc::Rc};
+use std::{f32::consts::FRAC_PI_2, mem, rc::Rc};
 use wgpu::{
     include_wgsl, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendComponent,
@@ -19,6 +19,25 @@ use wgpu::{
     SamplerDescriptor, ShaderModuleDescriptor, ShaderStages, StoreOp, Texture, TextureAspect,
     TextureSampleType, TextureView, TextureViewDimension, VertexState,
 };
+
+const TRANSFORM_CONST_SIZE: u32 = mem::size_of::<Mat4>() as u32;
+const OBJECT_TYPE_CONST_SIZE: u32 = mem::size_of::<u32>() as u32;
+const FLOOR_SIDE_CONST_SIZE: u32 = mem::size_of::<f32>() as u32;
+const COLOR_CONST_SIZE: u32 = mem::size_of::<u32>() as u32;
+
+const QUAD_PUSH_CONTANTS_SIZE: u32 =
+    TRANSFORM_CONST_SIZE + OBJECT_TYPE_CONST_SIZE + FLOOR_SIDE_CONST_SIZE;
+const LINE_PUSH_CONTANTS_SIZE: u32 = TRANSFORM_CONST_SIZE + COLOR_CONST_SIZE;
+const _: () = assert!(
+    QUAD_PUSH_CONTANTS_SIZE <= MAX_PUSH_CONSTANTS_SIZE
+        && LINE_PUSH_CONTANTS_SIZE <= MAX_PUSH_CONSTANTS_SIZE,
+    "Push constants size exceeds the maximum size"
+);
+
+const TRANSFORM_CONST_OFFSET: u32 = 0;
+const OBJECT_TYPE_CONST_OFFSET: u32 = TRANSFORM_CONST_SIZE;
+const FLOOR_SIDE_CONST_OFFSET: u32 = OBJECT_TYPE_CONST_OFFSET + OBJECT_TYPE_CONST_SIZE;
+const COLOR_CONST_OFFSET: u32 = TRANSFORM_CONST_SIZE;
 
 const FLOOR_SIDE: f32 = 300.0;
 const HUD_DIST: f32 = 5.0;
@@ -213,7 +232,7 @@ impl LobbyRenderer {
             device,
             "lobby_quad",
             &[&bind_group_layout],
-            72,
+            QUAD_PUSH_CONTANTS_SIZE,
             include_wgsl!("../../resources/lobby_quad.wgsl"),
             PrimitiveTopology::TriangleStrip,
         );
@@ -222,7 +241,7 @@ impl LobbyRenderer {
             device,
             "lobby_line",
             &[],
-            68,
+            LINE_PUSH_CONTANTS_SIZE,
             include_wgsl!("../../resources/lobby_line.wgsl"),
             PrimitiveTopology::LineList,
         );
@@ -402,7 +421,11 @@ impl LobbyRenderer {
                     .iter()
                     .flat_map(|v| v.to_le_bytes())
                     .collect::<Vec<u8>>();
-                pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, 0, &data);
+                pass.set_push_constants(
+                    ShaderStages::VERTEX_FRAGMENT,
+                    TRANSFORM_CONST_OFFSET,
+                    &data,
+                );
                 pass.draw(0..vertices_count, 0..1);
             }
 
@@ -414,10 +437,14 @@ impl LobbyRenderer {
 
             if render_background {
                 // Render ground
-                pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, 64, &0_u32.to_le_bytes());
                 pass.set_push_constants(
                     ShaderStages::VERTEX_FRAGMENT,
-                    68,
+                    OBJECT_TYPE_CONST_OFFSET,
+                    &0_u32.to_le_bytes(),
+                );
+                pass.set_push_constants(
+                    ShaderStages::VERTEX_FRAGMENT,
+                    FLOOR_SIDE_CONST_OFFSET,
                     &FLOOR_SIDE.to_le_bytes(),
                 );
                 let transform = view_proj
@@ -427,7 +454,11 @@ impl LobbyRenderer {
             }
 
             // Render HUD
-            pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, 64, &1_u32.to_le_bytes());
+            pass.set_push_constants(
+                ShaderStages::VERTEX_FRAGMENT,
+                OBJECT_TYPE_CONST_OFFSET,
+                &1_u32.to_le_bytes(),
+            );
             for i in 0..4 {
                 let transform = Mat4::from_rotation_y(FRAC_PI_2 * i as f32)
                     * Mat4::from_translation(Vec3::new(0.0, HUD_SIDE / 2.0, -HUD_DIST))
@@ -441,7 +472,7 @@ impl LobbyRenderer {
                 if let Some(skeleton) = maybe_skeleton {
                     pass.set_push_constants(
                         ShaderStages::VERTEX_FRAGMENT,
-                        64,
+                        COLOR_CONST_OFFSET,
                         &[255, 255, 255, 255],
                     );
 
@@ -473,7 +504,7 @@ impl LobbyRenderer {
                     ];
                     pass.set_push_constants(
                         ShaderStages::VERTEX_FRAGMENT,
-                        64,
+                        COLOR_CONST_OFFSET,
                         &[255, 255, 255, 255],
                     );
                     for rot in &segment_rotations {
@@ -493,7 +524,7 @@ impl LobbyRenderer {
                         );
                         pass.set_push_constants(
                             ShaderStages::VERTEX_FRAGMENT,
-                            64,
+                            COLOR_CONST_OFFSET,
                             &[255, 0, 0, 255],
                         );
                         transform_draw(&mut pass, view_proj * transform, 2);
@@ -506,7 +537,7 @@ impl LobbyRenderer {
                         );
                         pass.set_push_constants(
                             ShaderStages::VERTEX_FRAGMENT,
-                            64,
+                            COLOR_CONST_OFFSET,
                             &[0, 255, 0, 255],
                         );
                         transform_draw(&mut pass, view_proj * transform, 2);

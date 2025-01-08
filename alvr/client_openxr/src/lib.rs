@@ -272,6 +272,7 @@ pub fn entry_point() {
             xr_session.clone(),
             Rc::clone(&graphics_context),
             Arc::clone(&interaction_context),
+            platform,
             default_view_resolution,
             &last_lobby_message,
         );

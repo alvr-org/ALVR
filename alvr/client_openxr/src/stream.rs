@@ -484,6 +484,7 @@ fn stream_input_loop(
 
         let (left_hand_motion, left_hand_skeleton) = crate::interaction::get_hand_data(
             &xr_session,
+            platform,
             stage_reference_space,
             xr_now,
             &int_ctx.hands_interaction[0],
@@ -492,6 +493,7 @@ fn stream_input_loop(
         );
         let (right_hand_motion, right_hand_skeleton) = crate::interaction::get_hand_data(
             &xr_session,
+            platform,
             stage_reference_space,
             xr_now,
             &int_ctx.hands_interaction[1],

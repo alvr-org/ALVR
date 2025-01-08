@@ -4,6 +4,7 @@ use crate::{
 };
 use alvr_client_core::graphics::{GraphicsContext, LobbyRenderer, LobbyViewParams, SDR_FORMAT_GL};
 use alvr_common::{glam::UVec2, parking_lot::RwLock, Pose};
+use alvr_system_info::Platform;
 use openxr as xr;
 use std::{rc::Rc, sync::Arc};
 
@@ -11,6 +12,7 @@ use std::{rc::Rc, sync::Arc};
 pub struct Lobby {
     xr_session: xr::Session<xr::OpenGlEs>,
     interaction_ctx: Arc<RwLock<InteractionContext>>,
+    platform: Platform,
     reference_space: xr::Space,
     swapchains: [xr::Swapchain<xr::OpenGlEs>; 2],
     view_resolution: UVec2,
@@ -23,6 +25,7 @@ impl Lobby {
         xr_session: xr::Session<xr::OpenGlEs>,
         gfx_ctx: Rc<GraphicsContext>,
         interaction_ctx: Arc<RwLock<InteractionContext>>,
+        platform: Platform,
         view_resolution: UVec2,
         initial_hud_message: &str,
     ) -> Self {
@@ -64,6 +67,7 @@ impl Lobby {
         Self {
             xr_session,
             interaction_ctx,
+            platform,
             reference_space,
             swapchains,
             view_resolution,
@@ -102,6 +106,7 @@ impl Lobby {
             .ok();
         let left_hand_data = interaction::get_hand_data(
             &self.xr_session,
+            self.platform,
             &self.reference_space,
             predicted_display_time,
             &self.interaction_ctx.read().hands_interaction[0],
@@ -110,6 +115,7 @@ impl Lobby {
         );
         let right_hand_data = interaction::get_hand_data(
             &self.xr_session,
+            self.platform,
             &self.reference_space,
             predicted_display_time,
             &self.interaction_ctx.read().hands_interaction[1],
@@ -155,12 +161,10 @@ impl Lobby {
                     swapchain_index: right_swapchain_idx,
                 },
             ],
-            [
-                (left_hand_data.0.map(|dm| dm.pose), left_hand_data.1),
-                (right_hand_data.0.map(|dm| dm.pose), right_hand_data.1),
-            ],
+            [left_hand_data, right_hand_data],
             body_skeleton_fb,
             false,
+            cfg!(debug_assertions),
         );
 
         self.swapchains[0].release_image().unwrap();

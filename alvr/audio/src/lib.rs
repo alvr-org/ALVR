@@ -34,6 +34,7 @@ static VIRTUAL_MICROPHONE_PAIRS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
         ("VoiceMeeter Input", "VoiceMeeter Output"),
         ("VoiceMeeter Aux Input", "VoiceMeeter Aux Output"),
         ("VoiceMeeter VAIO3 Input", "VoiceMeeter VAIO3 Output"),
+        ("Virtual Cable 1", "Virtual Cable 2"),
     ]
     .into_iter()
     .collect()
@@ -147,6 +148,9 @@ impl AudioDevice {
             }
             MicrophoneDevicesConfig::VoiceMeeterVaio3 => {
                 microphone_pair_from_sink_name(&host, "VoiceMeeter VAIO3 Input")?
+            }
+            MicrophoneDevicesConfig::VAC => {
+                microphone_pair_from_sink_name(&host, "Virtual Cable 1")?
             }
             MicrophoneDevicesConfig::Custom { sink, source } => (
                 device_from_custom_config(&host, &sink)?,

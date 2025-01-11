@@ -600,8 +600,10 @@ pub fn get_hand_data(
     };
 
     let hand_joints = if let Some(tracker) = &hand_source.skeleton_tracker {
+        let xr_now = crate::xr_runtime_now(xr_session.instance()).unwrap_or(xr_time);
+
         if let Some(joint_locations) = reference_space
-            .locate_hand_joints(tracker, xr_time)
+            .locate_hand_joints(tracker, xr_now)
             .ok()
             .flatten()
         {

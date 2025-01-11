@@ -310,8 +310,8 @@ impl ClientCoreContext {
         }
     }
 
-    pub fn get_head_prediction_offset(&self) -> Duration {
-        dbg_client_core!("get_head_prediction_offset");
+    pub fn get_total_prediction_offset(&self) -> Duration {
+        dbg_client_core!("get_total_prediction_offset");
 
         if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
             stats.average_total_pipeline_latency()

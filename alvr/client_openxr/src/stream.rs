@@ -457,9 +457,22 @@ fn stream_input_loop(
             return;
         }
 
-        let Some(xr_now) = crate::xr_runtime_now(xr_session.instance()) else {
+        let Some(now) = crate::xr_runtime_now(xr_session.instance()).map(crate::from_xr_time)
+        else {
             error!("Cannot poll tracking: invalid time");
             return;
+        };
+
+        // All Pico headsets seem to have a problem with velocity values, to different degrees.
+        // calculating velocitied by differentiation yields jittery results. In the following
+        // workaround, we predict using the runtime, then manually predict back in time in order to
+        // return poses in the "now" time, required by the ClientCore interface. This solution
+        // doesn't fix the issue completely, but most of the predicted time interval will be
+        // correct.
+        let head_time = if platform.is_pico() {
+            now + core_ctx.get_head_prediction_offset()
+        } else {
+            now
         };
 
         let Some((head_motion, local_views)) = interaction::get_head_data(
@@ -467,10 +480,17 @@ fn stream_input_loop(
             platform,
             stage_reference_space,
             view_reference_space,
-            xr_now,
+            head_time,
             &last_view_params,
         ) else {
             continue;
+        };
+
+        let head_motion = if platform.is_pico() {
+            // Predict back in time, matching the prediction that is done on later on
+            head_motion.predict(head_time, now)
+        } else {
+            head_motion
         };
 
         if let Some(views) = local_views {
@@ -486,7 +506,7 @@ fn stream_input_loop(
             &xr_session,
             platform,
             stage_reference_space,
-            xr_now,
+            now,
             &int_ctx.hands_interaction[0],
             &mut last_controller_poses[0],
             &mut last_palm_poses[0],
@@ -495,7 +515,7 @@ fn stream_input_loop(
             &xr_session,
             platform,
             stage_reference_space,
-            xr_now,
+            now,
             &int_ctx.hands_interaction[1],
             &mut last_controller_poses[1],
             &mut last_palm_poses[1],
@@ -519,9 +539,9 @@ fn stream_input_loop(
                 &xr_session,
                 &int_ctx.face_sources,
                 stage_reference_space,
-                xr_now,
+                now,
             ),
-            fb_face_expression: interaction::get_fb_face_expression(&int_ctx.face_sources, xr_now),
+            fb_face_expression: interaction::get_fb_face_expression(&int_ctx.face_sources, now),
             htc_eye_expression: interaction::get_htc_eye_expression(&int_ctx.face_sources),
             htc_lip_expression: interaction::get_htc_lip_expression(&int_ctx.face_sources),
         };
@@ -529,14 +549,14 @@ fn stream_input_loop(
         if let Some((tracker, joint_count)) = &int_ctx.body_sources.body_tracker_fb {
             device_motions.append(&mut interaction::get_fb_body_tracking_points(
                 stage_reference_space,
-                xr_now,
+                now,
                 tracker,
                 *joint_count,
             ));
         }
 
         core_ctx.send_tracking(
-            Duration::from_nanos(xr_now.as_nanos() as u64),
+            Duration::from_nanos(now.as_nanos() as u64),
             device_motions,
             [left_hand_skeleton, right_hand_skeleton],
             face_data,

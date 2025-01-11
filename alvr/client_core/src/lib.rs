@@ -20,7 +20,7 @@ pub mod video_decoder;
 
 use alvr_common::{
     dbg_client_core, error,
-    glam::{Quat, UVec2, Vec2, Vec3},
+    glam::{UVec2, Vec2, Vec3},
     parking_lot::{Mutex, RwLock},
     warn, ConnectionState, DeviceMotion, LifecycleState, Pose, HAND_LEFT_ID, HAND_RIGHT_ID,
     HEAD_ID,
@@ -247,7 +247,7 @@ impl ClientCoreContext {
             motion.angular_velocity *= velocity_multiplier;
 
             if *id == *HEAD_ID {
-                *motion = predict_motion(target_timestamp, poll_timestamp, *motion);
+                *motion = motion.predict(poll_timestamp, target_timestamp);
 
                 let mut head_pose_queue = self.connection_context.head_pose_queue.write();
 
@@ -264,7 +264,7 @@ impl ClientCoreContext {
             } else if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
                 let tracker_timestamp = poll_timestamp + stats.tracker_prediction_offset();
 
-                *motion = predict_motion(tracker_timestamp, poll_timestamp, *motion);
+                *motion = motion.predict(poll_timestamp, tracker_timestamp);
             }
         }
 
@@ -307,6 +307,16 @@ impl ClientCoreContext {
             if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
                 stats.report_input_acquired(target_timestamp);
             }
+        }
+    }
+
+    pub fn get_head_prediction_offset(&self) -> Duration {
+        dbg_client_core!("get_head_prediction_offset");
+
+        if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
+            stats.average_total_pipeline_latency()
+        } else {
+            Duration::ZERO
         }
     }
 
@@ -393,27 +403,5 @@ impl Drop for ClientCoreContext {
 
         #[cfg(target_os = "android")]
         alvr_system_info::set_wifi_lock(false);
-    }
-}
-
-pub fn predict_motion(
-    target_timestamp: Duration,
-    current_timestamp: Duration,
-    motion: DeviceMotion,
-) -> DeviceMotion {
-    let delta_time_s = target_timestamp
-        .saturating_sub(current_timestamp)
-        .as_secs_f32();
-
-    let delta_position = motion.linear_velocity * delta_time_s;
-    let delta_orientation = Quat::from_scaled_axis(motion.angular_velocity * delta_time_s);
-
-    DeviceMotion {
-        pose: Pose {
-            orientation: delta_orientation * motion.pose.orientation,
-            position: motion.pose.position + delta_position,
-        },
-        linear_velocity: motion.linear_velocity,
-        angular_velocity: motion.angular_velocity,
     }
 }

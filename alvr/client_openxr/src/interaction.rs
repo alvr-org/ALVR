@@ -11,7 +11,7 @@ use alvr_common::{glam::Vec3, *};
 use alvr_packets::{ButtonEntry, ButtonValue, StreamConfig, ViewParams};
 use alvr_session::{BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 use xr::SpaceLocationFlags;
 
 const IPD_CHANGE_EPS: f32 = 0.001;
@@ -474,11 +474,13 @@ pub fn get_head_data(
     platform: Platform,
     stage_reference_space: &xr::Space,
     view_reference_space: &xr::Space,
-    time: xr::Time,
+    time: Duration,
     last_view_params: &[ViewParams; 2],
 ) -> Option<(DeviceMotion, Option<[ViewParams; 2]>)> {
+    let xr_time = crate::to_xr_time(time);
+
     let (head_location, head_velocity) = view_reference_space
-        .relate(stage_reference_space, time)
+        .relate(stage_reference_space, xr_time)
         .ok()?;
 
     if !head_location
@@ -491,7 +493,7 @@ pub fn get_head_data(
     let (view_flags, views) = xr_session
         .locate_views(
             xr::ViewConfigurationType::PRIMARY_STEREO,
-            time,
+            xr_time,
             stage_reference_space,
         )
         .ok()?;
@@ -550,17 +552,19 @@ pub fn get_hand_data(
     xr_session: &xr::Session<xr::OpenGlEs>,
     platform: Platform,
     reference_space: &xr::Space,
-    time: xr::Time,
+    time: Duration,
     hand_source: &HandInteraction,
     last_controller_pose: &mut Pose,
     last_palm_pose: &mut Pose,
 ) -> (Option<DeviceMotion>, Option<[Pose; 26]>) {
+    let xr_time = crate::to_xr_time(time);
+
     let controller_motion = if hand_source
         .grip_action
         .is_active(xr_session, xr::Path::NULL)
         .unwrap_or(false)
     {
-        if let Ok((location, velocity)) = hand_source.grip_space.relate(reference_space, time) {
+        if let Ok((location, velocity)) = hand_source.grip_space.relate(reference_space, xr_time) {
             if location
                 .location_flags
                 .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
@@ -597,7 +601,7 @@ pub fn get_hand_data(
 
     let hand_joints = if let Some(tracker) = &hand_source.skeleton_tracker {
         if let Some(joint_locations) = reference_space
-            .locate_hand_joints(tracker, time)
+            .locate_hand_joints(tracker, xr_time)
             .ok()
             .flatten()
         {
@@ -677,14 +681,16 @@ pub fn get_eye_gazes(
     xr_session: &xr::Session<xr::OpenGlEs>,
     sources: &FaceSources,
     reference_space: &xr::Space,
-    time: xr::Time,
+    time: Duration,
 ) -> [Option<Pose>; 2] {
+    let xr_time = crate::to_xr_time(time);
+
     'fb_eyes: {
         let Some(tracker) = &sources.eye_tracker_fb else {
             break 'fb_eyes;
         };
 
-        if let Ok(gazes) = tracker.get_eye_gazes(reference_space, time) {
+        if let Ok(gazes) = tracker.get_eye_gazes(reference_space, xr_time) {
             return [
                 gazes[0].map(crate::from_xr_pose),
                 gazes[1].map(crate::from_xr_pose),
@@ -702,7 +708,7 @@ pub fn get_eye_gazes(
         return [None, None];
     }
 
-    if let Ok(location) = eyes_space.locate(reference_space, time) {
+    if let Ok(location) = eyes_space.locate(reference_space, xr_time) {
         [
             location
                 .location_flags
@@ -715,11 +721,13 @@ pub fn get_eye_gazes(
     }
 }
 
-pub fn get_fb_face_expression(context: &FaceSources, time: xr::Time) -> Option<Vec<f32>> {
+pub fn get_fb_face_expression(context: &FaceSources, time: Duration) -> Option<Vec<f32>> {
+    let xr_time = crate::to_xr_time(time);
+
     context
         .face_tracker_fb
         .as_ref()
-        .and_then(|t| t.get_face_expression_weights(time).ok().flatten())
+        .and_then(|t| t.get_face_expression_weights(xr_time).ok().flatten())
         .map(|weights| weights.into_iter().collect())
 }
 
@@ -767,12 +775,14 @@ pub fn get_fb_body_skeleton(
 
 pub fn get_fb_body_tracking_points(
     reference_space: &xr::Space,
-    time: xr::Time,
+    time: Duration,
     body_tracker: &BodyTrackerFB,
     joint_count: usize,
 ) -> Vec<(u64, DeviceMotion)> {
+    let xr_time = crate::to_xr_time(time);
+
     if let Some(joint_locations) = body_tracker
-        .locate_body_joints(time, reference_space, joint_count)
+        .locate_body_joints(xr_time, reference_space, joint_count)
         .ok()
         .flatten()
     {

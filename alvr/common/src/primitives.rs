@@ -1,6 +1,6 @@
 use glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
-use std::ops::Mul;
+use std::{ops::Mul, time::Duration};
 
 // Field of view in radians
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
@@ -64,6 +64,29 @@ impl Mul<DeviceMotion> for Pose {
             pose: self * rhs.pose,
             linear_velocity: self.orientation * rhs.linear_velocity,
             angular_velocity: self.orientation * rhs.angular_velocity,
+        }
+    }
+}
+
+// Calculate difference ensuring maximum precision is preserved
+fn difference_seconds(from: Duration, to: Duration) -> f32 {
+    to.saturating_sub(from).as_secs_f32() - from.saturating_sub(to).as_secs_f32()
+}
+
+impl DeviceMotion {
+    pub fn predict(&self, from_timestamp: Duration, to_timestamp: Duration) -> Self {
+        let delta_time_s = difference_seconds(from_timestamp, to_timestamp);
+
+        let delta_position = self.linear_velocity * delta_time_s;
+        let delta_orientation = Quat::from_scaled_axis(self.angular_velocity * delta_time_s);
+
+        DeviceMotion {
+            pose: Pose {
+                orientation: delta_orientation * self.pose.orientation,
+                position: self.pose.position + delta_position,
+            },
+            linear_velocity: self.linear_velocity,
+            angular_velocity: self.angular_velocity,
         }
     }
 }

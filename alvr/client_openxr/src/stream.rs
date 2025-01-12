@@ -464,7 +464,7 @@ fn stream_input_loop(
         };
 
         // All Pico headsets seem to have a problem with velocity values, to different degrees.
-        // calculating velocitied by differentiation yields jittery results. In the following
+        // Calculating velocities by differentiation yields jittery results. In the following
         // workaround, we predict using the runtime, then manually predict back in time in order to
         // return poses in the "now" time, required by the ClientCore interface. This solution
         // doesn't fix the issue completely, but most of the predicted time interval will be

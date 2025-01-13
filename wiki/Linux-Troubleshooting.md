@@ -37,9 +37,13 @@ If you have Amdvlk installed on your system, it overrides other vulkan drivers a
 ### Fix
 
 Check if amdvlk or amdgpu-pro are installed by seeing if `ls /usr/share/vulkan/icd.d/ | grep -e amd_icd -e amd_pro` shows anything.
-If so, uninstall amdvlk and/or the amdgpu-pro drivers from your system. (This method may not catch all installations due to distro variations)
+If so, uninstall amdvlk and/or the amdgpu-pro drivers from your system. (This method may not catch all installations due to distro variations).
 
 On arch, first install `vulkan-radeon` and uninstall other drivers.
+
+Avoid using the beta vulkan-radeon version.
+
+On arch, that means using the vulkan-radeon package from the official repositories and not the vulkan-radeon-git from the mesa-git repo.
 
 ## Failed to create VAAPI encoder
 

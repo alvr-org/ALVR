@@ -6,7 +6,7 @@ use alvr_client_core::graphics::{GraphicsContext, LobbyRenderer, LobbyViewParams
 use alvr_common::{glam::UVec2, parking_lot::RwLock, Pose};
 use alvr_system_info::Platform;
 use openxr as xr;
-use std::{rc::Rc, sync::Arc};
+use std::{rc::Rc, sync::Arc, time::Duration};
 
 // todo: add interaction?
 pub struct Lobby {
@@ -85,12 +85,14 @@ impl Lobby {
         self.renderer.update_hud_message(message);
     }
 
-    pub fn render(&mut self, predicted_display_time: xr::Time) -> ProjectionLayerBuilder {
+    pub fn render(&mut self, vsync_time: Duration) -> ProjectionLayerBuilder {
+        let xr_vsync_time = xr::Time::from_nanos(vsync_time.as_nanos() as _);
+
         let (flags, maybe_views) = self
             .xr_session
             .locate_views(
                 xr::ViewConfigurationType::PRIMARY_STEREO,
-                predicted_display_time,
+                xr_vsync_time,
                 &self.reference_space,
             )
             .unwrap();
@@ -108,7 +110,7 @@ impl Lobby {
             &self.xr_session,
             self.platform,
             &self.reference_space,
-            predicted_display_time,
+            vsync_time,
             &self.interaction_ctx.read().hands_interaction[0],
             &mut Pose::default(),
             &mut Pose::default(),
@@ -117,7 +119,7 @@ impl Lobby {
             &self.xr_session,
             self.platform,
             &self.reference_space,
-            predicted_display_time,
+            vsync_time,
             &self.interaction_ctx.read().hands_interaction[1],
             &mut Pose::default(),
             &mut Pose::default(),
@@ -132,7 +134,7 @@ impl Lobby {
             .and_then(|(tracker, joint_count)| {
                 interaction::get_fb_body_skeleton(
                     &self.reference_space,
-                    predicted_display_time,
+                    xr_vsync_time,
                     tracker,
                     *joint_count,
                 )

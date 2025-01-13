@@ -7,26 +7,25 @@
 Stream VR games from your PC to your headset via Wi-Fi.
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
-### Direct download to the lastest version:
+### Direct download to the latest version:
 ### [Windows Launcher](https://github.com/alvr-org/ALVR/releases/latest/download/alvr_launcher_windows.zip) | [Linux Launcher](https://github.com/alvr-org/ALVR/releases/latest/download/alvr_launcher_linux.tar.gz)
 
 ## Compatibility
 
-|      VR Headset       |                                           Support                                            |
-| :-------------------: | :------------------------------------------------------------------------------------------: |
-|  Quest 1/2/3/3S/Pro   |     :heavy_check_mark: ([store link](https://www.meta.com/experiences/7674846229245715))     |
-| Pico Neo 3/4/4 Ultra  |                                      :heavy_check_mark:                                      |
-| Vive Focus 3/XR Elite |                                      :heavy_check_mark:                                      |
-|        YVR 1/2        |                                      :heavy_check_mark:                                      |
-|        Lynx R1        |                                      :heavy_check_mark:                                      |
-|   Apple Vision Pro    |       :heavy_check_mark: ([store link](https://apps.apple.com/app/alvr/id6479728026))        |
-| PhoneVR (smartphone)  | :heavy_check_mark: * (Check [PhoneVR](https://github.com/PhoneVR-Developers/PhoneVR) Client) |
-|    Android/Monado     |                                         :warning: *                                          |
-|        GearVR         |                                    :construction: (maybe)                                    |
-|       Oculus Go       |                                            :x: **                                            |
+|          VR Headset          |                                        Support                                         |
+| :--------------------------: | :------------------------------------------------------------------------------------: |
+|       Apple Vision Pro       |    :heavy_check_mark: ([store link](https://apps.apple.com/app/alvr/id6479728026))     |
+|      Quest 1/2/3/3S/Pro      | :heavy_check_mark: ([store link](https://www.meta.com/experiences/7674846229245715) *) |
+|     Pico Neo 3/4/4 Ultra     |                                   :heavy_check_mark:                                   |
+|    Play For Dream YVR 1/2    |                                   :heavy_check_mark:                                   |
+| Vive Focus 3/Vision/XR Elite |                                   :heavy_check_mark:                                   |
+|           Lynx R1            |                                   :heavy_check_mark:                                   |
+|     PhoneVR (smartphone)     |     :heavy_check_mark: ** ([repo](https://github.com/PhoneVR-Developers/PhoneVR))      |
+|        Android/Monado        |                                      :warning: **                                      |
+|          Oculus Go           |                 :x: ([old repo](https://github.com/polygraphene/ALVR))                 |
 
-\* : Only works on some smartphones, not enough testing.
-\** : Oculus Go support was dropped, the minimum supported OS is Android 8. Download the last compatible version [here](https://github.com/alvr-org/ALVR/releases/tag/v18.2.3).
+\* : ALVR for Quest 1 not available through the Meta store.  
+\** : Only works on some smartphones, not enough testing.  
 
 |     PC OS      |                                    Support                                    |
 | :------------: | :---------------------------------------------------------------------------: |

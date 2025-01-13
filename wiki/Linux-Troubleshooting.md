@@ -28,7 +28,7 @@ Could be related to Arch AUR package (either installed not for nvidia on nvidia 
 
 Try using a launcher or portable .tar.gz release from the Releases page.
 
-## Artifacting, no SteamVR Overlay or graphical glitches in streaming view
+## Segfault, Artifacting, no SteamVR Overlay or graphical glitches in streaming view
 
 Could be related to AMD amdvlk or amdgpu-pro driver being present on your system.
 

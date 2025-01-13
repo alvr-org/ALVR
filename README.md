@@ -22,20 +22,19 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 |           Lynx R1            |                                   :heavy_check_mark:                                   |
 |     PhoneVR (smartphone)     |     :heavy_check_mark: ** ([repo](https://github.com/PhoneVR-Developers/PhoneVR))      |
 |        Android/Monado        |                                      :warning: **                                      |
-|          Oculus Go           |                                        :x: ***                                         |
+|          Oculus Go           |                 :x: ([old repo](https://github.com/polygraphene/ALVR))                 |
 
 \* : ALVR for Quest 1 not available through the Meta store.  
 \** : Only works on some smartphones, not enough testing.  
-\*** : Oculus Go support was dropped, the minimum supported OS is Android 8. Download the last compatible version [here](https://github.com/alvr-org/ALVR/releases/tag/v18.2.3).
 
 |     PC OS      |                                    Support                                    |
 | :------------: | :---------------------------------------------------------------------------: |
 | Windows 10/11  | :heavy_check_mark: ([store link](https://store.steampowered.com/app/3312710)) |
 | Windows XP/7/8 |                                      :x:                                      |
-|     Linux      |                            :heavy_check_mark:****                             |
+|     Linux      |                             :heavy_check_mark:***                             |
 |     macOS      |                                      :x:                                      |
 
-\**** : Please check the wiki for compatibility info
+\*** : Please check the wiki for compatibility info
 
 ### Requirements
 

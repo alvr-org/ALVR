@@ -85,6 +85,10 @@ fn to_xr_fov(f: Fov) -> xr::Fovf {
     }
 }
 
+fn from_xr_time(timestamp: xr::Time) -> Duration {
+    Duration::from_nanos(timestamp.as_nanos() as _)
+}
+
 fn to_xr_time(timestamp: Duration) -> xr::Time {
     xr::Time::from_nanos(timestamp.as_nanos() as _)
 }
@@ -452,7 +456,7 @@ pub fn entry_point() {
             let (layer, display_time) = if let Some(stream) = &mut stream_context {
                 stream.render(frame_interval, vsync_time)
             } else {
-                (lobby.render(frame_state.predicted_display_time), vsync_time)
+                (lobby.render(vsync_time), vsync_time)
             };
 
             let layers: &[&xr::CompositionLayerBase<_>] =

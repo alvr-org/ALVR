@@ -167,7 +167,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_adb"
-version = "21.0.0-dev01"
+version = "20.12.0"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -179,7 +179,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_audio"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -195,7 +195,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client_core"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -231,7 +231,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client_mock"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_client_core",
  "alvr_common",
@@ -244,7 +244,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client_openxr"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_client_core",
  "alvr_common",
@@ -260,7 +260,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "anyhow",
  "backtrace",
@@ -277,7 +277,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_dashboard"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_adb",
  "alvr_common",
@@ -309,7 +309,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_events"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_common",
  "alvr_packets",
@@ -320,7 +320,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_filesystem"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "dirs",
  "once_cell",
@@ -328,7 +328,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_gui_common"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_common",
  "egui",
@@ -336,7 +336,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_adb",
  "alvr_common",
@@ -359,7 +359,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_packets"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -369,7 +369,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server_core"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_adb",
  "alvr_audio",
@@ -403,7 +403,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server_io"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_common",
  "alvr_events",
@@ -419,7 +419,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server_openvr"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -436,7 +436,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_session"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -450,7 +450,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_sockets"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -463,7 +463,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_system_info"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_common",
  "jni",
@@ -477,7 +477,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_vrcompositor_wrapper"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -487,7 +487,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_vulkan_layer"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -499,7 +499,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_xtask"
-version = "20.11.1"
+version = "20.12.0"
 dependencies = [
  "alvr_filesystem",
  "pico-args",

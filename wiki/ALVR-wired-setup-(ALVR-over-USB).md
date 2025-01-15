@@ -1,3 +1,21 @@
+## ALVR native wired mode support
+As of v20.12 ALVR supports wired connections directly through the dashboard.
+Just enable the "Wired Connection" toggle on the Devices screen, plug in your headset
+and accept the "Allow USB debugging?" popup displayed by the headset.
+
+Note that your headset will need to have Developer Mode and USB Debugging enabled to use this feature.
+
+For Quest headsets see [here](https://developers.meta.com/horizon/documentation/native/android/mobile-device-setup/) for instructions.
+The last step about installing ADB should be skipped, as ALVR downloads a copy of ADB on it's own and uses that.
+
+If you have successfully followed all those steps and it still isn't connecting,
+ensure that the setting "Connection -> Wired Client Type" matches where you installed the client from (for the launcher also use the "Github" option).
+
+## The DEPRECATED (and clunky) way:
+The following sections list the old and deprecated way to get a wired connection and is only kept as reference.
+
+This has exactly the same requirements as the native wired mode, but requires additional software and is more complex to setup, so native mode should be preferred.
+
 ## ALVR Streamer (PC) Configuration
 
 * **Switch the connection streaming protocol to TCP** in Settings > Connection.

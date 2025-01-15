@@ -251,15 +251,14 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
         dbg_connection!("handshake_loop: Try connect to wired device");
 
         let mut wired_client_ips = HashMap::new();
-        if let Some((client_hostname, _)) =
-            SESSION_MANAGER
-                .read()
-                .client_list()
-                .iter()
-                .find(|(hostname, info)| {
-                    info.connection_state == ConnectionState::Disconnected
-                        && hostname.as_str() == WIRED_CLIENT_HOSTNAME
-                })
+        if SESSION_MANAGER
+            .read()
+            .client_list()
+            .iter()
+            .any(|(hostname, info)| {
+                info.connection_state == ConnectionState::Disconnected
+                    && hostname.as_str() == WIRED_CLIENT_HOSTNAME
+            })
         {
             // Make sure the wired connection is created once and kept alive
             let wired_connection = if let Some(connection) = &wired_connection {
@@ -320,7 +319,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
             }
 
             let client_ip = IpAddr::V4(Ipv4Addr::LOCALHOST);
-            wired_client_ips.insert(client_ip, client_hostname.to_owned());
+            wired_client_ips.insert(client_ip, WIRED_CLIENT_HOSTNAME.to_owned());
         }
 
         if !wired_client_ips.is_empty()

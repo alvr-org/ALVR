@@ -116,6 +116,7 @@ pub struct InteractionContext {
 impl InteractionContext {
     pub fn new(
         xr_session: xr::Session<xr::OpenGlEs>,
+        xr_system: xr::SystemId,
         platform: Platform,
         supports_multimodal: bool,
     ) -> Self {
@@ -270,9 +271,13 @@ impl InteractionContext {
             )
             .unwrap();
 
-        let combined_eyes_source = if xr_instance.exts().ext_eye_gaze_interaction.is_some()
-            && !platform.is_quest()
+        // Pico headsets require calling get_system_properties to test for extensions, because all
+        // extensions function pointers are available even if the feature is not supported by the
+        // hardware. The full checks are done in supports_eye_gaze_interaction. This is required
+        // to avoid a crash when requesting the EYE_TRACKING permission.
+        let combined_eyes_source = if !platform.is_quest()
             && !platform.is_vive()
+            && extra_extensions::supports_eye_gaze_interaction(&xr_session, xr_system)
         {
             #[cfg(target_os = "android")]
             if platform.is_pico() {

@@ -388,7 +388,7 @@ extern "C" fn wait_for_vsync() {
         .read()
         .as_ref()
         .and_then(|ctx| ctx.duration_until_next_vsync())
-        .unwrap_or(Duration::from_millis(50));
+        .unwrap_or(Duration::from_millis(8));
 
     thread::sleep(sleep_duration);
 }

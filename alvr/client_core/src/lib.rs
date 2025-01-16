@@ -42,6 +42,8 @@ use storage::Config;
 pub use alvr_system_info::Platform;
 pub use logging_backend::init_logging;
 
+pub const MAX_PREDICTION: Duration = Duration::from_millis(100);
+
 pub enum ClientCoreEvent {
     UpdateHudMessage(String),
     StreamingStarted(Box<StreamConfig>),
@@ -234,12 +236,13 @@ impl ClientCoreContext {
     ) {
         dbg_client_core!("send_tracking");
 
-        let target_timestamp =
-            if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
-                poll_timestamp + stats.average_total_pipeline_latency()
-            } else {
-                poll_timestamp
-            };
+        let target_timestamp = if let Some(stats) =
+            &*self.connection_context.statistics_manager.lock()
+        {
+            poll_timestamp + Duration::max(stats.average_total_pipeline_latency(), MAX_PREDICTION)
+        } else {
+            poll_timestamp
+        };
 
         for (id, motion) in &mut device_motions {
             let velocity_multiplier = *self.connection_context.velocities_multiplier.read();
@@ -262,7 +265,8 @@ impl ClientCoreContext {
                 motion.linear_velocity = Vec3::ZERO;
                 motion.angular_velocity = Vec3::ZERO;
             } else if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
-                let tracker_timestamp = poll_timestamp + stats.tracker_prediction_offset();
+                let tracker_timestamp = poll_timestamp
+                    + Duration::max(stats.tracker_prediction_offset(), MAX_PREDICTION);
 
                 *motion = motion.predict(poll_timestamp, tracker_timestamp);
             }

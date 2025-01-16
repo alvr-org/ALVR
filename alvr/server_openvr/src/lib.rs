@@ -384,13 +384,24 @@ extern "C" fn report_present(timestamp_ns: u64, offset_ns: u64) {
 
 extern "C" fn wait_for_vsync() {
     // NB: don't sleep while locking SERVER_DATA_MANAGER or SERVER_CORE_CONTEXT
-    let sleep_duration = SERVER_CORE_CONTEXT
-        .read()
-        .as_ref()
-        .and_then(|ctx| ctx.duration_until_next_vsync())
-        .unwrap_or(Duration::from_millis(8));
+    let sleep_duration = if alvr_server_core::settings()
+        .video
+        .enforce_server_frame_pacing
+    {
+        SERVER_CORE_CONTEXT
+            .read()
+            .as_ref()
+            .and_then(|ctx| ctx.duration_until_next_vsync())
+    } else {
+        None
+    };
 
-    thread::sleep(sleep_duration);
+    if let Some(duration) = sleep_duration {
+        thread::sleep(duration);
+    } else {
+        // Fallback to avoid deadlocking people's systems accidentally
+        thread::sleep(Duration::from_millis(8));
+    }
 }
 
 pub extern "C" fn shutdown_driver() {

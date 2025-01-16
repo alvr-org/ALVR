@@ -602,6 +602,12 @@ Blend: corresponds to un-premultiplied alpha"))]
     #[schema(gui(slider(min = 0.50, max = 0.99, step = 0.01)))]
     pub buffering_history_weight: f32,
 
+    #[schema(strings(
+        help = r"This works only on Windows. It shouldn't be disabled except in certain circumstances when you know the VR game will not meet the target framerate."
+    ))]
+    #[schema(flag = "real-time")]
+    pub enforce_server_frame_pacing: bool,
+
     #[schema(flag = "steamvr-restart")]
     pub encoder_config: EncoderConfig,
 
@@ -1418,6 +1424,7 @@ pub fn session_settings_default() -> SettingsDefault {
             preferred_fps: 72.,
             max_buffering_frames: 2.0,
             buffering_history_weight: 0.90,
+            enforce_server_frame_pacing: true,
             bitrate: BitrateConfigDefault {
                 gui_collapsed: false,
                 mode: BitrateModeDefault {

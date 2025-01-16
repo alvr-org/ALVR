@@ -383,6 +383,11 @@ extern "C" fn report_present(timestamp_ns: u64, offset_ns: u64) {
 }
 
 extern "C" fn wait_for_vsync() {
+    // Default 120Hz-ish wait if StatisticsManager isn't up.
+    // We use 120Hz-ish so that SteamVR doesn't accidentally get
+    // any weird ideas about our display Hz with its frame pacing.
+    static PRE_HEADSET_STATS_WAIT_INTERVAL: Duration = Duration::from_millis(8);
+
     // NB: don't sleep while locking SERVER_DATA_MANAGER or SERVER_CORE_CONTEXT
     let sleep_duration = if alvr_server_core::settings()
         .video
@@ -392,16 +397,13 @@ extern "C" fn wait_for_vsync() {
             .read()
             .as_ref()
             .and_then(|ctx| ctx.duration_until_next_vsync())
-    } else {
-        None
-    };
-
-    if let Some(duration) = sleep_duration {
-        thread::sleep(duration);
+            .unwrap_or(PRE_HEADSET_STATS_WAIT_INTERVAL)
     } else {
         // Fallback to avoid deadlocking people's systems accidentally
-        thread::sleep(Duration::from_millis(8));
-    }
+        Duration::from_micros(1000)
+    };
+
+    thread::sleep(sleep_duration);
 }
 
 pub extern "C" fn shutdown_driver() {

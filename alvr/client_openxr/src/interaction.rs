@@ -480,6 +480,7 @@ pub fn get_head_data(
     stage_reference_space: &xr::Space,
     view_reference_space: &xr::Space,
     time: Duration,
+    future_time: Duration,
     last_view_params: &[ViewParams; 2],
 ) -> Option<(DeviceMotion, Option<[ViewParams; 2]>)> {
     let xr_time = crate::to_xr_time(time);
@@ -523,10 +524,33 @@ pub fn get_head_data(
             .unwrap_or_default(),
     };
 
-    // Angular velocity should be in global reference frame as per spec but Pico and Vive use local
-    // reference frame
+    // Some headsets use wrong frame of reference for linear and angular velocities.
     if platform.is_pico() || platform.is_vive() {
-        motion.angular_velocity = motion.pose.orientation * motion.angular_velocity;
+        let xr_future_time = crate::to_xr_time(future_time);
+
+        let predicted_location = view_reference_space
+            .locate(stage_reference_space, xr_future_time)
+            .ok()?;
+
+        if !predicted_location
+            .location_flags
+            .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
+        {
+            return None;
+        }
+
+        let time_offset_s = future_time
+            .saturating_sub(time)
+            .max(Duration::from_millis(1))
+            .as_secs_f32();
+
+        motion.linear_velocity = (crate::from_xr_vec3(predicted_location.pose.position)
+            - motion.pose.position)
+            / time_offset_s;
+        motion.angular_velocity = (crate::from_xr_quat(predicted_location.pose.orientation)
+            * motion.pose.orientation.inverse())
+        .to_scaled_axis()
+            / time_offset_s;
     }
 
     let last_ipd_m = last_view_params[0]
@@ -558,6 +582,7 @@ pub fn get_hand_data(
     platform: Platform,
     reference_space: &xr::Space,
     time: Duration,
+    future_time: Duration,
     hand_source: &HandInteraction,
     last_controller_pose: &mut Pose,
     last_palm_pose: &mut Pose,
@@ -570,27 +595,51 @@ pub fn get_hand_data(
         .unwrap_or(false)
     {
         if let Ok((location, velocity)) = hand_source.grip_space.relate(reference_space, xr_time) {
-            if location
+            let orientation_valid = location
                 .location_flags
-                .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
-            {
+                .contains(xr::SpaceLocationFlags::ORIENTATION_VALID);
+            let position_valid = location
+                .location_flags
+                .contains(xr::SpaceLocationFlags::POSITION_VALID);
+
+            if orientation_valid {
                 last_controller_pose.orientation = crate::from_xr_quat(location.pose.orientation);
             }
 
-            if location
-                .location_flags
-                .contains(xr::SpaceLocationFlags::POSITION_VALID)
-            {
+            if position_valid {
                 last_controller_pose.position = crate::from_xr_vec3(location.pose.position);
             }
 
-            let linear_velocity = crate::from_xr_vec3(velocity.linear_velocity);
+            let mut linear_velocity = crate::from_xr_vec3(velocity.linear_velocity);
             let mut angular_velocity = crate::from_xr_vec3(velocity.angular_velocity);
 
-            // Some headsets use wrong frame of reference
-            if matches!(platform, Platform::PicoNeo3 | Platform::Pico4) || platform.is_vive() {
-                angular_velocity = last_controller_pose.orientation * angular_velocity;
-            };
+            // Some headsets use wrong frame of reference for linear and angular velocities.
+            if platform.is_pico() || platform.is_vive() {
+                let xr_future_time = crate::to_xr_time(future_time);
+
+                let maybe_future_location = hand_source
+                    .grip_space
+                    .locate(reference_space, xr_future_time);
+
+                if let Ok(future_location) = maybe_future_location {
+                    if future_location
+                        .location_flags
+                        .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
+                        && future_location
+                            .location_flags
+                            .contains(xr::SpaceLocationFlags::POSITION_VALID)
+                    {
+                        let time_offset_s = future_time.saturating_sub(time).as_secs_f32();
+                        linear_velocity = (crate::from_xr_vec3(future_location.pose.position)
+                            - last_controller_pose.position)
+                            / time_offset_s;
+                        angular_velocity = (crate::from_xr_quat(future_location.pose.orientation)
+                            * last_controller_pose.orientation.inverse())
+                        .to_scaled_axis()
+                            / time_offset_s;
+                    }
+                }
+            }
 
             Some(DeviceMotion {
                 pose: *last_controller_pose,

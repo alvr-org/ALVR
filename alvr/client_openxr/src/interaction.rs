@@ -577,6 +577,7 @@ pub fn get_head_data(
     Some((motion, view_params))
 }
 
+#[expect(clippy::too_many_arguments)]
 pub fn get_hand_data(
     xr_session: &xr::Session<xr::OpenGlEs>,
     platform: Platform,
@@ -622,13 +623,10 @@ pub fn get_hand_data(
                     .locate(reference_space, xr_future_time);
 
                 if let Ok(future_location) = maybe_future_location {
-                    if future_location
-                        .location_flags
-                        .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
-                        && future_location
-                            .location_flags
-                            .contains(xr::SpaceLocationFlags::POSITION_VALID)
-                    {
+                    if future_location.location_flags.contains(
+                        xr::SpaceLocationFlags::ORIENTATION_VALID
+                            | xr::SpaceLocationFlags::POSITION_VALID,
+                    ) {
                         let time_offset_s = future_time.saturating_sub(time).as_secs_f32();
                         linear_velocity = (crate::from_xr_vec3(future_location.pose.position)
                             - last_controller_pose.position)

@@ -389,21 +389,25 @@ extern "C" fn wait_for_vsync() {
     static PRE_HEADSET_STATS_WAIT_INTERVAL: Duration = Duration::from_millis(8);
 
     // NB: don't sleep while locking SERVER_DATA_MANAGER or SERVER_CORE_CONTEXT
-    let sleep_duration = if alvr_server_core::settings()
-        .video
-        .enforce_server_frame_pacing
-    {
-        SERVER_CORE_CONTEXT
-            .read()
-            .as_ref()
-            .and_then(|ctx| ctx.duration_until_next_vsync())
-            .unwrap_or(PRE_HEADSET_STATS_WAIT_INTERVAL)
-    } else {
-        // Fallback to avoid deadlocking people's systems accidentally
-        Duration::from_micros(1)
-    };
+    let sleep_duration = SERVER_CORE_CONTEXT
+        .read()
+        .as_ref()
+        .and_then(|ctx| ctx.duration_until_next_vsync());
 
-    thread::sleep(sleep_duration);
+    if let Some(duration) = sleep_duration {
+        if alvr_server_core::settings()
+            .video
+            .enforce_server_frame_pacing
+        {
+            thread::sleep(duration);
+        } else {
+            thread::yield_now();
+        }
+    } else {
+        // StatsManager isn't up because the headset hasn't connected,
+        // safety fallback to prevent deadlocking.
+        thread::sleep(PRE_HEADSET_STATS_WAIT_INTERVAL);
+    }
 }
 
 pub extern "C" fn shutdown_driver() {

@@ -111,7 +111,7 @@ jobs:
           asset_content_type: application/zip
 
   build_linux_streamer:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [prepare_release]
     steps:
       - uses: actions/checkout@v2

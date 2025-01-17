@@ -233,7 +233,7 @@ impl LobbyRenderer {
             "lobby_quad",
             &[&bind_group_layout],
             QUAD_PUSH_CONTANTS_SIZE,
-            include_wgsl!("../../resources/lobby_quad.wgsl"),
+            include_wgsl!("../resources/lobby_quad.wgsl"),
             PrimitiveTopology::TriangleStrip,
         );
 
@@ -242,7 +242,7 @@ impl LobbyRenderer {
             "lobby_line",
             &[],
             LINE_PUSH_CONTANTS_SIZE,
-            include_wgsl!("../../resources/lobby_line.wgsl"),
+            include_wgsl!("../resources/lobby_line.wgsl"),
             PrimitiveTopology::LineList,
         );
 
@@ -290,7 +290,7 @@ impl LobbyRenderer {
 
     pub fn update_hud_message(&self, message: &str) {
         let ubuntu_font =
-            FontRef::try_from_slice(include_bytes!("../../resources/Ubuntu-Medium.ttf")).unwrap();
+            FontRef::try_from_slice(include_bytes!("../resources/Ubuntu-Medium.ttf")).unwrap();
 
         let section_glyphs = Layout::default()
             .h_align(HorizontalAlign::Center)

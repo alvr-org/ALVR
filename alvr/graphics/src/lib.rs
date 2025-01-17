@@ -47,7 +47,7 @@ macro_rules! ck {
         let res = $gl_ctx.$($gl_cmd)*;
 
         #[cfg(debug_assertions)]
-        crate::graphics::check_error(&$gl_ctx, &format!("{}:{}: {}", file!(), line!(), stringify!($($gl_cmd)*)));
+        crate::check_error(&$gl_ctx, &format!("{}:{}: {}", file!(), line!(), stringify!($($gl_cmd)*)));
 
         res
     }};

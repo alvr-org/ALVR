@@ -7,9 +7,7 @@ mod passthrough;
 mod stream;
 
 use crate::stream::ParsedStreamConfig;
-use alvr_client_core::{
-    graphics::GraphicsContext, ClientCapabilities, ClientCoreContext, ClientCoreEvent, Platform,
-};
+use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
     error,
     glam::{Quat, UVec2, Vec3},
@@ -17,6 +15,8 @@ use alvr_common::{
     parking_lot::RwLock,
     Fov, Pose, HAND_LEFT_ID,
 };
+use alvr_graphics::GraphicsContext;
+use alvr_system_info::Platform;
 use extra_extensions::{
     META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME, META_DETACHED_CONTROLLERS_EXTENSION_NAME,
     META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,

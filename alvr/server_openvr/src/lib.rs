@@ -400,7 +400,7 @@ extern "C" fn wait_for_vsync() {
             .unwrap_or(PRE_HEADSET_STATS_WAIT_INTERVAL)
     } else {
         // Fallback to avoid deadlocking people's systems accidentally
-        Duration::from_millis(1)
+        Duration::from_micros(1)
     };
 
     thread::sleep(sleep_duration);

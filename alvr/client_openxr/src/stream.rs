@@ -463,34 +463,18 @@ fn stream_input_loop(
             return;
         };
 
-        // All Pico headsets seem to have a problem with velocity values, to different degrees.
-        // Calculating velocities by differentiation yields jittery results. In the following
-        // workaround, we predict using the runtime, then manually predict back in time in order to
-        // return poses in the "now" time, required by the ClientCore interface. This solution
-        // doesn't fix the issue completely, but most of the predicted time interval will be
-        // correct.
-        let target_time = if platform.is_pico() {
-            now + core_ctx.get_total_prediction_offset()
-        } else {
-            now
-        };
+        let target_time = now + core_ctx.get_total_prediction_offset();
 
         let Some((head_motion, local_views)) = interaction::get_head_data(
             &xr_session,
             platform,
             stage_reference_space,
             view_reference_space,
+            now,
             target_time,
             &last_view_params,
         ) else {
             continue;
-        };
-
-        let head_motion = if platform.is_pico() {
-            // Predict back in time, matching the prediction that is done on later on
-            head_motion.predict(target_time, now)
-        } else {
-            head_motion
         };
 
         if let Some(views) = local_views {
@@ -502,33 +486,26 @@ fn stream_input_loop(
 
         device_motions.push((*HEAD_ID, head_motion));
 
-        let (mut left_hand_motion, left_hand_skeleton) = crate::interaction::get_hand_data(
+        let (left_hand_motion, left_hand_skeleton) = crate::interaction::get_hand_data(
             &xr_session,
             platform,
             stage_reference_space,
+            now,
             target_time,
             &int_ctx.hands_interaction[0],
             &mut last_controller_poses[0],
             &mut last_palm_poses[0],
         );
-        let (mut right_hand_motion, right_hand_skeleton) = crate::interaction::get_hand_data(
+        let (right_hand_motion, right_hand_skeleton) = crate::interaction::get_hand_data(
             &xr_session,
             platform,
             stage_reference_space,
+            now,
             target_time,
             &int_ctx.hands_interaction[1],
             &mut last_controller_poses[1],
             &mut last_palm_poses[1],
         );
-
-        if platform.is_pico() {
-            if let Some(left_hand_motion) = &mut left_hand_motion {
-                *left_hand_motion = left_hand_motion.predict(target_time, now);
-            }
-            if let Some(right_hand_motion) = &mut right_hand_motion {
-                *right_hand_motion = right_hand_motion.predict(target_time, now);
-            }
-        }
 
         // Note: When multimodal input is enabled, we are sure that when free hands are used
         // (not holding controllers) the controller data is None.

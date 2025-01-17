@@ -178,7 +178,7 @@ pub fn decode_stream_config(packet: &StreamConfigPacket) -> Result<StreamConfig>
         .unwrap_or(settings.video.encoder_config.use_full_range);
     let encoding_gamma = json::from_value(negotiated_json["encoding_gamma"].clone()).unwrap_or(1.0);
     let enable_hdr = json::from_value(negotiated_json["enable_hdr"].clone()).unwrap_or(false);
-    let wired = json::from_value(negotiated_json["wired"].clone())?;
+    let wired = json::from_value(negotiated_json["wired"].clone()).unwrap_or(false);
 
     Ok(StreamConfig {
         server_version: session_config.server_version,

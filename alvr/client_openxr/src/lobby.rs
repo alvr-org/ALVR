@@ -106,11 +106,15 @@ impl Lobby {
         self.xr_session
             .sync_actions(&[(&self.interaction_ctx.read().action_set).into()])
             .ok();
+
+        // future_time doesn't have to be any particular value, just something after vsync_time
+        let future_time = vsync_time + Duration::from_millis(80);
         let left_hand_data = interaction::get_hand_data(
             &self.xr_session,
             self.platform,
             &self.reference_space,
             vsync_time,
+            future_time,
             &self.interaction_ctx.read().hands_interaction[0],
             &mut Pose::default(),
             &mut Pose::default(),
@@ -120,6 +124,7 @@ impl Lobby {
             self.platform,
             &self.reference_space,
             vsync_time,
+            future_time,
             &self.interaction_ctx.read().hands_interaction[1],
             &mut Pose::default(),
             &mut Pose::default(),

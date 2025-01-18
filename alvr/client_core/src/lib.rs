@@ -237,7 +237,7 @@ impl ClientCoreContext {
         let target_timestamp = if let Some(stats) =
             &*self.connection_context.statistics_manager.lock()
         {
-            poll_timestamp + Duration::max(stats.average_total_pipeline_latency(), max_prediction)
+            poll_timestamp + Duration::min(stats.average_total_pipeline_latency(), max_prediction)
         } else {
             poll_timestamp
         };
@@ -264,7 +264,7 @@ impl ClientCoreContext {
                 motion.angular_velocity = Vec3::ZERO;
             } else if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
                 let tracker_timestamp = poll_timestamp
-                    + Duration::max(stats.tracker_prediction_offset(), max_prediction);
+                    + Duration::min(stats.tracker_prediction_offset(), max_prediction);
 
                 *motion = motion.predict(poll_timestamp, tracker_timestamp);
             }

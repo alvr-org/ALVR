@@ -1,5 +1,4 @@
 use std::fs;
-use std::path::PathBuf;
 use std::{env, process::Command};
 
 use alvr_common::anyhow::bail;
@@ -151,10 +150,14 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     });
     debug!("have_intel_dgpu: {}", have_intel_dgpu);
 
-    let vrmonitor_path = alvr_server_io::steamvr_root_dir()?
+    let vrmonitor_path_string = alvr_server_io::steamvr_root_dir()
+        .unwrap()
         .join("bin")
-        .join("vrmonitor.sh");
-    debug!("vrmonitor_path: {}", vrmonitor_path);
+        .join("vrmonitor.sh")
+        .into_os_string()
+        .into_string()
+        .unwrap();
+    debug!("vrmonitor_path: {}", vrmonitor_path_string);
 
     let mut vrmonitor_path_written = false;
     if have_igpu {
@@ -163,7 +166,7 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
                 "For functioning VR you need to put following line into SteamVR commandline options and restart it:"
             );
             warn!("__GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only \
-            VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json {} %command%", vrmonitor_path);
+            VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json {} %command%", vrmonitor_path_string);
             warn!("And similar commandline to ALL games commandline option you're trying to launch from steam: \
             __GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json %command%");
             vrmonitor_path_written = true;
@@ -171,7 +174,7 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
             warn!(
                 "For functioning VR you need to put following line into SteamVR commandline options and restart it:"
             );
-            warn!("DRI_PRIME=1 {} %command%", vrmonitor_path);
+            warn!("DRI_PRIME=1 {} %command%", vrmonitor_path_string);
             warn!("And similar commandline to ALL games commandline options you're trying to launch from stean:");
             warn!("DRI_PRIME=1 %command%");
             vrmonitor_path_written = true;
@@ -183,14 +186,14 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     if !vrmonitor_path_written {
         warn!(
             "Make sure you have set following line in your SteamVR commandline options and restart it: {} %command%",
-            vrmonitor_path
+            vrmonitor_path_string
         )
     }
 }
 
-fn linux_encoder_checks(device_infos: &[DeviceInfo]) {
+fn linux_encoder_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     for device_info in device_infos {
-        match device_info {
+        match device_info.1 {
             DeviceInfo::Nvidia => {
                 match nvml_wrapper::Nvml::init() {
                     Ok(nvml) => {

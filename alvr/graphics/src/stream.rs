@@ -86,8 +86,7 @@ impl StreamRenderer {
             ],
         });
 
-        let shader_module =
-            device.create_shader_module(include_wgsl!("../../resources/stream.wgsl"));
+        let shader_module = device.create_shader_module(include_wgsl!("../resources/stream.wgsl"));
 
         let mut constants = HashMap::new();
 

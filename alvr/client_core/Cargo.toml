@@ -11,44 +11,28 @@ crate-type = ["rlib", "staticlib", "cdylib"]
 
 [features]
 link-stdcpp-shared = []
-use-cpp = []
-default = ["link-stdcpp-shared", "use-cpp"]
+default = ["link-stdcpp-shared"]
 
 [dependencies]
 alvr_audio.workspace = true
 alvr_common.workspace = true
+alvr_graphics.workspace = true
 alvr_packets.workspace = true
 alvr_session.workspace = true
 alvr_sockets.workspace = true
 alvr_system_info.workspace = true
 
 app_dirs2 = "2"
-bincode = "1"
-glow = "0.13"
-glyph_brush_layout = "0.2"
-jni = "0.21"
-khronos-egl = { version = "6", features = ["dynamic"] }
-local-ip-address = "0.6"
 mdns-sd = "0.11"
-pollster = "0.3"
 rand = "0.8"
 serde = "1"
 serde_json = "1"
-wgpu = "0.20"
-wgpu-core = { version = "0.21", features = ["gles"] }
-whoami = "1"
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.14"
 ndk = { version = "0.9", features = ["api-level-26", "media"] }
 ndk-context = "0.1"
-ndk-sys = "0.6"
 oboe = "0.6"                                                    # todo: remove once AudioThread shutdown crash is fixed
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 env_logger = "0.11"
-
-[build-dependencies]
-bindgen = "0.70"
-cc = { version = "1", features = ["parallel"] }
-walkdir = "2"

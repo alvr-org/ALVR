@@ -77,21 +77,19 @@ pub fn linux_hardware_checks() {
             adapter.get_info().device_type == wgpu::DeviceType::DiscreteGpu
                 || adapter.get_info().device_type == wgpu::DeviceType::IntegratedGpu
         })
-        .map(|adapter| match adapter.get_info().vendor {
-            0x10de => (adapter, DeviceInfo::Nvidia),
-            0x1002 => (
-                adapter,
-                DeviceInfo::Amd {
+        .map(|adapter| {
+            let vendor = match adapter.get_info().vendor {
+                0x10de => DeviceInfo::Nvidia,
+                0x1002 => DeviceInfo::Amd {
                     device_type: adapter.get_info().device_type,
                 },
-            ),
-            0x8086 => (
-                adapter,
-                DeviceInfo::Intel {
+
+                0x8086 => DeviceInfo::Intel {
                     device_type: adapter.get_info().device_type,
                 },
-            ),
-            _ => (adapter, DeviceInfo::Unknown),
+                _ => DeviceInfo::Unknown,
+            };
+            (adapter, vendor)
         })
         .collect::<Vec<_>>();
     linux_gpu_checks(&device_infos);

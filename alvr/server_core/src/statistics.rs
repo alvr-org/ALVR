@@ -46,6 +46,8 @@ pub struct StatisticsManager {
     last_full_report_instant: Instant,
     last_frame_present_instant: Instant,
     last_frame_present_interval: Duration,
+    last_game_time_latency: Duration,
+    last_compose_latency: Duration,
     video_packets_total: usize,
     video_packets_partial_sum: usize,
     video_bytes_total: usize,
@@ -73,6 +75,8 @@ impl StatisticsManager {
             last_full_report_instant: Instant::now(),
             last_frame_present_instant: Instant::now(),
             last_frame_present_interval: Duration::ZERO,
+            last_game_time_latency: Duration::ZERO,
+            last_compose_latency: Duration::ZERO,
             video_packets_total: 0,
             video_packets_partial_sum: 0,
             video_bytes_total: 0,
@@ -94,11 +98,15 @@ impl StatisticsManager {
     }
 
     pub fn report_tracking_received(&mut self, target_timestamp: Duration) {
-        if !self
+        if let Some(frame) = self
             .history_buffer
-            .iter()
-            .any(|frame| frame.target_timestamp == target_timestamp)
+            .iter_mut()
+            .find(|frame| frame.target_timestamp == target_timestamp)
         {
+            // This shouldn't happen, but if an existing frame somehow gets new tracking,
+            // update the timestamp.
+            frame.tracking_received = Instant::now();
+        } else {
             self.history_buffer.push_front(HistoryFrame {
                 target_timestamp,
                 tracking_received: Instant::now(),
@@ -124,6 +132,10 @@ impl StatisticsManager {
             self.last_frame_present_instant = now;
 
             frame.frame_present = now;
+
+            self.last_game_time_latency = frame
+                .frame_present
+                .saturating_duration_since(frame.tracking_received);
         }
     }
 
@@ -134,6 +146,9 @@ impl StatisticsManager {
             .find(|frame| frame.target_timestamp == target_timestamp)
         {
             frame.frame_composed = Instant::now() - offset;
+            self.last_compose_latency = frame
+                .frame_composed
+                .saturating_duration_since(frame.frame_present);
         }
     }
 
@@ -319,5 +334,21 @@ impl StatisticsManager {
         }
 
         (self.last_vsync_time + self.frame_interval).saturating_duration_since(now)
+    }
+
+    pub fn last_game_time_latency(&self) -> Duration {
+        self.last_game_time_latency
+    }
+
+    pub fn last_frame_present_interval(&self) -> Duration {
+        self.last_frame_present_interval
+    }
+
+    pub fn display_interval(&self) -> Duration {
+        self.frame_interval
+    }
+
+    pub fn last_compose_latency(&self) -> Duration {
+        self.last_compose_latency
     }
 }

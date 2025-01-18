@@ -1793,7 +1793,7 @@ pub fn session_settings_default() -> SettingsDefault {
                             deactivation_delay: 100,
                         },
                     },
-                    steamvr_pipeline_frames: 3.0,
+                    steamvr_pipeline_frames: 2.1,
                     linear_velocity_cutoff: 0.05,
                     angular_velocity_cutoff: 10.0,
                     left_controller_position_offset: ArrayDefault {

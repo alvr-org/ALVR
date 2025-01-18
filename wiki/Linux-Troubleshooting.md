@@ -67,6 +67,11 @@ Install at least the required versions of the driver and ensure you have CUDA in
 
 If an error saying CUDA was not detected persists, try using the latest alvr nightly release.
 
+## Using ALVR with only integrated graphics
+
+Beware that using **only** integrated graphics for running ALVR is highly inadvisable as in most cases it will lead to very poor performance (even on more powerful devices like Steam Deck, it's still very slow).
+Don't expect things to work perfectly in this case too, as some older integrated graphics simply might not have the best vulkan support and might fail to work at all. 
+
 ## Hybrid graphics advices
 
 ### General advise
@@ -76,18 +81,18 @@ If you're on laptop and it doesn't allow disabling integrated graphics (in most 
 
 ### Amd/Intel integrated gpu + Amd/Intel discrete gpu
 
-Put `DRI_PRIME=1 %command%` into SteamVR's commandline options and in those of all VR games you intend to play with ALVR.
+Put `DRI_PRIME=1 ~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%` (adjust vrmonitor path to your distro) into SteamVR's commandline options and in those of all VR games you intend to play with ALVR.
 
 ### Amd/Intel integrated gpu + Nvidia discrete gpu
 
-Put `__NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only __GLX_VENDOR_LIBRARY_NAME=nvidia %command%` into SteamVR's commandline options and in those of all VR games you intend to play with ALVR.
+Put `__NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only __GLX_VENDOR_LIBRARY_NAME=nvidia ~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%` (adjust vrmonitor path to your distro) into SteamVR's commandline options and in those of all VR games you intend to play with ALVR.
 
 ### SteamVR Dashboard not rendering in VR on Nvidia discrete GPU
 If you encounter issues with the SteamVR dashboard not rendering in VR you may need to run the entire steam client itself via PRIME render offload. First close the steam client completey if you have it open already, you can do so by clicking the Steam dropdown in the top left and choosing exit. Then from a terminal run: `__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia steam-runtime`
 
 ## Wayland
 
-When using old Gnome (< 47 version) under Wayland you might need to put `WAYLAND_DISPLAY='' %command%` into the SteamVR commandline options to force XWayland on SteamVR. This fixes issue with drm leasing not being available.
+When using old Gnome (< 47 version) under Wayland you might need to put `WAYLAND_DISPLAY='' ~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%` (adjust vrmonitor path to your distro) into the SteamVR commandline options to force XWayland on SteamVR. This fixes issue with drm leasing not being available.
 
 ## The view shakes
 

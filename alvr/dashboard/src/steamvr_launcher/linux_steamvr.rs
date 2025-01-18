@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::PathBuf;
 use std::{env, process::Command};
 
 use alvr_common::anyhow::bail;
@@ -77,55 +78,118 @@ pub fn linux_hardware_checks() {
                 || adapter.get_info().device_type == wgpu::DeviceType::IntegratedGpu
         })
         .map(|adapter| match adapter.get_info().vendor {
-            0x10de => DeviceInfo::Nvidia,
-            0x1002 => DeviceInfo::Amd {
-                device_type: adapter.get_info().device_type,
-            },
-            0x8086 => DeviceInfo::Intel {
-                device_type: adapter.get_info().device_type,
-            },
-            _ => DeviceInfo::Unknown,
+            0x10de => (adapter, DeviceInfo::Nvidia),
+            0x1002 => (
+                adapter,
+                DeviceInfo::Amd {
+                    device_type: adapter.get_info().device_type,
+                },
+            ),
+            0x8086 => (
+                adapter,
+                DeviceInfo::Intel {
+                    device_type: adapter.get_info().device_type,
+                },
+            ),
+            _ => (adapter, DeviceInfo::Unknown),
         })
         .collect::<Vec<_>>();
-    linux_hybrid_gpu_checks(&device_infos);
+    linux_gpu_checks(&device_infos);
     linux_encoder_checks(&device_infos);
 }
 
-fn linux_hybrid_gpu_checks(device_infos: &[DeviceInfo]) {
+fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     let have_igpu = device_infos.iter().any(|gpu| {
-        gpu == &DeviceInfo::Amd {
-            device_type: wgpu::DeviceType::IntegratedGpu,
-        } || gpu
-            == &DeviceInfo::Intel {
+        gpu.1
+            == DeviceInfo::Amd {
+                device_type: wgpu::DeviceType::IntegratedGpu,
+            }
+            || gpu.1
+                == DeviceInfo::Intel {
+                    device_type: wgpu::DeviceType::IntegratedGpu,
+                }
+    });
+    debug!("have_igpu: {}", have_igpu);
+
+    let have_nvidia_dgpu = device_infos.iter().any(|gpu| gpu.1 == DeviceInfo::Nvidia);
+    debug!("have_nvidia_dgpu: {}", have_nvidia_dgpu);
+
+    let have_amd_igpu = device_infos.iter().any(|gpu| {
+        gpu.1
+            == DeviceInfo::Amd {
                 device_type: wgpu::DeviceType::IntegratedGpu,
             }
     });
-    debug!("have_igpu: {}", have_igpu);
-    let have_nvidia_dgpu = device_infos.iter().any(|gpu| gpu == &DeviceInfo::Nvidia);
-    debug!("have_nvidia_dgpu: {}", have_nvidia_dgpu);
+    debug!("have_amd_igpu: {}", have_amd_igpu);
+
     let have_amd_dgpu = device_infos.iter().any(|gpu| {
-        gpu == &DeviceInfo::Amd {
-            device_type: wgpu::DeviceType::DiscreteGpu,
-        }
+        gpu.1
+            == DeviceInfo::Amd {
+                device_type: wgpu::DeviceType::DiscreteGpu,
+            }
     });
     debug!("have_amd_dgpu: {}", have_amd_dgpu);
-    let have_intel_dgpu = device_infos.iter().any(|gpu| {
-        gpu == &DeviceInfo::Intel {
-            device_type: wgpu::DeviceType::DiscreteGpu,
-        }
-    });
-    debug!("have_intel_dgpu: {}", have_intel_dgpu);
-    if have_igpu {
-        if have_nvidia_dgpu {
-            warn!("For functioning VR you need insert following into SteamVR and ALL (!) games commandline options:");
-            warn!("__GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only \
-            VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json %command%")
-        } else if have_intel_dgpu || have_amd_dgpu {
-            warn!("For functioning VR you need insert following into SteamVR and ALL (!) games commandline options:");
-            warn!("DRI_PRIME=1 %command%")
+
+    if have_amd_igpu || have_amd_dgpu {
+        let is_any_amd_driver_invalid = device_infos.iter().any(|gpu| {
+            info!("Driver name: {}", gpu.0.get_info().driver);
+            match gpu.0.get_info().driver.as_str() {
+                "AMD proprietary driver" | "AMD open-source driver" => true, // AMDGPU-Pro | AMDVLK
+                _ => false,
+            }
+        });
+        if is_any_amd_driver_invalid {
+            error!("Amdvlk or amdgpu-pro vulkan drivers detected, SteamVR may not function properly. \
+            Please remove them or make them unavailable for SteamVR and games you're trying to launch. \
+            For more detailed info visit wiki: https://github.com/alvr-org/ALVR/wiki/Linux-Troubleshooting#artifacting-no-steamvr-overlay-or-graphical-glitches-in-streaming-view")
         }
     }
+
+    let have_intel_dgpu = device_infos.iter().any(|gpu| {
+        gpu.1
+            == DeviceInfo::Intel {
+                device_type: wgpu::DeviceType::DiscreteGpu,
+            }
+    });
+    debug!("have_intel_dgpu: {}", have_intel_dgpu);
+
+    let vrmonitor_path = alvr_server_io::steamvr_root_dir()?
+        .join("bin")
+        .join("vrmonitor.sh");
+    debug!("vrmonitor_path: {}", vrmonitor_path);
+
+    let mut vrmonitor_path_written = false;
+    if have_igpu {
+        if have_nvidia_dgpu {
+            warn!(
+                "For functioning VR you need to put following line into SteamVR commandline options and restart it:"
+            );
+            warn!("__GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only \
+            VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json {} %command%", vrmonitor_path);
+            warn!("And similar commandline to ALL games commandline option you're trying to launch from steam: \
+            __GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json %command%");
+            vrmonitor_path_written = true;
+        } else if have_intel_dgpu || have_amd_dgpu {
+            warn!(
+                "For functioning VR you need to put following line into SteamVR commandline options and restart it:"
+            );
+            warn!("DRI_PRIME=1 {} %command%", vrmonitor_path);
+            warn!("And similar commandline to ALL games commandline options you're trying to launch from stean:");
+            warn!("DRI_PRIME=1 %command%");
+            vrmonitor_path_written = true;
+        } else {
+            warn!("Beware, using just integrated graphics might lead to very poor performance in SteamVR and VR games.");
+            warn!("For more information, please refer to the wiki: https://github.com/alvr-org/ALVR/wiki/Linux-Troubleshooting")
+        }
+    }
+    if !vrmonitor_path_written {
+        warn!(
+            "Make sure you have set following line in your SteamVR commandline options and restart it: {} %command%",
+            vrmonitor_path
+        )
+    }
 }
+
 fn linux_encoder_checks(device_infos: &[DeviceInfo]) {
     for device_info in device_infos {
         match device_info {
@@ -191,7 +255,9 @@ fn linux_encoder_checks(device_infos: &[DeviceInfo]) {
                         "Couldn't find VA-API runtime on system, \
                         you unlikely to have hardware encoding. \
                         Please install VA-API runtime for your distribution \
-                        and make sure it works (Manjaro, Fedora).",
+                        and make sure it works (Manjaro, Fedora affected). \
+                        For detailed advice, check wiki: \
+                        https://github.com/alvr-org/ALVR/wiki/Linux-Troubleshooting#failed-to-create-vaapi-encoder",
                     );
                 }
             }
@@ -231,31 +297,28 @@ fn probe_libva_encoder_profile(
     let profile_probe = libva_display.query_config_entrypoints(profile_type);
     let mut message = String::new();
     if profile_probe.is_err() {
-        message = format!(
-            "Couldn't find {} profile. You unlikely to have hardware encoding for it.",
-            profile_name
-        );
+        message = format!("Couldn't find {} encoder.", profile_name);
     } else if let Ok(profile) = profile_probe {
         if profile.is_empty() {
-            message = format!(
-                "{} profile entrypoint is empty. \
-                You unlikely to have hardware encoding for it.",
-                profile_name
-            );
+            message = format!("{} profile entrypoint is empty.", profile_name);
         }
         if !profile.contains(&libva::VAEntrypoint::VAEntrypointEncSlice) {
             message = format!(
-                "{} profile does not contain encoding entrypoint. \
-                You unlikely to have hardware encoding for it.",
+                "{} profile does not contain encoding entrypoint.",
                 profile_name
             );
         }
     }
     if !message.is_empty() {
         if is_critical {
-            error!("{}", message);
+            error!("{} Your gpu may not suport encoding with this.", message);
         } else {
-            info!("{}", message);
+            info!(
+                "{}
+                Your gpu may not suport encoding with this. \
+            If you're not using this encoder, ignore this message.",
+                message
+            );
         }
     }
 }

@@ -1113,7 +1113,6 @@ Tilted: the world gets tilted when long pressing the oculus button. This is usef
     #[schema(strings(
         help = "Maximum prediction for head and controllers. Used to avoid too much jitter during loading."
     ))]
-    #[schema(flag = "real-time")]
     #[schema(gui(slider(min = 0, max = 200, step = 5)), suffix = "ms")]
     pub max_prediction_ms: u64,
 }

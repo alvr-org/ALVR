@@ -3,9 +3,8 @@ use crate::{
     interaction::{self, InteractionContext, InteractionSourcesConfig},
 };
 use alvr_client_core::{
-    graphics::{GraphicsContext, StreamRenderer, StreamViewParams},
     video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
-    ClientCoreContext, Platform,
+    ClientCoreContext,
 };
 use alvr_common::{
     anyhow::Result,
@@ -14,11 +13,13 @@ use alvr_common::{
     parking_lot::RwLock,
     Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
+use alvr_graphics::{GraphicsContext, StreamRenderer, StreamViewParams};
 use alvr_packets::{FaceData, StreamConfig, ViewParams};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, CodecType, FoveatedEncodingConfig,
     MediacodecProperty, PassthroughMode,
 };
+use alvr_system_info::Platform;
 use openxr as xr;
 use std::{
     ptr,

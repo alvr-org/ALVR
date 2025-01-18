@@ -15,7 +15,6 @@ mod storage;
 #[cfg(target_os = "android")]
 mod audio;
 
-pub mod graphics;
 pub mod video_decoder;
 
 use alvr_common::{
@@ -39,7 +38,6 @@ use std::{
 };
 use storage::Config;
 
-pub use alvr_system_info::Platform;
 pub use logging_backend::init_logging;
 
 pub enum ClientCoreEvent {

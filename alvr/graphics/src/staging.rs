@@ -1,5 +1,5 @@
 use super::{ck, GraphicsContext};
-use crate::graphics::GL_TEXTURE_EXTERNAL_OES;
+use crate::GL_TEXTURE_EXTERNAL_OES;
 use alvr_common::glam::{IVec2, UVec2};
 use glow::{self as gl, HasContext};
 use std::{ffi::c_void, rc::Rc};
@@ -68,7 +68,7 @@ impl StagingRenderer {
         context.make_current();
 
         // Add #defines into the shader after the first line
-        let mut frag_lines: Vec<&str> = include_str!("../../resources/staging_fragment.glsl")
+        let mut frag_lines: Vec<&str> = include_str!("../resources/staging_fragment.glsl")
             .lines()
             .collect();
         if fix_limited_range {
@@ -78,7 +78,7 @@ impl StagingRenderer {
 
         let program = create_program(
             gl,
-            include_str!("../../resources/staging_vertex.glsl"),
+            include_str!("../resources/staging_vertex.glsl"),
             frag_str.as_str(),
         );
 

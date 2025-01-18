@@ -1,0 +1,18 @@
+[package]
+name = "alvr_graphics"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+alvr_common.workspace = true
+alvr_session.workspace = true
+
+glow = "0.13"
+glyph_brush_layout = "0.2"
+khronos-egl = { version = "6", features = ["dynamic"] }
+pollster = "0.3"
+wgpu = "0.20"
+wgpu-core = { version = "0.21", features = ["gles"] }

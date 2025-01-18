@@ -82,12 +82,12 @@ pub fn linux_hardware_checks() {
                 0x1002 => DeviceInfo::Amd {
                     device_type: adapter.get_info().device_type,
                 },
-
                 0x8086 => DeviceInfo::Intel {
                     device_type: adapter.get_info().device_type,
                 },
                 _ => DeviceInfo::Unknown,
             };
+            
             (adapter, vendor)
         })
         .collect::<Vec<_>>();

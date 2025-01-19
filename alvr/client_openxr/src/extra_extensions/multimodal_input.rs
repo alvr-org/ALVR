@@ -20,39 +20,37 @@ static TYPE_SIMULTANEOUS_HANDS_AND_CONTROLLERS_TRACKING_PAUSE_INFO_META: Lazy<xr
     Lazy::new(|| xr::StructureType::from_raw(1000532003));
 
 #[repr(C)]
-pub struct SystemSymultaneousHandsAndControllersPropertiesMETA {
+struct SystemSymultaneousHandsAndControllersPropertiesMETA {
     ty: xr::StructureType,
     next: *const c_void,
     supports_simultaneous_hands_and_controllers: sys::Bool32,
 }
 
 #[repr(C)]
-pub struct SimultaneousHandsAndControllersTrackingResumeInfoMETA {
+struct SimultaneousHandsAndControllersTrackingResumeInfoMETA {
     ty: xr::StructureType,
     next: *const c_void,
 }
 #[repr(C)]
-pub struct SimultaneousHandsAndControllersTrackingPauseInfoMETA {
+struct SimultaneousHandsAndControllersTrackingPauseInfoMETA {
     ty: xr::StructureType,
     next: *const c_void,
 }
 
-pub type ResumeSimultaneousHandsAndControllersTrackingMETA =
-    unsafe extern "system" fn(
-        sys::Session,
-        *const SimultaneousHandsAndControllersTrackingResumeInfoMETA,
-    ) -> sys::Result;
-pub type PauseSimultaneousHandsAndControllersTrackingMETA =
-    unsafe extern "system" fn(
-        sys::Session,
-        *const SimultaneousHandsAndControllersTrackingPauseInfoMETA,
-    ) -> sys::Result;
+type ResumeSimultaneousHandsAndControllersTrackingMETA = unsafe extern "system" fn(
+    sys::Session,
+    *const SimultaneousHandsAndControllersTrackingResumeInfoMETA,
+) -> sys::Result;
+type PauseSimultaneousHandsAndControllersTrackingMETA = unsafe extern "system" fn(
+    sys::Session,
+    *const SimultaneousHandsAndControllersTrackingPauseInfoMETA,
+) -> sys::Result;
 
 pub struct MultimodalMeta {
-    pub session: xr::Session<xr::AnyGraphics>,
-    pub resume_simultaneous_hands_and_controllers_tracking_meta:
+    session: xr::Session<xr::AnyGraphics>,
+    resume_simultaneous_hands_and_controllers_tracking_meta:
         ResumeSimultaneousHandsAndControllersTrackingMETA,
-    pub pause_simultaneous_hands_and_controllers_tracking_meta:
+    pause_simultaneous_hands_and_controllers_tracking_meta:
         PauseSimultaneousHandsAndControllersTrackingMETA,
 }
 

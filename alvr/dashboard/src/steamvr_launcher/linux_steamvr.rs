@@ -96,21 +96,13 @@ pub fn linux_hardware_checks() {
 }
 
 fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
-    let have_igpu = device_infos.iter().any(|gpu| {
+    let have_intel_igpu = device_infos.iter().any(|gpu| {
         gpu.1
-            == DeviceInfo::Amd {
+            == DeviceInfo::Intel {
                 device_type: wgpu::DeviceType::IntegratedGpu,
             }
-            || gpu.1
-                == DeviceInfo::Intel {
-                    device_type: wgpu::DeviceType::IntegratedGpu,
-                }
     });
-    debug!("have_igpu: {}", have_igpu);
-
-    let have_nvidia_dgpu = device_infos.iter().any(|gpu| gpu.1 == DeviceInfo::Nvidia);
-    debug!("have_nvidia_dgpu: {}", have_nvidia_dgpu);
-
+    debug!("have_intel_igpu: {}", have_intel_igpu);
     let have_amd_igpu = device_infos.iter().any(|gpu| {
         gpu.1
             == DeviceInfo::Amd {
@@ -118,6 +110,12 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
             }
     });
     debug!("have_amd_igpu: {}", have_amd_igpu);
+
+    let have_igpu = have_intel_igpu || have_amd_igpu;
+    debug!("have_igpu: {}", have_igpu);
+
+    let have_nvidia_dgpu = device_infos.iter().any(|gpu| gpu.1 == DeviceInfo::Nvidia);
+    debug!("have_nvidia_dgpu: {}", have_nvidia_dgpu);
 
     let have_amd_dgpu = device_infos.iter().any(|gpu| {
         gpu.1
@@ -138,7 +136,8 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
         if is_any_amd_driver_invalid {
             error!("Amdvlk or amdgpu-pro vulkan drivers detected, SteamVR may not function properly. \
             Please remove them or make them unavailable for SteamVR and games you're trying to launch. \
-            For more detailed info visit wiki: https://github.com/alvr-org/ALVR/wiki/Linux-Troubleshooting#artifacting-no-steamvr-overlay-or-graphical-glitches-in-streaming-view")
+            For more detailed info visit wiki: \
+            https://github.com/alvr-org/ALVR/wiki/Linux-Troubleshooting#artifacting-no-steamvr-overlay-or-graphical-glitches-in-streaming-view")
         }
     }
 
@@ -162,19 +161,22 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     let mut vrmonitor_path_written = false;
     if have_igpu {
         if have_nvidia_dgpu {
+            let nv_options = "__GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only \
+            VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json";
+
             warn!(
-                "For functioning VR you need to put following line into SteamVR commandline options and restart it:"
+                "For functioning VR you need to put the following line into SteamVR commandline options and restart it:"
             );
-            warn!("__GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only \
-            VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json {} %command%", vrmonitor_path_string);
+            warn!("{nv_options} {vrmonitor_path_string} %command%");
             warn!("And similar commandline to ALL games commandline option you're trying to launch from steam: \
-            __GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json %command%");
+                {nv_options} %command%");
+
             vrmonitor_path_written = true;
         } else if have_intel_dgpu || have_amd_dgpu {
             warn!(
-                "For functioning VR you need to put following line into SteamVR commandline options and restart it:"
+                "For functioning VR you need to put the following line into SteamVR commandline options and restart it:"
             );
-            warn!("DRI_PRIME=1 {} %command%", vrmonitor_path_string);
+            warn!("DRI_PRIME=1 {vrmonitor_path_string} %command%");
             warn!("And similar commandline to ALL games commandline options you're trying to launch from stean:");
             warn!("DRI_PRIME=1 %command%");
             vrmonitor_path_written = true;
@@ -185,8 +187,7 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     }
     if !vrmonitor_path_written {
         warn!(
-            "Make sure you have set following line in your SteamVR commandline options and restart it: {} %command%",
-            vrmonitor_path_string
+            "Make sure you have put the following line in your SteamVR commandline options and restart it: {vrmonitor_path_string} %command%"
         )
     }
 }

@@ -510,12 +510,17 @@ fn stream_input_loop(
 
         // Note: When multimodal input is enabled, we are sure that when free hands are used
         // (not holding controllers) the controller data is None.
-        if int_ctx.multimodal_hands_enabled || left_hand_skeleton.is_none() {
+        let multimodal_enabled = int_ctx
+            .multimodal_hands
+            .as_ref()
+            .map(|(_, enabled)| *enabled)
+            .unwrap_or(false);
+        if multimodal_enabled || left_hand_skeleton.is_none() {
             if let Some(motion) = left_hand_motion {
                 device_motions.push((*HAND_LEFT_ID, motion));
             }
         }
-        if int_ctx.multimodal_hands_enabled || right_hand_skeleton.is_none() {
+        if multimodal_enabled || right_hand_skeleton.is_none() {
             if let Some(motion) = right_hand_motion {
                 device_motions.push((*HAND_RIGHT_ID, motion));
             }

@@ -1,6 +1,6 @@
 use crate::{
     extra_extensions::{
-        self, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB, FacialTrackerHTC,
+        self, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB, FacialTrackerHTC, MultimodalMeta,
         BODY_JOINT_SET_FULL_BODY_META, FULL_BODY_JOINT_COUNT_META,
         FULL_BODY_JOINT_LEFT_FOOT_BALL_META, FULL_BODY_JOINT_LEFT_LOWER_LEG_META,
         FULL_BODY_JOINT_RIGHT_FOOT_BALL_META, FULL_BODY_JOINT_RIGHT_LOWER_LEG_META,
@@ -108,7 +108,7 @@ pub struct InteractionContext {
     pub action_set: xr::ActionSet,
     pub button_actions: HashMap<u64, ButtonAction>,
     pub hands_interaction: [HandInteraction; 2],
-    pub multimodal_hands_enabled: bool,
+    pub multimodal_hands: Option<(MultimodalMeta, bool)>,
     pub face_sources: FaceSources,
     pub body_sources: BodySources,
 }
@@ -116,9 +116,9 @@ pub struct InteractionContext {
 impl InteractionContext {
     pub fn new(
         xr_session: xr::Session<xr::OpenGlEs>,
+        extra_extensions: &[String],
         xr_system: xr::SystemId,
         platform: Platform,
-        supports_multimodal: bool,
     ) -> Self {
         let xr_instance = xr_session.instance();
 
@@ -229,9 +229,13 @@ impl InteractionContext {
             "/user/hand/right/output/haptic",
         ));
 
+        let multimodal = create_ext_object("MultimodalMeta", Some(true), || {
+            MultimodalMeta::new(xr_session.clone(), &extra_extensions, xr_system)
+        });
+
         let left_detached_controller_pose_action;
         let right_detached_controller_pose_action;
-        if supports_multimodal {
+        if multimodal.is_some() {
             // Note: when multimodal input is enabled, both controllers and hands will always be active.
             // To be able to detect when controllers are actually held, we have to register detached
             // controllers pose; the controller pose will be diverted to the detached controllers when
@@ -355,7 +359,7 @@ impl InteractionContext {
                     skeleton_tracker: right_hand_tracker,
                 },
             ],
-            multimodal_hands_enabled: false,
+            multimodal_hands: multimodal.map(|m| (m, false)),
             face_sources: FaceSources {
                 combined_eyes_source,
                 eye_tracker_fb: None,
@@ -371,9 +375,12 @@ impl InteractionContext {
 
     pub fn select_sources(&mut self, config: &InteractionSourcesConfig) {
         // First of all, disable/delete all sources. This ensures there are no conflicts
-        extra_extensions::pause_simultaneous_hands_and_controllers_tracking_meta(&self.xr_session)
-            .ok();
-        self.multimodal_hands_enabled = false;
+        if let Some((handle, enabled)) = &mut self.multimodal_hands {
+            if *enabled {
+                handle.pause().ok();
+                *enabled = false;
+            }
+        }
         self.face_sources.eye_tracker_fb = None;
         self.face_sources.face_tracker_fb = None;
         self.face_sources.eye_tracker_htc = None;
@@ -407,14 +414,13 @@ impl InteractionContext {
 
         // Note: We cannot enable multimodal if fb body tracking is active. It would result in a
         // ERROR_RUNTIME_FAILURE crash.
-        if config.body_tracking.is_none()
-            && config.prefers_multimodal_input
-            && extra_extensions::resume_simultaneous_hands_and_controllers_tracking_meta(
-                &self.xr_session,
-            )
-            .is_ok()
-        {
-            self.multimodal_hands_enabled = true;
+        if config.body_tracking.is_none() && config.prefers_multimodal_input {
+            if let Some((handle, enabled)) = &mut self.multimodal_hands {
+                if !*enabled {
+                    handle.resume().ok();
+                    *enabled = true;
+                }
+            }
         }
 
         self.face_sources.eye_tracker_fb = create_ext_object(

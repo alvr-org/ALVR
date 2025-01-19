@@ -25,3 +25,23 @@ fn xr_res(result: sys::Result) -> xr::Result<()> {
         Err(result)
     }
 }
+
+fn get_props<G, T>(
+    session: &xr::Session<G>,
+    system: xr::SystemId,
+    default_struct: T,
+) -> xr::Result<T> {
+    let instance = session.instance();
+
+    let mut props = default_struct;
+    let mut system_properties = sys::SystemProperties::out((&mut props as *mut T).cast());
+    let result = unsafe {
+        (instance.fp().get_system_properties)(
+            instance.as_raw(),
+            system,
+            system_properties.as_mut_ptr(),
+        )
+    };
+
+    xr_res(result).map(|_| props)
+}

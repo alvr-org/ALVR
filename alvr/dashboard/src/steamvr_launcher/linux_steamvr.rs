@@ -87,7 +87,7 @@ pub fn linux_hardware_checks() {
                 },
                 _ => DeviceInfo::Unknown,
             };
-            
+
             (adapter, vendor)
         })
         .collect::<Vec<_>>();

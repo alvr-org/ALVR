@@ -44,16 +44,20 @@ pub fn clippy_ci() {
     let stream = Deserializer::from_slice(&out.stdout).into_iter::<Value>();
 
     // https://doc.rust-lang.org/cargo/reference/external-tools.html#json-messages
-    for message in stream.filter_map(|msg| {
-        let msg = msg.unwrap();
+    let messages = stream
+        .filter_map(|msg| {
+            let msg = msg.unwrap();
 
-        if msg.get("reason")? == "compiler-message" {
-            msg.get("message").map(|x| x.to_owned())
-        } else {
-            None
-        }
-    }) {
-        let msg: CompilerMessage = json::from_value(message).unwrap();
+            if msg.get("reason")? == "compiler-message" {
+                msg.get("message").map(|x| x.to_owned())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    for message in &messages {
+        let msg: CompilerMessage = json::from_value(message.clone()).unwrap();
 
         if msg.message_type != "diagnostic" {
             continue;
@@ -99,5 +103,9 @@ pub fn clippy_ci() {
 
     if !out.status.success() {
         panic!("ci clippy didn't exit with 0 code, propagating failure");
+    }
+
+    if !messages.is_empty() {
+        panic!("ci clippy produced warnings");
     }
 }

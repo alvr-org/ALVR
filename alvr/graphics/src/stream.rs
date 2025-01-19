@@ -224,6 +224,8 @@ impl StreamRenderer {
         }
     }
 
+    /// # Safety
+    /// `hardware_buffer` must be a valid pointer to a ANativeWindowBuffer.
     pub unsafe fn render(&self, hardware_buffer: *mut c_void, view_params: [StreamViewParams; 2]) {
         // if hardware_buffer is available copy stream to staging texture
         if !hardware_buffer.is_null() {

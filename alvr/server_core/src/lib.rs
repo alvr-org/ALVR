@@ -507,6 +507,38 @@ impl ServerCoreContext {
             .map(|stats| stats.duration_until_next_vsync())
     }
 
+    pub fn last_game_time_latency(&self) -> Option<Duration> {
+        self.connection_context
+            .statistics_manager
+            .read()
+            .as_ref()
+            .map(|stats| stats.last_game_time_latency())
+    }
+
+    pub fn last_compose_latency(&self) -> Option<Duration> {
+        self.connection_context
+            .statistics_manager
+            .read()
+            .as_ref()
+            .map(|stats| stats.last_compose_latency())
+    }
+
+    pub fn last_frame_present_interval(&self) -> Option<Duration> {
+        self.connection_context
+            .statistics_manager
+            .read()
+            .as_ref()
+            .map(|stats| stats.last_frame_present_interval())
+    }
+
+    pub fn display_interval(&self) -> Option<Duration> {
+        self.connection_context
+            .statistics_manager
+            .read()
+            .as_ref()
+            .map(|stats| stats.display_interval())
+    }
+
     pub fn restart(self) {
         dbg_server_core!("restart");
 

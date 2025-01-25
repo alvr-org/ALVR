@@ -302,7 +302,7 @@ impl ClientCoreContext {
         if let Some(sender) = &mut *self.connection_context.tracking_sender.lock() {
             sender
                 .send_header(&Tracking {
-                    reported_timestamp,
+                    target_timestamp: reported_timestamp,
                     device_motions,
                     hand_skeletons,
                     face_data,

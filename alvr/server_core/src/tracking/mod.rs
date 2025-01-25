@@ -22,8 +22,8 @@ use alvr_common::{
 use alvr_events::{EventType, TrackingEvent};
 use alvr_packets::{FaceData, Tracking};
 use alvr_session::{
-    settings_schema::Switch, BodyTrackingConfig, ConnectionConfig, HeadsetConfig,
-    PositionRecenteringMode, RotationRecenteringMode, Settings, VMCConfig,
+    settings_schema::Switch, BodyTrackingConfig, HeadsetConfig, PositionRecenteringMode,
+    RotationRecenteringMode, Settings, VMCConfig,
 };
 use alvr_sockets::StreamReceiver;
 use std::{
@@ -57,16 +57,23 @@ pub struct TrackingManager {
     device_motions_history: HashMap<u64, VecDeque<(Duration, DeviceMotion)>>,
     hand_skeletons_history: [VecDeque<(Duration, [Pose; 26])>; 2],
     last_face_data: FaceData,
+    max_history_size: usize,
 }
 
 impl TrackingManager {
     pub fn new() -> TrackingManager {
+        let max_history_size = SESSION_MANAGER
+            .read()
+            .settings()
+            .connection
+            .statistics_history_size;
         TrackingManager {
             last_head_pose: Pose::default(),
             inverse_recentering_origin: Pose::default(),
             device_motions_history: HashMap::new(),
             hand_skeletons_history: [VecDeque::new(), VecDeque::new()],
             last_face_data: FaceData::default(),
+            max_history_size: max_history_size,
         }
     }
 
@@ -122,7 +129,6 @@ impl TrackingManager {
     pub fn report_device_motions(
         &mut self,
         headset_config: &HeadsetConfig,
-        connection_config: &ConnectionConfig,
         timestamp: Duration,
         device_motions: &[(u64, DeviceMotion)],
     ) {
@@ -217,7 +223,7 @@ impl TrackingManager {
             if let Some(motions) = self.device_motions_history.get_mut(&device_id) {
                 motions.push_front((timestamp, motion));
 
-                if motions.len() > connection_config.statistics_history_size {
+                if motions.len() > self.max_history_size {
                     motions.pop_back();
                 }
             } else {
@@ -267,7 +273,6 @@ impl TrackingManager {
     pub fn report_hand_skeleton(
         &mut self,
         hand_type: HandType,
-        connection_config: &ConnectionConfig,
         timestamp: Duration,
         mut skeleton: [Pose; 26],
     ) {
@@ -279,7 +284,7 @@ impl TrackingManager {
 
         skeleton_history.push_back((timestamp, skeleton));
 
-        if skeleton_history.len() > connection_config.statistics_history_size {
+        if skeleton_history.len() > self.max_history_size {
             skeleton_history.pop_front();
         }
     }
@@ -397,7 +402,6 @@ pub fn tracking_loop(
             let mut tracking_manager_lock = ctx.tracking_manager.write();
             let session_manager_lock = SESSION_MANAGER.read();
             let headset_config = &session_manager_lock.settings().headset;
-            let connection_config = &session_manager_lock.settings().connection;
 
             let device_motion_keys = tracking
                 .device_motions
@@ -407,26 +411,15 @@ pub fn tracking_loop(
 
             tracking_manager_lock.report_device_motions(
                 headset_config,
-                connection_config,
                 timestamp,
                 &tracking.device_motions,
             );
 
             if let Some(skeleton) = tracking.hand_skeletons[0] {
-                tracking_manager_lock.report_hand_skeleton(
-                    HandType::Left,
-                    connection_config,
-                    timestamp,
-                    skeleton,
-                );
+                tracking_manager_lock.report_hand_skeleton(HandType::Left, timestamp, skeleton);
             }
             if let Some(skeleton) = tracking.hand_skeletons[1] {
-                tracking_manager_lock.report_hand_skeleton(
-                    HandType::Right,
-                    connection_config,
-                    timestamp,
-                    skeleton,
-                );
+                tracking_manager_lock.report_hand_skeleton(HandType::Right, timestamp, skeleton);
             }
 
             tracking_manager_lock.report_face_data(tracking.face_data);

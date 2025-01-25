@@ -25,13 +25,14 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(
     Renderer* render,
     VkContext& vk_ctx,
     VkFrame& input_frame,
-    VkFrameCtx& vk_frame_ctx,
+    VkImageCreateInfo& image_create_info,
     uint32_t width,
     uint32_t height
 ) {
     if (Settings::Instance().m_force_sw_encoding == false) {
         if (vk_ctx.nvidia) {
             try {
+                alvr::VkFrameCtx vk_frame_ctx(vk_ctx, image_create_info);
                 auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(
                     render, vk_ctx, input_frame, vk_frame_ctx, width, height
                 );

@@ -215,7 +215,9 @@ impl ServerCoreContext {
             events_sender,
             statistics_manager: RwLock::new(Some(stats)),
             bitrate_manager: Mutex::new(BitrateManager::new(256, 60.0)),
-            tracking_manager: RwLock::new(TrackingManager::new()),
+            tracking_manager: RwLock::new(TrackingManager::new(
+                initial_settings.connection.statistics_history_size,
+            )),
             decoder_config: Mutex::new(None),
             video_mirror_sender: Mutex::new(None),
             video_recording_file: Mutex::new(None),

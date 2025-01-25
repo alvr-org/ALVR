@@ -61,12 +61,7 @@ pub struct TrackingManager {
 }
 
 impl TrackingManager {
-    pub fn new() -> TrackingManager {
-        let max_history_size = SESSION_MANAGER
-            .read()
-            .settings()
-            .connection
-            .statistics_history_size;
+    pub fn new(max_history_size: usize) -> TrackingManager {
         TrackingManager {
             last_head_pose: Pose::default(),
             inverse_recentering_origin: Pose::default(),

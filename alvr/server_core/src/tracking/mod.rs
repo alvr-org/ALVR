@@ -239,13 +239,6 @@ impl TrackingManager {
         self.device_motions_history
             .get(&device_id)
             .and_then(|motions| {
-                // TODO(shinyquagsire23): There's a logic bug in here, hackfix for just HMDs for now.
-                if device_id == *HEAD_ID {
-                    return motions
-                        .iter()
-                        .find(|(timestamp, _)| *timestamp == sample_timestamp)
-                        .map(|(_, motion)| *motion);
-                }
                 // Get first element to initialize a valid motion reference
                 if let Some((_, motion)) = motions.front() {
                     let mut best_timestamp_diff = Duration::MAX;
@@ -254,7 +247,7 @@ impl TrackingManager {
                     // Note: we are iterating from most recent to oldest
                     for (ts, m) in motions {
                         match ts.cmp(&sample_timestamp) {
-                            Ordering::Equal => return Some(*best_motion_ref),
+                            Ordering::Equal => return Some(*m),
                             Ordering::Greater => {
                                 let diff = ts.saturating_sub(sample_timestamp);
                                 if diff < best_timestamp_diff {

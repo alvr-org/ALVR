@@ -22,8 +22,8 @@ use alvr_common::{
 use alvr_events::{EventType, TrackingEvent};
 use alvr_packets::{FaceData, Tracking};
 use alvr_session::{
-    settings_schema::Switch, BodyTrackingConfig, HeadsetConfig, PositionRecenteringMode,
-    RotationRecenteringMode, Settings, VMCConfig,
+    settings_schema::Switch, BodyTrackingConfig, ConnectionConfig, HeadsetConfig,
+    PositionRecenteringMode, RotationRecenteringMode, Settings, VMCConfig,
 };
 use alvr_sockets::StreamReceiver;
 use std::{
@@ -35,9 +35,6 @@ use std::{
 };
 
 const DEG_TO_RAD: f32 = PI / 180.0;
-// In theory we just need to cover the time from packet received to data
-// processed, but for consistency we'll set it to be the same as the client
-const MAX_HISTORY_SIZE: usize = 1024;
 
 #[derive(Debug)]
 pub enum HandType {
@@ -124,7 +121,8 @@ impl TrackingManager {
     // Performs all kinds of tracking transformations, driven by settings.
     pub fn report_device_motions(
         &mut self,
-        config: &HeadsetConfig,
+        headset_config: &HeadsetConfig,
+        connection_config: &ConnectionConfig,
         timestamp: Duration,
         device_motions: &[(u64, DeviceMotion)],
     ) {
@@ -141,7 +139,7 @@ impl TrackingManager {
             (*BODY_RIGHT_FOOT_ID, MotionConfig::default()),
         ]);
 
-        if let Switch::Enabled(controllers) = &config.controllers {
+        if let Switch::Enabled(controllers) = &headset_config.controllers {
             let t = controllers.left_controller_position_offset;
             let r = controllers.left_controller_rotation_offset;
 
@@ -219,7 +217,7 @@ impl TrackingManager {
             if let Some(motions) = self.device_motions_history.get_mut(&device_id) {
                 motions.push_front((timestamp, motion));
 
-                if motions.len() > MAX_HISTORY_SIZE {
+                if motions.len() > connection_config.statistics_history_size {
                     motions.pop_back();
                 }
             } else {
@@ -269,6 +267,7 @@ impl TrackingManager {
     pub fn report_hand_skeleton(
         &mut self,
         hand_type: HandType,
+        connection_config: &ConnectionConfig,
         timestamp: Duration,
         mut skeleton: [Pose; 26],
     ) {
@@ -280,7 +279,7 @@ impl TrackingManager {
 
         skeleton_history.push_back((timestamp, skeleton));
 
-        if skeleton_history.len() > MAX_HISTORY_SIZE {
+        if skeleton_history.len() > connection_config.statistics_history_size {
             skeleton_history.pop_front();
         }
     }
@@ -398,6 +397,7 @@ pub fn tracking_loop(
             let mut tracking_manager_lock = ctx.tracking_manager.write();
             let session_manager_lock = SESSION_MANAGER.read();
             let headset_config = &session_manager_lock.settings().headset;
+            let connection_config = &session_manager_lock.settings().connection;
 
             let device_motion_keys = tracking
                 .device_motions
@@ -407,15 +407,26 @@ pub fn tracking_loop(
 
             tracking_manager_lock.report_device_motions(
                 headset_config,
+                connection_config,
                 timestamp,
                 &tracking.device_motions,
             );
 
             if let Some(skeleton) = tracking.hand_skeletons[0] {
-                tracking_manager_lock.report_hand_skeleton(HandType::Left, timestamp, skeleton);
+                tracking_manager_lock.report_hand_skeleton(
+                    HandType::Left,
+                    connection_config,
+                    timestamp,
+                    skeleton,
+                );
             }
             if let Some(skeleton) = tracking.hand_skeletons[1] {
-                tracking_manager_lock.report_hand_skeleton(HandType::Right, timestamp, skeleton);
+                tracking_manager_lock.report_hand_skeleton(
+                    HandType::Right,
+                    connection_config,
+                    timestamp,
+                    skeleton,
+                );
             }
 
             tracking_manager_lock.report_face_data(tracking.face_data);

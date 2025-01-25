@@ -35,9 +35,9 @@ use std::{
 };
 
 const DEG_TO_RAD: f32 = PI / 180.0;
-// A small history size is used, we just need to cover the time from packet received to data
-// processed.
-const MAX_HISTORY_SIZE: usize = 16;
+// In theory we just need to cover the time from packet received to data
+// processed, but for consistency we'll set it to be the same as the client
+const MAX_HISTORY_SIZE: usize = 1024;
 
 #[derive(Debug)]
 pub enum HandType {
@@ -239,6 +239,13 @@ impl TrackingManager {
         self.device_motions_history
             .get(&device_id)
             .and_then(|motions| {
+                // TODO(shinyquagsire23): There's a logic bug in here, hackfix for just HMDs for now.
+                if device_id == *HEAD_ID {
+                    return motions
+                        .iter()
+                        .find(|(timestamp, _)| *timestamp == sample_timestamp)
+                        .map(|(_, motion)| *motion);
+                }
                 // Get first element to initialize a valid motion reference
                 if let Some((_, motion)) = motions.front() {
                     let mut best_timestamp_diff = Duration::MAX;

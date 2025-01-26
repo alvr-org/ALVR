@@ -2,7 +2,6 @@
 #include "alvr_server/bindings.h"
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 

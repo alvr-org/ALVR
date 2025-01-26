@@ -6,7 +6,6 @@
 #include "alvr_server/Logger.h"
 #include "alvr_server/Settings.h"
 #include "ffmpeg_helper.h"
-#include <optional>
 
 extern "C" {
 #include <libavcodec/avcodec.h>

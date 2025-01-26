@@ -1,10 +1,10 @@
-use openxr::{self as xr, sys};
-use std::{mem};
 use openxr::sys::pfn::VoidFunction;
+use openxr::{self as xr, sys};
+use std::mem;
 
-pub const TRACKING_MODE_FACE_BIT                  : u64 = 0x00000008;
-pub const TRACKING_MODE_FACE_LIPSYNC              : u64 = 0x00002000;
-pub const TRACKING_MODE_FACE_LIPSYNC_BLEND_SHAPES : u64 = 0x00000100;
+const TRACKING_MODE_FACE_BIT: u64 = 0x00000008;
+const TRACKING_MODE_FACE_LIPSYNC: u64 = 0x00002000;
+const TRACKING_MODE_FACE_LIPSYNC_BLEND_SHAPES: u64 = 0x00000100;
 
 #[repr(C)]
 struct FaceTrackingDataPICO {
@@ -16,14 +16,9 @@ struct FaceTrackingDataPICO {
     reserved: [f32; 128],
 }
 
-type StartEyeTrackingPICO = unsafe extern "system" fn(
-    sys::Session,
-) -> sys::Result;
+type StartEyeTrackingPICO = unsafe extern "system" fn(sys::Session) -> sys::Result;
 
-type SetTrackingModePICO = unsafe extern "system" fn(
-    sys::Session,
-    u64
-) -> sys::Result;
+type SetTrackingModePICO = unsafe extern "system" fn(sys::Session, u64) -> sys::Result;
 
 type GetFaceTrackingDataPICO = unsafe extern "system" fn(
     sys::Session,
@@ -56,13 +51,10 @@ impl FaceTrackerPico {
                 &mut get_face_tracking_data,
             );
 
-            get_face_tracking_data.map(|pfn| {
-                mem::transmute::<VoidFunction, GetFaceTrackingDataPICO>(
-                    pfn,
-                )
-            })
+            get_face_tracking_data
+                .map(|pfn| mem::transmute::<VoidFunction, GetFaceTrackingDataPICO>(pfn))
         }
-            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
+        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
 
         let start_eye_tracking = unsafe {
             let mut start_eye_tracking = None;
@@ -72,13 +64,9 @@ impl FaceTrackerPico {
                 &mut start_eye_tracking,
             );
 
-            start_eye_tracking.map(|pfn| {
-                mem::transmute::<VoidFunction, StartEyeTrackingPICO>(
-                    pfn,
-                )
-            })
+            start_eye_tracking.map(|pfn| mem::transmute::<VoidFunction, StartEyeTrackingPICO>(pfn))
         }
-            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
+        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
 
         let set_tracking_mode = unsafe {
             let mut set_tracking_mode = None;
@@ -88,19 +76,12 @@ impl FaceTrackerPico {
                 &mut set_tracking_mode,
             );
 
-            set_tracking_mode.map(|pfn| {
-                mem::transmute::<VoidFunction, SetTrackingModePICO>(
-                    pfn,
-                )
-            })
+            set_tracking_mode.map(|pfn| mem::transmute::<VoidFunction, SetTrackingModePICO>(pfn))
         }
-            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
+        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
 
         unsafe {
-            super::xr_res(start_eye_tracking(session.as_raw()))?
-        }
-
-        unsafe {
+            super::xr_res(start_eye_tracking(session.as_raw()))?;
             super::xr_res(set_tracking_mode(session.as_raw(), tracking_flags))?
         }
 

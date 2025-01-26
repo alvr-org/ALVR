@@ -1,8 +1,7 @@
 use crate::{
     extra_extensions::{
-        self, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB,
-        FacialTrackerHTC, FaceTrackerPico, MultimodalMeta,
-        BODY_JOINT_SET_FULL_BODY_META, FULL_BODY_JOINT_COUNT_META,
+        self, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB, FaceTrackerPico, FacialTrackerHTC,
+        MultimodalMeta, BODY_JOINT_SET_FULL_BODY_META, FULL_BODY_JOINT_COUNT_META,
         FULL_BODY_JOINT_LEFT_FOOT_BALL_META, FULL_BODY_JOINT_LEFT_LOWER_LEG_META,
         FULL_BODY_JOINT_RIGHT_FOOT_BALL_META, FULL_BODY_JOINT_RIGHT_LOWER_LEG_META,
     },

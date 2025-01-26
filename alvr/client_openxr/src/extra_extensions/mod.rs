@@ -2,21 +2,21 @@ mod body_tracking_fb;
 mod eye_gaze_interaction;
 mod eye_tracking_social;
 mod face_tracking2_fb;
+mod face_tracking_pico;
 mod facial_tracking_htc;
 mod multimodal_input;
 mod passthrough_fb;
 mod passthrough_htc;
-mod face_tracking_pico;
 
 pub use body_tracking_fb::*;
 pub use eye_gaze_interaction::*;
 pub use eye_tracking_social::*;
 pub use face_tracking2_fb::*;
+pub use face_tracking_pico::*;
 pub use facial_tracking_htc::*;
 pub use multimodal_input::*;
 pub use passthrough_fb::*;
 pub use passthrough_htc::*;
-pub use face_tracking_pico::*;
 
 use openxr::{self as xr, sys};
 

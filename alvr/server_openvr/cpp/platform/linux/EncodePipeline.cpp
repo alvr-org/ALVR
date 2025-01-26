@@ -25,7 +25,7 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(
     Renderer* render,
     VkContext& vk_ctx,
     VkFrame& input_frame,
-    VkImageCreateInfo image_create_info,
+    VkImageCreateInfo& image_create_info,
     uint32_t width,
     uint32_t height
 ) {

@@ -19,7 +19,7 @@ public:
         Renderer* render,
         VkContext& vk_ctx,
         VkFrame& input_frame,
-        VkImageCreateInfo image_create_info,
+        VkImageCreateInfo& image_create_info,
         uint32_t width,
         uint32_t height
     );
@@ -28,9 +28,9 @@ public:
 
 private:
     Renderer* r = nullptr;
+    std::unique_ptr<alvr::VkFrameCtx> vk_frame_ctx;
     AVBufferRef* hw_ctx = nullptr;
     std::unique_ptr<AVFrame, std::function<void(AVFrame*)>> vk_frame;
     AVFrame* hw_frame = nullptr;
-    std::unique_ptr<alvr::VkFrameCtx> vk_frame_ctx;
 };
 }

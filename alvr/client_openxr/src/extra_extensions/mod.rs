@@ -6,6 +6,7 @@ mod facial_tracking_htc;
 mod multimodal_input;
 mod passthrough_fb;
 mod passthrough_htc;
+mod face_tracking_pico;
 
 pub use body_tracking_fb::*;
 pub use eye_gaze_interaction::*;
@@ -15,6 +16,7 @@ pub use facial_tracking_htc::*;
 pub use multimodal_input::*;
 pub use passthrough_fb::*;
 pub use passthrough_htc::*;
+pub use face_tracking_pico::*;
 
 use openxr::{self as xr, sys};
 

@@ -93,11 +93,13 @@ impl FaceTrackingSink {
                     .fb_face_expression
                     .as_ref()
                     .map(|v| v[12])
-                    .or_else(|| face_data.htc_eye_expression.as_ref().map(|v| v[0]));
+                    .or_else(|| face_data.htc_eye_expression.as_ref().map(|v| v[0]))
+                    .or_else(|| face_data.pico_face_expression.as_ref().map(|v| v[28]));
                 let right_eye_blink = face_data
                     .fb_face_expression
                     .map(|v| v[13])
-                    .or_else(|| face_data.htc_eye_expression.map(|v| v[2]));
+                    .or_else(|| face_data.htc_eye_expression.map(|v| v[2]))
+                    .or_else(|| face_data.pico_face_expression.map(|v| v[38]));
 
                 if let (Some(left), Some(right)) = (left_eye_blink, right_eye_blink) {
                     self.send_osc_message(
@@ -140,6 +142,10 @@ impl FaceTrackingSink {
 
                 if let Some(arr) = face_data.htc_lip_expression {
                     self.append_packet_vrcft(b"LipHtc\0\0", &arr);
+                }
+
+                if let Some(arr) = face_data.pico_face_expression {
+                    self.append_packet_vrcft(b"FacePico", &arr);
                 }
 
                 self.socket.send(&self.packet_buffer).ok();

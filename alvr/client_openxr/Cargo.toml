@@ -163,6 +163,8 @@ value = "3,6DoF"
 # Pico entries
 [[package.metadata.android.uses_permission]]
 name = "com.picovr.permission.EYE_TRACKING"
+[[package.metadata.android.uses_permission]]
+name = "com.picovr.permission.FACE_TRACKING"
 [[package.metadata.android.application.meta_data]]
 name = "eyetracking_calibration"
 value = "true"
@@ -172,6 +174,9 @@ value = "1"
 [[package.metadata.android.application.meta_data]]
 name = "picovr.software.eye_tracking"
 value = "1"
+[[package.metadata.android.application.meta_data]]
+name = "picovr.software.face_tracking"
+value = "true"
 [[package.metadata.android.application.meta_data]]
 name = "pvr.app.type"
 value = "vr"

@@ -189,6 +189,7 @@ fn tracking_thread(
                 fb_face_expression: None,
                 htc_eye_expression: None,
                 htc_lip_expression: None,
+                pico_face_expression: None,
             },
         );
 

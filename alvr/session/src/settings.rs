@@ -737,6 +737,7 @@ pub struct FaceTrackingSourcesConfig {
     pub face_tracking_fb: bool,
     pub eye_expressions_htc: bool,
     pub lip_expressions_htc: bool,
+    pub face_tracking_pico: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1672,6 +1673,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         face_tracking_fb: true,
                         eye_expressions_htc: true,
                         lip_expressions_htc: true,
+                        face_tracking_pico: true,
                     },
                     sink: FaceTrackingSinkConfigDefault {
                         VrchatEyeOsc: FaceTrackingSinkConfigVrchatEyeOscDefault { port: 9000 },

@@ -2,6 +2,7 @@
 
 #include "EncodePipeline.h"
 #include <functional>
+#include <memory>
 
 extern "C" struct AVBufferRef;
 extern "C" struct AVCodecContext;
@@ -30,5 +31,6 @@ private:
     AVBufferRef* hw_ctx = nullptr;
     std::unique_ptr<AVFrame, std::function<void(AVFrame*)>> vk_frame;
     AVFrame* hw_frame = nullptr;
+    std::unique_ptr<alvr::VkFrameCtx> vk_frame_ctx;
 };
 }

@@ -18,7 +18,7 @@ public:
         Renderer* render,
         VkContext& vk_ctx,
         VkFrame& input_frame,
-        VkFrameCtx& vk_frame_ctx,
+        VkImageCreateInfo image_create_info,
         uint32_t width,
         uint32_t height
     );

@@ -2,6 +2,7 @@
 #include "alvr_server/bindings.h"
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
@@ -42,7 +43,7 @@ public:
         Renderer* render,
         VkContext& vk_ctx,
         VkFrame& input_frame,
-        VkImageCreateInfo& image_create_info,
+        VkImageCreateInfo image_create_info,
         uint32_t width,
         uint32_t height
     );

@@ -63,11 +63,12 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
     Renderer* render,
     VkContext& vk_ctx,
     VkFrame& input_frame,
-    VkFrameCtx& vk_frame_ctx,
+    VkImageCreateInfo image_create_info,
     uint32_t width,
     uint32_t height
 ) {
     r = render;
+    alvr::VkFrameCtx vk_frame_ctx(vk_ctx, image_create_info);
     auto input_frame_ctx = (AVHWFramesContext*)vk_frame_ctx.ctx->data;
     assert(input_frame_ctx->sw_format == AV_PIX_FMT_BGRA);
 

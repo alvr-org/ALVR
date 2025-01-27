@@ -758,6 +758,7 @@ pub struct FaceTrackingConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BodyTrackingSourcesConfig {
     pub body_tracking_fb: Switch<BodyTrackingFBConfig>,
+    pub body_tracking_bd: Switch<BodyTrackingBDConfig>,
     // todo:
     // pub detached_controllers_as_feet: bool,
     // unfortunately multimodal is incompatible with body tracking. To make this usable we need to
@@ -767,6 +768,11 @@ pub struct BodyTrackingSourcesConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BodyTrackingFBConfig {
     pub full_body: bool,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+pub struct BodyTrackingBDConfig {
+    pub high_accuracy: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1689,6 +1695,12 @@ pub fn session_settings_default() -> SettingsDefault {
                         body_tracking_fb: SwitchDefault {
                             enabled: true,
                             content: BodyTrackingFBConfigDefault { full_body: true },
+                        },
+                        body_tracking_bd: SwitchDefault {
+                            enabled: true,
+                            content: BodyTrackingBDConfigDefault {
+                                high_accuracy: true,
+                            },
                         },
                     },
                     sink: BodyTrackingSinkConfigDefault {

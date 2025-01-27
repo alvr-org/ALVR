@@ -145,6 +145,16 @@ impl Lobby {
                 )
             });
 
+        let body_skeleton_bd = self
+            .interaction_ctx
+            .read()
+            .body_sources
+            .body_tracker_bd
+            .as_ref()
+            .and_then(|tracker| {
+                interaction::get_bd_body_skeleton(&self.reference_space, xr_vsync_time, tracker)
+            });
+
         let left_swapchain_idx = self.swapchains[0].acquire_image().unwrap();
         let right_swapchain_idx = self.swapchains[1].acquire_image().unwrap();
 
@@ -170,6 +180,7 @@ impl Lobby {
             ],
             [left_hand_data, right_hand_data],
             body_skeleton_fb,
+            body_skeleton_bd,
             false,
             cfg!(debug_assertions),
         );

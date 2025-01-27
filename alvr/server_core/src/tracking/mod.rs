@@ -68,7 +68,7 @@ impl TrackingManager {
             device_motions_history: HashMap::new(),
             hand_skeletons_history: [VecDeque::new(), VecDeque::new()],
             last_face_data: FaceData::default(),
-            max_history_size: max_history_size,
+            max_history_size,
         }
     }
 

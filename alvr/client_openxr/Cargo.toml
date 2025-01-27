@@ -30,6 +30,7 @@ package = "alvr.client.dev"                # Changed for Meta Store
 install_location = "auto"
 build_targets = ["aarch64-linux-android"]
 runtime_libs = "../../deps/android_openxr"
+resources = "resources"
 
 [package.metadata.android.signing.release]
 path = "../../build/alvr_client_android/debug.keystore"
@@ -82,7 +83,7 @@ authorities = "org.khronos.openxr.runtime_broker;org.khronos.openxr.system_runti
 [package.metadata.android.application]
 debuggable = false
 theme = "@android:style/Theme.Black.NoTitleBar.Fullscreen"
-# icon = todo
+icon = "@mipmap/ic_launcher"
 label = "ALVR"
 
 [package.metadata.android.application.activity]

@@ -47,9 +47,7 @@ impl FaceTrackingSink {
 
     fn append_packet_vrcft(&mut self, prefix: &[u8; 8], data: &[f32]) {
         let new_buffer_len = self.packet_cursor + prefix.len() + data.len() * 4;
-        if self.packet_buffer.len() < new_buffer_len {
-            self.packet_buffer.resize(new_buffer_len, 0);
-        }
+        self.packet_buffer.resize(new_buffer_len, 0);
 
         self.packet_buffer[self.packet_cursor..][..prefix.len()].copy_from_slice(prefix.as_slice());
         self.packet_cursor += prefix.len();

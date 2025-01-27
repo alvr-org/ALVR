@@ -2,7 +2,7 @@ use alvr_common::{anyhow::Result, glam::EulerRot};
 use alvr_packets::FaceData;
 use alvr_session::FaceTrackingSinkConfig;
 use rosc::{OscMessage, OscPacket, OscType};
-use std::{f32::consts::PI, mem, net::UdpSocket};
+use std::{f32::consts::PI, net::UdpSocket};
 
 const RAD_TO_DEG: f32 = 180.0 / PI;
 
@@ -12,7 +12,6 @@ pub struct FaceTrackingSink {
     config: FaceTrackingSinkConfig,
     socket: UdpSocket,
     packet_buffer: Vec<u8>,
-    packet_cursor: usize,
 }
 
 impl FaceTrackingSink {
@@ -29,7 +28,6 @@ impl FaceTrackingSink {
             config,
             socket,
             packet_buffer: vec![],
-            packet_cursor: 0,
         })
     }
 
@@ -46,18 +44,10 @@ impl FaceTrackingSink {
     }
 
     fn append_packet_vrcft(&mut self, prefix: &[u8; 8], data: &[f32]) {
-        let new_buffer_len = self.packet_cursor + prefix.len() + data.len() * 4;
-        if self.packet_buffer.len() < new_buffer_len {
-            self.packet_buffer.resize(new_buffer_len, 0);
-        }
-
-        self.packet_buffer[self.packet_cursor..][..prefix.len()].copy_from_slice(prefix.as_slice());
-        self.packet_cursor += prefix.len();
+        self.packet_buffer.extend(prefix);
 
         for val in data {
-            self.packet_buffer[self.packet_cursor..][..mem::size_of::<f32>()]
-                .copy_from_slice(&val.to_le_bytes());
-            self.packet_cursor += mem::size_of::<f32>();
+            self.packet_buffer.extend(val.to_le_bytes());
         }
     }
 
@@ -112,7 +102,7 @@ impl FaceTrackingSink {
                 }
             }
             FaceTrackingSinkConfig::VrcFaceTracking { .. } => {
-                self.packet_cursor = 0;
+                self.packet_buffer.clear();
 
                 match face_data.eye_gazes {
                     [Some(left_quat), Some(right_quat)] => {

@@ -129,7 +129,16 @@ pub struct BodyTrackerBD {
 }
 
 impl BodyTrackerBD {
-    pub fn new<G>(session: &xr::Session<G>, body_joint_set: BodyJointSetBD) -> xr::Result<Self> {
+    pub fn new<G>(
+        session: &xr::Session<G>,
+        body_joint_set: BodyJointSetBD,
+        extra_extensions: &[String],
+        system: xr::SystemId,
+    ) -> xr::Result<Self> {
+        if !extra_extensions.contains(&BD_BODY_TRACKING_EXTENSION_NAME.to_owned()) {
+            return Err(sys::Result::ERROR_EXTENSION_NOT_PRESENT);
+        }
+
         let create_body_tracker = unsafe {
             let mut create_body_tracker = None;
             let _ = (session.instance().fp().get_instance_proc_addr)(
@@ -194,11 +203,8 @@ impl BodyTrackerBD {
         .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
 
         let props = super::get_props(
-            &session,
-            session
-                .instance()
-                .system(xr::FormFactor::HEAD_MOUNTED_DISPLAY)
-                .unwrap(),
+            session,
+            system,
             SystemBodyTrackingPropertiesBD {
                 ty: *TYPE_SYSTEM_BODY_TRACKING_PROPERTIES_BD,
                 next: ptr::null(),

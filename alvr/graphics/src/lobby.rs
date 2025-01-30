@@ -153,6 +153,11 @@ const BODY_SKELETON_BONES_BD: [(usize, usize); 23] = [
     (21, 23),
 ];
 
+pub enum BodyTrackingType {
+    Meta,
+    Pico,
+}
+
 fn create_pipeline(
     device: &Device,
     label: &str,
@@ -403,8 +408,8 @@ impl LobbyRenderer {
         &self,
         view_params: [LobbyViewParams; 2],
         hand_data: [(Option<DeviceMotion>, Option<[Pose; 26]>); 2],
-        body_skeleton_fb: Option<Vec<Option<Pose>>>,
-        body_skeleton_bd: Option<Vec<Option<Pose>>>,
+        body_skeleton: Option<Vec<Option<Pose>>>,
+        body_tracking_type: Option<BodyTrackingType>,
         render_background: bool,
         show_velocities: bool,
     ) {
@@ -576,27 +581,17 @@ impl LobbyRenderer {
                     }
                 }
             }
-            if let Some(skeleton) = &body_skeleton_fb {
-                for (joint1_idx, joint2_idx) in BODY_SKELETON_BONES_FB {
+
+            let body_skeleton_bones = match body_tracking_type {
+                Some(BodyTrackingType::Meta) => Some(BODY_SKELETON_BONES_FB.as_slice()),
+                Some(BodyTrackingType::Pico) => Some(BODY_SKELETON_BONES_BD.as_slice()),
+                _ => None,
+            };
+
+            if let (Some(skeleton), Some(skeleton_bones)) = (&body_skeleton, body_skeleton_bones) {
+                for (joint1_idx, joint2_idx) in skeleton_bones {
                     if let (Some(Some(j1_pose)), Some(Some(j2_pose))) =
-                        (skeleton.get(joint1_idx), skeleton.get(joint2_idx))
-                    {
-                        let transform = Mat4::from_scale_rotation_translation(
-                            Vec3::ONE * Vec3::distance(j1_pose.position, j2_pose.position),
-                            Quat::from_rotation_arc(
-                                -Vec3::Z,
-                                (j2_pose.position - j1_pose.position).normalize(),
-                            ),
-                            j1_pose.position,
-                        );
-                        transform_draw(&mut pass, view_proj * transform, 2);
-                    }
-                }
-            }
-            if let Some(skeleton) = &body_skeleton_bd {
-                for (joint1_idx, joint2_idx) in BODY_SKELETON_BONES_BD {
-                    if let (Some(Some(j1_pose)), Some(Some(j2_pose))) =
-                        (skeleton.get(joint1_idx), skeleton.get(joint2_idx))
+                        (skeleton.get(*joint1_idx), skeleton.get(*joint2_idx))
                     {
                         let transform = Mat4::from_scale_rotation_translation(
                             Vec3::ONE * Vec3::distance(j1_pose.position, j2_pose.position),

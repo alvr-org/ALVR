@@ -382,7 +382,12 @@ impl InteractionContext {
         }
     }
 
-    pub fn select_sources(&mut self, config: &InteractionSourcesConfig) {
+    pub fn select_sources(
+        &mut self,
+        config: &InteractionSourcesConfig,
+        extra_extensions: &[String],
+        xr_system: xr::SystemId,
+    ) {
         // First of all, disable/delete all sources. This ensures there are no conflicts
         if let Some(handle) = &mut self.multimodal_handle {
             handle.pause().ok();
@@ -500,7 +505,14 @@ impl InteractionContext {
                 .clone()
                 .and_then(|s| s.body_tracking_bd.into_option())
                 .map(|c| c.high_accuracy),
-            || BodyTrackerBD::new(&self.xr_session, BodyJointSetBD::BODY_FULL_STAR),
+            || {
+                BodyTrackerBD::new(
+                    &self.xr_session,
+                    BodyJointSetBD::BODY_FULL_STAR,
+                    extra_extensions,
+                    xr_system,
+                )
+            },
         )
         .or_else(|| {
             create_ext_object(
@@ -509,7 +521,14 @@ impl InteractionContext {
                     .body_tracking
                     .as_ref()
                     .map(|s| s.body_tracking_bd.enabled()),
-                || BodyTrackerBD::new(&self.xr_session, BodyJointSetBD::BODY_STAR_WITHOUT_ARM),
+                || {
+                    BodyTrackerBD::new(
+                        &self.xr_session,
+                        BodyJointSetBD::BODY_STAR_WITHOUT_ARM,
+                        extra_extensions,
+                        xr_system,
+                    )
+                },
             )
         });
         

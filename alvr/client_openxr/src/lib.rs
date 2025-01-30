@@ -287,9 +287,11 @@ pub fn entry_point() {
             body_tracking: None,
             prefers_multimodal_input: true,
         };
-        interaction_context
-            .write()
-            .select_sources(&lobby_interaction_sources);
+        interaction_context.write().select_sources(
+            &lobby_interaction_sources,
+            &exts.other,
+            xr_system,
+        );
 
         let mut session_running = false;
         let mut stream_context = None::<StreamContext>;
@@ -380,6 +382,8 @@ pub fn entry_point() {
                             Arc::clone(&interaction_context),
                             platform,
                             config,
+                            &exts.other,
+                            xr_system,
                         );
 
                         if !context.uses_passthrough() {
@@ -393,9 +397,11 @@ pub fn entry_point() {
                             passthrough_layer = PassthroughLayer::new(&xr_session).ok();
                         }
 
-                        interaction_context
-                            .write()
-                            .select_sources(&lobby_interaction_sources);
+                        interaction_context.write().select_sources(
+                            &lobby_interaction_sources,
+                            &exts.other,
+                            xr_system,
+                        );
 
                         stream_context = None;
                     }

@@ -148,7 +148,11 @@ impl FaceTrackingSink {
                 }
 
                 if let Some(arr) = fb_face_expression {
-                    self.append_packet_vrcft(b"Face2Fb\0", &arr);
+                    self.append_packet_vrcft(b"Face2Fb\0", arr);
+                }
+
+                if let Some(arr) = pico_face_expression {
+                    self.append_packet_vrcft(b"FacePico", arr);
                 }
 
                 if let Some(arr) = face_data.htc_eye_expression {
@@ -157,10 +161,6 @@ impl FaceTrackingSink {
 
                 if let Some(arr) = face_data.htc_lip_expression {
                     self.append_packet_vrcft(b"LipHtc\0\0", &arr);
-                }
-
-                if let Some(arr) = pico_face_expression {
-                    self.append_packet_vrcft(b"FacePico", &arr);
                 }
 
                 self.socket.send(&self.packet_buffer).ok();

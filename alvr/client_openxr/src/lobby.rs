@@ -158,9 +158,9 @@ impl Lobby {
             });
 
         let (body_skeleton, body_tracking_type) = {
-            if let Some(_) = body_skeleton_fb {
+            if body_skeleton_fb.is_some() {
                 (body_skeleton_fb, Some(BodyTrackingType::Meta))
-            } else if let Some(_) = body_skeleton_bd {
+            } else if body_skeleton_bd.is_some() {
                 (body_skeleton_bd, Some(BodyTrackingType::Pico))
             } else {
                 (None, None)

@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <vulkan/vulkan_core.h>
 
 extern "C" struct AVCodecContext;
 extern "C" struct AVPacket;
@@ -41,7 +42,7 @@ public:
         Renderer* render,
         VkContext& vk_ctx,
         VkFrame& input_frame,
-        VkFrameCtx& vk_frame_ctx,
+        VkImageCreateInfo& image_create_info,
         uint32_t width,
         uint32_t height
     );

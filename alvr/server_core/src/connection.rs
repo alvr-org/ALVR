@@ -1012,7 +1012,8 @@ fn connection_pipeline(
             thread::spawn(|| ())
         };
 
-    *ctx.tracking_manager.write() = TrackingManager::new();
+    *ctx.tracking_manager.write() =
+        TrackingManager::new(initial_settings.connection.statistics_history_size);
     let hand_gesture_manager = Arc::new(Mutex::new(HandGestureManager::new()));
 
     let tracking_receive_thread = thread::spawn({

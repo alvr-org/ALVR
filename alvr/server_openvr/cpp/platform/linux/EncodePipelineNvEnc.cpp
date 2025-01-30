@@ -4,6 +4,7 @@
 #include "alvr_server/Settings.h"
 #include "ffmpeg_helper.h"
 #include <chrono>
+#include <memory>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -63,16 +64,18 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
     Renderer* render,
     VkContext& vk_ctx,
     VkFrame& input_frame,
-    VkFrameCtx& vk_frame_ctx,
+    VkImageCreateInfo& image_create_info,
     uint32_t width,
     uint32_t height
 ) {
     r = render;
-    auto input_frame_ctx = (AVHWFramesContext*)vk_frame_ctx.ctx->data;
+    vk_frame_ctx = std::make_unique<alvr::VkFrameCtx>(vk_ctx, image_create_info);
+
+    auto input_frame_ctx = (AVHWFramesContext*)vk_frame_ctx->ctx->data;
     assert(input_frame_ctx->sw_format == AV_PIX_FMT_BGRA);
 
     int err;
-    vk_frame = input_frame.make_av_frame(vk_frame_ctx);
+    vk_frame = input_frame.make_av_frame(*vk_frame_ctx);
 
     err = av_hwdevice_ctx_create_derived(&hw_ctx, AV_HWDEVICE_TYPE_CUDA, vk_ctx.ctx, 0);
     if (err < 0) {

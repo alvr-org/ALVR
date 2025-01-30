@@ -25,7 +25,7 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(
     Renderer* render,
     VkContext& vk_ctx,
     VkFrame& input_frame,
-    VkFrameCtx& vk_frame_ctx,
+    VkImageCreateInfo& image_create_info,
     uint32_t width,
     uint32_t height
 ) {
@@ -33,7 +33,7 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(
         if (vk_ctx.nvidia) {
             try {
                 auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(
-                    render, vk_ctx, input_frame, vk_frame_ctx, width, height
+                    render, vk_ctx, input_frame, image_create_info, width, height
                 );
                 Info("Using NvEnc encoder");
                 return nvenc;

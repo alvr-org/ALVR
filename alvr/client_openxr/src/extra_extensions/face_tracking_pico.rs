@@ -18,6 +18,8 @@ struct FaceTrackingDataPICO {
 
 type StartEyeTrackingPICO = unsafe extern "system" fn(sys::Session) -> sys::Result;
 
+type StopEyeTrackingPICO = unsafe extern "system" fn(sys::Session, u64) -> sys::Result;
+
 type SetTrackingModePICO = unsafe extern "system" fn(sys::Session, u64) -> sys::Result;
 
 type GetFaceTrackingDataPICO = unsafe extern "system" fn(
@@ -29,32 +31,20 @@ type GetFaceTrackingDataPICO = unsafe extern "system" fn(
 
 pub struct FaceTrackerPico {
     session: xr::Session<xr::AnyGraphics>,
+    tracking_flags: u64,
+    start_eye_tracking: StartEyeTrackingPICO,
+    stop_eye_tracking: StopEyeTrackingPICO,
+    set_tracking_mode: SetTrackingModePICO,
     get_face_tracking_data: GetFaceTrackingDataPICO,
 }
 
 impl FaceTrackerPico {
     pub fn new<G>(session: xr::Session<G>, visual: bool, audio: bool) -> xr::Result<Self> {
-        let mut tracking_flags = 0u64;
-
-        if visual {
-            tracking_flags |= TRACKING_MODE_FACE_BIT;
-        }
-        if audio {
-            tracking_flags |= TRACKING_MODE_FACE_LIPSYNC | TRACKING_MODE_FACE_LIPSYNC_BLEND_SHAPES;
-        }
-
-        let get_face_tracking_data = unsafe {
-            let mut get_face_tracking_data = None;
-            let _ = (session.instance().fp().get_instance_proc_addr)(
-                session.instance().as_raw(),
-                c"xrGetFaceTrackingDataPICO".as_ptr(),
-                &mut get_face_tracking_data,
-            );
-
-            get_face_tracking_data
-                .map(|pfn| mem::transmute::<VoidFunction, GetFaceTrackingDataPICO>(pfn))
-        }
-        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
+        session
+            .instance()
+            .exts()
+            .ext_eye_gaze_interaction
+            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
 
         let start_eye_tracking = unsafe {
             let mut start_eye_tracking = None;
@@ -65,6 +55,18 @@ impl FaceTrackerPico {
             );
 
             start_eye_tracking.map(|pfn| mem::transmute::<VoidFunction, StartEyeTrackingPICO>(pfn))
+        }
+        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
+
+        let stop_eye_tracking = unsafe {
+            let mut stop_eye_tracking = None;
+            let _ = (session.instance().fp().get_instance_proc_addr)(
+                session.instance().as_raw(),
+                c"xrStopEyeTrackingPICO".as_ptr(),
+                &mut stop_eye_tracking,
+            );
+
+            stop_eye_tracking.map(|pfn| mem::transmute::<VoidFunction, StopEyeTrackingPICO>(pfn))
         }
         .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
 
@@ -80,18 +82,39 @@ impl FaceTrackerPico {
         }
         .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
 
-        unsafe {
-            super::xr_res(start_eye_tracking(session.as_raw()))?;
-            super::xr_res(set_tracking_mode(session.as_raw(), tracking_flags))?
+        let get_face_tracking_data = unsafe {
+            let mut get_face_tracking_data = None;
+            let _ = (session.instance().fp().get_instance_proc_addr)(
+                session.instance().as_raw(),
+                c"xrGetFaceTrackingDataPICO".as_ptr(),
+                &mut get_face_tracking_data,
+            );
+
+            get_face_tracking_data
+                .map(|pfn| mem::transmute::<VoidFunction, GetFaceTrackingDataPICO>(pfn))
+        }
+        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
+
+        let mut tracking_flags = 0;
+
+        if visual {
+            tracking_flags |= TRACKING_MODE_FACE_BIT;
+        }
+        if audio {
+            tracking_flags |= TRACKING_MODE_FACE_LIPSYNC | TRACKING_MODE_FACE_LIPSYNC_BLEND_SHAPES;
         }
 
         Ok(Self {
             session: session.into_any_graphics(),
+            tracking_flags,
+            start_eye_tracking,
+            stop_eye_tracking,
+            set_tracking_mode,
             get_face_tracking_data,
         })
     }
 
-    pub fn get_face_expression_weights(&self, time: xr::Time) -> xr::Result<Option<Vec<f32>>> {
+    pub fn get_face_tracking_data(&self, time: xr::Time) -> xr::Result<Option<Vec<f32>>> {
         let mut face_tracking_data = FaceTrackingDataPICO {
             time: xr::Time::from_nanos(0),
             blend_shape_weight: [0.0; 72],
@@ -114,6 +137,25 @@ impl FaceTrackerPico {
             } else {
                 Ok(None)
             }
+        }
+    }
+
+    pub fn start_face_tracking(&self) -> xr::Result<()> {
+        unsafe {
+            super::xr_res((self.start_eye_tracking)(self.session.as_raw()))?;
+            super::xr_res((self.set_tracking_mode)(
+                self.session.as_raw(),
+                self.tracking_flags,
+            ))
+        }
+    }
+
+    pub fn stop_face_tracking(&self) -> xr::Result<()> {
+        unsafe {
+            super::xr_res((self.stop_eye_tracking)(
+                self.session.as_raw(),
+                self.tracking_flags,
+            ))
         }
     }
 }

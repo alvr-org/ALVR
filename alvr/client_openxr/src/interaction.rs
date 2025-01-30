@@ -382,6 +382,9 @@ impl InteractionContext {
         if let Some(handle) = &mut self.multimodal_handle {
             handle.pause().ok();
         }
+        if let Some(face_tracker) = &self.face_sources.face_tracker_pico {
+            face_tracker.stop_face_tracking().ok();
+        }
         self.multimodal_hands_enabled = false;
         self.face_sources.eye_tracker_fb = None;
         self.face_sources.face_tracker_fb = None;
@@ -483,6 +486,10 @@ impl InteractionContext {
             )
             .map(|tracker| (tracker, xr::BodyJointFB::COUNT.into_raw() as usize))
         });
+
+        if let Some(face_tracker) = &self.face_sources.face_tracker_pico {
+            face_tracker.start_face_tracking().ok();
+        }
     }
 }
 
@@ -812,7 +819,7 @@ pub fn get_pico_face_expression(context: &FaceSources, time: Duration) -> Option
     context
         .face_tracker_pico
         .as_ref()
-        .and_then(|t| t.get_face_expression_weights(xr_time).ok().flatten())
+        .and_then(|t| t.get_face_tracking_data(xr_time).ok().flatten())
         .map(|weights| weights.into_iter().collect())
 }
 

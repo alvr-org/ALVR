@@ -445,7 +445,6 @@ pub fn tracking_loop(
                     fb_face_expression: face_data.fb_face_expression,
                     htc_eye_expression: face_data.htc_eye_expression,
                     htc_lip_expression: face_data.htc_lip_expression,
-                    pico_face_expression: face_data.pico_face_expression,
                 })))
             }
 

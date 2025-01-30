@@ -60,7 +60,6 @@ pub struct TrackingEvent {
     pub fb_face_expression: Option<Vec<f32>>,
     pub htc_eye_expression: Option<Vec<f32>>,
     pub htc_lip_expression: Option<Vec<f32>>,
-    pub pico_face_expression: Option<Vec<f32>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

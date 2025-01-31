@@ -14,7 +14,7 @@ use alvr_common::{
     Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
 use alvr_graphics::{GraphicsContext, StreamRenderer, StreamViewParams};
-use alvr_packets::{FaceData, StreamConfig, ViewParams};
+use alvr_packets::{FaceData, RealTimeConfig, StreamConfig, ViewParams};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, CodecType, FoveatedEncodingConfig,
     MediacodecProperty, PassthroughMode,
@@ -185,7 +185,6 @@ impl StreamContext {
             platform != Platform::Lynx && !((platform.is_pico()) && config.enable_hdr),
             config.use_full_range && !config.enable_hdr, // TODO: figure out why HDR doesn't need the limited range hackfix in staging?
             config.encoding_gamma,
-            config.passthrough.clone(),
         );
 
         core_ctx.send_active_interaction_profile(
@@ -311,6 +310,10 @@ impl StreamContext {
         }
     }
 
+    pub fn update_real_time_config(&mut self, config: &RealTimeConfig) {
+        self.config.passthrough = config.passthrough.clone();
+    }
+
     pub fn render(
         &mut self,
         frame_interval: Duration,
@@ -368,6 +371,7 @@ impl StreamContext {
                         fov: view_params[1].fov,
                     },
                 ],
+                self.config.passthrough.as_ref(),
             )
         };
 
@@ -417,7 +421,10 @@ impl StreamContext {
                 .passthrough
                 .clone()
                 .map(|mode| ProjectionLayerAlphaConfig {
-                    premultiplied: !matches!(mode, PassthroughMode::Blend { .. }),
+                    premultiplied: matches!(
+                        mode,
+                        PassthroughMode::AugmentedReality { .. } | PassthroughMode::ChromaKey(_)
+                    ),
                 }),
         );
 

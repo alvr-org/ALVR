@@ -423,6 +423,11 @@ pub fn entry_point() {
                             stream.maybe_initialize_decoder(codec, config_nal);
                         }
                     }
+                    ClientCoreEvent::RealTimeConfig(config) => {
+                        if let Some(stream) = &mut stream_context {
+                            stream.update_real_time_config(&config);
+                        }
+                    }
                 }
             }
 

@@ -84,3 +84,11 @@ impl FaceTracker2FB {
         }
     }
 }
+
+impl Drop for FaceTracker2FB {
+    fn drop(&mut self) {
+        unsafe {
+            (self.ext_fns.destroy_face_tracker2)(self.handle);
+        }
+    }
+}

@@ -424,6 +424,12 @@ pub fn entry_point() {
                         }
                     }
                     ClientCoreEvent::RealTimeConfig(config) => {
+                        if config.passthrough.is_some() && passthrough_layer.is_none() {
+                            passthrough_layer = PassthroughLayer::new(&xr_session).ok();
+                        } else if config.passthrough.is_none() && passthrough_layer.is_some() {
+                            passthrough_layer = None;
+                        }
+
                         if let Some(stream) = &mut stream_context {
                             stream.update_real_time_config(&config);
                         }

@@ -136,6 +136,7 @@ impl InteractionContext {
 
         let controllers_profile_path = match platform {
             p if p.is_quest() => QUEST_CONTROLLER_PROFILE_PATH, // todo: create new controller profile for quest pro and 3
+            Platform::PicoG3 => PICO_G3_CONTROLLER_PROFILE_PATH,
             Platform::PicoNeo3 => PICO_NEO3_CONTROLLER_PROFILE_PATH,
             Platform::Pico4Ultra => PICO4S_CONTROLLER_PROFILE_PATH,
             p if p.is_pico() => PICO4_CONTROLLER_PROFILE_PATH,

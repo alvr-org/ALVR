@@ -19,6 +19,7 @@ interaction_profile!(INDEX, "valve/index");
 interaction_profile!(PICO_NEO3, "bytedance/pico_neo3");
 interaction_profile!(PICO4, "bytedance/pico4");
 interaction_profile!(PICO4S, "bytedance/pico4s");
+interaction_profile!(PICO_G3, "bytedance/pico_g3");
 interaction_profile!(FOCUS3, "htc/vive_focus3");
 interaction_profile!(YVR, "yvr/touch");
 
@@ -255,6 +256,30 @@ pub static CONTROLLER_PROFILE_INFO: Lazy<HashMap<u64, InteractionProfileInfo>> =
                     *RIGHT_TRACKPAD_X_ID,
                     *RIGHT_TRACKPAD_Y_ID,
                     *RIGHT_TRACKPAD_FORCE_ID,
+                    *RIGHT_TRACKPAD_TOUCH_ID,
+                ]
+                .into_iter()
+                .collect(),
+            },
+        ),
+        (
+            *PICO_G3_CONTROLLER_PROFILE_ID,
+            InteractionProfileInfo {
+                path: PICO_G3_CONTROLLER_PROFILE_PATH,
+                button_set: [
+                    *LEFT_MENU_CLICK_ID,
+                    *LEFT_TRIGGER_CLICK_ID,
+                    *LEFT_TRIGGER_VALUE_ID,
+                    *LEFT_TRACKPAD_Y_ID,
+                    *LEFT_TRACKPAD_X_ID,
+                    *LEFT_TRACKPAD_CLICK_ID,
+                    *LEFT_TRACKPAD_TOUCH_ID,
+                    *RIGHT_MENU_CLICK_ID,
+                    *RIGHT_TRIGGER_CLICK_ID,
+                    *RIGHT_TRIGGER_VALUE_ID,
+                    *RIGHT_TRACKPAD_Y_ID,
+                    *RIGHT_TRACKPAD_X_ID,
+                    *RIGHT_TRACKPAD_CLICK_ID,
                     *RIGHT_TRACKPAD_TOUCH_ID,
                 ]
                 .into_iter()

@@ -56,6 +56,7 @@ pub struct StreamRenderer {
 }
 
 impl StreamRenderer {
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         context: Rc<GraphicsContext>,
         view_resolution: UVec2,
@@ -222,6 +223,8 @@ impl StreamRenderer {
         }
     }
 
+    /// # Safety
+    /// `hardware_buffer` must be a valid pointer to a ANativeWindowBuffer.
     pub unsafe fn render(
         &self,
         hardware_buffer: *mut c_void,

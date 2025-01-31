@@ -8,6 +8,9 @@ const RAD_TO_DEG: f32 = 180.0 / PI;
 
 const VRCFT_PORT: u16 = 0xA1F7;
 
+const FB_FACE_EXPRESSION_COUNT: usize = 70;
+const PICO_FACE_EXPRESSION_COUNT: usize = 72;
+
 pub struct FaceTrackingSink {
     config: FaceTrackingSinkConfig,
     socket: UdpSocket,
@@ -52,6 +55,21 @@ impl FaceTrackingSink {
     }
 
     pub fn send_tracking(&mut self, face_data: FaceData) {
+        // todo: introduce pico_face_expression field in FaceData
+        let fb_face_expression = match &face_data.fb_face_expression {
+            Some(face_expression) if face_expression.len() == FB_FACE_EXPRESSION_COUNT => {
+                Some(face_expression)
+            }
+            _ => None,
+        };
+
+        let pico_face_expression = match &face_data.fb_face_expression {
+            Some(face_expression) if face_expression.len() == PICO_FACE_EXPRESSION_COUNT => {
+                Some(face_expression)
+            }
+            _ => None,
+        };
+
         match self.config {
             FaceTrackingSinkConfig::VrchatEyeOsc { .. } => {
                 if let [Some(left), Some(right)] = face_data.eye_gazes {
@@ -79,15 +97,14 @@ impl FaceTrackingSink {
                     );
                 }
 
-                let left_eye_blink = face_data
-                    .fb_face_expression
-                    .as_ref()
+                let left_eye_blink = fb_face_expression
                     .map(|v| v[12])
-                    .or_else(|| face_data.htc_eye_expression.as_ref().map(|v| v[0]));
-                let right_eye_blink = face_data
-                    .fb_face_expression
+                    .or_else(|| face_data.htc_eye_expression.as_ref().map(|v| v[0]))
+                    .or_else(|| pico_face_expression.map(|v| v[28]));
+                let right_eye_blink = fb_face_expression
                     .map(|v| v[13])
-                    .or_else(|| face_data.htc_eye_expression.map(|v| v[2]));
+                    .or_else(|| face_data.htc_eye_expression.as_ref().map(|v| v[2]))
+                    .or_else(|| pico_face_expression.map(|v| v[38]));
 
                 if let (Some(left), Some(right)) = (left_eye_blink, right_eye_blink) {
                     self.send_osc_message(
@@ -120,8 +137,12 @@ impl FaceTrackingSink {
                     _ => (),
                 }
 
-                if let Some(arr) = face_data.fb_face_expression {
-                    self.append_packet_vrcft(b"Face2Fb\0", &arr);
+                if let Some(arr) = fb_face_expression {
+                    self.append_packet_vrcft(b"Face2Fb\0", arr);
+                }
+
+                if let Some(arr) = pico_face_expression {
+                    self.append_packet_vrcft(b"FacePico", arr);
                 }
 
                 if let Some(arr) = face_data.htc_eye_expression {

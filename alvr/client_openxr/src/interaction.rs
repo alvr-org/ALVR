@@ -1,7 +1,7 @@
 use crate::{
     extra_extensions::{
-        self, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB, FacialTrackerHTC, MultimodalMeta,
-        BODY_JOINT_SET_FULL_BODY_META, FULL_BODY_JOINT_COUNT_META,
+        self, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB, FaceTrackerPico, FacialTrackerHTC,
+        MultimodalMeta, BODY_JOINT_SET_FULL_BODY_META, FULL_BODY_JOINT_COUNT_META,
         FULL_BODY_JOINT_LEFT_FOOT_BALL_META, FULL_BODY_JOINT_LEFT_LOWER_LEG_META,
         FULL_BODY_JOINT_RIGHT_FOOT_BALL_META, FULL_BODY_JOINT_RIGHT_LOWER_LEG_META,
     },
@@ -63,6 +63,7 @@ pub struct FaceSources {
     pub face_tracker_fb: Option<FaceTracker2FB>,
     pub eye_tracker_htc: Option<FacialTrackerHTC>,
     pub lip_tracker_htc: Option<FacialTrackerHTC>,
+    pub face_tracker_pico: Option<FaceTrackerPico>,
 }
 
 pub struct BodySources {
@@ -368,6 +369,7 @@ impl InteractionContext {
                 face_tracker_fb: None,
                 eye_tracker_htc: None,
                 lip_tracker_htc: None,
+                face_tracker_pico: None,
             },
             body_sources: BodySources {
                 body_tracker_fb: None,
@@ -380,11 +382,15 @@ impl InteractionContext {
         if let Some(handle) = &mut self.multimodal_handle {
             handle.pause().ok();
         }
+        if let Some(face_tracker) = &self.face_sources.face_tracker_pico {
+            face_tracker.stop_face_tracking().ok();
+        }
         self.multimodal_hands_enabled = false;
         self.face_sources.eye_tracker_fb = None;
         self.face_sources.face_tracker_fb = None;
         self.face_sources.eye_tracker_htc = None;
         self.face_sources.lip_tracker_htc = None;
+        self.face_sources.face_tracker_pico = None;
         self.body_sources.body_tracker_fb = None;
 
         // todo: check which permissions are needed for htc
@@ -398,6 +404,13 @@ impl InteractionContext {
                 {
                     alvr_system_info::try_get_permission("android.permission.RECORD_AUDIO");
                     alvr_system_info::try_get_permission("com.oculus.permission.FACE_TRACKING")
+                }
+            }
+            if config.face_tracking_pico && self.platform.is_pico() {
+                #[cfg(target_os = "android")]
+                {
+                    alvr_system_info::try_get_permission("android.permission.RECORD_AUDIO");
+                    alvr_system_info::try_get_permission("com.picovr.permission.FACE_TRACKING")
                 }
             }
         }
@@ -434,6 +447,12 @@ impl InteractionContext {
             || FaceTracker2FB::new(&self.xr_session, true, true),
         );
 
+        self.face_sources.face_tracker_pico = create_ext_object(
+            "FaceTrackerPico",
+            config.face_tracking.as_ref().map(|s| s.face_tracking_pico),
+            || FaceTrackerPico::new(self.xr_session.clone(), true, true),
+        );
+
         self.face_sources.eye_tracker_htc = create_ext_object(
             "FacialTrackerHTC (eyes)",
             config.face_tracking.as_ref().map(|s| s.eye_expressions_htc),
@@ -467,6 +486,10 @@ impl InteractionContext {
             )
             .map(|tracker| (tracker, xr::BodyJointFB::COUNT.into_raw() as usize))
         });
+
+        if let Some(face_tracker) = &self.face_sources.face_tracker_pico {
+            face_tracker.start_face_tracking().ok();
+        }
     }
 }
 
@@ -787,6 +810,16 @@ pub fn get_fb_face_expression(context: &FaceSources, time: Duration) -> Option<V
         .face_tracker_fb
         .as_ref()
         .and_then(|t| t.get_face_expression_weights(xr_time).ok().flatten())
+        .map(|weights| weights.into_iter().collect())
+}
+
+pub fn get_pico_face_expression(context: &FaceSources, time: Duration) -> Option<Vec<f32>> {
+    let xr_time = crate::to_xr_time(time);
+
+    context
+        .face_tracker_pico
+        .as_ref()
+        .and_then(|t| t.get_face_tracking_data(xr_time).ok().flatten())
         .map(|weights| weights.into_iter().collect())
 }
 

@@ -18,6 +18,7 @@ interaction_profile!(VIVE, "htc/vive");
 interaction_profile!(INDEX, "valve/index");
 interaction_profile!(PICO_NEO3, "bytedance/pico_neo3");
 interaction_profile!(PICO4, "bytedance/pico4");
+interaction_profile!(PICO4S, "bytedance/pico4s");
 interaction_profile!(FOCUS3, "htc/vive_focus3");
 interaction_profile!(YVR, "yvr/touch");
 
@@ -306,6 +307,47 @@ pub static CONTROLLER_PROFILE_INFO: Lazy<HashMap<u64, InteractionProfileInfo>> =
             *PICO4_CONTROLLER_PROFILE_ID,
             InteractionProfileInfo {
                 path: PICO4_CONTROLLER_PROFILE_PATH,
+                button_set: [
+                    *LEFT_X_CLICK_ID,
+                    *LEFT_X_TOUCH_ID,
+                    *LEFT_Y_CLICK_ID,
+                    *LEFT_Y_TOUCH_ID,
+                    *LEFT_MENU_CLICK_ID,
+                    *LEFT_SYSTEM_CLICK_ID,
+                    *LEFT_TRIGGER_CLICK_ID,
+                    *LEFT_TRIGGER_VALUE_ID,
+                    *LEFT_TRIGGER_TOUCH_ID,
+                    *LEFT_THUMBSTICK_Y_ID,
+                    *LEFT_THUMBSTICK_X_ID,
+                    *LEFT_THUMBSTICK_CLICK_ID,
+                    *LEFT_THUMBSTICK_TOUCH_ID,
+                    *LEFT_SQUEEZE_CLICK_ID,
+                    *LEFT_SQUEEZE_VALUE_ID,
+                    *LEFT_THUMBREST_TOUCH_ID,
+                    *RIGHT_A_CLICK_ID,
+                    *RIGHT_A_TOUCH_ID,
+                    *RIGHT_B_CLICK_ID,
+                    *RIGHT_B_TOUCH_ID,
+                    *RIGHT_SYSTEM_CLICK_ID,
+                    *RIGHT_TRIGGER_CLICK_ID,
+                    *RIGHT_TRIGGER_VALUE_ID,
+                    *RIGHT_TRIGGER_TOUCH_ID,
+                    *RIGHT_THUMBSTICK_Y_ID,
+                    *RIGHT_THUMBSTICK_X_ID,
+                    *RIGHT_THUMBSTICK_CLICK_ID,
+                    *RIGHT_THUMBSTICK_TOUCH_ID,
+                    *RIGHT_SQUEEZE_CLICK_ID,
+                    *RIGHT_SQUEEZE_VALUE_ID,
+                    *RIGHT_THUMBREST_TOUCH_ID,
+                ]
+                .into_iter()
+                .collect(),
+            },
+        ),
+        (
+            *PICO4S_CONTROLLER_PROFILE_ID,
+            InteractionProfileInfo {
+                path: PICO4S_CONTROLLER_PROFILE_PATH,
                 button_set: [
                     *LEFT_X_CLICK_ID,
                     *LEFT_X_TOUCH_ID,

@@ -40,12 +40,10 @@ struct PushConstant {
     view_idx: u32,
     alpha: f32,
     enable_chroma_key: u32,
-    _align1: u32,
-    ck_target_hsv: vec3f,
-    _align2: u32,
-    ck_dist_min_hsv: vec3f,
-    _align3: u32,
-    ck_dist_max_hsv: vec3f,
+    _align: u32,
+    ck_hue: vec4f,
+    ck_saturation: vec4f,
+    ck_value: vec4f,
 }
 var<push_constant> pc: PushConstant;
 
@@ -135,9 +133,7 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
 
     var alpha = pc.alpha;
     if pc.enable_chroma_key == 1 {
-        let color_hsv = rgb_to_hsv(color);
-        let mask = chroma_key_alpha(color_hsv);
-        let target_rgb = hsv_to_rgb(pc.ck_target_hsv);
+        let mask = chroma_key_mask(rgb_to_hsv(color));
 
         // Note: because of this calculation, we require premultiplied alpha option in the XR layer
         color = max(color * mask, vec3f(0.0));
@@ -147,19 +143,16 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
     return vec4f(color, alpha);
 }
 
-fn circular_distance(a: f32, b: f32) -> f32 {
-    let diff = abs(a - b);
-    return min(diff, 1.0 - diff);
-}
+fn chroma_key_mask(hsv: vec3f) -> f32 {
+    let start_max = vec3f(pc.ck_hue.x, pc.ck_saturation.x, pc.ck_value.x);
+    let start_min = vec3f(pc.ck_hue.y, pc.ck_saturation.y, pc.ck_value.y);
+    let end_min = vec3f(pc.ck_hue.z, pc.ck_saturation.z, pc.ck_value.z);
+    let end_max = vec3f(pc.ck_hue.w, pc.ck_saturation.w, pc.ck_value.w);
 
-fn chroma_key_alpha(hsv: vec3f) -> f32 {
-    let dh = circular_distance(hsv.x, pc.ck_target_hsv.x);
-    let ds = abs(hsv.y - pc.ck_target_hsv.y);
-    let dv = abs(hsv.z - pc.ck_target_hsv.z);
+    let start_mask = smoothstep(start_min, start_max, hsv);
+    let end_mask = smoothstep(end_min, end_max, hsv);
 
-    let max_vec = smoothstep(pc.ck_dist_min_hsv, pc.ck_dist_max_hsv, vec3f(dh, ds, dv));
-    
-    return max(max_vec.x, max(max_vec.y, max_vec.z));
+    return max(start_mask.x, max(start_mask.y, max(start_mask.z, max(end_mask.x, max(end_mask.y, end_mask.z)))));
 }
 
 fn rgb_to_hsv(rgb: vec3f) -> vec3f {
@@ -185,32 +178,4 @@ fn rgb_to_hsv(rgb: vec3f) -> vec3f {
     }
 
     return vec3f(h, s, v);
-}
-
-// https://stackoverflow.com/questions/24852345/hsv-to-rgb-color-conversion
-fn hsv_to_rgb(hsv: vec3f) -> vec3f {
-    var h = hsv.x;
-    let s = hsv.y;
-    let v = hsv.z;
-
-    let i = i32(h * 6.0);
-    let f = fract(h * 6.0);
-
-    let w = v * (1.0 - s);
-    let q = v * (1.0 - s * f);
-    let t = v * (1.0 - s * (1.0 - f));
-
-    if i == 0 {
-        return vec3f(v, t, w);
-    } else if i == 1 {
-        return vec3f(q, v, w);
-    } else if i == 2 {
-        return vec3f(w, v, t);
-    } else if i == 3 {
-        return vec3f(w, q, v);
-    } else if i == 4 {
-        return vec3f(t, w, v);
-    } else {
-        return vec3f(v, w, q);
-    }
 }

@@ -558,44 +558,57 @@ pub enum H264Profile {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct ChromaKeyConfig {
-    #[schema(strings(display_name = "Hue"), suffix = "°")]
+    #[schema(strings(display_name = "Hue start max"), suffix = "°")]
     #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 0.0, max = 359.0, step = 1.0)))]
-    pub hue_deg: f32,
+    #[schema(gui(slider(min = -179.0, max = 539.0, step = 1.0)))]
+    pub hue_start_max_deg: f32,
 
-    #[schema(strings(display_name = "Hue dist min"), suffix = "°")]
+    #[schema(strings(display_name = "Hue start min"), suffix = "°")]
     #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 1.0, max = 179.0, step = 1.0)))]
-    pub hue_dist_min_deg: f32,
+    #[schema(gui(slider(min = -179.0, max = 539.0, step = 1.0)))]
+    pub hue_start_min_deg: f32,
 
-    #[schema(strings(display_name = "Hue dist max"), suffix = "°")]
+    #[schema(strings(display_name = "Hue end min"), suffix = "°")]
     #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 1.0, max = 179.0, step = 1.0)))]
-    pub hue_dist_max_deg: f32,
+    #[schema(gui(slider(min = -179.0, max = 539.0, step = 1.0)))]
+    pub hue_end_min_deg: f32,
 
+    #[schema(strings(display_name = "Hue end max"), suffix = "°")]
     #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
-    pub saturation: f32,
-
-    #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 0.01, max = 1.0, step = 0.01)))]
-    pub saturation_dist_min: f32,
+    #[schema(gui(slider(min = -179.0, max = 539.0, step = 1.0)))]
+    pub hue_end_max_deg: f32,
 
     #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 0.01, max = 1.0, step = 0.01)))]
-    pub saturation_dist_max: f32,
+    #[schema(gui(slider(min = -0.5, max = 1.5, step = 0.01)))]
+    pub saturation_start_max: f32,
 
     #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
-    pub value: f32,
+    #[schema(gui(slider(min = -0.5, max = 1.5, step = 0.01)))]
+    pub saturation_start_min: f32,
 
     #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 0.01, max = 1.0, step = 0.01)))]
-    pub value_dist_min: f32,
+    #[schema(gui(slider(min = -0.5, max = 1.5, step = 0.01)))]
+    pub saturation_end_min: f32,
 
     #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 0.01, max = 1.0, step = 0.01)))]
-    pub value_dist_max: f32,
+    #[schema(gui(slider(min = -0.5, max = 1.5,step = 0.01)))]
+    pub saturation_end_max: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -0.5, max = 1.5, step = 0.01)))]
+    pub value_start_max: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -0.5, max = 1.5, step = 0.01)))]
+    pub value_start_min: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -0.5, max = 1.5, step = 0.01)))]
+    pub value_end_min: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -0.5, max = 1.5, step = 0.01)))]
+    pub value_end_max: f32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
@@ -1469,15 +1482,18 @@ pub fn session_settings_default() -> SettingsDefault {
                     AugmentedReality: PassthroughModeAugmentedRealityDefault { brightness: 0.4 },
                     Blend: PassthroughModeBlendDefault { opacity: 0.5 },
                     ChromaKey: ChromaKeyConfigDefault {
-                        hue_deg: 120.0,
-                        hue_dist_min_deg: 40.0,
-                        hue_dist_max_deg: 50.0,
-                        saturation: 1.0,
-                        saturation_dist_min: 0.7,
-                        saturation_dist_max: 0.8,
-                        value: 1.0,
-                        value_dist_min: 0.9,
-                        value_dist_max: 1.0,
+                        hue_start_max_deg: 70.0,
+                        hue_start_min_deg: 80.0,
+                        hue_end_min_deg: 160.0,
+                        hue_end_max_deg: 170.0,
+                        saturation_start_max: 0.2,
+                        saturation_start_min: 0.3,
+                        saturation_end_min: 1.0,
+                        saturation_end_max: 1.1,
+                        value_start_max: 0.0,
+                        value_start_min: 0.1,
+                        value_end_min: 1.0,
+                        value_end_max: 1.1,
                     },
                 },
             },

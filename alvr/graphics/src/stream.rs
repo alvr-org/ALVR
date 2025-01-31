@@ -1,6 +1,6 @@
 use super::{staging::StagingRenderer, GraphicsContext, MAX_PUSH_CONSTANTS_SIZE};
 use alvr_common::{
-    glam::{self, Mat4, Quat, UVec2, Vec3},
+    glam::{self, Mat4, Quat, UVec2, Vec3, Vec4},
     Fov,
 };
 use alvr_session::{FoveatedEncodingConfig, PassthroughMode};
@@ -19,17 +19,17 @@ use wgpu::{
 const FLOAT_SIZE: u32 = mem::size_of::<f32>() as u32;
 const U32_SIZE: u32 = mem::size_of::<u32>() as u32;
 const ALIGN4_SIZE: u32 = 4;
-const VEC3_SIZE: u32 = mem::size_of::<Vec3>() as u32;
+const VEC4_SIZE: u32 = mem::size_of::<Vec4>() as u32;
 const TRANSFORM_SIZE: u32 = mem::size_of::<Mat4>() as u32;
 
 const TRANSFORM_CONST_OFFSET: u32 = 0;
 const VIEW_INDEX_CONST_OFFSET: u32 = TRANSFORM_SIZE;
 const ALPHA_CONST_OFFSET: u32 = VIEW_INDEX_CONST_OFFSET + U32_SIZE;
 const ENABLE_CHROMA_KEY_CONST_OFFSET: u32 = ALPHA_CONST_OFFSET + FLOAT_SIZE;
-const CK_TARGET_CONST_OFFSET: u32 = ENABLE_CHROMA_KEY_CONST_OFFSET + U32_SIZE + ALIGN4_SIZE;
-const CK_DIST_MIN_CONST_OFFSET: u32 = CK_TARGET_CONST_OFFSET + VEC3_SIZE + ALIGN4_SIZE;
-const CK_DIST_MAX_CONST_OFFSET: u32 = CK_DIST_MIN_CONST_OFFSET + VEC3_SIZE + ALIGN4_SIZE;
-const PUSH_CONSTANTS_SIZE: u32 = CK_DIST_MAX_CONST_OFFSET + VEC3_SIZE;
+const CK_HUE_CONST_OFFSET: u32 = ENABLE_CHROMA_KEY_CONST_OFFSET + U32_SIZE + ALIGN4_SIZE;
+const CK_SATURATION_CONST_OFFSET: u32 = CK_HUE_CONST_OFFSET + VEC4_SIZE;
+const CK_VALUE_CONST_OFFSET: u32 = CK_SATURATION_CONST_OFFSET + VEC4_SIZE;
+const PUSH_CONSTANTS_SIZE: u32 = CK_VALUE_CONST_OFFSET + VEC4_SIZE;
 
 const _: () = assert!(
     PUSH_CONSTANTS_SIZE <= MAX_PUSH_CONSTANTS_SIZE,
@@ -323,50 +323,61 @@ fn set_passthrough_push_constants(render_pass: &mut RenderPass, config: Option<&
 
             set_float(
                 render_pass,
-                CK_TARGET_CONST_OFFSET,
-                config.hue_deg * DEG_TO_NORM,
+                CK_HUE_CONST_OFFSET,
+                config.hue_start_max_deg * DEG_TO_NORM,
             );
             set_float(
                 render_pass,
-                CK_TARGET_CONST_OFFSET + FLOAT_SIZE,
-                config.saturation,
+                CK_HUE_CONST_OFFSET + FLOAT_SIZE,
+                config.hue_start_min_deg * DEG_TO_NORM,
             );
             set_float(
                 render_pass,
-                CK_TARGET_CONST_OFFSET + 2 * FLOAT_SIZE,
-                config.value,
-            );
-
-            set_float(
-                render_pass,
-                CK_DIST_MIN_CONST_OFFSET,
-                f32::max(config.hue_dist_min_deg * DEG_TO_NORM, 0.01),
+                CK_HUE_CONST_OFFSET + 2 * FLOAT_SIZE,
+                config.hue_end_min_deg * DEG_TO_NORM,
             );
             set_float(
                 render_pass,
-                CK_DIST_MIN_CONST_OFFSET + FLOAT_SIZE,
-                f32::max(config.saturation_dist_min, 0.01),
-            );
-            set_float(
-                render_pass,
-                CK_DIST_MIN_CONST_OFFSET + 2 * FLOAT_SIZE,
-                f32::max(config.value_dist_min, 0.01),
+                CK_HUE_CONST_OFFSET + 3 * FLOAT_SIZE,
+                config.hue_end_max_deg * DEG_TO_NORM,
             );
 
             set_float(
                 render_pass,
-                CK_DIST_MAX_CONST_OFFSET,
-                f32::max(config.hue_dist_max_deg * DEG_TO_NORM, 0.01),
+                CK_SATURATION_CONST_OFFSET,
+                config.saturation_start_max,
             );
             set_float(
                 render_pass,
-                CK_DIST_MAX_CONST_OFFSET + FLOAT_SIZE,
-                f32::max(config.saturation_dist_max, 0.01),
+                CK_SATURATION_CONST_OFFSET + FLOAT_SIZE,
+                config.saturation_start_min,
             );
             set_float(
                 render_pass,
-                CK_DIST_MAX_CONST_OFFSET + 2 * FLOAT_SIZE,
-                f32::max(config.value_dist_max, 0.01),
+                CK_SATURATION_CONST_OFFSET + 2 * FLOAT_SIZE,
+                config.saturation_end_min,
+            );
+            set_float(
+                render_pass,
+                CK_SATURATION_CONST_OFFSET + 3 * FLOAT_SIZE,
+                config.saturation_end_max,
+            );
+
+            set_float(render_pass, CK_VALUE_CONST_OFFSET, config.value_start_max);
+            set_float(
+                render_pass,
+                CK_VALUE_CONST_OFFSET + FLOAT_SIZE,
+                config.value_start_min,
+            );
+            set_float(
+                render_pass,
+                CK_VALUE_CONST_OFFSET + 2 * FLOAT_SIZE,
+                config.value_end_min,
+            );
+            set_float(
+                render_pass,
+                CK_VALUE_CONST_OFFSET + 3 * FLOAT_SIZE,
+                config.value_end_max,
             );
         }
         None => {

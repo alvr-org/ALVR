@@ -1,11 +1,12 @@
 use crate::{
     extra_extensions::{
-        self, BodyJointSetBD, BodyTrackerBD, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB, FaceTrackerPico,
-        FacialTrackerHTC, MultimodalMeta, BODY_JOINT_SET_FULL_BODY_META, BODY_LEFT_ELBOW_BD,
-        BODY_LEFT_FOOT_BD, BODY_LEFT_KNEE_BD, BODY_PELVIS_BD, BODY_RIGHT_ELBOW_BD,
-        BODY_RIGHT_FOOT_BD, BODY_RIGHT_KNEE_BD, BODY_SPINE3_BD, FULL_BODY_JOINT_COUNT_META,
-        FULL_BODY_JOINT_LEFT_FOOT_BALL_META, FULL_BODY_JOINT_LEFT_LOWER_LEG_META,
-        FULL_BODY_JOINT_RIGHT_FOOT_BALL_META, FULL_BODY_JOINT_RIGHT_LOWER_LEG_META,
+        self, BodyJointSetBD, BodyTrackerBD, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB,
+        FaceTrackerPico, FacialTrackerHTC, MultimodalMeta, BODY_JOINT_SET_FULL_BODY_META,
+        BODY_LEFT_ELBOW_BD, BODY_LEFT_FOOT_BD, BODY_LEFT_KNEE_BD, BODY_PELVIS_BD,
+        BODY_RIGHT_ELBOW_BD, BODY_RIGHT_FOOT_BD, BODY_RIGHT_KNEE_BD, BODY_SPINE3_BD,
+        FULL_BODY_JOINT_COUNT_META, FULL_BODY_JOINT_LEFT_FOOT_BALL_META,
+        FULL_BODY_JOINT_LEFT_LOWER_LEG_META, FULL_BODY_JOINT_RIGHT_FOOT_BALL_META,
+        FULL_BODY_JOINT_RIGHT_LOWER_LEG_META,
     },
     Platform,
 };
@@ -530,7 +531,7 @@ impl InteractionContext {
                 },
             )
         });
-        
+
         if let Some(face_tracker) = &self.face_sources.face_tracker_pico {
             face_tracker.start_face_tracking().ok();
         }

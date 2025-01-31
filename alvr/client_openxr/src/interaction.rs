@@ -141,6 +141,7 @@ impl InteractionContext {
             Platform::Pico4 | Platform::Pico4Pro | Platform::Pico4Enterprise => {
                 PICO4_CONTROLLER_PROFILE_PATH
             }
+            p if p.is_pico() => PICO4S_CONTROLLER_PROFILE_PATH,
             p if p.is_vive() => FOCUS3_CONTROLLER_PROFILE_PATH,
             Platform::Yvr => YVR_CONTROLLER_PROFILE_PATH,
             _ => QUEST_CONTROLLER_PROFILE_PATH,

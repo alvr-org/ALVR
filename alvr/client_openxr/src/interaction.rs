@@ -138,7 +138,10 @@ impl InteractionContext {
             p if p.is_quest() => QUEST_CONTROLLER_PROFILE_PATH, // todo: create new controller profile for quest pro and 3
             Platform::PicoNeo3 => PICO_NEO3_CONTROLLER_PROFILE_PATH,
             Platform::Pico4Ultra => PICO4S_CONTROLLER_PROFILE_PATH,
-            p if p.is_pico() => PICO4_CONTROLLER_PROFILE_PATH,
+            Platform::Pico4 | Platform::Pico4Pro | Platform::Pico4Enterprise => {
+                PICO4_CONTROLLER_PROFILE_PATH
+            }
+            p if p.is_pico() => PICO4S_CONTROLLER_PROFILE_PATH,
             p if p.is_vive() => FOCUS3_CONTROLLER_PROFILE_PATH,
             Platform::Yvr => YVR_CONTROLLER_PROFILE_PATH,
             _ => QUEST_CONTROLLER_PROFILE_PATH,
@@ -286,8 +289,12 @@ impl InteractionContext {
             && !platform.is_vive()
             && extra_extensions::supports_eye_gaze_interaction(&xr_session, xr_system)
         {
+            // todo: research Pico Neo 3 Pro Eye platform detection
             #[cfg(target_os = "android")]
-            if platform.is_pico() {
+            if matches!(
+                platform,
+                Platform::PicoNeo3 | Platform::Pico4Pro | Platform::Pico4Enterprise
+            ) {
                 alvr_system_info::try_get_permission("com.picovr.permission.EYE_TRACKING")
             }
 

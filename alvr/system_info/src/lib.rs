@@ -23,6 +23,8 @@ pub enum Platform {
     QuestUnknown,
     PicoNeo3,
     Pico4,
+    Pico4Pro,
+    Pico4Enterprise,
     Pico4Ultra,
     PicoG3,
     PicoUnknown,
@@ -59,6 +61,8 @@ impl Platform {
             Platform::PicoG3
                 | Platform::PicoNeo3
                 | Platform::Pico4
+                | Platform::Pico4Pro
+                | Platform::Pico4Enterprise
                 | Platform::Pico4Ultra
                 | Platform::PicoUnknown
         )
@@ -83,6 +87,8 @@ impl Display for Platform {
             Platform::QuestUnknown => "Quest (unknown)",
             Platform::PicoNeo3 => "Pico Neo 3",
             Platform::Pico4 => "Pico 4",
+            Platform::Pico4Pro => "Pico 4 Pro",
+            Platform::Pico4Enterprise => "Pico 4 Enterprise",
             Platform::Pico4Ultra => "Pico 4 Ultra",
             Platform::PicoG3 => "Pico G3",
             Platform::PicoUnknown => "Pico (unknown)",
@@ -120,9 +126,11 @@ pub fn platform() -> Platform {
             ("Oculus", _, "seacliff") => Platform::QuestPro,
             ("Oculus", _, _) => Platform::QuestUnknown,
             ("Pico", "Pico Neo 3" | "Pico Neo3 Link", _) => Platform::PicoNeo3,
-            ("Pico", _, "PICOA8110" | "phoenix") => Platform::Pico4,
-            ("Pico", _, "sparrow") => Platform::Pico4Ultra,
-            ("Pico", _, "merline") => Platform::PicoG3,
+            ("Pico", "A8A10", _) => Platform::Pico4Pro,
+            ("Pico", "A8E50", _) => Platform::Pico4Enterprise,
+            ("Pico", "A8110", _) => Platform::Pico4,
+            ("Pico", "A9210", _) => Platform::Pico4Ultra,
+            ("Pico", "A7Q10", _) => Platform::PicoG3,
             ("Pico", _, _) => Platform::PicoUnknown,
             ("HTC", "VIVE Focus 3", _) => Platform::Focus3,
             ("HTC", "VIVE Focus Vision", _) => Platform::FocusVision,

@@ -108,6 +108,8 @@ impl InteractionSourcesConfig {
 
 pub struct InteractionContext {
     xr_session: xr::Session<xr::OpenGlEs>,
+    xr_system: xr::SystemId,
+    extra_extensions: Vec<String>,
     platform: Platform,
     pub action_set: xr::ActionSet,
     pub button_actions: HashMap<u64, ButtonAction>,
@@ -121,7 +123,7 @@ pub struct InteractionContext {
 impl InteractionContext {
     pub fn new(
         xr_session: xr::Session<xr::OpenGlEs>,
-        extra_extensions: &[String],
+        extra_extensions: Vec<String>,
         xr_system: xr::SystemId,
         platform: Platform,
     ) -> Self {
@@ -236,7 +238,7 @@ impl InteractionContext {
         ));
 
         let multimodal_handle = create_ext_object("MultimodalMeta", Some(true), || {
-            MultimodalMeta::new(xr_session.clone(), extra_extensions, xr_system)
+            MultimodalMeta::new(xr_session.clone(), &extra_extensions, xr_system)
         });
 
         let left_detached_controller_pose_action;
@@ -342,6 +344,8 @@ impl InteractionContext {
 
         Self {
             xr_session,
+            xr_system,
+            extra_extensions,
             platform,
             action_set,
             button_actions,
@@ -382,12 +386,7 @@ impl InteractionContext {
         }
     }
 
-    pub fn select_sources(
-        &mut self,
-        config: &InteractionSourcesConfig,
-        extra_extensions: &[String],
-        xr_system: xr::SystemId,
-    ) {
+    pub fn select_sources(&mut self, config: &InteractionSourcesConfig) {
         // First of all, disable/delete all sources. This ensures there are no conflicts
         if let Some(handle) = &mut self.multimodal_handle {
             handle.pause().ok();
@@ -509,8 +508,8 @@ impl InteractionContext {
                 BodyTrackerBD::new(
                     &self.xr_session,
                     BodyJointSetBD::BODY_FULL_STAR,
-                    extra_extensions,
-                    xr_system,
+                    &self.extra_extensions,
+                    self.xr_system,
                 )
             },
         )
@@ -525,8 +524,8 @@ impl InteractionContext {
                     BodyTrackerBD::new(
                         &self.xr_session,
                         BodyJointSetBD::BODY_STAR_WITHOUT_ARM,
-                        extra_extensions,
-                        xr_system,
+                        &self.extra_extensions,
+                        self.xr_system,
                     )
                 },
             )

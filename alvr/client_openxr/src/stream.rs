@@ -99,14 +99,10 @@ impl StreamContext {
         interaction_ctx: Arc<RwLock<InteractionContext>>,
         platform: Platform,
         config: ParsedStreamConfig,
-        extra_extensions: &[String],
-        xr_system: xr::SystemId,
     ) -> StreamContext {
-        interaction_ctx.write().select_sources(
-            &config.interaction_sources,
-            extra_extensions,
-            xr_system,
-        );
+        interaction_ctx
+            .write()
+            .select_sources(&config.interaction_sources);
 
         let xr_exts = xr_session.instance().exts();
 

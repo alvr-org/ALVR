@@ -493,7 +493,7 @@ fn connection_pipeline(
                         disconnect_notif.notify_one();
                     }
                     Ok(ServerControlPacket::ReservedBuffer(buffer)) => {
-                        // NB: it's nrmal for deserialization to fail if server has different
+                        // NB: it's normal for deserialization to fail if server has different
                         // version
                         if let Ok(config) = alvr_packets::decode_real_time_config(&buffer) {
                             event_queue

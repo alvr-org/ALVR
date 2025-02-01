@@ -3,7 +3,9 @@ use crate::{
     interaction::{self, InteractionContext},
 };
 use alvr_common::{glam::UVec2, parking_lot::RwLock, Pose};
-use alvr_graphics::{GraphicsContext, LobbyRenderer, LobbyViewParams, SDR_FORMAT_GL};
+use alvr_graphics::{
+    BodyTrackingType, GraphicsContext, LobbyRenderer, LobbyViewParams, SDR_FORMAT_GL,
+};
 use alvr_system_info::Platform;
 use openxr as xr;
 use std::{rc::Rc, sync::Arc, time::Duration};
@@ -145,6 +147,26 @@ impl Lobby {
                 )
             });
 
+        let body_skeleton_bd = self
+            .interaction_ctx
+            .read()
+            .body_sources
+            .body_tracker_bd
+            .as_ref()
+            .and_then(|tracker| {
+                interaction::get_bd_body_skeleton(&self.reference_space, xr_vsync_time, tracker)
+            });
+
+        let (body_skeleton, body_tracking_type) = {
+            if body_skeleton_fb.is_some() {
+                (body_skeleton_fb, Some(BodyTrackingType::Meta))
+            } else if body_skeleton_bd.is_some() {
+                (body_skeleton_bd, Some(BodyTrackingType::Pico))
+            } else {
+                (None, None)
+            }
+        };
+
         let left_swapchain_idx = self.swapchains[0].acquire_image().unwrap();
         let right_swapchain_idx = self.swapchains[1].acquire_image().unwrap();
 
@@ -169,7 +191,8 @@ impl Lobby {
                 },
             ],
             [left_hand_data, right_hand_data],
-            body_skeleton_fb,
+            body_skeleton,
+            body_tracking_type,
             false,
             cfg!(debug_assertions),
         );

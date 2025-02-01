@@ -122,6 +122,42 @@ const BODY_SKELETON_BONES_FB: [(usize, usize); 30] = [
     (82, 83),
 ];
 
+const BODY_SKELETON_BONES_BD: [(usize, usize); 23] = [
+    // Left leg
+    (0, 1),
+    (1, 4),
+    (4, 7),
+    (7, 10),
+    // Right leg
+    (0, 2),
+    (2, 5),
+    (5, 8),
+    (8, 11),
+    // Spine
+    (0, 3),
+    (3, 6),
+    (6, 9),
+    (9, 12),
+    (12, 15),
+    // Left arm
+    (9, 13),
+    (13, 16),
+    (16, 18),
+    (18, 20),
+    (20, 22),
+    // Right arm
+    (9, 14),
+    (14, 17),
+    (17, 19),
+    (19, 21),
+    (21, 23),
+];
+
+pub enum BodyTrackingType {
+    Meta,
+    Pico,
+}
+
 fn create_pipeline(
     device: &Device,
     label: &str,
@@ -372,7 +408,8 @@ impl LobbyRenderer {
         &self,
         view_params: [LobbyViewParams; 2],
         hand_data: [(Option<DeviceMotion>, Option<[Pose; 26]>); 2],
-        body_skeleton_fb: Option<Vec<Option<Pose>>>,
+        body_skeleton: Option<Vec<Option<Pose>>>,
+        body_tracking_type: Option<BodyTrackingType>,
         render_background: bool,
         show_velocities: bool,
     ) {
@@ -544,10 +581,17 @@ impl LobbyRenderer {
                     }
                 }
             }
-            if let Some(skeleton) = &body_skeleton_fb {
-                for (joint1_idx, joint2_idx) in BODY_SKELETON_BONES_FB {
+
+            let body_skeleton_bones = match body_tracking_type {
+                Some(BodyTrackingType::Meta) => Some(BODY_SKELETON_BONES_FB.as_slice()),
+                Some(BodyTrackingType::Pico) => Some(BODY_SKELETON_BONES_BD.as_slice()),
+                _ => None,
+            };
+
+            if let (Some(skeleton), Some(skeleton_bones)) = (&body_skeleton, body_skeleton_bones) {
+                for (joint1_idx, joint2_idx) in skeleton_bones {
                     if let (Some(Some(j1_pose)), Some(Some(j2_pose))) =
-                        (skeleton.get(joint1_idx), skeleton.get(joint2_idx))
+                        (skeleton.get(*joint1_idx), skeleton.get(*joint2_idx))
                     {
                         let transform = Mat4::from_scale_rotation_translation(
                             Vec3::ONE * Vec3::distance(j1_pose.position, j2_pose.position),

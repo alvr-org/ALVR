@@ -8,6 +8,7 @@ mod stream;
 
 use crate::stream::ParsedStreamConfig;
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
+use alvr_common::settings_schema::Switch;
 use alvr_common::{
     error,
     glam::{Quat, UVec2, Vec3},
@@ -16,9 +17,11 @@ use alvr_common::{
     Fov, Pose, HAND_LEFT_ID,
 };
 use alvr_graphics::GraphicsContext;
+use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig};
 use alvr_system_info::Platform;
 use extra_extensions::{
-    META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME, META_DETACHED_CONTROLLERS_EXTENSION_NAME,
+    BD_BODY_TRACKING_EXTENSION_NAME, META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
+    META_DETACHED_CONTROLLERS_EXTENSION_NAME,
     META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,
 };
 use interaction::{InteractionContext, InteractionSourcesConfig};
@@ -191,6 +194,7 @@ pub fn entry_point() {
                 META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
                 META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,
                 META_DETACHED_CONTROLLERS_EXTENSION_NAME,
+                BD_BODY_TRACKING_EXTENSION_NAME,
             ]
             .contains(&ext.as_str())
         })
@@ -271,7 +275,7 @@ pub fn entry_point() {
 
         let interaction_context = Arc::new(RwLock::new(InteractionContext::new(
             xr_session.clone(),
-            &exts.other,
+            exts.other.clone(),
             xr_system,
             platform,
         )));
@@ -284,9 +288,16 @@ pub fn entry_point() {
             default_view_resolution,
             &last_lobby_message,
         );
+        let lobby_body_tracking_config = BodyTrackingSourcesConfig {
+            body_tracking_fb: Switch::Disabled,
+            body_tracking_bd: Switch::Enabled(BodyTrackingBDConfig {
+                high_accuracy: true,
+                prompt_calibration_on_start: false,
+            }),
+        };
         let lobby_interaction_sources = InteractionSourcesConfig {
             face_tracking: None,
-            body_tracking: None,
+            body_tracking: Some(lobby_body_tracking_config),
             prefers_multimodal_input: true,
         };
         interaction_context

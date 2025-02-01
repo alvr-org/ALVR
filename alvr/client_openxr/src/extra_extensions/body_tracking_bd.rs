@@ -134,6 +134,7 @@ impl BodyTrackerBD {
         body_joint_set: BodyJointSetBD,
         extra_extensions: &[String],
         system: xr::SystemId,
+        prompt_calibration: bool,
     ) -> xr::Result<Self> {
         if !extra_extensions.contains(&BD_BODY_TRACKING_EXTENSION_NAME.to_owned()) {
             return Err(sys::Result::ERROR_EXTENSION_NOT_PRESENT);
@@ -229,27 +230,27 @@ impl BodyTrackerBD {
         let mut status_code = BodyTrackingStatusCodeBD::INVALID;
         let mut error_code = BodyTrackingErrorCodeBD::INNER_EXCEPTION;
 
-        unsafe {
-            super::xr_res(get_body_tracking_state(
-                session.instance().as_raw(),
-                &mut status_code,
-                &mut error_code,
-            ))?;
-
-            // todo: include actual Android package name
-            let package_name = CString::new("").unwrap().into_raw();
-
-            if status_code == BodyTrackingStatusCodeBD::INVALID
-                || error_code == BodyTrackingErrorCodeBD::TRACKER_NOT_CALIBRATED
-            {
-                super::xr_res(start_body_tracking_calib_app(
+        if prompt_calibration {
+            unsafe {
+                super::xr_res(get_body_tracking_state(
                     session.instance().as_raw(),
-                    package_name,
-                    CalibAppFlagBD::MOTION_TRACKER_2,
+                    &mut status_code,
+                    &mut error_code,
                 ))?;
-            }
 
-            let _ = CString::from_raw(package_name);
+                // todo: include actual Android package name
+                let package_name = CString::new("").unwrap();
+
+                if status_code == BodyTrackingStatusCodeBD::INVALID
+                    || error_code == BodyTrackingErrorCodeBD::TRACKER_NOT_CALIBRATED
+                {
+                    super::xr_res(start_body_tracking_calib_app(
+                        session.instance().as_raw(),
+                        package_name.as_ptr(),
+                        CalibAppFlagBD::MOTION_TRACKER_2,
+                    ))?;
+                }
+            }
         }
 
         Ok(Self {

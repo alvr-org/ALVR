@@ -773,6 +773,7 @@ pub struct BodyTrackingFBConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BodyTrackingBDConfig {
     pub high_accuracy: bool,
+    pub prompt_calibration_on_start: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1700,6 +1701,7 @@ pub fn session_settings_default() -> SettingsDefault {
                             enabled: true,
                             content: BodyTrackingBDConfigDefault {
                                 high_accuracy: true,
+                                prompt_calibration_on_start: true,
                             },
                         },
                     },

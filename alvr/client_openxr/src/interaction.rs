@@ -498,6 +498,13 @@ impl InteractionContext {
             .map(|tracker| (tracker, xr::BodyJointFB::COUNT.into_raw() as usize))
         });
 
+        let prompt_calibration_bd = config
+            .body_tracking
+            .as_ref()
+            .and_then(|s| s.body_tracking_bd.as_option())
+            .map(|c| c.prompt_calibration_on_start)
+            .unwrap_or(false);
+
         self.body_sources.body_tracker_bd = create_ext_object(
             "BodyTrackerBD (high accuracy)",
             config
@@ -511,6 +518,7 @@ impl InteractionContext {
                     BodyJointSetBD::BODY_FULL_STAR,
                     &self.extra_extensions,
                     self.xr_system,
+                    prompt_calibration_bd,
                 )
             },
         )
@@ -527,6 +535,7 @@ impl InteractionContext {
                         BodyJointSetBD::BODY_STAR_WITHOUT_ARM,
                         &self.extra_extensions,
                         self.xr_system,
+                        prompt_calibration_bd,
                     )
                 },
             )

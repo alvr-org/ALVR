@@ -284,20 +284,16 @@ pub fn entry_point() {
             default_view_resolution,
             &last_lobby_message,
         );
-        let lobby_body_config = BodyTrackingSourcesConfig {
+        let lobby_body_tracking_config = BodyTrackingSourcesConfig {
             body_tracking_fb: Switch::Disabled,
-            body_tracking_bd: if platform.is_pico() {
-                Switch::Enabled(BodyTrackingBDConfig {
-                    high_accuracy: true,
-                    prompt_calibration_on_start: false,
-                })
-            } else {
-                Switch::Disabled
-            },
+            body_tracking_bd: Switch::Enabled(BodyTrackingBDConfig {
+                high_accuracy: true,
+                prompt_calibration_on_start: false,
+            }),
         };
         let lobby_interaction_sources = InteractionSourcesConfig {
             face_tracking: None,
-            body_tracking: Some(lobby_body_config),
+            body_tracking: Some(lobby_body_tracking_config),
             prefers_multimodal_input: true,
         };
         interaction_context

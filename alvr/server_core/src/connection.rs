@@ -20,8 +20,8 @@ use alvr_common::{
 use alvr_events::{AdbEvent, ButtonEvent, EventType};
 use alvr_packets::{
     BatteryInfo, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
-    NegotiatedStreamingConfig, ReservedClientControlPacket, ServerControlPacket, Tracking,
-    VideoPacketHeader, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
+    NegotiatedStreamingConfig, RealTimeConfig, ReservedClientControlPacket, ServerControlPacket,
+    Tracking, VideoPacketHeader, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{
     BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile,
@@ -43,6 +43,7 @@ use std::{
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const HANDSHAKE_ACTION_TIMEOUT: Duration = Duration::from_secs(2);
 pub const STREAMING_RECV_TIMEOUT: Duration = Duration::from_millis(500);
+const REAL_TIME_UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
 const MAX_UNREAD_PACKETS: usize = 10; // Applies per stream
 
@@ -1070,6 +1071,29 @@ fn connection_pipeline(
 
     let control_sender = Arc::new(Mutex::new(control_sender));
 
+    let real_time_update_thread = thread::spawn({
+        let control_sender = Arc::clone(&control_sender);
+        let client_hostname = client_hostname.clone();
+        move || {
+            while is_streaming(&client_hostname) {
+                let config = {
+                    let session_manager_lock = SESSION_MANAGER.read();
+                    let settings = session_manager_lock.settings();
+
+                    RealTimeConfig {
+                        passthrough: settings.video.passthrough.clone().into_option(),
+                    }
+                };
+
+                if let Ok(config) = alvr_packets::encode_real_time_config(&config) {
+                    control_sender.lock().send(&config).ok();
+                }
+
+                thread::sleep(REAL_TIME_UPDATE_INTERVAL);
+            }
+        }
+    });
+
     let keepalive_thread = thread::spawn({
         let control_sender = Arc::clone(&control_sender);
         let disconnect_notif = Arc::clone(&disconnect_notif);
@@ -1437,6 +1461,7 @@ fn connection_pipeline(
     microphone_thread.join().ok();
     tracking_receive_thread.join().ok();
     statistics_thread.join().ok();
+    real_time_update_thread.join().ok();
     control_receive_thread.join().ok();
     stream_receive_thread.join().ok();
     keepalive_thread.join().ok();

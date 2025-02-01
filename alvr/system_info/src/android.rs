@@ -83,6 +83,10 @@ pub fn manufacturer_name() -> String {
     build_string("MANUFACTURER")
 }
 
+pub fn product_name() -> String {
+    build_string("PRODUCT")
+}
+
 fn get_system_service<'a>(env: &mut JNIEnv<'a>, service_name: &str) -> JObject<'a> {
     let service_str = env.new_string(service_name).unwrap();
 

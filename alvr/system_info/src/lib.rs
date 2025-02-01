@@ -115,29 +115,37 @@ pub fn platform() -> Platform {
         let manufacturer = android::manufacturer_name();
         let model = android::model_name();
         let device = android::device_name();
+        let product = android::product_name();
 
-        alvr_common::info!("manufacturer: {manufacturer}, model: {model}, device: {device}");
+        alvr_common::info!(
+            "manufacturer: {manufacturer}, model: {model}, device: {device}, product: {product}"
+        );
 
-        match (manufacturer.as_str(), model.as_str(), device.as_str()) {
-            ("Oculus", _, "monterey") => Platform::Quest1,
-            ("Oculus", _, "hollywood") => Platform::Quest2,
-            ("Oculus", _, "eureka") => Platform::Quest3,
-            ("Oculus", _, "panther") => Platform::Quest3S,
-            ("Oculus", _, "seacliff") => Platform::QuestPro,
-            ("Oculus", _, _) => Platform::QuestUnknown,
-            ("Pico", "Pico Neo 3" | "Pico Neo3 Link", _) => Platform::PicoNeo3,
-            ("Pico", "A8A10", _) => Platform::Pico4Pro,
-            ("Pico", "A8E50", _) => Platform::Pico4Enterprise,
-            ("Pico", "A8110", _) => Platform::Pico4,
-            ("Pico", "A9210", _) => Platform::Pico4Ultra,
-            ("Pico", "A7Q10", _) => Platform::PicoG3,
-            ("Pico", _, _) => Platform::PicoUnknown,
-            ("HTC", "VIVE Focus 3", _) => Platform::Focus3,
-            ("HTC", "VIVE Focus Vision", _) => Platform::FocusVision,
-            ("HTC", "VIVE XR Series", _) => Platform::XRElite,
-            ("HTC", _, _) => Platform::ViveUnknown,
-            ("YVR", _, _) => Platform::Yvr,
-            ("Lynx Mixed Reality", _, _) => Platform::Lynx,
+        match (
+            manufacturer.as_str(),
+            model.as_str(),
+            device.as_str(),
+            product.as_str(),
+        ) {
+            ("Oculus", _, "monterey", _) => Platform::Quest1,
+            ("Oculus", _, "hollywood", _) => Platform::Quest2,
+            ("Oculus", _, "eureka", _) => Platform::Quest3,
+            ("Oculus", _, "panther", _) => Platform::Quest3S,
+            ("Oculus", _, "seacliff", _) => Platform::QuestPro,
+            ("Oculus", _, _, _) => Platform::QuestUnknown,
+            ("Pico", "Pico Neo 3" | "Pico Neo3 Link", _, _) => Platform::PicoNeo3,
+            ("Pico", _, _, "PICO 4 Pro") => Platform::Pico4Pro,
+            ("Pico", _, _, "PICO 4 Enterprise") => Platform::Pico4Enterprise,
+            ("Pico", _, _, "PICO 4") => Platform::Pico4,
+            ("Pico", _, _, "PICO 4 Ultra") => Platform::Pico4Ultra,
+            ("Pico", _, _, "PICO G3") => Platform::PicoG3,
+            ("Pico", _, _, _) => Platform::PicoUnknown,
+            ("HTC", "VIVE Focus 3", _, _) => Platform::Focus3,
+            ("HTC", "VIVE Focus Vision", _, _) => Platform::FocusVision,
+            ("HTC", "VIVE XR Series", _, _) => Platform::XRElite,
+            ("HTC", _, _, _) => Platform::ViveUnknown,
+            ("YVR", _, _, _) => Platform::Yvr,
+            ("Lynx Mixed Reality", _, _, _) => Platform::Lynx,
             _ => Platform::AndroidUnknown,
         }
     }

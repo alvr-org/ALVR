@@ -25,8 +25,8 @@ use alvr_common::{
     HEAD_ID,
 };
 use alvr_packets::{
-    BatteryInfo, ButtonEntry, ClientControlPacket, FaceData, ReservedClientControlPacket,
-    StreamConfig, Tracking, ViewParams, ViewsConfig,
+    BatteryInfo, ButtonEntry, ClientControlPacket, FaceData, RealTimeConfig,
+    ReservedClientControlPacket, StreamConfig, Tracking, ViewParams, ViewsConfig,
 };
 use alvr_session::CodecType;
 use connection::{ConnectionContext, DecoderCallback};
@@ -55,6 +55,7 @@ pub enum ClientCoreEvent {
         codec: CodecType,
         config_nal: Vec<u8>,
     },
+    RealTimeConfig(RealTimeConfig),
 }
 
 // Note: this struct may change without breaking network protocol changes

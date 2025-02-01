@@ -81,6 +81,8 @@ pub enum AlvrEvent {
     DecoderConfig {
         codec: AlvrCodec,
     },
+    // Unimplemented
+    RealTimeConfig {},
 }
 
 #[repr(C)]
@@ -373,6 +375,7 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                         },
                     }
                 }
+                ClientCoreEvent::RealTimeConfig(_) => AlvrEvent::RealTimeConfig {},
             };
 
             unsafe { *out_event = event };
@@ -792,7 +795,6 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
         true,
         false, // TODO: limited range fix config
         1.0,   // TODO: encoding gamma config
-        None,  // TODO: passthrough config
     )));
 }
 
@@ -852,6 +854,7 @@ pub unsafe extern "C" fn alvr_render_stream_opengl(
                         fov: from_capi_fov(right_params.fov),
                     },
                 ],
+                None,
             );
         }
     });

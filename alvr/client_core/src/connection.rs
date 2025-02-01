@@ -492,6 +492,15 @@ fn connection_pipeline(
                         set_hud_message(&event_queue, SERVER_RESTART_MESSAGE);
                         disconnect_notif.notify_one();
                     }
+                    Ok(ServerControlPacket::ReservedBuffer(buffer)) => {
+                        // NB: it's normal for deserialization to fail if server has different
+                        // version
+                        if let Ok(config) = alvr_packets::decode_real_time_config(&buffer) {
+                            event_queue
+                                .lock()
+                                .push_back(ClientCoreEvent::RealTimeConfig(config));
+                        }
+                    }
                     Ok(_) => (),
                     Err(ConnectionError::TryAgain(_)) => {
                         if Instant::now() > disconnection_deadline {

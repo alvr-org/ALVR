@@ -9,37 +9,41 @@ override ENCODING_GAMMA: f32;
 
 override ENABLE_FFE: bool = false;
 
-override VIEW_WIDTH_RATIO: f32 = 0.;
-override VIEW_HEIGHT_RATIO: f32 = 0.;
-override EDGE_X_RATIO: f32 = 0.;
-override EDGE_Y_RATIO: f32 = 0.;
+override VIEW_WIDTH_RATIO: f32 = 0.0;
+override VIEW_HEIGHT_RATIO: f32 = 0.0;
+override EDGE_X_RATIO: f32 = 0.0;
+override EDGE_Y_RATIO: f32 = 0.0;
 
-override C1_X: f32 = 0.;
-override C1_Y: f32 = 0.;
-override C2_X: f32 = 0.;
-override C2_Y: f32 = 0.;
-override LO_BOUND_X: f32 = 0.;
-override LO_BOUND_Y: f32 = 0.;
-override HI_BOUND_X: f32 = 0.;
-override HI_BOUND_Y: f32 = 0.;
+override C1_X: f32 = 0.0;
+override C1_Y: f32 = 0.0;
+override C2_X: f32 = 0.0;
+override C2_Y: f32 = 0.0;
+override LO_BOUND_X: f32 = 0.0;
+override LO_BOUND_Y: f32 = 0.0;
+override HI_BOUND_X: f32 = 0.0;
+override HI_BOUND_Y: f32 = 0.0;
 
-override A_LEFT_X: f32 = 0.;
-override A_LEFT_Y: f32 = 0.;
-override B_LEFT_X: f32 = 0.;
-override B_LEFT_Y: f32 = 0.;
+override A_LEFT_X: f32 = 0.0;
+override A_LEFT_Y: f32 = 0.0;
+override B_LEFT_X: f32 = 0.0;
+override B_LEFT_Y: f32 = 0.0;
 
-override A_RIGHT_X: f32 = 0.;
-override A_RIGHT_Y: f32 = 0.;
-override B_RIGHT_X: f32 = 0.;
-override B_RIGHT_Y: f32 = 0.;
-override C_RIGHT_X: f32 = 0.;
-override C_RIGHT_Y: f32 = 0.;
-
-override COLOR_ALPHA: f32 = 1.0;
+override A_RIGHT_X: f32 = 0.0;
+override A_RIGHT_Y: f32 = 0.0;
+override B_RIGHT_X: f32 = 0.0;
+override B_RIGHT_Y: f32 = 0.0;
+override C_RIGHT_X: f32 = 0.0;
+override C_RIGHT_Y: f32 = 0.0;
 
 struct PushConstant {
     reprojection_transform: mat4x4f,
     view_idx: u32,
+    alpha: f32,
+    enable_chroma_key: u32,
+    _align: u32,
+    ck_hue: vec4f,
+    ck_saturation: vec4f,
+    ck_value: vec4f,
 }
 var<push_constant> pc: PushConstant;
 
@@ -127,5 +131,51 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         color = enc_condition * enc_lowValues + (1.0 - enc_condition) * enc_highValues;
     }
 
-    return vec4f(color, COLOR_ALPHA);
+    var alpha = pc.alpha;
+    if pc.enable_chroma_key == 1 {
+        let mask = chroma_key_mask(rgb_to_hsv(color));
+
+        // Note: because of this calculation, we require premultiplied alpha option in the XR layer
+        color = max(color * mask, vec3f(0.0));
+        alpha = mask;
+    }
+
+    return vec4f(color, alpha);
+}
+
+fn chroma_key_mask(hsv: vec3f) -> f32 {
+    let start_max = vec3f(pc.ck_hue.x, pc.ck_saturation.x, pc.ck_value.x);
+    let start_min = vec3f(pc.ck_hue.y, pc.ck_saturation.y, pc.ck_value.y);
+    let end_min = vec3f(pc.ck_hue.z, pc.ck_saturation.z, pc.ck_value.z);
+    let end_max = vec3f(pc.ck_hue.w, pc.ck_saturation.w, pc.ck_value.w);
+
+    let start_mask = smoothstep(start_min, start_max, hsv);
+    let end_mask = smoothstep(end_min, end_max, hsv);
+
+    return max(start_mask.x, max(start_mask.y, max(start_mask.z, max(end_mask.x, max(end_mask.y, end_mask.z)))));
+}
+
+fn rgb_to_hsv(rgb: vec3f) -> vec3f {
+    let cmax = max(rgb.r, max(rgb.g, rgb.b));
+    let cmin = min(rgb.r, min(rgb.g, rgb.b));
+    let delta = cmax - cmin;
+
+    var h = 0.0;
+    var s = 0.0;
+    let v = cmax;
+
+    if cmax > cmin {
+        s = delta / cmax;
+
+        if rgb.r == cmax {
+            h = (rgb.g - rgb.b) / delta;
+        } else if rgb.g == cmax {
+            h = 2.0 + (rgb.b - rgb.r) / delta;
+        } else {
+            h = 4.0 + (rgb.r - rgb.g) / delta;
+        }
+        h = fract(h / 6.0);
+    }
+
+    return vec3f(h, s, v);
 }

@@ -116,32 +116,6 @@ fn default_view() -> xr::View {
     }
 }
 
-#[macro_export]
-macro_rules! get_instance_proc {
-    ($instance:expr, $fn_ty:ty) => {{
-        use openxr::sys::pfn::VoidFunction;
-        use std::ffi::CString;
-        use std::mem;
-
-        type FunctionType = $fn_ty;
-        let method_name = concat!("xr", stringify!($fn_ty));
-        let instance = $instance;
-
-        unsafe {
-            let method_name_c_str = CString::new(method_name).unwrap();
-
-            let mut function_handle = None;
-            let _ = (instance.fp().get_instance_proc_addr)(
-                instance.as_raw(),
-                method_name_c_str.as_ptr(),
-                &mut function_handle,
-            );
-
-            function_handle.map(|pfn| mem::transmute::<VoidFunction, FunctionType>(pfn))
-        }
-    }};
-}
-
 // This exists to circumvent dead-code analysis
 fn create_session(
     xr_instance: &xr::Instance,

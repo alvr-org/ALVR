@@ -19,6 +19,8 @@ pub use facial_tracking_htc::*;
 pub use multimodal_input::*;
 pub use passthrough_fb::*;
 pub use passthrough_htc::*;
+use std::ffi::CString;
+use std::mem;
 
 use openxr::{self as xr, sys};
 
@@ -48,4 +50,21 @@ fn get_props<G, T>(
     };
 
     xr_res(result).map(|_| props)
+}
+
+fn get_instance_proc<FnTy>(instance: &xr::Instance, method_name: &str) -> xr::Result<FnTy> {
+    unsafe {
+        let method_name = CString::new(method_name).unwrap();
+        let mut function_handle = None;
+
+        xr_res((instance.fp().get_instance_proc_addr)(
+            instance.as_raw(),
+            method_name.as_ptr(),
+            &mut function_handle,
+        ))?;
+
+        function_handle
+            .map(|pfn| mem::transmute_copy(&pfn))
+            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)
+    }
 }

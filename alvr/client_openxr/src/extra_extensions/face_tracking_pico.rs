@@ -1,4 +1,4 @@
-use crate::get_instance_proc;
+use crate::extra_extensions::get_instance_proc;
 use openxr::{self as xr, sys};
 
 const TRACKING_MODE_FACE_BIT: u64 = 0x00000008;
@@ -45,18 +45,11 @@ impl FaceTrackerPico {
             .ext_eye_gaze_interaction
             .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
 
-        let start_eye_tracking = get_instance_proc!(session.instance(), StartEyeTrackingPICO)
-            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
-
-        let stop_eye_tracking = get_instance_proc!(session.instance(), StopEyeTrackingPICO)
-            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
-
-        let set_tracking_mode = get_instance_proc!(session.instance(), SetTrackingModePICO)
-            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
-
+        let start_eye_tracking = get_instance_proc(session.instance(), "xrStartEyeTrackingPICO")?;
+        let stop_eye_tracking = get_instance_proc(session.instance(), "xrStopEyeTrackingPICO")?;
+        let set_tracking_mode = get_instance_proc(session.instance(), "xrSetTrackingModePICO")?;
         let get_face_tracking_data =
-            get_instance_proc!(session.instance(), GetFaceTrackingDataPICO)
-                .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
+            get_instance_proc(session.instance(), "xrGetFaceTrackingDataPICO")?;
 
         let mut tracking_flags = 0;
 

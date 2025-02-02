@@ -1,7 +1,7 @@
 // Code taken from:
 // https://github.com/meta-quest/Meta-OpenXR-SDK/blob/main/OpenXR/meta_openxr_preview/meta_simultaneous_hands_and_controllers.h
 
-use crate::get_instance_proc;
+use crate::extra_extensions::get_instance_proc;
 use alvr_common::once_cell::sync::Lazy;
 use openxr::{
     self as xr,
@@ -68,17 +68,14 @@ impl MultimodalMeta {
             return Err(sys::Result::ERROR_EXTENSION_NOT_PRESENT);
         }
 
-        let resume_simultaneous_hands_and_controllers_tracking_meta = get_instance_proc!(
+        let resume_simultaneous_hands_and_controllers_tracking_meta = get_instance_proc(
             session.instance(),
-            ResumeSimultaneousHandsAndControllersTrackingMETA
-        )
-        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
-
-        let pause_simultaneous_hands_and_controllers_tracking_meta = get_instance_proc!(
+            "xrResumeSimultaneousHandsAndControllersTrackingMETA",
+        )?;
+        let pause_simultaneous_hands_and_controllers_tracking_meta = get_instance_proc(
             session.instance(),
-            PauseSimultaneousHandsAndControllersTrackingMETA
-        )
-        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
+            "xrPauseSimultaneousHandsAndControllersTrackingMETA",
+        )?;
 
         let props = super::get_props(
             &session,

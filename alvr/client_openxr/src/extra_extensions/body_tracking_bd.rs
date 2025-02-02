@@ -1,4 +1,4 @@
-use crate::get_instance_proc;
+use crate::extra_extensions::get_instance_proc;
 use alvr_common::once_cell::sync::Lazy;
 use openxr::{self as xr, sys};
 use std::ffi::{c_char, c_void, CString};
@@ -140,22 +140,14 @@ impl BodyTrackerBD {
             return Err(sys::Result::ERROR_EXTENSION_NOT_PRESENT);
         }
 
-        let create_body_tracker = get_instance_proc!(session.instance(), CreateBodyTrackerBD)
-            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
-
-        let destroy_body_tracker = get_instance_proc!(session.instance(), DestroyBodyTrackerBD)
-            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
-
-        let locate_body_joints = get_instance_proc!(session.instance(), LocateBodyJointsBD)
-            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
-
-        let start_body_tracking_calib_app =
-            get_instance_proc!(session.instance(), StartBodyTrackingCalibAppBD)
-                .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
-
-        let get_body_tracking_state =
-            get_instance_proc!(session.instance(), GetBodyTrackingStateBD)
-                .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
+        let create_body_tracker: CreateBodyTrackerBD =
+            get_instance_proc(session.instance(), "xrCreateBodyTrackerBD")?;
+        let start_body_tracking_calib_app: StartBodyTrackingCalibAppBD =
+            get_instance_proc(session.instance(), "xrStartBodyTrackingCalibAppBD")?;
+        let get_body_tracking_state: GetBodyTrackingStateBD =
+            get_instance_proc(session.instance(), "xrGetBodyTrackingStateBD")?;
+        let destroy_body_tracker = get_instance_proc(session.instance(), "xrDestroyBodyTrackerBD")?;
+        let locate_body_joints = get_instance_proc(session.instance(), "xrLocateBodyJointsBD")?;
 
         let props = super::get_props(
             session,

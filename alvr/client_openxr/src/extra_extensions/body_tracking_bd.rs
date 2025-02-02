@@ -1,8 +1,8 @@
+use crate::extra_extensions::get_instance_proc;
 use alvr_common::once_cell::sync::Lazy;
-use openxr::sys::pfn::VoidFunction;
 use openxr::{self as xr, sys};
 use std::ffi::{c_char, c_void, CString};
-use std::{mem, ptr};
+use std::ptr;
 
 pub const BD_BODY_TRACKING_EXTENSION_NAME: &str = "XR_BD_body_tracking";
 
@@ -140,68 +140,14 @@ impl BodyTrackerBD {
             return Err(sys::Result::ERROR_EXTENSION_NOT_PRESENT);
         }
 
-        let create_body_tracker = unsafe {
-            let mut create_body_tracker = None;
-            let _ = (session.instance().fp().get_instance_proc_addr)(
-                session.instance().as_raw(),
-                c"xrCreateBodyTrackerBD".as_ptr(),
-                &mut create_body_tracker,
-            );
-
-            create_body_tracker.map(|pfn| mem::transmute::<VoidFunction, CreateBodyTrackerBD>(pfn))
-        }
-        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
-
-        let destroy_body_tracker = unsafe {
-            let mut destroy_body_tracker = None;
-            let _ = (session.instance().fp().get_instance_proc_addr)(
-                session.instance().as_raw(),
-                c"xrDestroyBodyTrackerBD".as_ptr(),
-                &mut destroy_body_tracker,
-            );
-
-            destroy_body_tracker
-                .map(|pfn| mem::transmute::<VoidFunction, DestroyBodyTrackerBD>(pfn))
-        }
-        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
-
-        let locate_body_joints = unsafe {
-            let mut locate_body_joints = None;
-            let _ = (session.instance().fp().get_instance_proc_addr)(
-                session.instance().as_raw(),
-                c"xrLocateBodyJointsBD".as_ptr(),
-                &mut locate_body_joints,
-            );
-
-            locate_body_joints.map(|pfn| mem::transmute::<VoidFunction, LocateBodyJointsBD>(pfn))
-        }
-        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
-
-        let start_body_tracking_calib_app = unsafe {
-            let mut start_body_tracking_calib_app = None;
-            let _ = (session.instance().fp().get_instance_proc_addr)(
-                session.instance().as_raw(),
-                c"xrStartBodyTrackingCalibAppBD".as_ptr(),
-                &mut start_body_tracking_calib_app,
-            );
-
-            start_body_tracking_calib_app
-                .map(|pfn| mem::transmute::<VoidFunction, StartBodyTrackingCalibAppBD>(pfn))
-        }
-        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
-
-        let get_body_tracking_state = unsafe {
-            let mut get_body_tracking_state = None;
-            let _ = (session.instance().fp().get_instance_proc_addr)(
-                session.instance().as_raw(),
-                c"xrGetBodyTrackingStateBD".as_ptr(),
-                &mut get_body_tracking_state,
-            );
-
-            get_body_tracking_state
-                .map(|pfn| mem::transmute::<VoidFunction, GetBodyTrackingStateBD>(pfn))
-        }
-        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
+        let create_body_tracker: CreateBodyTrackerBD =
+            get_instance_proc(session, "xrCreateBodyTrackerBD")?;
+        let start_body_tracking_calib_app: StartBodyTrackingCalibAppBD =
+            get_instance_proc(session, "xrStartBodyTrackingCalibAppBD")?;
+        let get_body_tracking_state: GetBodyTrackingStateBD =
+            get_instance_proc(session, "xrGetBodyTrackingStateBD")?;
+        let destroy_body_tracker = get_instance_proc(session, "xrDestroyBodyTrackerBD")?;
+        let locate_body_joints = get_instance_proc(session, "xrLocateBodyJointsBD")?;
 
         let props = super::get_props(
             session,

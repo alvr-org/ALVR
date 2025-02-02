@@ -1,12 +1,13 @@
 // Code taken from:
 // https://github.com/meta-quest/Meta-OpenXR-SDK/blob/main/OpenXR/meta_openxr_preview/meta_simultaneous_hands_and_controllers.h
 
+use crate::extra_extensions::get_instance_proc;
 use alvr_common::once_cell::sync::Lazy;
 use openxr::{
     self as xr,
-    sys::{self, pfn::VoidFunction},
+    sys::{self},
 };
-use std::{ffi::c_void, mem, ptr};
+use std::{ffi::c_void, ptr};
 
 pub const META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME: &str =
     "XR_META_simultaneous_hands_and_controllers";
@@ -67,44 +68,21 @@ impl MultimodalMeta {
             return Err(sys::Result::ERROR_EXTENSION_NOT_PRESENT);
         }
 
-        let resume_simultaneous_hands_and_controllers_tracking_meta = unsafe {
-            let mut resume_simultaneous_hands_and_controllers_tracking_meta = None;
-            let _ = (session.instance().fp().get_instance_proc_addr)(
-                session.instance().as_raw(),
-                c"xrResumeSimultaneousHandsAndControllersTrackingMETA".as_ptr(),
-                &mut resume_simultaneous_hands_and_controllers_tracking_meta,
-            );
-
-            resume_simultaneous_hands_and_controllers_tracking_meta.map(|pfn| {
-                mem::transmute::<VoidFunction, ResumeSimultaneousHandsAndControllersTrackingMETA>(
-                    pfn,
-                )
-            })
-        }
-        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
-
-        let pause_simultaneous_hands_and_controllers_tracking_meta = unsafe {
-            let mut pause_simultaneous_hands_and_controllers_tracking_meta = None;
-            let _ = (session.instance().fp().get_instance_proc_addr)(
-                session.instance().as_raw(),
-                c"xrPauseSimultaneousHandsAndControllersTrackingMETA".as_ptr(),
-                &mut pause_simultaneous_hands_and_controllers_tracking_meta,
-            );
-
-            pause_simultaneous_hands_and_controllers_tracking_meta.map(|pfn| {
-                mem::transmute::<VoidFunction, PauseSimultaneousHandsAndControllersTrackingMETA>(
-                    pfn,
-                )
-            })
-        }
-        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
+        let resume_simultaneous_hands_and_controllers_tracking_meta = get_instance_proc(
+            &session,
+            "xrResumeSimultaneousHandsAndControllersTrackingMETA",
+        )?;
+        let pause_simultaneous_hands_and_controllers_tracking_meta = get_instance_proc(
+            &session,
+            "xrPauseSimultaneousHandsAndControllersTrackingMETA",
+        )?;
 
         let props = super::get_props(
             &session,
             system,
             SystemSymultaneousHandsAndControllersPropertiesMETA {
                 ty: *TYPE_SYSTEM_SIMULTANEOUS_HANDS_AND_CONTROLLERS_PROPERTIES_META,
-                next: std::ptr::null(),
+                next: ptr::null(),
                 supports_simultaneous_hands_and_controllers: xr::sys::FALSE,
             },
         )?;

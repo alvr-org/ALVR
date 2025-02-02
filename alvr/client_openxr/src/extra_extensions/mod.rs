@@ -52,13 +52,13 @@ fn get_props<G, T>(
     xr_res(result).map(|_| props)
 }
 
-fn get_instance_proc<FnTy>(instance: &xr::Instance, method_name: &str) -> xr::Result<FnTy> {
+fn get_instance_proc<G, FnTy>(session: &xr::Session<G>, method_name: &str) -> xr::Result<FnTy> {
     unsafe {
         let method_name = CString::new(method_name).unwrap();
         let mut function_handle = None;
 
-        xr_res((instance.fp().get_instance_proc_addr)(
-            instance.as_raw(),
+        xr_res((session.instance().fp().get_instance_proc_addr)(
+            session.instance().as_raw(),
             method_name.as_ptr(),
             &mut function_handle,
         ))?;

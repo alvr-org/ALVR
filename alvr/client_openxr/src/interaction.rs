@@ -243,7 +243,7 @@ impl InteractionContext {
         ));
 
         let multimodal_handle = create_ext_object("MultimodalMeta", Some(true), || {
-            MultimodalMeta::new(xr_session.clone(), &extra_extensions, xr_system)
+            MultimodalMeta::new(&xr_session, &extra_extensions, xr_system)
         });
 
         let left_detached_controller_pose_action;
@@ -469,7 +469,7 @@ impl InteractionContext {
         self.face_sources.face_tracker_pico = create_ext_object(
             "FaceTrackerPico",
             config.face_tracking.as_ref().map(|s| s.face_tracking_pico),
-            || FaceTrackerPico::new(self.xr_session.clone(), true, true),
+            || FaceTrackerPico::new(&self.xr_session, true, true),
         );
 
         self.face_sources.eye_tracker_htc = create_ext_object(

@@ -38,18 +38,17 @@ pub struct FaceTrackerPico {
 }
 
 impl FaceTrackerPico {
-    pub fn new<G>(session: xr::Session<G>, visual: bool, audio: bool) -> xr::Result<Self> {
+    pub fn new<G>(session: &xr::Session<G>, visual: bool, audio: bool) -> xr::Result<Self> {
         session
             .instance()
             .exts()
             .ext_eye_gaze_interaction
             .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
 
-        let start_eye_tracking = get_instance_proc(session.instance(), "xrStartEyeTrackingPICO")?;
-        let stop_eye_tracking = get_instance_proc(session.instance(), "xrStopEyeTrackingPICO")?;
-        let set_tracking_mode = get_instance_proc(session.instance(), "xrSetTrackingModePICO")?;
-        let get_face_tracking_data =
-            get_instance_proc(session.instance(), "xrGetFaceTrackingDataPICO")?;
+        let start_eye_tracking = get_instance_proc(session, "xrStartEyeTrackingPICO")?;
+        let stop_eye_tracking = get_instance_proc(session, "xrStopEyeTrackingPICO")?;
+        let set_tracking_mode = get_instance_proc(session, "xrSetTrackingModePICO")?;
+        let get_face_tracking_data = get_instance_proc(session, "xrGetFaceTrackingDataPICO")?;
 
         let mut tracking_flags = 0;
 
@@ -61,7 +60,7 @@ impl FaceTrackerPico {
         }
 
         Ok(Self {
-            session: session.into_any_graphics(),
+            session: session.to_owned().into_any_graphics(),
             tracking_flags,
             start_eye_tracking,
             stop_eye_tracking,

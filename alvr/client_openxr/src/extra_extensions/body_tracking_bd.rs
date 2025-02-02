@@ -141,13 +141,13 @@ impl BodyTrackerBD {
         }
 
         let create_body_tracker: CreateBodyTrackerBD =
-            get_instance_proc(session.instance(), "xrCreateBodyTrackerBD")?;
+            get_instance_proc(session, "xrCreateBodyTrackerBD")?;
         let start_body_tracking_calib_app: StartBodyTrackingCalibAppBD =
-            get_instance_proc(session.instance(), "xrStartBodyTrackingCalibAppBD")?;
+            get_instance_proc(session, "xrStartBodyTrackingCalibAppBD")?;
         let get_body_tracking_state: GetBodyTrackingStateBD =
-            get_instance_proc(session.instance(), "xrGetBodyTrackingStateBD")?;
-        let destroy_body_tracker = get_instance_proc(session.instance(), "xrDestroyBodyTrackerBD")?;
-        let locate_body_joints = get_instance_proc(session.instance(), "xrLocateBodyJointsBD")?;
+            get_instance_proc(session, "xrGetBodyTrackingStateBD")?;
+        let destroy_body_tracker = get_instance_proc(session, "xrDestroyBodyTrackerBD")?;
+        let locate_body_joints = get_instance_proc(session, "xrLocateBodyJointsBD")?;
 
         let props = super::get_props(
             session,

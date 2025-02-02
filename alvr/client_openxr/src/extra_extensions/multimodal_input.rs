@@ -57,7 +57,7 @@ pub struct MultimodalMeta {
 
 impl MultimodalMeta {
     pub fn new<G>(
-        session: &xr::Session<G>,
+        session: xr::Session<G>,
         extra_extensions: &[String],
         system: xr::SystemId,
     ) -> xr::Result<Self> {
@@ -69,16 +69,16 @@ impl MultimodalMeta {
         }
 
         let resume_simultaneous_hands_and_controllers_tracking_meta = get_instance_proc(
-            session,
+            &session,
             "xrResumeSimultaneousHandsAndControllersTrackingMETA",
         )?;
         let pause_simultaneous_hands_and_controllers_tracking_meta = get_instance_proc(
-            session,
+            &session,
             "xrPauseSimultaneousHandsAndControllersTrackingMETA",
         )?;
 
         let props = super::get_props(
-            session,
+            &session,
             system,
             SystemSymultaneousHandsAndControllersPropertiesMETA {
                 ty: *TYPE_SYSTEM_SIMULTANEOUS_HANDS_AND_CONTROLLERS_PROPERTIES_META,
@@ -89,7 +89,7 @@ impl MultimodalMeta {
 
         if props.supports_simultaneous_hands_and_controllers.into() {
             Ok(Self {
-                session: session.to_owned().into_any_graphics(),
+                session: session.into_any_graphics(),
                 resume_simultaneous_hands_and_controllers_tracking_meta,
                 pause_simultaneous_hands_and_controllers_tracking_meta,
             })

@@ -47,9 +47,8 @@ const NOTIFICATION_TIPS: &[&str] = &[
     r#"If you want to share a video recording for reporting a bug, you can enable "Rolling video files" to limit the file size of the upload."#,
     // Miscellaneous
     r#"If your headset does not appear in the devices list it might be in a different subnet. Try "Add device manually"."#,
-    r#"For audio setup on Linux, check the wiki at https://github.com/alvr-org/ALVR/wiki/Installation-guide#automatic-audio--microphone-setup"#,
     r#"ALVR supports wired connection using USB. Check the wiki at https://github.com/alvr-org/ALVR/wiki/ALVR-wired-setup-(ALVR-over-USB)"#,
-    r#"You can record a video of the gameplay using "Start recording" in the "Debug" category in the sidebar."#,
+    r#"You can record a video of the gameplay using "Start recording" in the "Debug" category in the sidebar. Be wary that this recording is usually reserved for debug purposes, and thus very heavy."#,
 ];
 
 pub struct NotificationBar {

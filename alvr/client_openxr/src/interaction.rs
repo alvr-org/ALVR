@@ -463,7 +463,7 @@ impl InteractionContext {
         self.face_sources.face_tracker_fb = create_ext_object(
             "FaceTracker2FB",
             config.face_tracking.as_ref().map(|s| s.face_tracking_fb),
-            || FaceTracker2FB::new(&self.xr_session, true, true),
+            || FaceTracker2FB::new(self.xr_session.clone(), true, true),
         );
 
         self.face_sources.face_tracker_pico = create_ext_object(
@@ -475,13 +475,25 @@ impl InteractionContext {
         self.face_sources.eye_tracker_htc = create_ext_object(
             "FacialTrackerHTC (eyes)",
             config.face_tracking.as_ref().map(|s| s.eye_expressions_htc),
-            || FacialTrackerHTC::new(&self.xr_session, xr::FacialTrackingTypeHTC::EYE_DEFAULT),
+            || {
+                FacialTrackerHTC::new(
+                    self.xr_session.clone(),
+                    self.xr_system,
+                    xr::FacialTrackingTypeHTC::EYE_DEFAULT,
+                )
+            },
         );
 
         self.face_sources.lip_tracker_htc = create_ext_object(
             "FacialTrackerHTC (lips)",
             config.face_tracking.as_ref().map(|s| s.lip_expressions_htc),
-            || FacialTrackerHTC::new(&self.xr_session, xr::FacialTrackingTypeHTC::LIP_DEFAULT),
+            || {
+                FacialTrackerHTC::new(
+                    self.xr_session.clone(),
+                    self.xr_system,
+                    xr::FacialTrackingTypeHTC::LIP_DEFAULT,
+                )
+            },
         );
 
         self.body_sources.body_tracker_fb = create_ext_object(
@@ -890,7 +902,6 @@ pub fn get_htc_eye_expression(context: &FaceSources) -> Option<Vec<f32>> {
         .eye_tracker_htc
         .as_ref()
         .and_then(|t| t.get_facial_expressions().ok().flatten())
-        .map(|weights| weights.into_iter().collect())
 }
 
 pub fn get_htc_lip_expression(context: &FaceSources) -> Option<Vec<f32>> {
@@ -898,7 +909,6 @@ pub fn get_htc_lip_expression(context: &FaceSources) -> Option<Vec<f32>> {
         .lip_tracker_htc
         .as_ref()
         .and_then(|t| t.get_facial_expressions().ok().flatten())
-        .map(|weights| weights.into_iter().collect())
 }
 
 pub fn get_fb_body_skeleton(

@@ -94,10 +94,10 @@ orientation = "landscape"
 [[package.metadata.android.application.activity.intent_filter]]
 actions = ["android.intent.action.MAIN"]
 categories = [
-	"android.intent.category.LAUNCHER",
-	"com.oculus.intent.category.VR",
-	"com.yvr.intent.category.VR",
-	"org.khronos.openxr.intent.category.IMMERSIVE_HMD",
+    "android.intent.category.LAUNCHER",
+    "com.oculus.intent.category.VR",
+    "com.yvr.intent.category.VR",
+    "org.khronos.openxr.intent.category.IMMERSIVE_HMD",
 ]
 
 # Quest entries

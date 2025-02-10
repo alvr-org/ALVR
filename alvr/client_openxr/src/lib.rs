@@ -17,7 +17,7 @@ use alvr_common::{
     Fov, Pose, HAND_LEFT_ID,
 };
 use alvr_graphics::GraphicsContext;
-use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig};
+use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use alvr_system_info::Platform;
 use extra_extensions::{
     BD_BODY_TRACKING_EXTENSION_NAME, META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
@@ -295,8 +295,15 @@ pub fn entry_point() {
                 prompt_calibration_on_start: false,
             }),
         };
+        let lobby_face_tracking_config = FaceTrackingSourcesConfig {
+            eye_tracking_fb: false,
+            face_tracking_fb: false,
+            face_tracking_pico: false,
+            eye_expressions_htc: true,
+            lip_expressions_htc: true,
+        };
         let lobby_interaction_sources = InteractionSourcesConfig {
-            face_tracking: None,
+            face_tracking: Some(lobby_face_tracking_config),
             body_tracking: Some(lobby_body_tracking_config),
             prefers_multimodal_input: true,
         };
@@ -482,6 +489,13 @@ pub fn entry_point() {
             let (layer, display_time) = if let Some(stream) = &mut stream_context {
                 stream.render(frame_interval, vsync_time)
             } else {
+                let face_tracker_test = &interaction_context
+                    .read()
+                    .face_sources
+                    .lip_tracker_htc
+                    .as_ref()
+                    .map(|t| t.get_facial_expressions(crate::to_xr_time(vsync_time)));
+                alvr_common::info!("{:#?}", face_tracker_test);
                 (lobby.render(vsync_time), vsync_time)
             };
 

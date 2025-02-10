@@ -66,14 +66,14 @@ impl FacialTrackerHTC {
         })
     }
 
-    pub fn get_facial_expressions(&self) -> xr::Result<Option<Vec<f32>>> {
+    pub fn get_facial_expressions(&self, sample_time: xr::Time) -> xr::Result<Option<Vec<f32>>> {
         let mut weights = Vec::with_capacity(self.expression_count);
 
         let mut facial_expressions = sys::FacialExpressionsHTC {
             ty: sys::FacialExpressionsHTC::TYPE,
             next: ptr::null_mut(),
             is_active: sys::FALSE,
-            sample_time: xr::Time::from_nanos(0),
+            sample_time,
             expression_count: self.expression_count as u32,
             expression_weightings: weights.as_mut_ptr(),
         };

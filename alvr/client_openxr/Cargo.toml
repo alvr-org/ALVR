@@ -94,10 +94,10 @@ orientation = "landscape"
 [[package.metadata.android.application.activity.intent_filter]]
 actions = ["android.intent.action.MAIN"]
 categories = [
-    "android.intent.category.LAUNCHER",
-    "com.oculus.intent.category.VR",
-    "com.yvr.intent.category.VR",
-    "org.khronos.openxr.intent.category.IMMERSIVE_HMD",
+	"android.intent.category.LAUNCHER",
+	"com.oculus.intent.category.VR",
+	"com.yvr.intent.category.VR",
+	"org.khronos.openxr.intent.category.IMMERSIVE_HMD",
 ]
 
 # Quest entries
@@ -147,13 +147,13 @@ value = "V2.0"
 # Vive entries
 [[package.metadata.android.uses_feature]]
 name = "wave.feature.eyetracking"
-required = true
+required = false
 [[package.metadata.android.uses_feature]]
 name = "wave.feature.handtracking"
 required = true
 [[package.metadata.android.uses_feature]]
 name = "wave.feature.lipexpression"
-required = true
+required = false
 [[package.metadata.android.application.meta_data]]
 name = "minWaveSDKVersion"
 value = "1"

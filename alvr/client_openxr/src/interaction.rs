@@ -897,18 +897,22 @@ pub fn get_pico_face_expression(context: &FaceSources, time: Duration) -> Option
         .map(|weights| weights.into_iter().collect())
 }
 
-pub fn get_htc_eye_expression(context: &FaceSources) -> Option<Vec<f32>> {
+pub fn get_htc_eye_expression(context: &FaceSources, time: Duration) -> Option<Vec<f32>> {
+    let xr_time = crate::to_xr_time(time);
+
     context
         .eye_tracker_htc
         .as_ref()
-        .and_then(|t| t.get_facial_expressions().ok().flatten())
+        .and_then(|t| t.get_facial_expressions(xr_time).ok().flatten())
 }
 
-pub fn get_htc_lip_expression(context: &FaceSources) -> Option<Vec<f32>> {
+pub fn get_htc_lip_expression(context: &FaceSources, time: Duration) -> Option<Vec<f32>> {
+    let xr_time = crate::to_xr_time(time);
+
     context
         .lip_tracker_htc
         .as_ref()
-        .and_then(|t| t.get_facial_expressions().ok().flatten())
+        .and_then(|t| t.get_facial_expressions(xr_time).ok().flatten())
 }
 
 pub fn get_fb_body_skeleton(

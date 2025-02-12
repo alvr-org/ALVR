@@ -63,11 +63,9 @@ enum DeviceInfo {
 }
 
 pub fn linux_hardware_checks() {
-    let wgpu_adapters = wgpu::Instance::new(wgpu::InstanceDescriptor {
+    let wgpu_adapters = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends: wgpu::Backends::VULKAN,
-        flags: wgpu::InstanceFlags::empty(),
-        dx12_shader_compiler: Default::default(),
-        gles_minor_version: Default::default(),
+        ..Default::default()
     })
     .enumerate_adapters(wgpu::Backends::VULKAN);
     let device_infos = wgpu_adapters

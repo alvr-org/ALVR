@@ -12,11 +12,11 @@ use wgpu::{
     include_wgsl, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendComponent,
     BlendFactor, BlendOperation, BlendState, Color, ColorTargetState, ColorWrites,
-    CommandEncoderDescriptor, Device, Extent3d, FilterMode, FragmentState, ImageCopyTexture,
-    ImageDataLayout, LoadOp, Operations, Origin3d, PipelineLayoutDescriptor, PrimitiveState,
-    PrimitiveTopology, PushConstantRange, RenderPass, RenderPassColorAttachment,
-    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, SamplerBindingType,
-    SamplerDescriptor, ShaderModuleDescriptor, ShaderStages, StoreOp, Texture, TextureAspect,
+    CommandEncoderDescriptor, Device, Extent3d, FilterMode, FragmentState, LoadOp, Operations,
+    Origin3d, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, PushConstantRange,
+    RenderPass, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
+    RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor,
+    ShaderStages, StoreOp, TexelCopyBufferLayout, TexelCopyTextureInfo, Texture, TextureAspect,
     TextureSampleType, TextureView, TextureViewDimension, VertexState,
 };
 
@@ -180,7 +180,7 @@ fn create_pipeline(
         })),
         vertex: VertexState {
             module: &shader_module,
-            entry_point: "vertex_main",
+            entry_point: None,
             compilation_options: Default::default(),
             buffers: &[],
         },
@@ -192,7 +192,7 @@ fn create_pipeline(
         multisample: Default::default(),
         fragment: Some(FragmentState {
             module: &shader_module,
-            entry_point: "fragment_main",
+            entry_point: None,
             compilation_options: Default::default(),
             targets: &[Some(ColorTargetState {
                 format: SDR_FORMAT,
@@ -212,6 +212,7 @@ fn create_pipeline(
             })],
         }),
         multiview: None,
+        cache: None,
     })
 }
 
@@ -384,14 +385,14 @@ impl LobbyRenderer {
         }
 
         self.context.queue.write_texture(
-            ImageCopyTexture {
+            TexelCopyTextureInfo {
                 texture: &self.hud_texture,
                 mip_level: 0,
                 origin: Origin3d::ZERO,
                 aspect: TextureAspect::All,
             },
             &buffer,
-            ImageDataLayout {
+            TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(HUD_TEXTURE_SIDE as u32 * 4),
                 rows_per_image: Some(HUD_TEXTURE_SIDE as u32),

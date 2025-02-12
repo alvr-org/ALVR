@@ -34,7 +34,7 @@ tungstenite = "0.24"
 ureq = { version = "2", features = ["json"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-wgpu = "0.20"
+wgpu = "24"
 libva = { package = "cros-libva", version = "0.0.7" }
 nvml-wrapper = "0.10.0"
 

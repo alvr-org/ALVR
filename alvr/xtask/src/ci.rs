@@ -50,7 +50,7 @@ pub fn clippy_ci() {
 
             if msg.get("reason")? == "compiler-message" {
                 let msg: CompilerMessage = json::from_value(msg.get("message")?.clone()).ok()?;
-                (msg.message_type != "diagnostic").then_some(msg)
+                (msg.message_type == "diagnostic").then_some(msg)
             } else {
                 None
             }

@@ -40,11 +40,9 @@ fn main() {
 
         #[cfg(target_os = "linux")]
         {
-            let has_nvidia = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            let has_nvidia = wgpu::Instance::new(&wgpu::InstanceDescriptor {
                 backends: wgpu::Backends::VULKAN,
-                flags: wgpu::InstanceFlags::empty(),
-                dx12_shader_compiler: Default::default(),
-                gles_minor_version: Default::default(),
+                ..Default::default()
             })
             .enumerate_adapters(wgpu::Backends::VULKAN)
             .iter()

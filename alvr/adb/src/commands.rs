@@ -46,12 +46,10 @@ pub fn download(url: &str, progress_callback: impl Fn(usize, Option<usize>)) -> 
         .build()
         .into();
     let response = agent.get(url).call()?;
-    let maybe_expected_size: Option<usize> = response
+    let maybe_expected_size = response
         .headers()
         .get("Content-Length")
-        .map(|l| l.to_str().ok())
-        .flatten()
-        .and_then(|l| l.parse().ok());
+        .and_then(|v| v.to_str().ok()?.parse::<usize>().ok());
     let mut result = maybe_expected_size
         .map(Vec::with_capacity)
         .unwrap_or_default();

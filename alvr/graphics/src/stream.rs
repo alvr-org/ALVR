@@ -128,7 +128,7 @@ impl StreamRenderer {
             })),
             vertex: VertexState {
                 module: &shader_module,
-                entry_point: "vertex_main",
+                entry_point: None,
                 compilation_options: PipelineCompilationOptions {
                     constants: &constants,
                     zero_initialize_workgroup_memory: false,
@@ -143,7 +143,7 @@ impl StreamRenderer {
             multisample: Default::default(),
             fragment: Some(FragmentState {
                 module: &shader_module,
-                entry_point: "fragment_main",
+                entry_point: None,
                 compilation_options: PipelineCompilationOptions {
                     constants: &constants,
                     zero_initialize_workgroup_memory: false,
@@ -155,6 +155,7 @@ impl StreamRenderer {
                 })],
             }),
             multiview: None,
+            cache: None,
         });
 
         let sampler = device.create_sampler(&SamplerDescriptor {

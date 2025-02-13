@@ -717,7 +717,11 @@ pub fn get_hand_data(
                         xr::SpaceLocationFlags::ORIENTATION_VALID
                             | xr::SpaceLocationFlags::POSITION_VALID,
                     ) {
-                        let time_offset_s = future_time.saturating_sub(time).as_secs_f32();
+                        let time_offset_s = future_time
+                            .saturating_sub(time)
+                            .max(Duration::from_millis(1))
+                            .as_secs_f32();
+
                         linear_velocity = (crate::from_xr_vec3(future_location.pose.position)
                             - last_controller_pose.position)
                             / time_offset_s;

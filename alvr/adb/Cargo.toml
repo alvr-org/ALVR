@@ -12,5 +12,5 @@ alvr_filesystem.workspace = true
 alvr_system_info.workspace = true
 
 anyhow = "1"
-ureq = "2.10"
+ureq = "3"
 zip = "2"

@@ -97,9 +97,10 @@ impl DataSources {
             let events_sender = events_sender.clone();
             move || {
                 let uri = format!("http://127.0.0.1:{port}/api/dashboard-request");
-                let request_agent = ureq::AgentBuilder::new()
-                    .timeout_connect(REQUEST_TIMEOUT)
-                    .build();
+                let request_agent: ureq::Agent = ureq::Agent::config_builder()
+                    .timeout_connect(Some(REQUEST_TIMEOUT))
+                    .build()
+                    .into();
 
                 while running.value() {
                     while let Ok(request) = requests_receiver.try_recv() {
@@ -193,9 +194,10 @@ impl DataSources {
                                 }
                             }
                         } else {
+                            // todo: this should be changed to a GET request, requires removing body
                             request_agent
-                                .get(&uri)
-                                .set("X-ALVR", "true")
+                                .post(&uri)
+                                .header("X-ALVR", "true")
                                 .send_json(&request)
                                 .ok();
                         }
@@ -285,17 +287,20 @@ impl DataSources {
                 let mut deadline = Instant::now();
                 let uri = format!("http://127.0.0.1:{port}/api/version");
 
-                let request_agent = ureq::AgentBuilder::new()
-                    .timeout_connect(REQUEST_TIMEOUT)
-                    .build();
+                let request_agent: ureq::Agent = ureq::Agent::config_builder()
+                    .timeout_connect(Some(REQUEST_TIMEOUT))
+                    .build()
+                    .into();
 
                 loop {
                     let maybe_server_version = request_agent
                         .get(&uri)
-                        .set("X-ALVR", "true")
+                        .header("X-ALVR", "true")
                         .call()
                         .ok()
-                        .and_then(|r| Version::from_str(&r.into_string().ok()?).ok());
+                        .and_then(|r| {
+                            Version::from_str(&r.into_body().read_to_string().ok()?).ok()
+                        });
 
                     let connected = if let Some(version) = maybe_server_version {
                         // We need exact match because we don't do session extrapolation at the

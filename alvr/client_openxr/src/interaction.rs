@@ -629,18 +629,19 @@ pub fn get_head_data(
             return None;
         }
 
-        let time_offset_s = future_time
-            .saturating_sub(time)
-            .max(Duration::from_millis(1))
-            .as_secs_f32();
+        let time_offset = future_time.saturating_sub(time);
 
-        motion.linear_velocity = (crate::from_xr_vec3(predicted_location.pose.position)
-            - motion.pose.position)
-            / time_offset_s;
-        motion.angular_velocity = (crate::from_xr_quat(predicted_location.pose.orientation)
-            * motion.pose.orientation.inverse())
-        .to_scaled_axis()
-            / time_offset_s;
+        if !time_offset.is_zero() {
+            let time_offset_s = time_offset.as_secs_f32();
+
+            motion.linear_velocity = (crate::from_xr_vec3(predicted_location.pose.position)
+                - motion.pose.position)
+                / time_offset_s;
+            motion.angular_velocity = (crate::from_xr_quat(predicted_location.pose.orientation)
+                * motion.pose.orientation.inverse())
+            .to_scaled_axis()
+                / time_offset_s;
+        }
     }
 
     let last_ipd_m = last_view_params[0]
@@ -717,18 +718,20 @@ pub fn get_hand_data(
                         xr::SpaceLocationFlags::ORIENTATION_VALID
                             | xr::SpaceLocationFlags::POSITION_VALID,
                     ) {
-                        let time_offset_s = future_time
-                            .saturating_sub(time)
-                            .max(Duration::from_millis(1))
-                            .as_secs_f32();
+                        let time_offset = future_time.saturating_sub(time);
 
-                        linear_velocity = (crate::from_xr_vec3(future_location.pose.position)
-                            - last_controller_pose.position)
-                            / time_offset_s;
-                        angular_velocity = (crate::from_xr_quat(future_location.pose.orientation)
-                            * last_controller_pose.orientation.inverse())
-                        .to_scaled_axis()
-                            / time_offset_s;
+                        if !time_offset.is_zero() {
+                            let time_offset_s = time_offset.as_secs_f32();
+
+                            linear_velocity = (crate::from_xr_vec3(future_location.pose.position)
+                                - last_controller_pose.position)
+                                / time_offset_s;
+                            angular_velocity =
+                                (crate::from_xr_quat(future_location.pose.orientation)
+                                    * last_controller_pose.orientation.inverse())
+                                .to_scaled_axis()
+                                    / time_offset_s;
+                        }
                     }
                 }
             }

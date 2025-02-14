@@ -204,19 +204,19 @@ shutterring and high encode/decode latency!"
                     bool_modifier(&format!("{PREFIX}.enabled"), true),
                     num_modifier(
                         &format!("{PREFIX}.content.center_size_x"),
-                        &format!("{:?}", val_size_x as f32),
+                        &val_size_x.to_string(),
                     ),
                     num_modifier(
                         &format!("{PREFIX}.content.center_size_y"),
-                        &format!("{:?}", val_size_y as f32),
+                        &val_size_y.to_string(),
                     ),
                     num_modifier(
                         &format!("{PREFIX}.content.edge_ratio_x"),
-                        &format!("{:?}", val_edge_x as f32),
+                        &val_edge_x.to_string(),
                     ),
                     num_modifier(
                         &format!("{PREFIX}.content.edge_ratio_y"),
-                        &format!("{:?}", val_edge_y as f32),
+                        &val_edge_y.to_string(),
                     ),
                 ]
                 .into_iter()

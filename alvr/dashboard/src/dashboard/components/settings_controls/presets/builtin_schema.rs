@@ -32,7 +32,12 @@ fn bool_modifier(target_path: &str, value: bool) -> PresetModifier {
 pub fn resolution_schema() -> PresetSchemaNode {
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
         name: "resolution".into(),
-        strings: HashMap::new(),
+        strings: [(
+            "help".into(),
+            "Choosing too high resolution may result in high latency or black screen.".into(),
+        )]
+        .into_iter()
+        .collect(),
         flags: ["steamvr-restart".into()].into_iter().collect(),
         options: [
             ("Very Low (width: 3072)", "1536"),
@@ -100,6 +105,40 @@ pub fn framerate_schema() -> PresetSchemaNode {
             })
             .collect(),
         default_option_index: 1,
+        gui: ChoiceControlType::ButtonGroup,
+    })
+}
+
+pub fn codec_preset_schema() -> PresetSchemaNode {
+    PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
+        name: "codec_preset".into(),
+        strings: [(
+            "help".into(),
+            "AV1 is only supported on newer gpus (AMD RX 7xxx+ , NVIDIA RTX 30xx+, Intel ARC)!".into(),
+        )]
+        .into_iter()
+        .collect(),
+        flags: ["steamvr-restart".into()].into_iter().collect(),
+        options: [
+            ("H264", "H264"),
+            ("HEVC", "Hevc"),
+            ("AV1", "AV1"),
+        ]
+        .into_iter()
+        .map(|(key, val_codec)| HigherOrderChoiceOption {
+            display_name: key.into(),
+            modifiers: [
+                string_modifier(
+                    "session_settings.video.preferred_codec.variant",
+                    val_codec,
+                ),
+            ]
+            .into_iter()
+            .collect(),
+            content: None,
+        })
+        .collect(),
+        default_option_index: 0,
         gui: ChoiceControlType::ButtonGroup,
     })
 }

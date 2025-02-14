@@ -4,6 +4,9 @@ use eframe::egui::Ui;
 pub fn debug_tab_ui(ui: &mut Ui) -> Option<ServerRequest> {
     let mut request = None;
 
+    ui.label("Recording from ALVR using buttons bellow is not suitable for regular capturing of the gameplay.
+For that use other means of recording, for example through headset or desktop vr output.");
+
     ui.columns(4, |ui| {
         if ui[0].button("Capture frame").clicked() {
             request = Some(ServerRequest::CaptureFrame);

@@ -238,18 +238,18 @@ pub fn game_audio_schema(_: Vec<String>) -> PresetSchemaNode {
         flags: HashSet::new(),
         options: [
             HigherOrderChoiceOption {
-                display_name: "Enable".into(),
+                display_name: "Disabled".into(),
                 modifiers: vec![bool_modifier(
                     "session_settings.audio.game_audio.enabled",
-                    true,
+                    false,
                 )],
                 content: None,
             },
             HigherOrderChoiceOption {
-                display_name: "Disable".into(),
+                display_name: "Enabled".into(),
                 modifiers: vec![bool_modifier(
                     "session_settings.audio.game_audio.enabled",
-                    false,
+                    true,
                 )],
                 content: None,
             },
@@ -269,18 +269,18 @@ pub fn microphone_schema(_: Vec<String>) -> PresetSchemaNode {
         flags: HashSet::new(),
         options: [
             HigherOrderChoiceOption {
-                display_name: "Enable".into(),
+                display_name: "Disabled".into(),
                 modifiers: vec![bool_modifier(
                     "session_settings.audio.microphone.enabled",
-                    true,
+                    false,
                 )],
                 content: None,
             },
             HigherOrderChoiceOption {
-                display_name: "Disable".into(),
+                display_name: "Enabled".into(),
                 modifiers: vec![bool_modifier(
                     "session_settings.audio.microphone.enabled",
-                    false,
+                    true,
                 )],
                 content: None,
             },
@@ -479,6 +479,14 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
         flags: HashSet::new(),
         options: [
             HigherOrderChoiceOption {
+                display_name: "Disabled".into(),
+                modifiers: vec![bool_modifier(
+                    "session_settings.headset.face_tracking.enabled",
+                    false,
+                )],
+                content: None,
+            },
+            HigherOrderChoiceOption {
                 display_name: "VRChat Eye OSC".into(),
                 modifiers: vec![
                     bool_modifier("session_settings.headset.face_tracking.enabled", true),
@@ -498,14 +506,6 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
                         "VrcFaceTracking",
                     ),
                 ],
-                content: None,
-            },
-            HigherOrderChoiceOption {
-                display_name: "Disable".into(),
-                modifiers: vec![bool_modifier(
-                    "session_settings.headset.face_tracking.enabled",
-                    false,
-                )],
                 content: None,
             },
         ]

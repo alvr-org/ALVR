@@ -26,8 +26,9 @@ pub struct SettingsTab {
     selected_top_tab_id: String,
     resolution_preset: PresetControl,
     framerate_preset: PresetControl,
-    codec_preset: PresetControl,
     encoder_preset: PresetControl,
+    foveation_preset: PresetControl,
+    codec_preset: PresetControl,
     game_audio_preset: Option<PresetControl>,
     microphone_preset: Option<PresetControl>,
     hand_tracking_interaction_preset: PresetControl,
@@ -70,8 +71,9 @@ impl SettingsTab {
             selected_top_tab_id: "presets".into(),
             resolution_preset: PresetControl::new(builtin_schema::resolution_schema()),
             framerate_preset: PresetControl::new(builtin_schema::framerate_schema()),
-            codec_preset: PresetControl::new(builtin_schema::codec_preset_schema()),
             encoder_preset: PresetControl::new(builtin_schema::encoder_preset_schema()),
+            foveation_preset: PresetControl::new(builtin_schema::foveation_preset_schema()),
+            codec_preset: PresetControl::new(builtin_schema::codec_preset_schema()),
             game_audio_preset: None,
             microphone_preset: None,
             hand_tracking_interaction_preset: PresetControl::new(
@@ -91,8 +93,9 @@ impl SettingsTab {
             .update_session_settings(&settings_json);
         self.framerate_preset
             .update_session_settings(&settings_json);
-        self.codec_preset.update_session_settings(&settings_json);
         self.encoder_preset.update_session_settings(&settings_json);
+        self.foveation_preset.update_session_settings(&settings_json);
+        self.codec_preset.update_session_settings(&settings_json);
         if let Some(preset) = self.game_audio_preset.as_mut() {
             preset.update_session_settings(&settings_json)
         }
@@ -174,11 +177,14 @@ impl SettingsTab {
 
                             path_value_pairs.extend(self.framerate_preset.ui(ui));
                             ui.end_row();
-
-                            path_value_pairs.extend(self.codec_preset.ui(ui));
-                            ui.end_row();
-
+                            
                             path_value_pairs.extend(self.encoder_preset.ui(ui));
+                            ui.end_row();
+                            
+                            path_value_pairs.extend(self.foveation_preset.ui(ui));
+                            ui.end_row();
+                            
+                            path_value_pairs.extend(self.codec_preset.ui(ui));
                             ui.end_row();
 
                             if let Some(preset) = &mut self.game_audio_preset {

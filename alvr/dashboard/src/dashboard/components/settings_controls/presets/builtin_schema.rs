@@ -114,30 +114,25 @@ pub fn codec_preset_schema() -> PresetSchemaNode {
         name: "codec_preset".into(),
         strings: [(
             "help".into(),
-            "AV1 is only supported on newer gpus (AMD RX 7xxx+ , NVIDIA RTX 30xx+, Intel ARC)!".into(),
+            "AV1 is only supported on newer gpus (AMD RX 7xxx+ , NVIDIA RTX 30xx+, Intel ARC)!"
+                .into(),
         )]
         .into_iter()
         .collect(),
         flags: ["steamvr-restart".into()].into_iter().collect(),
-        options: [
-            ("H264", "H264"),
-            ("HEVC", "Hevc"),
-            ("AV1", "AV1"),
-        ]
-        .into_iter()
-        .map(|(key, val_codec)| HigherOrderChoiceOption {
-            display_name: key.into(),
-            modifiers: [
-                string_modifier(
+        options: [("H264", "H264"), ("HEVC", "Hevc"), ("AV1", "AV1")]
+            .into_iter()
+            .map(|(key, val_codec)| HigherOrderChoiceOption {
+                display_name: key.into(),
+                modifiers: [string_modifier(
                     "session_settings.video.preferred_codec.variant",
                     val_codec,
-                ),
-            ]
-            .into_iter()
+                )]
+                .into_iter()
+                .collect(),
+                content: None,
+            })
             .collect(),
-            content: None,
-        })
-        .collect(),
         default_option_index: 0,
         gui: ChoiceControlType::ButtonGroup,
     })
@@ -175,6 +170,60 @@ pub fn encoder_preset_schema() -> PresetSchemaNode {
             .collect(),
             content: None,
         })
+        .collect(),
+        default_option_index: 0,
+        gui: ChoiceControlType::ButtonGroup,
+    })
+}
+
+pub fn foveation_preset_schema() -> PresetSchemaNode {
+    const PREFIX: &str = "session_settings.video.foveated_encoding";
+    PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
+        name: "foveation_preset".into(),
+        strings: [(
+            "help".into(),
+            "Foveation affects pixelation on the edges of \
+            the screen and significantly reduces codec latency. 
+It is not recommended to fully disable it, as it may cause \
+shutterring and high encode/decode latency!"
+                .into(),
+        )]
+        .into_iter()
+        .collect(),
+        flags: ["steamvr-restart".into()].into_iter().collect(),
+        options: [
+            ("Light", 0.80, 0.80, 8.0, 8.0),
+            ("Medium", 0.66, 0.60, 6.0, 6.0),
+            ("High", 0.45, 0.40, 4.0, 5.0),
+        ]
+        .into_iter()
+        .map(
+            |(key, val_size_x, val_size_y, val_edge_x, val_edge_y)| HigherOrderChoiceOption {
+                display_name: key.into(),
+                modifiers: [
+                    bool_modifier(&format!("{PREFIX}.enabled"), true),
+                    num_modifier(
+                        &format!("{PREFIX}.content.center_size_x"),
+                        &format!("{:?}", val_size_x as f32),
+                    ),
+                    num_modifier(
+                        &format!("{PREFIX}.content.center_size_y"),
+                        &format!("{:?}", val_size_y as f32),
+                    ),
+                    num_modifier(
+                        &format!("{PREFIX}.content.edge_ratio_x"),
+                        &format!("{:?}", val_edge_x as f32),
+                    ),
+                    num_modifier(
+                        &format!("{PREFIX}.content.edge_ratio_y"),
+                        &format!("{:?}", val_edge_y as f32),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+                content: None,
+            },
+        )
         .collect(),
         default_option_index: 0,
         gui: ChoiceControlType::ButtonGroup,

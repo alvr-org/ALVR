@@ -387,6 +387,7 @@ extern "C" fn wait_for_vsync() {
     // We use 120Hz-ish so that SteamVR doesn't accidentally get
     // any weird ideas about our display Hz with its frame pacing.
     static PRE_HEADSET_STATS_WAIT_INTERVAL: Duration = Duration::from_millis(8);
+    static DESYNC_THRESHOLD: Duration = Duration::from_millis(2);
 
     // NB: don't sleep while locking SERVER_DATA_MANAGER or SERVER_CORE_CONTEXT
     let sleep_duration = SERVER_CORE_CONTEXT
@@ -394,14 +395,56 @@ extern "C" fn wait_for_vsync() {
         .as_ref()
         .and_then(|ctx| ctx.duration_until_next_vsync());
 
+    let display_interval = SERVER_CORE_CONTEXT
+        .read()
+        .as_ref()
+        .and_then(|ctx| ctx.display_interval())
+        .unwrap_or(PRE_HEADSET_STATS_WAIT_INTERVAL);
+
+    let last_game_time_latency = SERVER_CORE_CONTEXT
+        .read()
+        .as_ref()
+        .and_then(|ctx| ctx.last_game_time_latency())
+        .unwrap_or(Duration::from_millis(0));
+
+    let last_compositing_latency = SERVER_CORE_CONTEXT
+        .read()
+        .as_ref()
+        .and_then(|ctx| ctx.last_compose_latency())
+        .unwrap_or(Duration::from_millis(0));
+
+    let last_frame_present_interval = SERVER_CORE_CONTEXT
+        .read()
+        .as_ref()
+        .and_then(|ctx| ctx.last_frame_present_interval())
+        .unwrap_or(display_interval);
+
     if let Some(duration) = sleep_duration {
         if alvr_server_core::settings()
             .video
             .enforce_server_frame_pacing
         {
-            thread::sleep(duration);
+            // Nominally the compositing latency is extremely small, however it
+            // can shoot up if the GPU is fully scheduled. Only the game render time
+            // should influence the presentation frame-to-frame latency.
+            thread::sleep(duration.saturating_sub(last_compositing_latency));
         } else {
-            thread::yield_now();
+            // This is a bit convoluted but basically the game time latency isn't real,
+            // it's based on motion-to-photon, so Unity games that use old poses will have extra latency.
+            //
+            // So, the actual conditions for not sleeping at all are:
+            // - The game time has to be nearing the display interval
+            // - The compositing latency has to be high, indicating that the GPU is fully scheduled
+            //   because the game is actually taking 10+ms to render
+            // - As an extra fallback, the roundtrip present interval (server FPS) should not be lower than the display interval
+            if last_game_time_latency <= (display_interval - DESYNC_THRESHOLD)
+                || (last_compositing_latency <= DESYNC_THRESHOLD)
+                || (last_frame_present_interval < display_interval)
+            {
+                thread::sleep(duration.saturating_sub(last_compositing_latency));
+            } else {
+                thread::yield_now();
+            }
         }
     } else {
         // StatsManager isn't up because the headset hasn't connected,

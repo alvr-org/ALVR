@@ -64,7 +64,7 @@ impl DevicesTab {
                         ui.heading(
                             RichText::new(
                                 "ALVR requires running SteamVR! \
-                                VR headsets will not be connected.",
+                                Devices will not be discovered or connected.",
                             )
                             .color(Color32::BLACK),
                         );

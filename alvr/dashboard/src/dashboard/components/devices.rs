@@ -60,24 +60,23 @@ impl DevicesTab {
             Frame::group(ui.style())
                 .fill(log_colors::WARNING_LIGHT)
                 .show(ui, |ui| {
-                    Grid::new(0).num_columns(2).show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.add_space(10.0);
-                            ui.heading(
-                                RichText::new(
-                                    "The streamer is not connected! VR headsets will not be discovered",
-                                )
-                                .color(Color32::BLACK),
-                            );
-                        });
+                    ui.vertical_centered(|ui| {
+                        ui.heading(
+                            RichText::new(
+                                "ALVR requires running SteamVR! \
+                                VR headsets will not be connected.",
+                            )
+                            .color(Color32::BLACK),
+                        );
 
                         #[cfg(not(target_arch = "wasm32"))]
-                        ui.with_layout(Layout::right_to_left(eframe::emath::Align::Center), |ui| {
-                            if ui.button("Launch SteamVR").clicked() {
-                                crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr();
-                            }
-                        });
-                    });
+                        if ui
+                            .button(RichText::new("Launch SteamVR").size(13.0))
+                            .clicked()
+                        {
+                            crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr();
+                        }
+                    })
                 });
         }
 

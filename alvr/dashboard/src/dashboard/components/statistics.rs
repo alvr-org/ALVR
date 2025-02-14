@@ -54,7 +54,7 @@ impl StatisticsTab {
             });
         } else {
             ui.heading("No statistics available. 
-            Start SteamVR and connect client to gather statistics");
+            Start SteamVR and connect device to gather statistics");
         }
 
         None

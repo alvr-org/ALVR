@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use super::schema::{HigherOrderChoiceSchema, PresetModifierOperation};
 use crate::dashboard::components::{self, NestingInfo, SettingControl, INDENTATION_STEP};
+use alvr_common::info;
 use alvr_gui_common::theme::{
     log_colors::{INFO_LIGHT, WARNING_LIGHT},
     OK_GREEN,
@@ -92,6 +93,15 @@ impl Control {
     }
 
     pub fn update_session_settings(&mut self, session_setting_json: &json::Value) {
+        fn values_equal(a: &serde_json::Value, b: &serde_json::Value) -> bool {
+            if let (serde_json::Value::Number(n1), serde_json::Value::Number(n2)) = (a, b) {
+                if let (Some(f1), Some(f2)) = (n1.as_f64(), n2.as_f64()) {
+                    return (f1 - f2).abs() < 1e-6;
+                }
+            }
+            a == b
+        }
+
         let mut selected_option = String::new();
 
         'outer: for (key, descs) in &self.modifiers {
@@ -118,7 +128,7 @@ impl Control {
                     };
                 }
 
-                if *session_ref != desc.value {
+                if !values_equal(session_ref, &desc.value) {
                     continue 'outer;
                 }
             }

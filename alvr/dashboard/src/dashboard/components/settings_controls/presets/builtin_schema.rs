@@ -225,7 +225,7 @@ shutterring and high encode/decode latency!"
             },
         )
         .collect(),
-        default_option_index: 0,
+        default_option_index: 2,
         gui: ChoiceControlType::ButtonGroup,
     })
 }

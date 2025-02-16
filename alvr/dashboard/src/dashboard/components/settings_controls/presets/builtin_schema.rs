@@ -34,7 +34,7 @@ pub fn resolution_schema() -> PresetSchemaNode {
         name: "resolution".into(),
         strings: [(
             "help".into(),
-            "Choosing too high resolution (commonnly 'High (width: 5184)') may result in high latency or black screen.".into(),
+            "Choosing too high resolution (commonly 'High (width: 5184)') may result in high latency or black screen.".into(),
         )]
         .into_iter()
         .collect(),

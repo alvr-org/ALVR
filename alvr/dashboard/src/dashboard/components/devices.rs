@@ -1,5 +1,5 @@
 use crate::dashboard::ServerRequest;
-use alvr_common::{ConnectionState};
+use alvr_common::ConnectionState;
 use alvr_gui_common::theme::{self, log_colors};
 use alvr_packets::ClientListAction;
 use alvr_session::{ClientConnectionConfig, SessionConfig};

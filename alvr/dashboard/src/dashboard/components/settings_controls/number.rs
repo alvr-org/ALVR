@@ -1,4 +1,4 @@
-use crate::dashboard::components::{serde_values_eq, settings_controls::f64_eq};
+use crate::dashboard::components::settings_controls::f64_eq;
 
 use super::{reset, NestingInfo};
 use alvr_packets::PathValuePair;

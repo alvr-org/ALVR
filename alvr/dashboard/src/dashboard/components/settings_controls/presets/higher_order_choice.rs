@@ -4,7 +4,6 @@ use super::schema::{HigherOrderChoiceSchema, PresetModifierOperation};
 use crate::dashboard::components::{
     self, serde_values_eq, NestingInfo, SettingControl, INDENTATION_STEP,
 };
-use alvr_common::info;
 use alvr_gui_common::theme::{
     log_colors::{INFO_LIGHT, WARNING_LIGHT},
     OK_GREEN,

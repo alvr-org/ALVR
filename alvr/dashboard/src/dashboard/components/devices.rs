@@ -5,7 +5,7 @@ use alvr_packets::ClientListAction;
 use alvr_session::{ClientConnectionConfig, SessionConfig};
 use alvr_sockets::WIRED_CLIENT_HOSTNAME;
 use eframe::{
-    egui::{self, Frame, Grid, Layout, ProgressBar, RichText, TextEdit, Ui, Vec2, Window},
+    egui::{self, Frame, Grid, Layout, ProgressBar, RichText, TextEdit, Ui, Window},
     emath::{Align, Align2},
     epaint::Color32,
 };

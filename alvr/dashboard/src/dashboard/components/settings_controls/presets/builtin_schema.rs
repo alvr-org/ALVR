@@ -256,7 +256,7 @@ pub fn game_audio_schema(_: Vec<String>) -> PresetSchemaNode {
         ]
         .into_iter()
         .collect(),
-        default_option_index: 0,
+        default_option_index: 1,
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -287,7 +287,7 @@ pub fn microphone_schema(_: Vec<String>) -> PresetSchemaNode {
         ]
         .into_iter()
         .collect(),
-        default_option_index: 0,
+        default_option_index: 1,
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -511,7 +511,7 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
         ]
         .into_iter()
         .collect(),
-        default_option_index: 2,
+        default_option_index: 0,
         gui: ChoiceControlType::ButtonGroup,
     })
 }

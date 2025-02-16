@@ -53,8 +53,10 @@ impl StatisticsTab {
                 self.draw_statistics_overview(ui, stats);
             });
         } else {
-            ui.heading("No statistics available. 
-            Start SteamVR and connect device to gather statistics");
+            ui.heading(
+                "No statistics available. 
+            Start SteamVR and connect device to gather statistics",
+            );
         }
 
         None

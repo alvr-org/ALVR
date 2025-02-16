@@ -60,23 +60,24 @@ impl DevicesTab {
             Frame::group(ui.style())
                 .fill(log_colors::WARNING_LIGHT)
                 .show(ui, |ui| {
-                    ui.vertical_centered(|ui| {
-                        ui.style_mut().spacing.item_spacing = Vec2::new(0.0, 1.0);
-                        ui.heading(
-                            RichText::new(
-                                "ALVR requires running SteamVR!
-Devices will not be discovered or connected.",
-                            )
-                            .color(Color32::BLACK),
-                        );
+                    Grid::new(0).num_columns(2).show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.add_space(10.0);
+                            ui.heading(
+                                RichText::new(
+                                    "ALVR requires running SteamVR! Devices will not be discovered or connected",
+                                )
+                                .color(Color32::BLACK)
+                                .size(16.0),
+                            );
+                        });
 
                         #[cfg(not(target_arch = "wasm32"))]
-                        if ui
-                            .button(RichText::new("Launch SteamVR").size(13.0))
-                            .clicked()
-                        {
-                            crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr();
-                        }
+                        ui.with_layout(Layout::right_to_left(eframe::emath::Align::Center), |ui| {
+                            if ui.button("Launch SteamVR").clicked() {
+                                crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr();
+                            }
+                        });
                     })
                 });
         }

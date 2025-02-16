@@ -379,7 +379,7 @@ fn connection_label(ui: &mut Ui, connection_state: &ConnectionState) {
         ConnectionState::Connecting => ui.colored_label(log_colors::WARNING_LIGHT, "Connecting"),
         ConnectionState::Connected => ui.colored_label(theme::OK_GREEN, "Connected"),
         ConnectionState::Streaming => ui.colored_label(theme::OK_GREEN, "Streaming"),
-        ConnectionState::Disconnecting { .. } => {
+        ConnectionState::Disconnecting => {
             ui.colored_label(log_colors::WARNING_LIGHT, "Disconnecting")
         }
     };

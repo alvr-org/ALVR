@@ -351,6 +351,23 @@ impl InteractionContext {
             xr_session.create_hand_tracker(xr::Hand::RIGHT)
         });
 
+        // Note: HTC facial tracking can only be created at startup before xrBeginSession. We don't
+        // know the reason.
+        let eye_tracker_htc = create_ext_object("FacialTrackerHTC (eyes)", Some(true), || {
+            FacialTrackerHTC::new(
+                xr_session.clone(),
+                xr_system,
+                xr::FacialTrackingTypeHTC::EYE_DEFAULT,
+            )
+        });
+        let lip_tracker_htc = create_ext_object("FacialTrackerHTC (lips)", Some(true), || {
+            FacialTrackerHTC::new(
+                xr_session.clone(),
+                xr_system,
+                xr::FacialTrackingTypeHTC::LIP_DEFAULT,
+            )
+        });
+
         Self {
             xr_session,
             xr_system,
@@ -384,8 +401,8 @@ impl InteractionContext {
                 combined_eyes_source,
                 eye_tracker_fb: None,
                 face_tracker_fb: None,
-                eye_tracker_htc: None,
-                lip_tracker_htc: None,
+                eye_tracker_htc,
+                lip_tracker_htc,
                 face_tracker_pico: None,
             },
             body_sources: BodySources {
@@ -406,8 +423,6 @@ impl InteractionContext {
         self.multimodal_hands_enabled = false;
         self.face_sources.eye_tracker_fb = None;
         self.face_sources.face_tracker_fb = None;
-        self.face_sources.eye_tracker_htc = None;
-        self.face_sources.lip_tracker_htc = None;
         self.face_sources.face_tracker_pico = None;
         self.body_sources.body_tracker_fb = None;
         self.body_sources.body_tracker_bd = None;
@@ -470,30 +485,6 @@ impl InteractionContext {
             "FaceTrackerPico",
             config.face_tracking.as_ref().map(|s| s.face_tracking_pico),
             || FaceTrackerPico::new(self.xr_session.clone(), true, true),
-        );
-
-        self.face_sources.eye_tracker_htc = create_ext_object(
-            "FacialTrackerHTC (eyes)",
-            config.face_tracking.as_ref().map(|s| s.eye_expressions_htc),
-            || {
-                FacialTrackerHTC::new(
-                    self.xr_session.clone(),
-                    self.xr_system,
-                    xr::FacialTrackingTypeHTC::EYE_DEFAULT,
-                )
-            },
-        );
-
-        self.face_sources.lip_tracker_htc = create_ext_object(
-            "FacialTrackerHTC (lips)",
-            config.face_tracking.as_ref().map(|s| s.lip_expressions_htc),
-            || {
-                FacialTrackerHTC::new(
-                    self.xr_session.clone(),
-                    self.xr_system,
-                    xr::FacialTrackingTypeHTC::LIP_DEFAULT,
-                )
-            },
         );
 
         self.body_sources.body_tracker_fb = create_ext_object(

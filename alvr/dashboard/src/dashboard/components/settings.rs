@@ -94,7 +94,8 @@ impl SettingsTab {
         self.framerate_preset
             .update_session_settings(&settings_json);
         self.encoder_preset.update_session_settings(&settings_json);
-        self.foveation_preset.update_session_settings(&settings_json);
+        self.foveation_preset
+            .update_session_settings(&settings_json);
         self.codec_preset.update_session_settings(&settings_json);
         if let Some(preset) = self.game_audio_preset.as_mut() {
             preset.update_session_settings(&settings_json)
@@ -177,13 +178,13 @@ impl SettingsTab {
 
                             path_value_pairs.extend(self.framerate_preset.ui(ui));
                             ui.end_row();
-                            
+
                             path_value_pairs.extend(self.encoder_preset.ui(ui));
                             ui.end_row();
-                            
+
                             path_value_pairs.extend(self.foveation_preset.ui(ui));
                             ui.end_row();
-                            
+
                             path_value_pairs.extend(self.codec_preset.ui(ui));
                             ui.end_row();
 

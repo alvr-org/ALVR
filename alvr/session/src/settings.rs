@@ -642,7 +642,7 @@ Blend: corresponds to un-premultiplied alpha"))]
     #[schema(flag = "steamvr-restart")]
     pub preferred_codec: CodecType,
 
-    #[schema(strings (
+    #[schema(strings(
         critical = "Disabling foveated encoding may result in signifficantly higher encode/decode times and stuttering. If you want to reduce amount of pixelation on edges, increase center region width and height"
     ))]
     #[schema(flag = "steamvr-restart")]

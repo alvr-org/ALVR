@@ -1,11 +1,11 @@
 use crate::dashboard::ServerRequest;
-use alvr_common::ConnectionState;
+use alvr_common::{ConnectionState};
 use alvr_gui_common::theme::{self, log_colors};
 use alvr_packets::ClientListAction;
 use alvr_session::{ClientConnectionConfig, SessionConfig};
 use alvr_sockets::WIRED_CLIENT_HOSTNAME;
 use eframe::{
-    egui::{self, Frame, Grid, Layout, ProgressBar, RichText, TextEdit, Ui, Window},
+    egui::{self, Frame, Grid, Layout, ProgressBar, RichText, TextEdit, Ui, Vec2, Window},
     emath::{Align, Align2},
     epaint::Color32,
 };
@@ -61,10 +61,11 @@ impl DevicesTab {
                 .fill(log_colors::WARNING_LIGHT)
                 .show(ui, |ui| {
                     ui.vertical_centered(|ui| {
+                        ui.style_mut().spacing.item_spacing = Vec2::new(0.0, 1.0);
                         ui.heading(
                             RichText::new(
-                                "ALVR requires running SteamVR! \
-                                Devices will not be discovered or connected.",
+                                "ALVR requires running SteamVR!
+Devices will not be discovered or connected.",
                             )
                             .color(Color32::BLACK),
                         );

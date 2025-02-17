@@ -1066,6 +1066,41 @@ pub fn get_fb_body_tracking_points(
     Vec::new()
 }
 
+pub fn get_bd_motion_trackers(
+    time: Duration,
+    body_tracker: &BodyTrackerBD,
+) -> Vec<(u64, DeviceMotion)> {
+    let xr_time = crate::to_xr_time(time);
+
+    if let Ok(trackers) = body_tracker.locate_motion_trackers(xr_time) {
+        let mut joints = Vec::<(u64, DeviceMotion)>::with_capacity(6);
+
+        let joints_ids = [
+            *BODY_RIGHT_ELBOW_ID,
+            *BODY_RIGHT_KNEE_ID,
+            *BODY_RIGHT_FOOT_ID,
+            *BODY_LEFT_ELBOW_ID,
+            *BODY_LEFT_KNEE_ID,
+            *BODY_LEFT_FOOT_ID,
+        ];
+
+        for (i, item) in trackers.iter().enumerate() {
+            joints.push((
+                joints_ids[i],
+                DeviceMotion {
+                    pose: crate::from_xr_pose(item.local_pose.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
+        }
+
+        return joints;
+    }
+
+    Vec::new()
+}
+
 pub fn get_bd_body_skeleton(
     reference_space: &xr::Space,
     time: xr::Time,

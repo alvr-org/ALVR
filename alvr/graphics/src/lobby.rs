@@ -409,8 +409,8 @@ impl LobbyRenderer {
         &self,
         view_params: [LobbyViewParams; 2],
         hand_data: [(Option<DeviceMotion>, Option<[Pose; 26]>); 2],
-        body_skeleton: Option<Vec<Option<Pose>>>,
-        body_tracking_type: Option<BodyTrackingType>,
+        additional_poses: Option<Vec<Pose>>,
+        body_skeleton_data: (Option<Vec<Option<Pose>>>, Option<BodyTrackingType>),
         render_background: bool,
         show_velocities: bool,
     ) {
@@ -534,7 +534,7 @@ impl LobbyRenderer {
                         motion.pose.position,
                     );
 
-                    // Draw crossair
+                    // Draw crosshair
                     let segment_rotations = [
                         Mat4::IDENTITY,
                         Mat4::from_rotation_y(FRAC_PI_2),
@@ -583,7 +583,38 @@ impl LobbyRenderer {
                 }
             }
 
-            let body_skeleton_bones = match body_tracking_type {
+            if let Some(poses) = &additional_poses {
+                for pose in poses {
+                    let hand_transform = Mat4::from_scale_rotation_translation(
+                        Vec3::ONE * 0.2,
+                        pose.orientation,
+                        pose.position,
+                    );
+
+                    // Draw crosshair
+                    let segment_rotations = [
+                        Mat4::IDENTITY,
+                        Mat4::from_rotation_y(FRAC_PI_2),
+                        Mat4::from_rotation_x(FRAC_PI_2),
+                    ];
+                    pass.set_push_constants(
+                        ShaderStages::VERTEX_FRAGMENT,
+                        COLOR_CONST_OFFSET,
+                        &[255, 255, 255, 255],
+                    );
+                    for rot in &segment_rotations {
+                        let transform = hand_transform
+                            * *rot
+                            * Mat4::from_scale(Vec3::ONE * 0.5)
+                            * Mat4::from_translation(Vec3::Z * 0.5);
+                        transform_draw(&mut pass, view_proj * transform, 2);
+                    }
+                }
+            }
+
+            let (body_skeleton, body_skeleton_type) = &body_skeleton_data;
+
+            let body_skeleton_bones = match body_skeleton_type {
                 Some(BodyTrackingType::Meta) => Some(BODY_SKELETON_BONES_FB.as_slice()),
                 Some(BodyTrackingType::Pico) => Some(BODY_SKELETON_BONES_BD.as_slice()),
                 _ => None,

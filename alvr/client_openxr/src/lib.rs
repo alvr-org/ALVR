@@ -6,6 +6,9 @@ mod lobby;
 mod passthrough;
 mod stream;
 
+use crate::extra_extensions::{
+    BD_MOTION_TRACKING_EXTENSION_NAME, PICO_CONFIGURATION_EXTENSION_NAME,
+};
 use crate::stream::ParsedStreamConfig;
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::settings_schema::Switch;
@@ -195,6 +198,8 @@ pub fn entry_point() {
                 META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,
                 META_DETACHED_CONTROLLERS_EXTENSION_NAME,
                 BD_BODY_TRACKING_EXTENSION_NAME,
+                BD_MOTION_TRACKING_EXTENSION_NAME,
+                PICO_CONFIGURATION_EXTENSION_NAME,
             ]
             .contains(&ext.as_str())
         })

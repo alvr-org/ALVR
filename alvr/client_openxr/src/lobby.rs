@@ -133,7 +133,7 @@ impl Lobby {
             &mut Pose::default(),
         );
 
-        let additional_poses = self
+        let additional_motions = self
             .interaction_ctx
             .read()
             .body_sources
@@ -142,7 +142,7 @@ impl Lobby {
             .map(|tracker| {
                 interaction::get_bd_motion_trackers(from_xr_time(xr_vsync_time), tracker)
             })
-            .map(|vec| vec.iter().map(|tuple| tuple.1.pose).collect());
+            .map(|vec| vec.iter().map(|(_, motion)| *motion).collect());
 
         let body_skeleton_fb = self
             .interaction_ctx
@@ -203,7 +203,7 @@ impl Lobby {
                 },
             ],
             [left_hand_data, right_hand_data],
-            additional_poses,
+            additional_motions,
             body_skeleton_data,
             false,
             cfg!(debug_assertions),

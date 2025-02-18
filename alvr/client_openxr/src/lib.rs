@@ -6,9 +6,6 @@ mod lobby;
 mod passthrough;
 mod stream;
 
-use crate::extra_extensions::{
-    BD_MOTION_TRACKING_EXTENSION_NAME, PICO_CONFIGURATION_EXTENSION_NAME,
-};
 use crate::stream::ParsedStreamConfig;
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::settings_schema::Switch;
@@ -23,9 +20,9 @@ use alvr_graphics::GraphicsContext;
 use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig};
 use alvr_system_info::Platform;
 use extra_extensions::{
-    BD_BODY_TRACKING_EXTENSION_NAME, META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
-    META_DETACHED_CONTROLLERS_EXTENSION_NAME,
-    META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,
+    BD_BODY_TRACKING_EXTENSION_NAME, BD_MOTION_TRACKING_EXTENSION_NAME,
+    META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME, META_DETACHED_CONTROLLERS_EXTENSION_NAME,
+    META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME, PICO_CONFIGURATION_EXTENSION_NAME,
 };
 use interaction::{InteractionContext, InteractionSourcesConfig};
 use lobby::Lobby;

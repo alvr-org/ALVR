@@ -1089,8 +1089,8 @@ pub fn get_bd_motion_trackers(
                 joints_ids[i],
                 DeviceMotion {
                     pose: crate::from_xr_pose(item.local_pose.pose),
-                    linear_velocity: Vec3::ZERO,
-                    angular_velocity: Vec3::ZERO,
+                    linear_velocity: crate::from_xr_vec3(item.local_pose.linear_velocity),
+                    angular_velocity: crate::from_xr_vec3(item.local_pose.angular_velocity),
                 },
             ))
         }

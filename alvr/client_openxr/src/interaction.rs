@@ -522,7 +522,7 @@ impl InteractionContext {
                 .map(|c| c.high_accuracy),
             || {
                 BodyTrackerBD::new(
-                    &self.xr_session,
+                    self.xr_session.clone(),
                     BodyJointSetBD::FULL_BODY_JOINTS,
                     &self.extra_extensions,
                     self.xr_system,
@@ -539,7 +539,7 @@ impl InteractionContext {
                     .map(|s| s.body_tracking_bd.enabled()),
                 || {
                     BodyTrackerBD::new(
-                        &self.xr_session,
+                        self.xr_session.clone(),
                         BodyJointSetBD::BODY_WITHOUT_ARM,
                         &self.extra_extensions,
                         self.xr_system,

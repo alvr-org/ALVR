@@ -1,6 +1,6 @@
 use crate::extra_extensions::get_instance_proc;
 use alvr_common::once_cell::sync::Lazy;
-use openxr::{self as xr, sys};
+use openxr::{self as xr, sys, AnyGraphics};
 use std::ffi::{c_char, c_void, CString};
 use std::ptr;
 
@@ -185,7 +185,7 @@ type GetMotionTrackerModeBD =
 
 pub struct BodyTrackerBD {
     handle: XrBodyTrackerBD,
-    instance: sys::Instance,
+    session: xr::Session<AnyGraphics>,
     destroy_body_tracker: DestroyBodyTrackerBD,
     locate_body_joints: LocateBodyJointsBD,
     get_body_tracking_state: GetBodyTrackingStateBD,
@@ -196,7 +196,7 @@ pub struct BodyTrackerBD {
 
 impl BodyTrackerBD {
     pub fn new<G>(
-        session: &xr::Session<G>,
+        session: xr::Session<G>,
         joint_set: BodyJointSetBD,
         extra_extensions: &[String],
         system: xr::SystemId,
@@ -210,23 +210,23 @@ impl BodyTrackerBD {
         }
 
         let create_body_tracker: CreateBodyTrackerBD =
-            get_instance_proc(session, "xrCreateBodyTrackerBD")?;
+            get_instance_proc(&session, "xrCreateBodyTrackerBD")?;
         let start_body_tracking_calib_app: StartBodyTrackingCalibAppBD =
-            get_instance_proc(session, "xrStartBodyTrackingCalibAppBD")?;
+            get_instance_proc(&session, "xrStartBodyTrackingCalibAppBD")?;
         let get_body_tracking_state: GetBodyTrackingStateBD =
-            get_instance_proc(session, "xrGetBodyTrackingStateBD")?;
-        let destroy_body_tracker = get_instance_proc(session, "xrDestroyBodyTrackerBD")?;
-        let locate_body_joints = get_instance_proc(session, "xrLocateBodyJointsBD")?;
+            get_instance_proc(&session, "xrGetBodyTrackingStateBD")?;
+        let destroy_body_tracker = get_instance_proc(&session, "xrDestroyBodyTrackerBD")?;
+        let locate_body_joints = get_instance_proc(&session, "xrLocateBodyJointsBD")?;
         let get_motion_tracker_connect_state =
-            get_instance_proc(session, "xrGetMotionTrackerConnectStateBD")?;
+            get_instance_proc(&session, "xrGetMotionTrackerConnectStateBD")?;
         let get_motion_tracker_locations =
-            get_instance_proc(session, "xrGetMotionTrackerLocationsBD")?;
-        let set_config: SetConfigPICO = get_instance_proc(session, "xrSetConfigPICO")?;
+            get_instance_proc(&session, "xrGetMotionTrackerLocationsBD")?;
+        let set_config: SetConfigPICO = get_instance_proc(&session, "xrSetConfigPICO")?;
         let get_motion_tracker_mode: GetMotionTrackerModeBD =
-            get_instance_proc(session, "xrGetMotionTrackerModeBD")?;
+            get_instance_proc(&session, "xrGetMotionTrackerModeBD")?;
 
         let props = super::get_props(
-            session,
+            &session,
             system,
             SystemBodyTrackingPropertiesBD {
                 ty: *TYPE_SYSTEM_BODY_TRACKING_PROPERTIES_BD,
@@ -282,7 +282,7 @@ impl BodyTrackerBD {
 
         Ok(Self {
             handle,
-            instance: session.instance().as_raw(),
+            session: session.into_any_graphics(),
             destroy_body_tracker,
             locate_body_joints,
             get_body_tracking_state,
@@ -301,7 +301,7 @@ impl BodyTrackerBD {
         unsafe {
             let mut tracker_mode = MotionTrackerModeBD::BODY_TRACKING;
             super::xr_res((self.get_motion_tracker_mode)(
-                self.instance,
+                self.session.instance().as_raw(),
                 &mut tracker_mode,
             ))?;
 
@@ -317,7 +317,7 @@ impl BodyTrackerBD {
 
         unsafe {
             super::xr_res((self.get_motion_tracker_connect_state)(
-                self.instance,
+                self.session.instance().as_raw(),
                 &mut connect_state,
             ))?;
 
@@ -342,7 +342,7 @@ impl BodyTrackerBD {
                 };
 
                 super::xr_res((self.get_motion_tracker_locations)(
-                    self.instance,
+                    self.session.instance().as_raw(),
                     time,
                     &connect_state.serials[i],
                     &mut location,
@@ -363,7 +363,7 @@ impl BodyTrackerBD {
         unsafe {
             let mut tracker_mode = MotionTrackerModeBD::BODY_TRACKING;
             super::xr_res((self.get_motion_tracker_mode)(
-                self.instance,
+                self.session.instance().as_raw(),
                 &mut tracker_mode,
             ))?;
 
@@ -377,7 +377,7 @@ impl BodyTrackerBD {
 
         unsafe {
             super::xr_res((self.get_body_tracking_state)(
-                self.instance,
+                self.session.instance().as_raw(),
                 &mut status_code,
                 &mut error_code,
             ))?;

@@ -35,7 +35,7 @@ impl PassthroughFB {
             ty: sys::PassthroughLayerCreateInfoFB::TYPE,
             next: ptr::null(),
             passthrough: handle,
-            flags: sys::PassthroughFlagsFB::EMPTY,
+            flags: sys::PassthroughFlagsFB::IS_RUNNING_AT_CREATION,
             purpose: sys::PassthroughLayerPurposeFB::RECONSTRUCTION,
         };
         unsafe {
@@ -54,8 +54,7 @@ impl PassthroughFB {
             layer_handle,
         };
 
-        // HACK: YVR runtime seems to ignore IS_RUNNING_AT_CREATION, so we do this
-        // instead for all headsets
+        // HACK: YVR runtime seems to ignore IS_RUNNING_AT_CREATION
         unsafe { super::xr_res((ext_fns.passthrough_start)(handle))? };
 
         Ok(Self {

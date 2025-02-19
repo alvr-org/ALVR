@@ -145,6 +145,7 @@ pub fn platform() -> Platform {
             ("HTC", "VIVE XR Series", _, _) => Platform::XRElite,
             ("HTC", _, _, _) => Platform::ViveUnknown,
             ("YVR", _, _, _) => Platform::Yvr,
+            ("Play For Dream", _, _, _) => Platform::Yvr,
             ("Lynx Mixed Reality", _, _, _) => Platform::Lynx,
             _ => Platform::AndroidUnknown,
         }

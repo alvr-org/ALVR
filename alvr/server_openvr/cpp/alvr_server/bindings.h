@@ -160,6 +160,7 @@ extern "C" void SetButton(unsigned long long buttonID, FfiButtonValue value);
 
 extern "C" void InitOpenvrClient();
 extern "C" void ShutdownOpenvrClient();
+extern "C" void ResetChaperoneToStage();
 extern "C" void SetChaperoneArea(float areaWidth, float areaHeight);
 
 extern "C" void CaptureFrame();

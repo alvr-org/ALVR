@@ -557,6 +557,8 @@ fn stream_input_loop(
                 now,
                 tracker,
             ));
+
+            device_motions.append(&mut interaction::get_bd_motion_trackers(now, tracker));
         }
 
         core_ctx.send_tracking(

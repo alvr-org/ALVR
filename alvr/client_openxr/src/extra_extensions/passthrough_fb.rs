@@ -54,6 +54,8 @@ impl PassthroughFB {
             layer_handle,
         };
 
+        unsafe { super::xr_res((ext_fns.passthrough_start)(handle))? };
+
         Ok(Self {
             handle,
             layer_handle,

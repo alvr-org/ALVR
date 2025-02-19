@@ -49,7 +49,7 @@ impl PassthroughFB {
         let layer = sys::CompositionLayerPassthroughFB {
             ty: sys::CompositionLayerPassthroughFB::TYPE,
             next: ptr::null(),
-            flags: xr::CompositionLayerFlags::EMPTY,
+            flags: xr::CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA,
             space: sys::Space::NULL,
             layer_handle,
         };

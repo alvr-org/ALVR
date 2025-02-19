@@ -1,12 +1,12 @@
 use crate::{
     extra_extensions::{
         self, BodyJointSetBD, BodyTrackerBD, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB,
-        FaceTrackerPico, FacialTrackerHTC, MultimodalMeta, BODY_JOINT_SET_FULL_BODY_META,
-        BODY_LEFT_ELBOW_BD, BODY_LEFT_FOOT_BD, BODY_LEFT_KNEE_BD, BODY_PELVIS_BD,
-        BODY_RIGHT_ELBOW_BD, BODY_RIGHT_FOOT_BD, BODY_RIGHT_KNEE_BD, BODY_SPINE3_BD,
-        FULL_BODY_JOINT_COUNT_META, FULL_BODY_JOINT_LEFT_FOOT_BALL_META,
-        FULL_BODY_JOINT_LEFT_LOWER_LEG_META, FULL_BODY_JOINT_RIGHT_FOOT_BALL_META,
-        FULL_BODY_JOINT_RIGHT_LOWER_LEG_META,
+        FaceTrackerPico, FacialTrackerHTC, MultimodalMeta, BODY_JOINT_LEFT_ELBOW_BD,
+        BODY_JOINT_LEFT_FOOT_BD, BODY_JOINT_LEFT_KNEE_BD, BODY_JOINT_PELVIS_BD,
+        BODY_JOINT_RIGHT_ELBOW_BD, BODY_JOINT_RIGHT_FOOT_BD, BODY_JOINT_RIGHT_KNEE_BD,
+        BODY_JOINT_SET_FULL_BODY_META, BODY_JOINT_SPINE3_BD, FULL_BODY_JOINT_COUNT_META,
+        FULL_BODY_JOINT_LEFT_FOOT_BALL_META, FULL_BODY_JOINT_LEFT_LOWER_LEG_META,
+        FULL_BODY_JOINT_RIGHT_FOOT_BALL_META, FULL_BODY_JOINT_RIGHT_LOWER_LEG_META,
     },
     Platform,
 };
@@ -523,7 +523,7 @@ impl InteractionContext {
             || {
                 BodyTrackerBD::new(
                     &self.xr_session,
-                    BodyJointSetBD::BODY_FULL_STAR,
+                    BodyJointSetBD::FULL_BODY_JOINTS,
                     &self.extra_extensions,
                     self.xr_system,
                     prompt_calibration_bd,
@@ -540,7 +540,7 @@ impl InteractionContext {
                 || {
                     BodyTrackerBD::new(
                         &self.xr_session,
-                        BodyJointSetBD::BODY_STAR_WITHOUT_ARM,
+                        BodyJointSetBD::BODY_WITHOUT_ARM,
                         &self.extra_extensions,
                         self.xr_system,
                         prompt_calibration_bd,
@@ -1143,7 +1143,7 @@ pub fn get_bd_body_tracking_points(
 
         let mut joints = Vec::<(u64, DeviceMotion)>::with_capacity(8);
 
-        if let Some(joint) = joint_locations.get(BODY_SPINE3_BD) {
+        if let Some(joint) = joint_locations.get(BODY_JOINT_SPINE3_BD) {
             if joint.location_flags.contains(valid_flags) {
                 joints.push((
                     *BODY_CHEST_ID,
@@ -1156,7 +1156,7 @@ pub fn get_bd_body_tracking_points(
             }
         }
 
-        if let Some(joint) = joint_locations.get(BODY_PELVIS_BD) {
+        if let Some(joint) = joint_locations.get(BODY_JOINT_PELVIS_BD) {
             if joint.location_flags.contains(valid_flags) {
                 joints.push((
                     *BODY_HIPS_ID,
@@ -1169,7 +1169,7 @@ pub fn get_bd_body_tracking_points(
             }
         }
 
-        if let Some(joint) = joint_locations.get(BODY_LEFT_ELBOW_BD) {
+        if let Some(joint) = joint_locations.get(BODY_JOINT_LEFT_ELBOW_BD) {
             if joint.location_flags.contains(valid_flags) {
                 joints.push((
                     *BODY_LEFT_ELBOW_ID,
@@ -1182,7 +1182,7 @@ pub fn get_bd_body_tracking_points(
             }
         }
 
-        if let Some(joint) = joint_locations.get(BODY_RIGHT_ELBOW_BD) {
+        if let Some(joint) = joint_locations.get(BODY_JOINT_RIGHT_ELBOW_BD) {
             if joint.location_flags.contains(valid_flags) {
                 joints.push((
                     *BODY_RIGHT_ELBOW_ID,
@@ -1195,7 +1195,7 @@ pub fn get_bd_body_tracking_points(
             }
         }
 
-        if let Some(joint) = joint_locations.get(BODY_LEFT_KNEE_BD) {
+        if let Some(joint) = joint_locations.get(BODY_JOINT_LEFT_KNEE_BD) {
             if joint.location_flags.contains(valid_flags) {
                 joints.push((
                     *BODY_LEFT_KNEE_ID,
@@ -1208,7 +1208,7 @@ pub fn get_bd_body_tracking_points(
             }
         }
 
-        if let Some(joint) = joint_locations.get(BODY_LEFT_FOOT_BD) {
+        if let Some(joint) = joint_locations.get(BODY_JOINT_LEFT_FOOT_BD) {
             if joint.location_flags.contains(valid_flags) {
                 joints.push((
                     *BODY_LEFT_FOOT_ID,
@@ -1221,7 +1221,7 @@ pub fn get_bd_body_tracking_points(
             }
         }
 
-        if let Some(joint) = joint_locations.get(BODY_RIGHT_KNEE_BD) {
+        if let Some(joint) = joint_locations.get(BODY_JOINT_RIGHT_KNEE_BD) {
             if joint.location_flags.contains(valid_flags) {
                 joints.push((
                     *BODY_RIGHT_KNEE_ID,
@@ -1234,7 +1234,7 @@ pub fn get_bd_body_tracking_points(
             }
         }
 
-        if let Some(joint) = joint_locations.get(BODY_RIGHT_FOOT_BD) {
+        if let Some(joint) = joint_locations.get(BODY_JOINT_RIGHT_FOOT_BD) {
             if joint.location_flags.contains(valid_flags) {
                 joints.push((
                     *BODY_RIGHT_FOOT_ID,

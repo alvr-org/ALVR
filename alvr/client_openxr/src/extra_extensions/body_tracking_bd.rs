@@ -17,15 +17,15 @@ static TYPE_BODY_JOINT_LOCATIONS_BD: Lazy<xr::StructureType> =
 static TYPE_SYSTEM_BODY_TRACKING_PROPERTIES_BD: Lazy<xr::StructureType> =
     Lazy::new(|| xr::StructureType::from_raw(1000385004));
 
-pub const BODY_PELVIS_BD: usize = 0;
-pub const BODY_LEFT_KNEE_BD: usize = 4;
-pub const BODY_RIGHT_KNEE_BD: usize = 5;
-pub const BODY_SPINE3_BD: usize = 9;
-pub const BODY_LEFT_FOOT_BD: usize = 10;
-pub const BODY_RIGHT_FOOT_BD: usize = 11;
-pub const BODY_LEFT_ELBOW_BD: usize = 18;
-pub const BODY_RIGHT_ELBOW_BD: usize = 19;
-pub const BODY_TRACKER_COUNT_BD: usize = 24;
+pub const BODY_JOINT_PELVIS_BD: usize = 0;
+pub const BODY_JOINT_LEFT_KNEE_BD: usize = 4;
+pub const BODY_JOINT_RIGHT_KNEE_BD: usize = 5;
+pub const BODY_JOINT_SPINE3_BD: usize = 9;
+pub const BODY_JOINT_LEFT_FOOT_BD: usize = 10;
+pub const BODY_JOINT_RIGHT_FOOT_BD: usize = 11;
+pub const BODY_JOINT_LEFT_ELBOW_BD: usize = 18;
+pub const BODY_JOINT_RIGHT_ELBOW_BD: usize = 19;
+pub const BODY_JOINT_COUNT_BD: usize = 24;
 
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -35,8 +35,8 @@ pub struct XrBodyTrackerBD(u64);
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct BodyJointSetBD(i32);
 impl BodyJointSetBD {
-    pub const BODY_STAR_WITHOUT_ARM: BodyJointSetBD = Self(1i32);
-    pub const BODY_FULL_STAR: BodyJointSetBD = Self(2i32);
+    pub const BODY_WITHOUT_ARM: BodyJointSetBD = Self(1i32);
+    pub const FULL_BODY_JOINTS: BodyJointSetBD = Self(2i32);
 }
 
 #[repr(transparent)]
@@ -65,7 +65,7 @@ impl CalibAppFlagBD {
 struct BodyTrackerCreateInfoBD {
     ty: xr::StructureType,
     next: *const c_void,
-    body_joint_set: BodyJointSetBD,
+    joint_set: BodyJointSetBD,
 }
 
 #[repr(C)]
@@ -87,7 +87,7 @@ pub struct BodyJointLocationBD {
 struct BodyJointLocationsBD {
     ty: xr::StructureType,
     next: *const c_void,
-    is_active: sys::Bool32,
+    all_joint_poses_tracked: sys::Bool32,
     joint_count: u32,
     joint_locations: *mut BodyJointLocationBD,
 }
@@ -197,7 +197,7 @@ pub struct BodyTrackerBD {
 impl BodyTrackerBD {
     pub fn new<G>(
         session: &xr::Session<G>,
-        body_joint_set: BodyJointSetBD,
+        joint_set: BodyJointSetBD,
         extra_extensions: &[String],
         system: xr::SystemId,
         prompt_calibration: bool,
@@ -243,7 +243,7 @@ impl BodyTrackerBD {
         let info = BodyTrackerCreateInfoBD {
             ty: *TYPE_BODY_TRACKER_CREATE_INFO_BD,
             next: ptr::null(),
-            body_joint_set,
+            joint_set,
         };
         unsafe {
             //Floor height tracking origin
@@ -394,13 +394,13 @@ impl BodyTrackerBD {
             time,
         };
 
-        let joint_count = BODY_TRACKER_COUNT_BD;
+        let joint_count = BODY_JOINT_COUNT_BD;
         let mut locations = Vec::with_capacity(joint_count);
 
         let mut location_info = BodyJointLocationsBD {
             ty: *TYPE_BODY_JOINT_LOCATIONS_BD,
             next: ptr::null(),
-            is_active: sys::FALSE,
+            all_joint_poses_tracked: sys::FALSE,
             joint_count: joint_count as u32,
             joint_locations: locations.as_mut_ptr() as _,
         };
@@ -412,7 +412,7 @@ impl BodyTrackerBD {
                 &mut location_info,
             ))?;
 
-            Ok(if location_info.is_active.into() {
+            Ok(if location_info.all_joint_poses_tracked.into() {
                 locations.set_len(joint_count);
 
                 Some(locations)

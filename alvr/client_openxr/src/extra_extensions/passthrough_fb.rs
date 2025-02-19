@@ -54,6 +54,7 @@ impl PassthroughFB {
             layer_handle,
         };
 
+        // HACK: YVR runtime seems to ignore IS_RUNNING_AT_CREATION
         unsafe { super::xr_res((ext_fns.passthrough_start)(handle))? };
 
         Ok(Self {

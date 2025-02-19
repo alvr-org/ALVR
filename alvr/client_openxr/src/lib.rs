@@ -253,7 +253,9 @@ pub fn entry_point() {
         };
 
         if exts.fb_color_space {
-            xr_session.set_color_space(xr::ColorSpaceFB::REC709).unwrap();
+            xr_session
+                .set_color_space(xr::ColorSpaceFB::REC709)
+                .unwrap();
         }
 
         let capabilities = ClientCapabilities {

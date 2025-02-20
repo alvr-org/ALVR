@@ -10,8 +10,7 @@ pub struct PassthroughFB {
 }
 
 impl PassthroughFB {
-    pub fn new(session: &xr::Session<xr::OpenGlEs>) -> xr::Result<Self> {
-        let platform = alvr_system_info::platform();
+    pub fn new(session: &xr::Session<xr::OpenGlEs>, platform: Platform) -> xr::Result<Self> {
         let ext_fns = session
             .instance()
             .exts()
@@ -56,8 +55,8 @@ impl PassthroughFB {
             layer_handle,
         };
 
-        // HACK: YVR runtime seems to ignore IS_RUNNING_AT_CREATION
-        if platform == Platform::Yvr {
+        // HACK: YVR runtime seems to ignore IS_RUNNING_AT_CREATION on versions <= 3.0.1
+        if platform.is_yvr() {
             unsafe { super::xr_res((ext_fns.passthrough_start)(handle))? };
         }
 

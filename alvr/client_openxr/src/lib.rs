@@ -145,7 +145,7 @@ pub fn entry_point() {
         | Platform::Pico4
         | Platform::Pico4Pro
         | Platform::Pico4Enterprise => "_pico_old",
-        Platform::Yvr => "_yvr",
+        Platform::Yvr | Platform::PfdMr => "_yvr",
         Platform::Lynx => "_lynx",
         _ => "",
     };
@@ -326,7 +326,7 @@ pub fn entry_point() {
 
                             core_context.resume();
 
-                            passthrough_layer = PassthroughLayer::new(&xr_session).ok();
+                            passthrough_layer = PassthroughLayer::new(&xr_session, platform).ok();
 
                             session_running = true;
                         }
@@ -405,7 +405,7 @@ pub fn entry_point() {
                     }
                     ClientCoreEvent::StreamingStopped => {
                         if passthrough_layer.is_none() {
-                            passthrough_layer = PassthroughLayer::new(&xr_session).ok();
+                            passthrough_layer = PassthroughLayer::new(&xr_session, platform).ok();
                         }
 
                         interaction_context
@@ -442,7 +442,7 @@ pub fn entry_point() {
                     }
                     ClientCoreEvent::RealTimeConfig(config) => {
                         if config.passthrough.is_some() && passthrough_layer.is_none() {
-                            passthrough_layer = PassthroughLayer::new(&xr_session).ok();
+                            passthrough_layer = PassthroughLayer::new(&xr_session, platform).ok();
                         } else if config.passthrough.is_none() && passthrough_layer.is_some() {
                             passthrough_layer = None;
                         }

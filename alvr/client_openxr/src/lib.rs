@@ -145,7 +145,7 @@ pub fn entry_point() {
         | Platform::Pico4
         | Platform::Pico4Pro
         | Platform::Pico4Enterprise => "_pico_old",
-        Platform::Yvr | Platform::PfdMr => "_yvr",
+        p if p.is_yvr() => "_yvr",
         Platform::Lynx => "_lynx",
         _ => "",
     };

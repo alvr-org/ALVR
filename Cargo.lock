@@ -456,6 +456,7 @@ name = "alvr_sockets"
 version = "21.0.0-dev01"
 dependencies = [
  "alvr_common",
+ "alvr_packets",
  "alvr_session",
  "bincode",
  "profiling",

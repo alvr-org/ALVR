@@ -271,16 +271,11 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                         }
                     }
                 }
-                ServerCoreEvent::ShutdownPending => {
+                ServerCoreEvent::ShutdownPending | ServerCoreEvent::RestartPending => {
+                    // Dropping the context
                     SERVER_CORE_CONTEXT.write().take();
 
-                    unsafe { ShutdownSteamvr() };
-                }
-                ServerCoreEvent::RestartPending => {
-                    if let Some(context) = SERVER_CORE_CONTEXT.write().take() {
-                        context.restart();
-                    }
-
+                    // todo: send different HUD message for shutdown or restart
                     unsafe { ShutdownSteamvr() };
                 }
             }

@@ -21,8 +21,7 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
-    warn, ConnectionState, DeviceMotion, Fov, LifecycleState, Pose, RelaxedAtomic,
-    DEVICE_ID_TO_PATH,
+    warn, ConnectionState, DeviceMotion, Fov, LifecycleState, Pose, DEVICE_ID_TO_PATH,
 };
 use alvr_events::{EventType, HapticsEvent};
 use alvr_filesystem as afs;
@@ -175,7 +174,6 @@ pub fn registered_button_set() -> HashSet<u64> {
 
 pub struct ServerCoreContext {
     lifecycle_state: Arc<RwLock<LifecycleState>>,
-    is_restarting: RelaxedAtomic,
     connection_context: Arc<ConnectionContext>,
     connection_thread: Arc<RwLock<Option<JoinHandle<()>>>>,
     webserver_runtime: Option<Runtime>,
@@ -236,9 +234,7 @@ impl ServerCoreContext {
         (
             Self {
                 lifecycle_state: Arc::new(RwLock::new(LifecycleState::StartingUp)),
-                is_restarting: RelaxedAtomic::new(false),
                 connection_context,
-
                 connection_thread: Arc::new(RwLock::new(None)),
                 webserver_runtime: Some(webserver_runtime),
             },
@@ -508,14 +504,6 @@ impl ServerCoreContext {
             .as_mut()
             .map(|stats| stats.duration_until_next_vsync())
     }
-
-    pub fn restart(self) {
-        dbg_server_core!("restart");
-
-        self.is_restarting.set(true);
-
-        // drop is called here for self
-    }
 }
 
 impl Drop for ServerCoreContext {
@@ -559,7 +547,7 @@ impl Drop for ServerCoreContext {
         {
             let mut session_manager_lock = SESSION_MANAGER.write();
             session_manager_lock.session_mut().openvr_config =
-                connection::contruct_openvr_config(session_manager_lock.session());
+                connection::contruct_openvr_config(session_manager_lock.session(), None, None);
         }
 
         dbg_server_core!("Restore drivers registration backup");

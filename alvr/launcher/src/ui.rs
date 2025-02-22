@@ -106,7 +106,7 @@ impl Launcher {
                         ui.label("Channel");
 
                         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-                            ComboBox::from_id_source("channel")
+                            ComboBox::from_id_salt("channel")
                                 .selected_text(channel)
                                 .show_ui(ui, |ui| {
                                     ui.selectable_value(
@@ -133,7 +133,7 @@ impl Launcher {
 
                         ui.label("Version");
                         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-                            ComboBox::from_id_source("version")
+                            ComboBox::from_id_salt("version")
                                 .selected_text(version_str)
                                 .show_ui(ui, |ui| {
                                     for ver in versions {

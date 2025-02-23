@@ -3,9 +3,15 @@ const DIV12: f32 = 0.0773993808;// 1.0 / 12.92
 const DIV1: f32 = 0.94786729857; // 1.0 / 1.055
 const THRESHOLD: f32 = 0.04045;
 const GAMMA: vec3f = vec3f(2.4);
+const OperationMode: i32 =  1;
 
 override ENABLE_SRGB_CORRECTION: bool;
 override ENCODING_GAMMA: f32;
+
+override ENABLE_UPSCALING: bool = false;
+override UseEdgeDirection: bool = true;
+override EdgeThreshold: f32 = 4.0/255.0;
+override EdgeSharpness: f32 = 2.0;
 
 override ENABLE_FFE: bool = false;
 
@@ -115,7 +121,12 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         }
     }
 
-    var color = textureSample(stream_texture, stream_sampler, corrected_uv).rgb;
+    var color: vec3f;
+    if ENABLE_UPSCALING {
+        color = sgsr(vec4f(corrected_uv.x, corrected_uv.y, 0.0, 0.0)).xyz;
+    } else {
+        color = textureSample(stream_texture, stream_sampler, corrected_uv).rgb;
+    }
 
     if ENABLE_SRGB_CORRECTION {
         let condition = vec3f(f32(color.r < THRESHOLD), f32(color.g < THRESHOLD), f32(color.b < THRESHOLD));
@@ -182,4 +193,147 @@ fn rgb_to_hsv(rgb: vec3f) -> vec3f {
     }
 
     return vec3f(h, s, v);
+}
+
+//============================================================================================================
+//
+//
+//                  Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+//                              SPDX-License-Identifier: BSD-3-Clause
+//
+//============================================================================================================
+
+fn fastLanczos2(x: f32) -> f32
+{
+    var wA: f32 = x - 4.0;
+    let wB: f32 = x * wA - wA;
+    wA *= wA;
+    return wB * wA;
+}
+
+fn weightY(dx: f32, dy: f32, c: f32, data: vec3f) -> vec2f {
+    let stdA: f32 = data.x;
+    let dir: vec2f = data.yz;
+    let edgeDis: f32 = ((dx * dir.y) + (dy * dir.x));
+    let x: f32 = (((dx * dx) + (dy * dy)) + ((edgeDis * edgeDis) * ((clamp(((c * c) * stdA), 0.0, 1.0) * 0.7) + -1.0)));
+    let w: f32 = fastLanczos2(x);
+    return vec2f(w, w * c);
+}
+
+fn weightYned(dx: f32, dy: f32, c: f32, data: f32) -> vec2f {
+    let stdA: f32 = data;
+    let x: f32 = ((dx * dx) + (dy * dy)) * 0.55 + clamp(abs(c) * stdA, 0.0, 1.0);
+    let w: f32 = fastLanczos2(x);
+    return vec2f(w, w * c);
+}
+
+fn edgeDirection(left: vec4f, right: vec4f) -> vec2f
+{
+    var dir: vec2f;
+    let RxLz: f32 = (right.x + (-left.z));
+    let RwLy: f32 = (right.w + (-left.y));
+    var delta: vec2f;
+    delta.x = (RxLz + RwLy);
+    delta.y = (RxLz + (-RwLy));
+    let lengthInv: f32 = inverseSqrt((delta.x * delta.x + 3.075740e-05) + (delta.y * delta.y));
+    dir.x = (delta.x * lengthInv);
+    dir.y = (delta.y * lengthInv);
+    return dir;
+}
+
+fn sgsr(in_TEXCOORD0: vec4f) -> vec4f {
+    let dim = vec2f(textureDimensions(stream_texture));
+    let viewport_info = vec4f(1.0f/dim.x, 1.0f/dim.y, dim.x, dim.y);
+    var color: vec4f;
+    let texSample = textureSampleLevel(stream_texture, stream_sampler, in_TEXCOORD0.xy, 0.0);
+    color.x = texSample.x;
+    color.y = texSample.y;
+    color.z = texSample.z;
+    if OperationMode != 1 {
+        color.w = texSample.w;
+    }
+
+    //var xCenter: f32 = abs(in_TEXCOORD0.x + -0.5);
+    //var yCenter: f32 = abs(in_TEXCOORD0.y + -0.5);
+
+    //todo: config the SR region based on needs
+    //if ( OperationMode!=4 && xCenter*xCenter+yCenter*yCenter<=0.4 * 0.4)
+    if OperationMode != 4 {
+        let imgCoord: vec2f = (in_TEXCOORD0.xy * viewport_info.zw) + vec2f(-0.5, 0.5);
+        let imgCoordPixel: vec2f = floor(imgCoord);
+        var coord: vec2f = (imgCoordPixel * viewport_info.xy);
+        let pl: vec2f = (imgCoord + (-imgCoordPixel));
+        var left: vec4f = textureGather(OperationMode, stream_texture, stream_sampler, coord);
+
+        let edgeVote: f32 = abs(left.z - left.y) + abs(color[OperationMode] - left.y) + abs(color[OperationMode] - left.z);
+        if edgeVote > EdgeThreshold {
+            coord.x += viewport_info.x;
+
+            var right: vec4f = textureGather(OperationMode, stream_texture, stream_sampler, coord + vec2f(viewport_info.x, 0.0));
+            var upDown: vec4f;
+            let texGatherA = textureGather(OperationMode, stream_texture, stream_sampler, coord + vec2f(0.0, -viewport_info.y));
+            upDown.x = texGatherA.w;
+            upDown.y = texGatherA.z;
+            let texGatherB = textureGather(OperationMode, stream_texture, stream_sampler, coord + vec2f(0.0, viewport_info.y));
+            upDown.z = texGatherB.y;
+            upDown.w = texGatherB.x;
+
+            let mean: f32 = (left.y + left.z + right.x + right.w) * 0.25;
+            left = left - vec4(mean);
+            right = right - vec4(mean);
+            upDown = upDown - vec4(mean);
+            color.w = color[OperationMode] - mean;
+
+            let sum: f32 = (((((abs(left.x) + abs(left.y)) + abs(left.z)) + abs(left.w)) + (((abs(right.x) + abs(right.y)) + abs(right.z)) + abs(right.w))) + (((abs(upDown.x) + abs(upDown.y)) + abs(upDown.z)) + abs(upDown.w)));
+            let sumMean: f32 = 1.014185e+01 / sum;
+            let stdA: f32 = (sumMean * sumMean);
+
+            var aWY: vec2f;
+            if UseEdgeDirection {
+                let data = vec3f(stdA, edgeDirection(left, right));
+                aWY = weightY(pl.x, pl.y + 1.0, upDown.x, data);
+                aWY += weightY(pl.x - 1.0, pl.y + 1.0, upDown.y, data);
+                aWY += weightY(pl.x - 1.0, pl.y - 2.0, upDown.z, data);
+                aWY += weightY(pl.x, pl.y - 2.0, upDown.w, data);
+                aWY += weightY(pl.x + 1.0, pl.y - 1.0, left.x, data);
+                aWY += weightY(pl.x, pl.y - 1.0, left.y, data);
+                aWY += weightY(pl.x, pl.y, left.z, data);
+                aWY += weightY(pl.x + 1.0, pl.y, left.w, data);
+                aWY += weightY(pl.x - 1.0, pl.y - 1.0, right.x, data);
+                aWY += weightY(pl.x - 2.0, pl.y - 1.0, right.y, data);
+                aWY += weightY(pl.x - 2.0, pl.y, right.z, data);
+                aWY += weightY(pl.x - 1.0, pl.y, right.w, data);
+            } else {
+                let data: f32 = stdA;
+                aWY = weightYned(pl.x, pl.y + 1.0, upDown.x, data);
+                aWY += weightYned(pl.x - 1.0, pl.y + 1.0, upDown.y, data);
+                aWY += weightYned(pl.x - 1.0, pl.y - 2.0, upDown.z, data);
+                aWY += weightYned(pl.x, pl.y - 2.0, upDown.w, data);
+                aWY += weightYned(pl.x + 1.0, pl.y - 1.0, left.x, data);
+                aWY += weightYned(pl.x, pl.y - 1.0, left.y, data);
+                aWY += weightYned(pl.x, pl.y, left.z, data);
+                aWY += weightYned(pl.x + 1.0, pl.y, left.w, data);
+                aWY += weightYned(pl.x - 1.0, pl.y - 1.0, right.x, data);
+                aWY += weightYned(pl.x - 2.0, pl.y - 1.0, right.y, data);
+                aWY += weightYned(pl.x - 2.0, pl.y, right.z, data);
+                aWY += weightYned(pl.x - 1.0, pl.y, right.w, data);
+            }
+
+            let finalY: f32 = aWY.y / aWY.x;
+            let maxY: f32 = max(max(left.y, left.z), max(right.x, right.w));
+            let minY: f32 = min(min(left.y, left.z), min(right.x, right.w));
+            var deltaY: f32 = clamp(EdgeSharpness * finalY, minY, maxY) - color.w;
+
+            //smooth high contrast input
+            deltaY = clamp(deltaY, -23.0 / 255.0, 23.0 / 255.0);
+
+            color.x = clamp((color.x + deltaY), 0.0, 1.0);
+            color.y = clamp((color.y + deltaY), 0.0, 1.0);
+            color.z = clamp((color.z + deltaY), 0.0, 1.0);
+        }
+    }
+
+    color.w = 1.0; //assume alpha channel is not used
+
+    return color;
 }

@@ -3,7 +3,7 @@ use alvr_common::{
     glam::{self, Mat4, Quat, UVec2, Vec3, Vec4},
     Fov,
 };
-use alvr_session::{FoveatedEncodingConfig, PassthroughMode};
+use alvr_session::{FoveatedEncodingConfig, PassthroughMode, UpscalingConfig};
 use std::{collections::HashMap, ffi::c_void, iter, mem, rc::Rc};
 use wgpu::{
     hal::{api, gles},
@@ -65,7 +65,7 @@ impl StreamRenderer {
         enable_srgb_correction: bool,
         fix_limited_range: bool,
         encoding_gamma: f32,
-        enable_sgsr: bool,
+        upscaling: Option<UpscalingConfig>,
     ) -> Self {
         let device = &context.device;
 
@@ -105,7 +105,7 @@ impl StreamRenderer {
             ("ENCODING_GAMMA".into(), encoding_gamma.into()),
         ]);
 
-        let staging_resolution = if let Some(foveated_encoding) = foveated_encoding {
+        let mut staging_resolution = if let Some(foveated_encoding) = foveated_encoding {
             let (staging_resolution, ffe_constants) =
                 foveated_encoding_shader_constants(view_resolution, foveated_encoding);
             constants.extend(ffe_constants);
@@ -114,6 +114,17 @@ impl StreamRenderer {
         } else {
             view_resolution
         };
+
+        if let Some(upscaling) = upscaling {
+            constants.extend([
+                ("ENABLE_UPSCALING".into(), true.into()),
+                ("UseEdgeDirection".into(), upscaling.edge_direction.into()),
+                ("EdgeThreshold".into(), upscaling.edge_threshold.into()),
+                ("EdgeSharpness".into(), upscaling.edge_sharpness.into()),
+            ]);
+            staging_resolution.x = (staging_resolution.x as f32 * upscaling.upscale_factor) as u32;
+            staging_resolution.y = (staging_resolution.y as f32 * upscaling.upscale_factor) as u32;
+        }
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: None,
@@ -214,7 +225,6 @@ impl StreamRenderer {
             staging_textures_gl.try_into().unwrap(),
             staging_resolution,
             fix_limited_range,
-            enable_sgsr,
         );
 
         Self {

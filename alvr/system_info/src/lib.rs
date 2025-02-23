@@ -33,6 +33,7 @@ pub enum Platform {
     XRElite,
     ViveUnknown,
     Yvr,
+    PlayForDreamMR,
     Lynx,
     AndroidUnknown,
     AppleHeadset,
@@ -74,6 +75,10 @@ impl Platform {
             Platform::Focus3 | Platform::FocusVision | Platform::XRElite | Platform::ViveUnknown
         )
     }
+
+    pub const fn is_yvr(&self) -> bool {
+        matches!(self, Platform::Yvr | Platform::PlayForDreamMR)
+    }
 }
 
 impl Display for Platform {
@@ -97,6 +102,7 @@ impl Display for Platform {
             Platform::XRElite => "VIVE XR Elite",
             Platform::ViveUnknown => "HTC VIVE (unknown)",
             Platform::Yvr => "YVR",
+            Platform::PlayForDreamMR => "Play For Dream MR",
             Platform::Lynx => "Lynx Headset",
             Platform::AndroidUnknown => "Android (unknown)",
             Platform::AppleHeadset => "Apple Headset",
@@ -145,6 +151,7 @@ pub fn platform() -> Platform {
             ("HTC", "VIVE XR Series", _, _) => Platform::XRElite,
             ("HTC", _, _, _) => Platform::ViveUnknown,
             ("YVR", _, _, _) => Platform::Yvr,
+            ("Play For Dream", _, _, _) => Platform::PlayForDreamMR,
             ("Lynx Mixed Reality", _, _, _) => Platform::Lynx,
             _ => Platform::AndroidUnknown,
         }

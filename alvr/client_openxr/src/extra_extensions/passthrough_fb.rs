@@ -1,3 +1,4 @@
+use alvr_system_info::Platform;
 use openxr::{self as xr, raw, sys};
 use std::ptr;
 
@@ -9,7 +10,7 @@ pub struct PassthroughFB {
 }
 
 impl PassthroughFB {
-    pub fn new(session: &xr::Session<xr::OpenGlEs>) -> xr::Result<Self> {
+    pub fn new(session: &xr::Session<xr::OpenGlEs>, platform: Platform) -> xr::Result<Self> {
         let ext_fns = session
             .instance()
             .exts()
@@ -49,10 +50,15 @@ impl PassthroughFB {
         let layer = sys::CompositionLayerPassthroughFB {
             ty: sys::CompositionLayerPassthroughFB::TYPE,
             next: ptr::null(),
-            flags: xr::CompositionLayerFlags::EMPTY,
+            flags: xr::CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA,
             space: sys::Space::NULL,
             layer_handle,
         };
+
+        // HACK: YVR runtime seems to ignore IS_RUNNING_AT_CREATION on versions <= 3.0.1
+        if platform.is_yvr() {
+            unsafe { super::xr_res((ext_fns.passthrough_start)(handle))? };
+        }
 
         Ok(Self {
             handle,

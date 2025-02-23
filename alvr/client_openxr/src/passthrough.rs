@@ -1,5 +1,6 @@
 use crate::extra_extensions::{PassthroughFB, PassthroughHTC};
 use alvr_common::anyhow::{bail, Result};
+use alvr_system_info::Platform;
 use openxr::{
     self as xr,
     sys::{CompositionLayerPassthroughFB, CompositionLayerPassthroughHTC},
@@ -13,13 +14,13 @@ pub struct PassthroughLayer<'a> {
 }
 
 impl PassthroughLayer<'_> {
-    pub fn new(session: &xr::Session<xr::OpenGlEs>) -> Result<Self> {
+    pub fn new(session: &xr::Session<xr::OpenGlEs>, platform: Platform) -> Result<Self> {
         let mut handle_fb = None;
         let mut handle_htc = None;
 
         let exts = session.instance().exts();
         if exts.fb_passthrough.is_some() {
-            handle_fb = Some(PassthroughFB::new(session)?);
+            handle_fb = Some(PassthroughFB::new(session, platform)?);
         } else if exts.htc_passthrough.is_some() {
             handle_htc = Some(PassthroughHTC::new(session)?);
         } else {

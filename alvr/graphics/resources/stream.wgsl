@@ -3,13 +3,13 @@ const DIV12: f32 = 0.0773993808;// 1.0 / 12.92
 const DIV1: f32 = 0.94786729857; // 1.0 / 1.055
 const THRESHOLD: f32 = 0.04045;
 const GAMMA: vec3f = vec3f(2.4);
-const OperationMode: i32 =  1;
+const UPSCALE_OPERATION_MODE: i32 =  1;
 
 override ENABLE_SRGB_CORRECTION: bool;
 override ENCODING_GAMMA: f32;
 
-override ORIGINAL_TEXTURE_WIDTH: f32;
-override ORIGINAL_TEXTURE_HEIGHT: f32;
+override ORIGINAL_TEXTURE_WIDTH: f32 = 1920.0;
+override ORIGINAL_TEXTURE_HEIGHT: f32 = 1920.0;
 
 override ENABLE_UPSCALING: bool = false;
 override UPSCALE_USE_EDGE_DIRECTION: bool = true;
@@ -260,7 +260,7 @@ fn sgsr(in_TEXCOORD0: vec4f) -> vec4f {
     color.x = texSample.x;
     color.y = texSample.y;
     color.z = texSample.z;
-    if OperationMode != 1 {
+    if UPSCALE_OPERATION_MODE != 1 {
         color.w = texSample.w;
     }
 
@@ -268,24 +268,24 @@ fn sgsr(in_TEXCOORD0: vec4f) -> vec4f {
     //var yCenter: f32 = abs(in_TEXCOORD0.y + -0.5);
 
     //todo: config the SR region based on needs
-    //if ( OperationMode!=4 && xCenter*xCenter+yCenter*yCenter<=0.4 * 0.4)
-    if OperationMode != 4 {
+    //if ( UPSCALE_OPERATION_MODE!=4 && xCenter*xCenter+yCenter*yCenter<=0.4 * 0.4)
+    if UPSCALE_OPERATION_MODE != 4 {
         let imgCoord: vec2f = (in_TEXCOORD0.xy * viewport_info.zw) + vec2f(-0.5, 0.5);
         let imgCoordPixel: vec2f = floor(imgCoord);
         var coord: vec2f = (imgCoordPixel * viewport_info.xy);
         let pl: vec2f = (imgCoord + (-imgCoordPixel));
-        var left: vec4f = textureGather(OperationMode, stream_texture, stream_sampler, coord);
+        var left: vec4f = textureGather(UPSCALE_OPERATION_MODE, stream_texture, stream_sampler, coord);
 
-        let edgeVote: f32 = abs(left.z - left.y) + abs(color[OperationMode] - left.y) + abs(color[OperationMode] - left.z);
+        let edgeVote: f32 = abs(left.z - left.y) + abs(color[UPSCALE_OPERATION_MODE] - left.y) + abs(color[UPSCALE_OPERATION_MODE] - left.z);
         if edgeVote > UPSCALE_EDGE_THRESHOLD {
             coord.x += viewport_info.x;
 
-            var right: vec4f = textureGather(OperationMode, stream_texture, stream_sampler, coord + vec2f(viewport_info.x, 0.0));
+            var right: vec4f = textureGather(UPSCALE_OPERATION_MODE, stream_texture, stream_sampler, coord + vec2f(viewport_info.x, 0.0));
             var upDown: vec4f;
-            let texGatherA = textureGather(OperationMode, stream_texture, stream_sampler, coord + vec2f(0.0, -viewport_info.y));
+            let texGatherA = textureGather(UPSCALE_OPERATION_MODE, stream_texture, stream_sampler, coord + vec2f(0.0, -viewport_info.y));
             upDown.x = texGatherA.w;
             upDown.y = texGatherA.z;
-            let texGatherB = textureGather(OperationMode, stream_texture, stream_sampler, coord + vec2f(0.0, viewport_info.y));
+            let texGatherB = textureGather(UPSCALE_OPERATION_MODE, stream_texture, stream_sampler, coord + vec2f(0.0, viewport_info.y));
             upDown.z = texGatherB.y;
             upDown.w = texGatherB.x;
 
@@ -293,7 +293,7 @@ fn sgsr(in_TEXCOORD0: vec4f) -> vec4f {
             left = left - vec4(mean);
             right = right - vec4(mean);
             upDown = upDown - vec4(mean);
-            color.w = color[OperationMode] - mean;
+            color.w = color[UPSCALE_OPERATION_MODE] - mean;
 
             let sum: f32 = (((((abs(left.x) + abs(left.y)) + abs(left.z)) + abs(left.w)) + (((abs(right.x) + abs(right.y)) + abs(right.z)) + abs(right.w))) + (((abs(upDown.x) + abs(upDown.y)) + abs(upDown.z)) + abs(upDown.w)));
             let sumMean: f32 = 1.014185e+01 / sum;

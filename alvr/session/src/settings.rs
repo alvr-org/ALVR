@@ -627,6 +627,17 @@ pub enum PassthroughMode {
     ChromaKey(#[schema(flag = "real-time")] ChromaKeyConfig),
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct UpscalingConfig {
+    pub edge_direction: bool,
+    #[schema(gui(slider(min = 1.0, max = 16.0, step = 1.0)))]
+    pub edge_threshold: f32,
+    #[schema(gui(slider(min = 1.0, max = 2.0, step = 0.01)))]
+    pub edge_sharpness: f32,
+    #[schema(gui(slider(min = 1.0, max = 2.0, step = 0.01)))]
+    pub upscale_factor: f32,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct VideoConfig {
     #[schema(strings(help = r"Augmented reality: corresponds to premultiplied alpha
@@ -700,11 +711,8 @@ Blend: corresponds to un-premultiplied alpha"))]
 
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,
 
-    #[schema(strings(
-        display_name = "SGSR upscaling",
-        help = "Snapdragon Game Super Resolution client-side upscaling"
-    ))]
-    pub sgsr_upscaling: bool,
+    #[schema(strings(help = "Snapdragon Game Super Resolution client-side upscaling"))]
+    pub upscaling: Switch<UpscalingConfig>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1518,7 +1526,15 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                 },
             },
-            sgsr_upscaling: false,
+            upscaling: SwitchDefault {
+                enabled: false,
+                content: UpscalingConfigDefault {
+                    edge_direction: true,
+                    edge_threshold: 4.0,
+                    edge_sharpness: 2.0,
+                    upscale_factor: 1.4,
+                },
+            },
             adapter_index: 0,
             transcoding_view_resolution: view_resolution.clone(),
             emulated_headset_view_resolution: view_resolution,

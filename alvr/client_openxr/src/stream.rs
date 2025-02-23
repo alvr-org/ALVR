@@ -17,7 +17,7 @@ use alvr_graphics::{GraphicsContext, StreamRenderer, StreamViewParams};
 use alvr_packets::{FaceData, RealTimeConfig, StreamConfig, ViewParams};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, CodecType, FoveatedEncodingConfig,
-    MediacodecProperty, PassthroughMode,
+    MediacodecProperty, PassthroughMode, UpscalingConfig,
 };
 use alvr_system_info::Platform;
 use openxr as xr;
@@ -40,7 +40,7 @@ pub struct ParsedStreamConfig {
     pub passthrough: Option<PassthroughMode>,
     pub foveated_encoding_config: Option<FoveatedEncodingConfig>,
     pub clientside_foveation_config: Option<ClientsideFoveationConfig>,
-    pub sgsr_upscaling: bool,
+    pub upscaling: Option<UpscalingConfig>,
     pub force_software_decoder: bool,
     pub max_buffering_frames: f32,
     pub buffering_history_weight: f32,
@@ -68,7 +68,7 @@ impl ParsedStreamConfig {
                 .clientside_foveation
                 .as_option()
                 .cloned(),
-            sgsr_upscaling: config.settings.video.sgsr_upscaling,
+            upscaling: config.settings.video.upscaling.as_option().cloned(),
             force_software_decoder: config.settings.video.force_software_decoder,
             max_buffering_frames: config.settings.video.max_buffering_frames,
             buffering_history_weight: config.settings.video.buffering_history_weight,
@@ -187,7 +187,7 @@ impl StreamContext {
             platform != Platform::Lynx && !((platform.is_pico()) && config.enable_hdr),
             config.use_full_range && !config.enable_hdr, // TODO: figure out why HDR doesn't need the limited range hackfix in staging?
             config.encoding_gamma,
-            config.sgsr_upscaling,
+            config.upscaling.clone(),
         );
 
         core_ctx.send_active_interaction_profile(

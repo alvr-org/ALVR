@@ -65,6 +65,7 @@ impl StreamRenderer {
         enable_srgb_correction: bool,
         fix_limited_range: bool,
         encoding_gamma: f32,
+        enable_sgsr: bool,
     ) -> Self {
         let device = &context.device;
 
@@ -213,6 +214,7 @@ impl StreamRenderer {
             staging_textures_gl.try_into().unwrap(),
             staging_resolution,
             fix_limited_range,
+            enable_sgsr,
         );
 
         Self {

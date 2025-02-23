@@ -24,8 +24,8 @@ const TRANSFORM_SIZE: u32 = mem::size_of::<Mat4>() as u32;
 
 const TRANSFORM_CONST_OFFSET: u32 = 0;
 const VIEW_INDEX_CONST_OFFSET: u32 = TRANSFORM_SIZE;
-const PASSTHROUGH_MODE: u32 = VIEW_INDEX_CONST_OFFSET + U32_SIZE;
-const ALPHA_CONST_OFFSET: u32 = PASSTHROUGH_MODE + U32_SIZE;
+const PASSTHROUGH_MODE_OFFSET: u32 = VIEW_INDEX_CONST_OFFSET + U32_SIZE;
+const ALPHA_CONST_OFFSET: u32 = PASSTHROUGH_MODE_OFFSET + U32_SIZE;
 const CK_CHANNEL0_CONST_OFFSET: u32 = ALPHA_CONST_OFFSET + FLOAT_SIZE + ALIGN4_SIZE;
 const CK_CHANNEL1_CONST_OFFSET: u32 = CK_CHANNEL0_CONST_OFFSET + VEC4_SIZE;
 const CK_CHANNEL2_CONST_OFFSET: u32 = CK_CHANNEL1_CONST_OFFSET + VEC4_SIZE;
@@ -337,14 +337,14 @@ fn set_passthrough_push_constants(render_pass: &mut RenderPass, config: Option<&
 
     match config {
         None => {
-            set_u32(render_pass, PASSTHROUGH_MODE, 0);
+            set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 0);
         }
         Some(PassthroughMode::Blend { threshold, .. }) => {
-            set_u32(render_pass, PASSTHROUGH_MODE, 1);
+            set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 1);
             set_float(render_pass, ALPHA_CONST_OFFSET, 1. - threshold);
         }
         Some(PassthroughMode::RgbChromaKey(config)) => {
-            set_u32(render_pass, PASSTHROUGH_MODE, 2);
+            set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 2);
 
             let norm = |v| v as f32 / 255.;
 
@@ -365,7 +365,7 @@ fn set_passthrough_push_constants(render_pass: &mut RenderPass, config: Option<&
             set_vec4(render_pass, CK_CHANNEL2_CONST_OFFSET, blue + range_vec);
         }
         Some(PassthroughMode::HsvChromaKey(config)) => {
-            set_u32(render_pass, PASSTHROUGH_MODE, 3);
+            set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 3);
 
             set_vec4(
                 render_pass,

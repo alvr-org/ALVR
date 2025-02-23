@@ -134,7 +134,7 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
     var alpha = 1.0;
     if pc.passthrough_mode == 1 { // Blend mode
         alpha = pc.blend_alpha;
-    } if pc.passthrough_mode >= 2 { // Chroma key
+    } else { // Chroma key
         var current = color;
         if pc.passthrough_mode == 3 { // HSV mode
             current = rgb_to_hsv(color);

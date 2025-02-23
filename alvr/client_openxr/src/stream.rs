@@ -91,6 +91,7 @@ pub struct StreamContext {
     config: ParsedStreamConfig,
     renderer: StreamRenderer,
     decoder: Option<(VideoDecoderConfig, VideoDecoderSource)>,
+    target_resolution: UVec2,
 }
 
 impl StreamContext {
@@ -146,20 +147,28 @@ impl StreamContext {
             None
         };
 
+        let target_resolution = if let Some(upscaling) = config.upscaling.clone() {
+            UVec2::new(
+                (config.view_resolution.x as f32 * upscaling.upscale_factor) as u32,
+                (config.view_resolution.y as f32 * upscaling.upscale_factor) as u32,
+            )
+        } else {
+            config.view_resolution
+        };
         let format = graphics::swapchain_format(&gfx_ctx, &xr_session, config.enable_hdr);
 
         let swapchains = [
             graphics::create_swapchain(
                 &xr_session,
                 &gfx_ctx,
-                config.view_resolution,
+                target_resolution,
                 format,
                 foveation_profile.as_ref(),
             ),
             graphics::create_swapchain(
                 &xr_session,
                 &gfx_ctx,
-                config.view_resolution,
+                target_resolution,
                 format,
                 foveation_profile.as_ref(),
             ),
@@ -167,6 +176,7 @@ impl StreamContext {
 
         let renderer = StreamRenderer::new(
             gfx_ctx,
+            // pass config.view_resolution as streamrenderer needs to perform own operations with upscaler
             config.view_resolution,
             [
                 swapchains[0]
@@ -223,6 +233,7 @@ impl StreamContext {
             config,
             renderer,
             decoder: None,
+            target_resolution,
         };
 
         this.update_reference_space();
@@ -393,8 +404,8 @@ impl StreamContext {
         let rect = xr::Rect2Di {
             offset: xr::Offset2Di { x: 0, y: 0 },
             extent: xr::Extent2Di {
-                width: self.config.view_resolution.x as _,
-                height: self.config.view_resolution.y as _,
+                width: self.target_resolution.x as _,
+                height: self.target_resolution.y as _,
             },
         };
 

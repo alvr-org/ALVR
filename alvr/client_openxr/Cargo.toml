@@ -144,10 +144,16 @@ value = "HIGH"
 name = "com.oculus.handtracking.version"
 value = "V2.0"
 
-# Vive Focus 3 entries
+# Vive entries
+[[package.metadata.android.uses_feature]]
+name = "wave.feature.eyetracking"
+required = false
 [[package.metadata.android.uses_feature]]
 name = "wave.feature.handtracking"
 required = true
+[[package.metadata.android.uses_feature]]
+name = "wave.feature.lipexpression"
+required = false
 [[package.metadata.android.application.meta_data]]
 name = "minWaveSDKVersion"
 value = "1"

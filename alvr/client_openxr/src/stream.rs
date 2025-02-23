@@ -557,7 +557,9 @@ fn stream_input_loop(
                 now,
                 tracker,
             ));
+        }
 
+        if let Some(tracker) = &int_ctx.body_sources.motion_tracker_bd {
             device_motions.append(&mut interaction::get_bd_motion_trackers(now, tracker));
         }
 

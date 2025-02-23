@@ -137,7 +137,7 @@ impl Lobby {
             .interaction_ctx
             .read()
             .body_sources
-            .body_tracker_bd
+            .motion_tracker_bd
             .as_ref()
             .map(|tracker| {
                 interaction::get_bd_motion_trackers(from_xr_time(xr_vsync_time), tracker)

@@ -295,6 +295,7 @@ pub fn entry_point() {
             body_tracking_bd: Switch::Enabled(BodyTrackingBDConfig {
                 high_accuracy: true,
                 prompt_calibration_on_start: false,
+                object_tracking: true,
             }),
         };
         let lobby_interaction_sources = InteractionSourcesConfig {

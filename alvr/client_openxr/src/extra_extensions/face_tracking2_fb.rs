@@ -2,12 +2,14 @@ use openxr::{self as xr, raw, sys};
 use std::ptr;
 
 pub struct FaceTracker2FB {
+    // Keeping a reference to the session to ensure that the tracker handle remains valid
+    _session: xr::Session<xr::AnyGraphics>,
     handle: sys::FaceTracker2FB,
     ext_fns: raw::FaceTracking2FB,
 }
 
 impl FaceTracker2FB {
-    pub fn new<G>(session: &xr::Session<G>, visual: bool, audio: bool) -> xr::Result<Self> {
+    pub fn new<G>(session: xr::Session<G>, visual: bool, audio: bool) -> xr::Result<Self> {
         let ext_fns = session
             .instance()
             .exts()
@@ -38,7 +40,11 @@ impl FaceTracker2FB {
             ))?
         };
 
-        Ok(Self { handle, ext_fns })
+        Ok(Self {
+            _session: session.into_any_graphics(),
+            handle,
+            ext_fns,
+        })
     }
 
     pub fn get_face_expression_weights(&self, time: xr::Time) -> xr::Result<Option<Vec<f32>>> {

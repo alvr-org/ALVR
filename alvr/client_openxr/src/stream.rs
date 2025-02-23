@@ -538,8 +538,8 @@ fn stream_input_loop(
             fb_face_expression: interaction::get_fb_face_expression(&int_ctx.face_sources, now).or(
                 interaction::get_pico_face_expression(&int_ctx.face_sources, now),
             ),
-            htc_eye_expression: interaction::get_htc_eye_expression(&int_ctx.face_sources),
-            htc_lip_expression: interaction::get_htc_lip_expression(&int_ctx.face_sources),
+            htc_eye_expression: interaction::get_htc_eye_expression(&int_ctx.face_sources, now),
+            htc_lip_expression: interaction::get_htc_lip_expression(&int_ctx.face_sources, now),
         };
 
         if let Some((tracker, joint_count)) = &int_ctx.body_sources.body_tracker_fb {

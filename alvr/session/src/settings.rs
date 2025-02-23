@@ -729,7 +729,10 @@ pub struct VideoConfig {
 
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,
 
-    #[schema(strings(display_name = "SGSR Upscaling"))]
+    #[schema(strings(
+        display_name = "SGSR upscaling",
+        help = "Snapdragon Game Super Resolution client-side upscaling"
+    ))]
     pub sgsr_upscaling: bool,
 }
 

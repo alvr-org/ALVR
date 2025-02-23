@@ -1,9 +1,6 @@
 #version 300 es
 #extension GL_OES_EGL_image_external_essl3 : enable
 
-// alvr normal frag shader code
-uniform samplerExternalOES tex;
-
 // Convert from limited colors to full
 const float LIMITED_MIN = 16.0 / 255.0;
 const float LIMITED_MAX = 235.0 / 255.0;
@@ -52,17 +49,14 @@ layout(set = 0, binding = 0) uniform UniformBlock
 {
     highp vec4 ViewportInfo[1];
 };
-layout(set = 0, binding = 1) uniform mediump sampler2D ps0;
+layout(set = 0, binding = 1) uniform mediump samplerExternalOES ps0;
 #else
 uniform highp vec4 ViewportInfo[1];
-uniform mediump sampler2D ps0;
+uniform mediump samplerExternalOES ps0;
 #endif
 
-in vec2 in_uv;
-
-highp vec4 in_TEXCOORD0 = vec4(in_uv.x, in_uv.y, 0.0, 0.0);
-
-out vec4 out_Target0;
+in vec2 uv;
+out vec4 out_color;
 
 float fastLanczos2(float x)
 {
@@ -110,6 +104,7 @@ vec2 edgeDirection(vec4 left, vec4 right)
 void main()
 {
     vec4 color;
+    highp vec4 in_TEXCOORD0 = vec4(uv.x, uv.y, 0.0, 0.0);
     if (OperationMode == 1)
         color.xyz = textureLod(ps0, in_TEXCOORD0.xy, 0.0).xyz;
     else
@@ -185,10 +180,10 @@ void main()
     color.w = 1.0; //assume alpha channel is not used
 
     // fix color range now
-    /*
-        #ifdef FIX_LIMITED_RANGE
-        color = LIMITED_MIN + ((LIMITED_MAX - LIMITED_MIN) * color);
-        #endif
-        */
-    out_Target0.xyzw = color;
+
+    #ifdef FIX_LIMITED_RANGE
+    color = LIMITED_MIN + ((LIMITED_MAX - LIMITED_MIN) * color);
+    #endif
+
+    out_color.xyzw = color;
 }

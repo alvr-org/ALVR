@@ -3,7 +3,13 @@
 use crate::parse::{self, Device, ForwardedPorts};
 use alvr_filesystem::Layout;
 use anyhow::{anyhow, Context, Result};
-use std::{collections::HashSet, io::Cursor, path::PathBuf, process::Command, time::Duration};
+use std::{
+    collections::HashSet,
+    io::{Cursor, Read},
+    path::PathBuf,
+    process::Command,
+    time::Duration,
+};
 use zip::ZipArchive;
 
 #[cfg(windows)]
@@ -35,18 +41,19 @@ fn get_command(adb_path: &str, args: &[&str]) -> Command {
 }
 
 pub fn download(url: &str, progress_callback: impl Fn(usize, Option<usize>)) -> Result<Vec<u8>> {
-    let agent = ureq::builder()
-        .timeout_connect(REQUEST_TIMEOUT)
-        .timeout_read(REQUEST_TIMEOUT)
-        .build();
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        .timeout_global(Some(REQUEST_TIMEOUT))
+        .build()
+        .into();
     let response = agent.get(url).call()?;
-    let maybe_expected_size: Option<usize> = response
-        .header("Content-Length")
-        .and_then(|l| l.parse().ok());
+    let maybe_expected_size = response
+        .headers()
+        .get("Content-Length")
+        .and_then(|v| v.to_str().ok()?.parse::<usize>().ok());
     let mut result = maybe_expected_size
         .map(Vec::with_capacity)
         .unwrap_or_default();
-    let mut reader = response.into_reader();
+    let mut reader = response.into_body().into_reader();
     let mut buffer = [0; 65535];
     loop {
         let read_count: usize = reader.read(&mut buffer)?;

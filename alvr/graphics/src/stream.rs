@@ -58,7 +58,7 @@ impl StreamRenderer {
     #[expect(clippy::too_many_arguments)]
     pub fn new(
         context: Rc<GraphicsContext>,
-        view_resolution: UVec2,
+        base_view_resolution: UVec2,
         swapchain_textures: [Vec<u32>; 2],
         target_format: u32,
         foveated_encoding: Option<FoveatedEncodingConfig>,
@@ -105,27 +105,16 @@ impl StreamRenderer {
             ("ENCODING_GAMMA".into(), encoding_gamma.into()),
         ]);
 
+        let mut view_resolution = base_view_resolution;
         let mut staging_resolution = if let Some(foveated_encoding) = foveated_encoding {
             let (staging_resolution, ffe_constants) =
-                foveated_encoding_shader_constants(view_resolution, foveated_encoding);
+                foveated_encoding_shader_constants(base_view_resolution, foveated_encoding);
             constants.extend(ffe_constants);
 
             staging_resolution
         } else {
-            view_resolution
+            base_view_resolution
         };
-
-        // original texture size for upscaler
-        constants.extend([
-            (
-                "ORIGINAL_TEXTURE_WIDTH".into(),
-                (staging_resolution.x as f32).into(),
-            ),
-            (
-                "ORIGINAL_TEXTURE_HEIGHT".into(),
-                (staging_resolution.y as f32).into(),
-            ),
-        ]);
 
         if let Some(upscaling) = upscaling {
             constants.extend([
@@ -142,10 +131,18 @@ impl StreamRenderer {
                     "UPSCALE_EDGE_SHARPNESS".into(),
                     upscaling.edge_sharpness.into(),
                 ),
+                (
+                    "ORIGINAL_TEXTURE_WIDTH".into(),
+                    upscaling.upscale_factor.into(),
+                ),
             ]);
+
+            // scale up both view and shading res after running foveated rendering stuff
+            view_resolution.x = (view_resolution.x as f32 * upscaling.upscale_factor) as u32;
+            view_resolution.y = (view_resolution.y as f32 * upscaling.upscale_factor) as u32;
             staging_resolution.x = (staging_resolution.x as f32 * upscaling.upscale_factor) as u32;
             staging_resolution.y = (staging_resolution.y as f32 * upscaling.upscale_factor) as u32;
-        }
+        };
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: None,

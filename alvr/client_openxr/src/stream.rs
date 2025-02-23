@@ -89,9 +89,9 @@ pub struct StreamContext {
     input_thread: Option<JoinHandle<()>>,
     input_thread_running: Arc<RelaxedAtomic>,
     config: ParsedStreamConfig,
+    target_resolution: UVec2,
     renderer: StreamRenderer,
     decoder: Option<(VideoDecoderConfig, VideoDecoderSource)>,
-    target_resolution: UVec2,
 }
 
 impl StreamContext {
@@ -231,9 +231,9 @@ impl StreamContext {
             input_thread: None,
             input_thread_running,
             config,
+            target_resolution,
             renderer,
             decoder: None,
-            target_resolution,
         };
 
         this.update_reference_space();

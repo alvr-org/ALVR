@@ -3,18 +3,16 @@ const DIV12: f32 = 0.0773993808;// 1.0 / 12.92
 const DIV1: f32 = 0.94786729857; // 1.0 / 1.055
 const THRESHOLD: f32 = 0.04045;
 const GAMMA: vec3f = vec3f(2.4);
-const UPSCALE_OPERATION_MODE: i32 =  1;
+const UPSCALE_OPERATION_MODE: i32 = 1;
 
 override ENABLE_SRGB_CORRECTION: bool;
 override ENCODING_GAMMA: f32;
-
-override ORIGINAL_TEXTURE_WIDTH: f32 = 1920.0;
-override ORIGINAL_TEXTURE_HEIGHT: f32 = 1920.0;
 
 override ENABLE_UPSCALING: bool = false;
 override UPSCALE_USE_EDGE_DIRECTION: bool = true;
 override UPSCALE_EDGE_THRESHOLD: f32 = 4.0/255.0;
 override UPSCALE_EDGE_SHARPNESS: f32 = 2.0;
+override UPSCALE_FACTOR: f32 = 1.4;
 
 override ENABLE_FFE: bool = false;
 
@@ -246,14 +244,8 @@ fn edgeDirection(left: vec4f, right: vec4f) -> vec2f
 
 fn sgsr(in_TEXCOORD0: vec4f) -> vec4f {
     // https://github.com/SnapdragonStudios/snapdragon-gsr/issues/2
-    let viewport_info = vec4f(
-        1.0/ORIGINAL_TEXTURE_WIDTH,
-        1.0/ORIGINAL_TEXTURE_HEIGHT,
-        ORIGINAL_TEXTURE_WIDTH,
-        ORIGINAL_TEXTURE_HEIGHT
-    );
-    //let dim = vec2f(textureDimensions(stream_texture));
-    //let viewport_info = vec4f(1.0f/dim.x, 1.0f/dim.y, dim.x, dim.y);
+    let dim = vec2f(textureDimensions(stream_texture));
+    let viewport_info = vec4f(UPSCALE_FACTOR/dim.x, UPSCALE_FACTOR/dim.y, dim.x/UPSCALE_FACTOR, dim.y/UPSCALE_FACTOR);
 
     var color: vec4f;
     let texSample = textureSampleLevel(stream_texture, stream_sampler, in_TEXCOORD0.xy, 0.0);

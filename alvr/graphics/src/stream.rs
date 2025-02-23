@@ -117,10 +117,13 @@ impl StreamRenderer {
 
         // original texture size for upscaler
         constants.extend([
-            ("ORIGINAL_TEXTURE_WIDTH".into(), staging_resolution.x.into()),
+            (
+                "ORIGINAL_TEXTURE_WIDTH".into(),
+                (staging_resolution.x as f32).into(),
+            ),
             (
                 "ORIGINAL_TEXTURE_HEIGHT".into(),
-                staging_resolution.y.into(),
+                (staging_resolution.y as f32).into(),
             ),
         ]);
 

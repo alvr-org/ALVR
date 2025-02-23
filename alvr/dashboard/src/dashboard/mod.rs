@@ -197,9 +197,9 @@ impl eframe::App for Dashboard {
             SidePanel::left("side_panel")
                 .resizable(false)
                 .frame(
-                    Frame::none()
+                    Frame::new()
                         .fill(theme::LIGHTER_BG)
-                        .inner_margin(Margin::same(7.0))
+                        .inner_margin(Margin::same(7))
                         .stroke(Stroke::new(1.0, theme::SEPARATOR_BG)),
                 )
                 .exact_width(160.0)
@@ -253,11 +253,7 @@ impl eframe::App for Dashboard {
                 });
 
             CentralPanel::default()
-                .frame(
-                    Frame::none()
-                        .inner_margin(Margin::same(20.0))
-                        .fill(theme::BG),
-                )
+                .frame(Frame::new().inner_margin(Margin::same(20)).fill(theme::BG))
                 .show(context, |ui| {
                     ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
                         ui.heading(RichText::new(self.tab_labels[&self.selected_tab]).size(25.0));

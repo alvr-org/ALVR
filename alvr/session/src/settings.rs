@@ -699,6 +699,9 @@ Blend: corresponds to un-premultiplied alpha"))]
     pub adapter_index: u32,
 
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,
+
+    #[schema(strings(display_name = "SGSR Upscaling"))]
+    pub sgsr_upscaling: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1505,6 +1508,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                 },
             },
+            sgsr_upscaling: false,
             adapter_index: 0,
             transcoding_view_resolution: view_resolution.clone(),
             emulated_headset_view_resolution: view_resolution,

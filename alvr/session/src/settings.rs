@@ -772,7 +772,14 @@ pub struct AudioConfig {
     #[schema(strings(display_name = "Headset speaker"))]
     pub game_audio: Switch<GameAudioConfig>,
 
-    #[schema(strings(display_name = "Headset microphone"))]
+    #[cfg_attr(
+        windows,
+        schema(strings(
+            display_name = "Headset microphone",
+            notice = r"To be able to use the microphone on Windows, you need to install VB-Cable or VoiceMeeter"
+        ))
+    )]
+    #[cfg_attr(not(windows), schema(strings(display_name = "Headset microphone")))]
     pub microphone: Switch<MicrophoneConfig>,
 }
 

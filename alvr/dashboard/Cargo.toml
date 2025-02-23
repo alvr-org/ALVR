@@ -31,7 +31,7 @@ statrs = "0.17"
 alvr_server_io.workspace = true
 sysinfo = "0.31"
 tungstenite = "0.24"
-ureq = { version = "2", features = ["json"] }
+ureq = { version = "3", features = ["json"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 wgpu = "24"

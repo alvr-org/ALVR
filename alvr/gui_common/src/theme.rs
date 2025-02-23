@@ -1,4 +1,4 @@
-use egui::{self, Color32, Context, Rounding, Stroke, TextStyle, Visuals};
+use egui::{self, Color32, Context, CornerRadius, Stroke, TextStyle, Visuals};
 
 pub const ACCENT: Color32 = Color32::from_rgb(0, 76, 176);
 pub const BG: Color32 = Color32::from_rgb(30, 30, 30);
@@ -56,19 +56,19 @@ pub fn set_theme(ctx: &Context) {
 
     let mut visuals = Visuals::dark();
 
-    let rounding = Rounding::same(10.0);
+    let corner_radius = CornerRadius::same(10);
 
     visuals.widgets.active.bg_fill = ACCENT;
     visuals.widgets.active.fg_stroke = Stroke::new(1.0, FG);
-    visuals.widgets.active.rounding = rounding;
+    visuals.widgets.active.corner_radius = corner_radius;
 
     visuals.widgets.inactive.fg_stroke = Stroke::new(1.0, FG);
-    visuals.widgets.inactive.rounding = rounding;
+    visuals.widgets.inactive.corner_radius = corner_radius;
 
-    visuals.widgets.hovered.rounding = rounding;
+    visuals.widgets.hovered.corner_radius = corner_radius;
 
     visuals.widgets.open.bg_fill = SEPARATOR_BG;
-    visuals.widgets.open.rounding = rounding;
+    visuals.widgets.open.corner_radius = corner_radius;
 
     visuals.selection.bg_fill = ACCENT;
     visuals.selection.stroke = Stroke::new(1.0, FG);
@@ -77,7 +77,7 @@ pub fn set_theme(ctx: &Context) {
     visuals.faint_bg_color = DARKER_BG;
     visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, FG);
     visuals.widgets.noninteractive.bg_stroke = Stroke::new(0.5, SEPARATOR_BG);
-    visuals.widgets.noninteractive.rounding = rounding;
+    visuals.widgets.noninteractive.corner_radius = corner_radius;
 
     ctx.set_visuals(visuals);
 }

@@ -115,12 +115,30 @@ impl StreamRenderer {
             view_resolution
         };
 
+        // original texture size for upscaler
+        constants.extend([
+            ("ORIGINAL_TEXTURE_WIDTH".into(), staging_resolution.x.into()),
+            (
+                "ORIGINAL_TEXTURE_HEIGHT".into(),
+                staging_resolution.y.into(),
+            ),
+        ]);
+
         if let Some(upscaling) = upscaling {
             constants.extend([
                 ("ENABLE_UPSCALING".into(), true.into()),
-                ("UseEdgeDirection".into(), upscaling.edge_direction.into()),
-                ("EdgeThreshold".into(), upscaling.edge_threshold.into()),
-                ("EdgeSharpness".into(), upscaling.edge_sharpness.into()),
+                (
+                    "UPSCALE_USE_EDGE_DIRECTION".into(),
+                    upscaling.edge_direction.into(),
+                ),
+                (
+                    "UPSCALE_EDGE_THRESHOLD".into(),
+                    (upscaling.edge_threshold / 255.0).into(),
+                ),
+                (
+                    "UPSCALE_EDGE_SHARPNESS".into(),
+                    upscaling.edge_sharpness.into(),
+                ),
             ]);
             staging_resolution.x = (staging_resolution.x as f32 * upscaling.upscale_factor) as u32;
             staging_resolution.y = (staging_resolution.y as f32 * upscaling.upscale_factor) as u32;

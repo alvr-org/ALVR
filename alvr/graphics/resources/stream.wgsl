@@ -8,10 +8,13 @@ const OperationMode: i32 =  1;
 override ENABLE_SRGB_CORRECTION: bool;
 override ENCODING_GAMMA: f32;
 
+override ORIGINAL_TEXTURE_WIDTH: u32;
+override ORIGINAL_TEXTURE_HEIGHT: u32;
+
 override ENABLE_UPSCALING: bool = false;
-override UseEdgeDirection: bool = true;
-override EdgeThreshold: f32 = 4.0/255.0;
-override EdgeSharpness: f32 = 2.0;
+override UPSCALE_USE_EDGE_DIRECTION: bool = true;
+override UPSCALE_EDGE_THRESHOLD: f32 = 4.0/255.0;
+override UPSCALE_EDGE_SHARPNESS: f32 = 2.0;
 
 override ENABLE_FFE: bool = false;
 
@@ -242,8 +245,14 @@ fn edgeDirection(left: vec4f, right: vec4f) -> vec2f
 }
 
 fn sgsr(in_TEXCOORD0: vec4f) -> vec4f {
-    let dim = vec2f(textureDimensions(stream_texture));
-    let viewport_info = vec4f(1.0f/dim.x, 1.0f/dim.y, dim.x, dim.y);
+    // https://github.com/SnapdragonStudios/snapdragon-gsr/issues/2
+    let viewport_info = vec4f(
+        1.0/f32(ORIGINAL_TEXTURE_WIDTH),
+        1.0/f32(ORIGINAL_TEXTURE_HEIGHT),
+        f32(ORIGINAL_TEXTURE_WIDTH),
+        f32(ORIGINAL_TEXTURE_HEIGHT),
+    );
+
     var color: vec4f;
     let texSample = textureSampleLevel(stream_texture, stream_sampler, in_TEXCOORD0.xy, 0.0);
     color.x = texSample.x;
@@ -266,7 +275,7 @@ fn sgsr(in_TEXCOORD0: vec4f) -> vec4f {
         var left: vec4f = textureGather(OperationMode, stream_texture, stream_sampler, coord);
 
         let edgeVote: f32 = abs(left.z - left.y) + abs(color[OperationMode] - left.y) + abs(color[OperationMode] - left.z);
-        if edgeVote > EdgeThreshold {
+        if edgeVote > UPSCALE_EDGE_THRESHOLD {
             coord.x += viewport_info.x;
 
             var right: vec4f = textureGather(OperationMode, stream_texture, stream_sampler, coord + vec2f(viewport_info.x, 0.0));
@@ -289,7 +298,7 @@ fn sgsr(in_TEXCOORD0: vec4f) -> vec4f {
             let stdA: f32 = (sumMean * sumMean);
 
             var aWY: vec2f;
-            if UseEdgeDirection {
+            if UPSCALE_USE_EDGE_DIRECTION {
                 let data = vec3f(stdA, edgeDirection(left, right));
                 aWY = weightY(pl.x, pl.y + 1.0, upDown.x, data);
                 aWY += weightY(pl.x - 1.0, pl.y + 1.0, upDown.y, data);
@@ -322,7 +331,7 @@ fn sgsr(in_TEXCOORD0: vec4f) -> vec4f {
             let finalY: f32 = aWY.y / aWY.x;
             let maxY: f32 = max(max(left.y, left.z), max(right.x, right.w));
             let minY: f32 = min(min(left.y, left.z), min(right.x, right.w));
-            var deltaY: f32 = clamp(EdgeSharpness * finalY, minY, maxY) - color.w;
+            var deltaY: f32 = clamp(UPSCALE_EDGE_SHARPNESS * finalY, minY, maxY) - color.w;
 
             //smooth high contrast input
             deltaY = clamp(deltaY, -23.0 / 255.0, 23.0 / 255.0);

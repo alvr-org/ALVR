@@ -17,7 +17,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 |       Apple Vision Pro       |    :heavy_check_mark: ([store link](https://apps.apple.com/app/alvr/id6479728026))     |
 |      Quest 1/2/3/3S/Pro      | :heavy_check_mark: ([store link](https://www.meta.com/experiences/7674846229245715) *) |
 |     Pico Neo 3/4/4 Ultra     |                                   :heavy_check_mark:                                   |
-|    Play For Dream YVR 1/2    |                                   :heavy_check_mark:                                   |
+|    Play For Dream YVR 1/2/MR |                                   :heavy_check_mark:                                   |
 | Vive Focus 3/Vision/XR Elite |                                   :heavy_check_mark:                                   |
 |           Lynx R1            |                                   :heavy_check_mark:                                   |
 |     PhoneVR (smartphone)     |     :heavy_check_mark: ** ([repo](https://github.com/PhoneVR-Developers/PhoneVR))      |

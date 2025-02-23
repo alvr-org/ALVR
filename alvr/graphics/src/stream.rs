@@ -131,10 +131,7 @@ impl StreamRenderer {
                     "UPSCALE_EDGE_SHARPNESS".into(),
                     upscaling.edge_sharpness.into(),
                 ),
-                (
-                    "ORIGINAL_TEXTURE_WIDTH".into(),
-                    upscaling.upscale_factor.into(),
-                ),
+                ("UPSCALE_FACTOR".into(), upscaling.upscale_factor.into()),
             ]);
 
             // scale up both view and shading res after running foveated rendering stuff

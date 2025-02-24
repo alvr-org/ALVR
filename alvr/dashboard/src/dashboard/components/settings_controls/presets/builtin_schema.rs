@@ -32,7 +32,12 @@ fn bool_modifier(target_path: &str, value: bool) -> PresetModifier {
 pub fn resolution_schema() -> PresetSchemaNode {
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
         name: "resolution".into(),
-        strings: HashMap::new(),
+        strings: [(
+            "help".into(),
+            "Choosing too high resolution (commonly 'High (width: 5184)') may result in high latency or black screen.".into(),
+        )]
+        .into_iter()
+        .collect(),
         flags: ["steamvr-restart".into()].into_iter().collect(),
         options: [
             ("Very Low (width: 3072)", "1536"),
@@ -104,6 +109,35 @@ pub fn framerate_schema() -> PresetSchemaNode {
     })
 }
 
+pub fn codec_preset_schema() -> PresetSchemaNode {
+    PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
+        name: "codec_preset".into(),
+        strings: [(
+            "help".into(),
+            "AV1 is only supported on newer gpus (AMD RX 7xxx+ , NVIDIA RTX 30xx+, Intel ARC)!"
+                .into(),
+        )]
+        .into_iter()
+        .collect(),
+        flags: ["steamvr-restart".into()].into_iter().collect(),
+        options: [("H264", "H264"), ("HEVC", "Hevc"), ("AV1", "AV1")]
+            .into_iter()
+            .map(|(key, val_codec)| HigherOrderChoiceOption {
+                display_name: key.into(),
+                modifiers: [string_modifier(
+                    "session_settings.video.preferred_codec.variant",
+                    val_codec,
+                )]
+                .into_iter()
+                .collect(),
+                content: None,
+            })
+            .collect(),
+        default_option_index: 0,
+        gui: ChoiceControlType::ButtonGroup,
+    })
+}
+
 pub fn encoder_preset_schema() -> PresetSchemaNode {
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
         name: "encoder_preset".into(),
@@ -142,6 +176,60 @@ pub fn encoder_preset_schema() -> PresetSchemaNode {
     })
 }
 
+pub fn foveation_preset_schema() -> PresetSchemaNode {
+    const PREFIX: &str = "session_settings.video.foveated_encoding";
+    PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
+        name: "foveation_preset".into(),
+        strings: [(
+            "help".into(),
+            "Foveation affects pixelation on the edges of \
+            the screen and significantly reduces codec latency. 
+It is not recommended to fully disable it, as it may cause \
+shutterring and high encode/decode latency!"
+                .into(),
+        )]
+        .into_iter()
+        .collect(),
+        flags: ["steamvr-restart".into()].into_iter().collect(),
+        options: [
+            ("Light", 0.80, 0.80, 8.0, 8.0),
+            ("Medium", 0.66, 0.60, 6.0, 6.0),
+            ("High", 0.45, 0.40, 4.0, 5.0),
+        ]
+        .into_iter()
+        .map(
+            |(key, val_size_x, val_size_y, val_edge_x, val_edge_y)| HigherOrderChoiceOption {
+                display_name: key.into(),
+                modifiers: [
+                    bool_modifier(&format!("{PREFIX}.enabled"), true),
+                    num_modifier(
+                        &format!("{PREFIX}.content.center_size_x"),
+                        &val_size_x.to_string(),
+                    ),
+                    num_modifier(
+                        &format!("{PREFIX}.content.center_size_y"),
+                        &val_size_y.to_string(),
+                    ),
+                    num_modifier(
+                        &format!("{PREFIX}.content.edge_ratio_x"),
+                        &val_edge_x.to_string(),
+                    ),
+                    num_modifier(
+                        &format!("{PREFIX}.content.edge_ratio_y"),
+                        &val_edge_y.to_string(),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+                content: None,
+            },
+        )
+        .collect(),
+        default_option_index: 2,
+        gui: ChoiceControlType::ButtonGroup,
+    })
+}
+
 #[cfg(target_os = "linux")]
 pub fn game_audio_schema(_: Vec<String>) -> PresetSchemaNode {
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
@@ -150,25 +238,25 @@ pub fn game_audio_schema(_: Vec<String>) -> PresetSchemaNode {
         flags: HashSet::new(),
         options: [
             HigherOrderChoiceOption {
-                display_name: "Enable".into(),
-                modifiers: vec![bool_modifier(
-                    "session_settings.audio.game_audio.enabled",
-                    true,
-                )],
-                content: None,
-            },
-            HigherOrderChoiceOption {
-                display_name: "Disable".into(),
+                display_name: "Disabled".into(),
                 modifiers: vec![bool_modifier(
                     "session_settings.audio.game_audio.enabled",
                     false,
                 )],
                 content: None,
             },
+            HigherOrderChoiceOption {
+                display_name: "Enabled".into(),
+                modifiers: vec![bool_modifier(
+                    "session_settings.audio.game_audio.enabled",
+                    true,
+                )],
+                content: None,
+            },
         ]
         .into_iter()
         .collect(),
-        default_option_index: 0,
+        default_option_index: 1,
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -181,25 +269,25 @@ pub fn microphone_schema(_: Vec<String>) -> PresetSchemaNode {
         flags: HashSet::new(),
         options: [
             HigherOrderChoiceOption {
-                display_name: "Enable".into(),
-                modifiers: vec![bool_modifier(
-                    "session_settings.audio.microphone.enabled",
-                    true,
-                )],
-                content: None,
-            },
-            HigherOrderChoiceOption {
-                display_name: "Disable".into(),
+                display_name: "Disabled".into(),
                 modifiers: vec![bool_modifier(
                     "session_settings.audio.microphone.enabled",
                     false,
                 )],
                 content: None,
             },
+            HigherOrderChoiceOption {
+                display_name: "Enabled".into(),
+                modifiers: vec![bool_modifier(
+                    "session_settings.audio.microphone.enabled",
+                    true,
+                )],
+                content: None,
+            },
         ]
         .into_iter()
         .collect(),
-        default_option_index: 0,
+        default_option_index: 1,
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -391,6 +479,14 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
         flags: HashSet::new(),
         options: [
             HigherOrderChoiceOption {
+                display_name: "Disabled".into(),
+                modifiers: vec![bool_modifier(
+                    "session_settings.headset.face_tracking.enabled",
+                    false,
+                )],
+                content: None,
+            },
+            HigherOrderChoiceOption {
                 display_name: "VRChat Eye OSC".into(),
                 modifiers: vec![
                     bool_modifier("session_settings.headset.face_tracking.enabled", true),
@@ -412,18 +508,10 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
                 ],
                 content: None,
             },
-            HigherOrderChoiceOption {
-                display_name: "Disable".into(),
-                modifiers: vec![bool_modifier(
-                    "session_settings.headset.face_tracking.enabled",
-                    false,
-                )],
-                content: None,
-            },
         ]
         .into_iter()
         .collect(),
-        default_option_index: 2,
+        default_option_index: 0,
         gui: ChoiceControlType::ButtonGroup,
     })
 }

@@ -147,8 +147,16 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     });
     debug!("have_intel_dgpu: {}", have_intel_dgpu);
 
-    let vrmonitor_path_string = alvr_server_io::steamvr_root_dir()
-        .unwrap()
+    let steamvr_root_dir = match alvr_server_io::steamvr_root_dir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            error!("Couldn't detect openvr or steamvr files. \
+            Please make sure you have installed and ran SteamVR at least once \
+            Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR Launcher {}", e);
+            return;
+        }
+    };
+    let vrmonitor_path_string = steamvr_root_dir
         .join("bin")
         .join("vrmonitor.sh")
         .into_os_string()

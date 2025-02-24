@@ -14,7 +14,6 @@ use crate::{
 };
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
-    parking_lot::Mutex,
     ConnectionError, DeviceMotion, Pose, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID,
     BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID,
     BODY_RIGHT_KNEE_ID, DEVICE_ID_TO_PATH, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
@@ -30,7 +29,6 @@ use std::{
     cmp::Ordering,
     collections::{HashMap, VecDeque},
     f32::consts::PI,
-    sync::Arc,
     time::Duration,
 };
 
@@ -314,10 +312,11 @@ pub fn tracking_loop(
     ctx: &ConnectionContext,
     initial_settings: Settings,
     multimodal_protocol: bool,
-    hand_gesture_manager: Arc<Mutex<HandGestureManager>>,
     mut tracking_receiver: StreamReceiver<Tracking>,
     is_streaming: impl Fn() -> bool,
 ) {
+    let mut hand_gesture_manager = HandGestureManager::new();
+
     let mut gestures_button_mapping_manager =
         initial_settings
             .headset
@@ -457,8 +456,6 @@ pub fn tracking_loop(
                 .and_then(|c| c.hand_tracking_interaction.as_option()),
             &mut gestures_button_mapping_manager,
         ) {
-            let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
-
             if !device_motion_keys.contains(&*HAND_LEFT_ID) {
                 if let Some(hand_skeleton) = tracking.hand_skeletons[0] {
                     ctx.events_sender
@@ -466,7 +463,7 @@ pub fn tracking_loop(
                             hand_gestures::trigger_hand_gesture_actions(
                                 gestures_button_mapping_manager,
                                 *HAND_LEFT_ID,
-                                &hand_gesture_manager_lock.get_active_gestures(
+                                &hand_gesture_manager.get_active_gestures(
                                     hand_skeleton,
                                     gestures_config,
                                     *HAND_LEFT_ID,
@@ -484,7 +481,7 @@ pub fn tracking_loop(
                             hand_gestures::trigger_hand_gesture_actions(
                                 gestures_button_mapping_manager,
                                 *HAND_RIGHT_ID,
-                                &hand_gesture_manager_lock.get_active_gestures(
+                                &hand_gesture_manager.get_active_gestures(
                                     hand_skeleton,
                                     gestures_config,
                                     *HAND_RIGHT_ID,

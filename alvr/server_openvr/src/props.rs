@@ -132,6 +132,7 @@ fn serial_number(device_id: u64) -> String {
                 ControllersEmulationMode::Quest3Plus => "2G0YXX0X0000XX_Controller", // 2G0YY Left 2G0YZ Right
                 ControllersEmulationMode::QuestPro => "230YXXXXXXXXXX_Controller", // 230YT left, 230YV right
                 ControllersEmulationMode::RiftSTouch
+                | ControllersEmulationMode::Pico4
                 | ControllersEmulationMode::ValveIndex
                 | ControllersEmulationMode::ViveWand
                 | ControllersEmulationMode::ViveTracker => "ALVR Remote Controller",
@@ -392,6 +393,30 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                         set_prop(RenderModelNameString, "oculus_quest_pro_controller_right");
                     }
                     set_oculus_common_props();
+                }
+                ControllersEmulationMode::Pico4 => {
+                    set_prop(TrackingSystemNameString, "vrlink");
+                    set_prop(ManufacturerNameString, "ByteDance");
+                    if left_hand {
+                        set_prop(ModelNumberString, "PICO 4 (Left Controller)");
+                        set_prop(
+                            RenderModelNameString,
+                            "{vrlink}/rendermodels/pico_4_controller_left",
+                        );
+                        set_icons("{vrlink}/icons/left_pico4");
+                    } else if right_hand {
+                        set_prop(ModelNumberString, "PICO 4 (Right Controller)");
+                        set_prop(
+                            RenderModelNameString,
+                            "{vrlink}/rendermodels/pico_4_controller_right",
+                        );
+                        set_icons("{vrlink}/icons/right_pico4");
+                    }
+                    set_prop(ControllerTypeString, "pico_controller");
+                    set_prop(
+                        InputProfilePathString,
+                        "{vrlink}/input/pico_controller_profile.json",
+                    );
                 }
                 ControllersEmulationMode::ValveIndex => {
                     set_prop(TrackingSystemNameString, "indexcontroller");

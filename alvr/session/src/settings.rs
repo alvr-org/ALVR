@@ -882,6 +882,8 @@ pub enum ControllersEmulationMode {
     Quest3Plus,
     #[schema(strings(display_name = "Quest Pro"))]
     QuestPro,
+    #[schema(strings(display_name = "Pico 4"))]
+    Pico4,
     #[schema(strings(display_name = "Valve Index"))]
     ValveIndex,
     #[schema(strings(display_name = "Vive Wand"))]

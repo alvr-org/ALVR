@@ -17,7 +17,7 @@ use alvr_graphics::{GraphicsContext, StreamRenderer, StreamViewParams};
 use alvr_packets::{FaceData, RealTimeConfig, StreamConfig, ViewParams};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, CodecType, FoveatedEncodingConfig,
-    MediacodecProperty, PassthroughMode,
+    MediacodecProperty, PassthroughMode, UpscalingConfig,
 };
 use alvr_system_info::Platform;
 use openxr as xr;
@@ -40,6 +40,7 @@ pub struct ParsedStreamConfig {
     pub passthrough: Option<PassthroughMode>,
     pub foveated_encoding_config: Option<FoveatedEncodingConfig>,
     pub clientside_foveation_config: Option<ClientsideFoveationConfig>,
+    pub upscaling: Option<UpscalingConfig>,
     pub force_software_decoder: bool,
     pub max_buffering_frames: f32,
     pub buffering_history_weight: f32,
@@ -67,6 +68,7 @@ impl ParsedStreamConfig {
                 .clientside_foveation
                 .as_option()
                 .cloned(),
+            upscaling: config.settings.video.upscaling.as_option().cloned(),
             force_software_decoder: config.settings.video.force_software_decoder,
             max_buffering_frames: config.settings.video.max_buffering_frames,
             buffering_history_weight: config.settings.video.buffering_history_weight,
@@ -87,6 +89,7 @@ pub struct StreamContext {
     input_thread: Option<JoinHandle<()>>,
     input_thread_running: Arc<RelaxedAtomic>,
     config: ParsedStreamConfig,
+    target_resolution: UVec2,
     renderer: StreamRenderer,
     decoder: Option<(VideoDecoderConfig, VideoDecoderSource)>,
 }
@@ -144,20 +147,28 @@ impl StreamContext {
             None
         };
 
+        let target_resolution = if let Some(upscaling) = config.upscaling.clone() {
+            UVec2::new(
+                (config.view_resolution.x as f32 * upscaling.upscale_factor) as u32,
+                (config.view_resolution.y as f32 * upscaling.upscale_factor) as u32,
+            )
+        } else {
+            config.view_resolution
+        };
         let format = graphics::swapchain_format(&gfx_ctx, &xr_session, config.enable_hdr);
 
         let swapchains = [
             graphics::create_swapchain(
                 &xr_session,
                 &gfx_ctx,
-                config.view_resolution,
+                target_resolution,
                 format,
                 foveation_profile.as_ref(),
             ),
             graphics::create_swapchain(
                 &xr_session,
                 &gfx_ctx,
-                config.view_resolution,
+                target_resolution,
                 format,
                 foveation_profile.as_ref(),
             ),
@@ -165,6 +176,7 @@ impl StreamContext {
 
         let renderer = StreamRenderer::new(
             gfx_ctx,
+            // pass config.view_resolution as streamrenderer needs to perform own operations with upscaler
             config.view_resolution,
             [
                 swapchains[0]
@@ -185,6 +197,7 @@ impl StreamContext {
             platform != Platform::Lynx && !((platform.is_pico()) && config.enable_hdr),
             config.use_full_range && !config.enable_hdr, // TODO: figure out why HDR doesn't need the limited range hackfix in staging?
             config.encoding_gamma,
+            config.upscaling.clone(),
         );
 
         core_ctx.send_active_interaction_profile(
@@ -218,6 +231,7 @@ impl StreamContext {
             input_thread: None,
             input_thread_running,
             config,
+            target_resolution,
             renderer,
             decoder: None,
         };
@@ -390,8 +404,8 @@ impl StreamContext {
         let rect = xr::Rect2Di {
             offset: xr::Offset2Di { x: 0, y: 0 },
             extent: xr::Extent2Di {
-                width: self.config.view_resolution.x as _,
-                height: self.config.view_resolution.y as _,
+                width: self.target_resolution.x as _,
+                height: self.target_resolution.y as _,
             },
         };
 

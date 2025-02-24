@@ -665,7 +665,10 @@ pub struct UpscalingConfig {
     pub edge_threshold: f32,
     #[schema(gui(slider(min = 1.0, max = 2.0, step = 0.01)))]
     pub edge_sharpness: f32,
-    #[schema(gui(slider(min = 1.0, max = 4.0, step = 0.01)))]
+    #[schema(gui(slider(min = 1.0, max = 3.0, step = 0.01)))]
+    #[schema(strings(
+        help = "In-headset dimensional resolution multiplier applied on top of render resolution"
+    ))]
     pub upscale_factor: f32,
 }
 
@@ -1572,7 +1575,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     edge_direction: true,
                     edge_threshold: 4.0,
                     edge_sharpness: 2.0,
-                    upscale_factor: 2.0,
+                    upscale_factor: 1.7,
                 },
             },
             adapter_index: 0,

@@ -18,6 +18,11 @@ pub fn registered_button_set(
             .unwrap()
             .button_set
             .clone(),
+        ControllersEmulationMode::Pico4 => CONTROLLER_PROFILE_INFO
+            .get(&PICO4_CONTROLLER_PROFILE_ID)
+            .unwrap()
+            .button_set
+            .clone(),
         ControllersEmulationMode::ValveIndex => CONTROLLER_PROFILE_INFO
             .get(&INDEX_CONTROLLER_PROFILE_ID)
             .unwrap()

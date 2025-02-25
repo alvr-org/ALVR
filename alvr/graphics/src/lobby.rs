@@ -405,7 +405,7 @@ impl LobbyRenderer {
         );
     }
 
-    #[warn(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn render(
         &self,
         view_params: [LobbyViewParams; 2],

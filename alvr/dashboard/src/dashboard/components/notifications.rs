@@ -6,7 +6,7 @@ use eframe::{
     emath::Align,
     epaint::{Color32, Stroke},
 };
-use rand::seq::SliceRandom;
+use rand::seq::IndexedRandom;
 use std::time::Duration;
 
 #[cfg(target_arch = "wasm32")]
@@ -79,7 +79,7 @@ impl NotificationBar {
         if settings.extra.logging.show_notification_tip {
             if self.tip_message.is_none() {
                 self.tip_message = NOTIFICATION_TIPS
-                    .choose(&mut rand::thread_rng())
+                    .choose(&mut rand::rng())
                     .map(|s| format!("Tip: {s}"));
             }
         } else {

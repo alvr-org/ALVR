@@ -337,13 +337,14 @@ fn set_passthrough_push_constants(render_pass: &mut RenderPass, config: Option<&
     match config {
         None => {
             set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 0);
+            set_float(render_pass, ALPHA_CONST_OFFSET, 1.);
         }
         Some(PassthroughMode::Blend { threshold, .. }) => {
-            set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 1);
+            set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 0);
             set_float(render_pass, ALPHA_CONST_OFFSET, 1. - threshold);
         }
         Some(PassthroughMode::RgbChromaKey(config)) => {
-            set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 2);
+            set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 1);
 
             let norm = |v| v as f32 / 255.;
 
@@ -364,7 +365,7 @@ fn set_passthrough_push_constants(render_pass: &mut RenderPass, config: Option<&
             set_vec4(render_pass, CK_CHANNEL2_CONST_OFFSET, blue + range_vec);
         }
         Some(PassthroughMode::HsvChromaKey(config)) => {
-            set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 3);
+            set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 2);
 
             set_vec4(
                 render_pass,

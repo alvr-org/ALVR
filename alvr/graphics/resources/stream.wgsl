@@ -38,7 +38,7 @@ override C_RIGHT_Y: f32 = 0.0;
 struct PushConstant {
     reprojection_transform: mat4x4f,
     view_idx: u32,
-    passthrough_mode: u32, // 0: No passthrough, 1: Blend, 2: RGB chroma key, 3: HSV chroma key
+    passthrough_mode: u32, // 0: Blend, 1: RGB chroma key, 2: HSV chroma key
     blend_alpha: f32,
     _align: u32,
     ck_channel0: vec4f,
@@ -131,10 +131,8 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         color = enc_condition * enc_lowValues + (1.0 - enc_condition) * enc_highValues;
     }
 
-    var alpha = 1.0;
-    if pc.passthrough_mode == 1 { // Blend mode
-        alpha = pc.blend_alpha;
-    } else { // Chroma key
+    var alpha = pc.blend_alpha; // Default to Blend passthrough mode
+    if pc.passthrough_mode != 0 { // Chroma key
         var current = color;
         if pc.passthrough_mode == 3 { // HSV mode
             current = rgb_to_hsv(color);

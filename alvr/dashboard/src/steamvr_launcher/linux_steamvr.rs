@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::Path;
 use std::{env, process::Command};
 
 use alvr_common::anyhow::bail;
@@ -170,13 +171,25 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     let mut vrmonitor_path_written = false;
     if have_igpu {
         if have_nvidia_dgpu {
-            let nv_options = "__GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only \
-            VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json";
+            let base_path = "/usr/share/vulkan/icd.d/nvidia_icd";
+            let nvidia_icd_path = if Path::new(&format!("{}.json", base_path)).exists() {
+                Some(format!("{}.json", base_path))
+            } else if Path::new(&format!("{}.x86_64.json", base_path)).exists() {
+                Some(format!("{}.x86_64.json", base_path)) // Might be only on Fedora
+            } else {
+                None
+            };
+            if let Some(path) = nvidia_icd_path {
+                let nv_options = format!("__GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only \
+                VK_ICD_FILENAMES={}", path);
 
-            warn!("{steamvr_opts}\n{nv_options} {vrmonitor_path_string} %command%");
-            warn!("{game_opts}\n{nv_options} %command%");
+                warn!("{steamvr_opts}\n{nv_options} {vrmonitor_path_string} %command%");
+                warn!("{game_opts}\n{nv_options} %command%");
 
-            vrmonitor_path_written = true;
+                vrmonitor_path_written = true;
+            } else {
+                warn!("Couldn't find vulkan nvidia icd file. You may fail to launch SteamVR.");
+            }
         } else if have_intel_dgpu || have_amd_dgpu {
             warn!("{steamvr_opts}\nDRI_PRIME=1 {vrmonitor_path_string} %command%");
             warn!("{game_opts}\nDRI_PRIME=1 %command%");

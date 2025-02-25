@@ -12,7 +12,7 @@ override ENABLE_UPSCALING: bool = false;
 override UPSCALE_USE_EDGE_DIRECTION: bool = true;
 override UPSCALE_EDGE_THRESHOLD: f32 = 4.0/255.0;
 override UPSCALE_EDGE_SHARPNESS: f32 = 2.0;
-override UPSCALE_FACTOR: f32 = 1.7;
+override UPSCALE_FACTOR: f32 = 1.5;
 
 override ENABLE_FFE: bool = false;
 

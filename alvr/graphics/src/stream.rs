@@ -135,10 +135,9 @@ impl StreamRenderer {
             ]);
 
             // scale up both view and shading res after running foveated rendering stuff
-            view_resolution.x = (view_resolution.x as f32 * upscaling.upscale_factor) as u32;
-            view_resolution.y = (view_resolution.y as f32 * upscaling.upscale_factor) as u32;
-            staging_resolution.x = (staging_resolution.x as f32 * upscaling.upscale_factor) as u32;
-            staging_resolution.y = (staging_resolution.y as f32 * upscaling.upscale_factor) as u32;
+            view_resolution = (view_resolution.as_vec2() * upscaling.upscale_factor).as_uvec2();
+            staging_resolution =
+                (staging_resolution.as_vec2() * upscaling.upscale_factor).as_uvec2();
         };
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {

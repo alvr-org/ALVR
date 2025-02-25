@@ -169,7 +169,7 @@ impl Lobby {
                 interaction::get_bd_body_skeleton(&self.reference_space, xr_vsync_time, tracker)
             });
 
-        let body_skeleton_data = {
+        let (body_skeleton, body_tracking_type) = {
             if body_skeleton_fb.is_some() {
                 (body_skeleton_fb, Some(BodyTrackingType::Meta))
             } else if body_skeleton_bd.is_some() {
@@ -204,7 +204,8 @@ impl Lobby {
             ],
             [left_hand_data, right_hand_data],
             additional_motions,
-            body_skeleton_data,
+            body_skeleton,
+            body_tracking_type,
             false,
             cfg!(debug_assertions),
         );

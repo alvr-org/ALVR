@@ -405,12 +405,14 @@ impl LobbyRenderer {
         );
     }
 
+    #[warn(clippy::too_many_arguments)]
     pub fn render(
         &self,
         view_params: [LobbyViewParams; 2],
         hand_data: [(Option<DeviceMotion>, Option<[Pose; 26]>); 2],
         additional_motions: Option<Vec<DeviceMotion>>,
-        body_skeleton_data: (Option<Vec<Option<Pose>>>, Option<BodyTrackingType>),
+        body_skeleton: Option<Vec<Option<Pose>>>,
+        body_tracking_type: Option<BodyTrackingType>,
         render_background: bool,
         show_velocities: bool,
     ) {
@@ -504,7 +506,7 @@ impl LobbyRenderer {
                 transform_draw(&mut pass, view_proj * transform, 4);
             }
 
-            fn draw_crosshair(
+            fn draw_cross_air(
                 pass: &mut RenderPass,
                 motion: &DeviceMotion,
                 view_proj: Mat4,
@@ -588,19 +590,17 @@ impl LobbyRenderer {
                 }
 
                 if let Some(motion) = maybe_motion {
-                    draw_crosshair(&mut pass, motion, view_proj, show_velocities);
+                    draw_cross_air(&mut pass, motion, view_proj, show_velocities);
                 }
             }
 
             if let Some(motions) = &additional_motions {
                 for motion in motions {
-                    draw_crosshair(&mut pass, motion, view_proj, show_velocities);
+                    draw_cross_air(&mut pass, motion, view_proj, show_velocities);
                 }
             }
 
-            let (body_skeleton, body_skeleton_type) = &body_skeleton_data;
-
-            let body_skeleton_bones = match body_skeleton_type {
+            let body_skeleton_bones = match body_tracking_type {
                 Some(BodyTrackingType::Meta) => Some(BODY_SKELETON_BONES_FB.as_slice()),
                 Some(BodyTrackingType::Pico) => Some(BODY_SKELETON_BONES_BD.as_slice()),
                 _ => None,

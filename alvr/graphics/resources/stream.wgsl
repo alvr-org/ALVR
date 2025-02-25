@@ -38,12 +38,12 @@ override C_RIGHT_Y: f32 = 0.0;
 struct PushConstant {
     reprojection_transform: mat4x4f,
     view_idx: u32,
-    alpha: f32,
-    enable_chroma_key: u32,
+    passthrough_mode: u32, // 0: Blend, 1: RGB chroma key, 2: HSV chroma key
+    blend_alpha: f32,
     _align: u32,
-    ck_hue: vec4f,
-    ck_saturation: vec4f,
-    ck_value: vec4f,
+    ck_channel0: vec4f,
+    ck_channel1: vec4f,
+    ck_channel2: vec4f,
 }
 var<push_constant> pc: PushConstant;
 
@@ -131,9 +131,13 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         color = enc_condition * enc_lowValues + (1.0 - enc_condition) * enc_highValues;
     }
 
-    var alpha = pc.alpha;
-    if pc.enable_chroma_key == 1 {
-        let mask = chroma_key_mask(rgb_to_hsv(color));
+    var alpha = pc.blend_alpha; // Default to Blend passthrough mode
+    if pc.passthrough_mode != 0 { // Chroma key
+        var current = color;
+        if pc.passthrough_mode == 3 { // HSV mode
+            current = rgb_to_hsv(color);
+        }
+        let mask = chroma_key_mask(current);
 
         // Note: because of this calculation, we require premultiplied alpha option in the XR layer
         color = max(color * mask, vec3f(0.0));
@@ -143,14 +147,14 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
     return vec4f(color, alpha);
 }
 
-fn chroma_key_mask(hsv: vec3f) -> f32 {
-    let start_max = vec3f(pc.ck_hue.x, pc.ck_saturation.x, pc.ck_value.x);
-    let start_min = vec3f(pc.ck_hue.y, pc.ck_saturation.y, pc.ck_value.y);
-    let end_min = vec3f(pc.ck_hue.z, pc.ck_saturation.z, pc.ck_value.z);
-    let end_max = vec3f(pc.ck_hue.w, pc.ck_saturation.w, pc.ck_value.w);
+fn chroma_key_mask(color: vec3f) -> f32 {
+    let start_max = vec3f(pc.ck_channel0.x, pc.ck_channel1.x, pc.ck_channel2.x);
+    let start_min = vec3f(pc.ck_channel0.y, pc.ck_channel1.y, pc.ck_channel2.y);
+    let end_min = vec3f(pc.ck_channel0.z, pc.ck_channel1.z, pc.ck_channel2.z);
+    let end_max = vec3f(pc.ck_channel0.w, pc.ck_channel1.w, pc.ck_channel2.w);
 
-    let start_mask = smoothstep(start_min, start_max, hsv);
-    let end_mask = smoothstep(end_min, end_max, hsv);
+    let start_mask = smoothstep(start_min, start_max, color);
+    let end_mask = smoothstep(end_min, end_max, color);
 
     return max(start_mask.x, max(start_mask.y, max(start_mask.z, max(end_mask.x, max(end_mask.y, end_mask.z)))));
 }

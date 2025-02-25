@@ -423,7 +423,11 @@ impl StreamContext {
                 .map(|mode| ProjectionLayerAlphaConfig {
                     premultiplied: matches!(
                         mode,
-                        PassthroughMode::AugmentedReality { .. } | PassthroughMode::ChromaKey(_)
+                        PassthroughMode::Blend {
+                            premultiplied_alpha: true,
+                            ..
+                        } | PassthroughMode::RgbChromaKey(_)
+                            | PassthroughMode::HsvChromaKey(_)
                     ),
                 }),
         );

@@ -3,7 +3,7 @@ use alvr_common::{
     glam::{self, Mat4, Quat, UVec2, Vec3, Vec4},
     Fov,
 };
-use alvr_session::{FoveatedEncodingConfig, PassthroughMode};
+use alvr_session::{FoveatedEncodingConfig, PassthroughMode, UpscalingConfig};
 use std::{collections::HashMap, ffi::c_void, iter, mem, rc::Rc};
 use wgpu::{
     hal::{api, gles},
@@ -59,13 +59,14 @@ impl StreamRenderer {
     #[expect(clippy::too_many_arguments)]
     pub fn new(
         context: Rc<GraphicsContext>,
-        view_resolution: UVec2,
+        base_view_resolution: UVec2,
         swapchain_textures: [Vec<u32>; 2],
         target_format: u32,
         foveated_encoding: Option<FoveatedEncodingConfig>,
         enable_srgb_correction: bool,
         fix_limited_range: bool,
         encoding_gamma: f32,
+        upscaling: Option<UpscalingConfig>,
     ) -> Self {
         let device = &context.device;
 
@@ -105,14 +106,39 @@ impl StreamRenderer {
             ("ENCODING_GAMMA".into(), encoding_gamma.into()),
         ]);
 
-        let staging_resolution = if let Some(foveated_encoding) = foveated_encoding {
+        let mut view_resolution = base_view_resolution;
+        let mut staging_resolution = if let Some(foveated_encoding) = foveated_encoding {
             let (staging_resolution, ffe_constants) =
-                foveated_encoding_shader_constants(view_resolution, foveated_encoding);
+                foveated_encoding_shader_constants(base_view_resolution, foveated_encoding);
             constants.extend(ffe_constants);
 
             staging_resolution
         } else {
-            view_resolution
+            base_view_resolution
+        };
+
+        if let Some(upscaling) = upscaling {
+            constants.extend([
+                ("ENABLE_UPSCALING".into(), true.into()),
+                (
+                    "UPSCALE_USE_EDGE_DIRECTION".into(),
+                    upscaling.edge_direction.into(),
+                ),
+                (
+                    "UPSCALE_EDGE_THRESHOLD".into(),
+                    (upscaling.edge_threshold / 255.0).into(),
+                ),
+                (
+                    "UPSCALE_EDGE_SHARPNESS".into(),
+                    upscaling.edge_sharpness.into(),
+                ),
+                ("UPSCALE_FACTOR".into(), upscaling.upscale_factor.into()),
+            ]);
+
+            // scale up both view and shading res after running foveated rendering stuff
+            view_resolution = (view_resolution.as_vec2() * upscaling.upscale_factor).as_uvec2();
+            staging_resolution =
+                (staging_resolution.as_vec2() * upscaling.upscale_factor).as_uvec2();
         };
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {

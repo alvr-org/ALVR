@@ -17,6 +17,7 @@ pub mod vector;
 use alvr_packets::{PathSegment, PathValuePair};
 use alvr_session::settings_schema::SchemaNode;
 use eframe::egui::Ui;
+use float_cmp::approx_eq;
 use serde_json as json;
 use std::collections::HashMap;
 
@@ -54,14 +55,10 @@ pub fn get_display_name(id: &str, strings: &HashMap<String, String>) -> String {
 pub fn serde_values_eq(a: &serde_json::Value, b: &serde_json::Value) -> bool {
     if let (serde_json::Value::Number(n1), serde_json::Value::Number(n2)) = (a, b) {
         if let (Some(f1), Some(f2)) = (n1.as_f64(), n2.as_f64()) {
-            return f64_eq(f1, f2);
+            return approx_eq!(f64, f1, f2, epsilon = 1e-6);
         }
     }
     a == b
-}
-
-fn f64_eq(f1: f64, f2: f64) -> bool {
-    (f1 - f2).abs() < 1e-6
 }
 
 #[derive(Clone)]

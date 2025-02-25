@@ -1,7 +1,7 @@
 use super::{collapsible, notice, NestingInfo, SettingControl, INDENTATION_STEP};
 use alvr_gui_common::{
     theme::{
-        log_colors::{ERROR_LIGHT, INFO_LIGHT, WARNING_LIGHT},
+        log_colors::{INFO_LIGHT, WARNING_LIGHT},
         OK_GREEN,
     },
     DisplayString,
@@ -18,7 +18,6 @@ struct Entry {
     hidden: bool,
     steamvr_restart_flag: bool,
     real_time_flag: bool,
-    critical: Option<String>,
     control: SettingControl,
 }
 
@@ -46,7 +45,6 @@ impl Control {
                 let hidden = entry.flags.contains("hidden");
                 let steamvr_restart_flag = entry.flags.contains("steamvr-restart");
                 let real_time_flag = entry.flags.contains("real-time");
-                let critical = entry.strings.get("critical").cloned();
 
                 let mut nesting_info = nesting_info.clone();
                 nesting_info.path.push(id.clone().into());
@@ -58,7 +56,6 @@ impl Control {
                     hidden,
                     steamvr_restart_flag,
                     real_time_flag,
-                    critical,
                     control: SettingControl::new(nesting_info, entry.content),
                 }
             })
@@ -136,15 +133,6 @@ impl Control {
                                 "Please save your in-game progress first"
                             ),
                         );
-                    }
-                    if let Some(string) = &entry.critical {
-                        if ui.colored_label(ERROR_LIGHT, "⚠").hovered() {
-                            alvr_gui_common::tooltip(
-                                ui,
-                                &format!("{}_critical", entry.id.display),
-                                string,
-                            );
-                        }
                     }
 
                     // The emoji is blue but it will be green in the UI

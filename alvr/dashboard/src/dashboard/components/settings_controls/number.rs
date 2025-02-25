@@ -1,5 +1,3 @@
-use crate::dashboard::components::settings_controls::f64_eq;
-
 use super::{reset, NestingInfo};
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{NumberType, NumericGuiType};
@@ -7,6 +5,7 @@ use eframe::{
     egui::{DragValue, Layout, Slider, Ui},
     emath::Align,
 };
+use float_cmp::approx_eq;
 use json::Number;
 use serde_json as json;
 
@@ -126,7 +125,7 @@ impl Control {
 
             if reset::reset_button(
                 ui,
-                !f64_eq(session_value, self.default),
+                !approx_eq!(f64, session_value, self.default, epsilon = 1e-6),
                 &self.default_string,
             )
             .clicked()

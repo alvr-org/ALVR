@@ -81,7 +81,7 @@ pub fn resolution_schema() -> PresetSchemaNode {
             content: None,
         })
         .collect(),
-        default_option_index: 2,
+        default_option_display_name: "Medium (width: 4288)".into(),
         gui: ChoiceControlType::Dropdown,
     })
 }
@@ -104,7 +104,7 @@ pub fn framerate_schema() -> PresetSchemaNode {
                 content: None,
             })
             .collect(),
-        default_option_index: 1,
+        default_option_display_name: "72Hz".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -133,7 +133,7 @@ pub fn codec_preset_schema() -> PresetSchemaNode {
                 content: None,
             })
             .collect(),
-        default_option_index: 0,
+        default_option_display_name: "H264".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -171,7 +171,7 @@ pub fn encoder_preset_schema() -> PresetSchemaNode {
             content: None,
         })
         .collect(),
-        default_option_index: 0,
+        default_option_display_name: "Speed".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -225,7 +225,7 @@ shutterring and high encode/decode latency!"
             },
         )
         .collect(),
-        default_option_index: 2,
+        default_option_display_name: "High".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -256,7 +256,7 @@ pub fn game_audio_schema(_: Vec<String>) -> PresetSchemaNode {
         ]
         .into_iter()
         .collect(),
-        default_option_index: 1,
+        default_option_display_name: "Enabled".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -287,7 +287,7 @@ pub fn microphone_schema(_: Vec<String>) -> PresetSchemaNode {
         ]
         .into_iter()
         .collect(),
-        default_option_index: 1,
+        default_option_display_name: "Enabled".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -345,7 +345,7 @@ pub fn game_audio_schema(devices: Vec<String>) -> PresetSchemaNode {
         .collect(),
         flags: HashSet::new(),
         options: game_audio_options.into_iter().collect(),
-        default_option_index: 1,
+        default_option_display_name: "System Default".into(),
         gui: ChoiceControlType::Dropdown,
     })
 }
@@ -403,7 +403,7 @@ pub fn microphone_schema(devices: Vec<String>) -> PresetSchemaNode {
         strings: HashMap::new(),
         flags: HashSet::new(),
         options: microhone_options.into_iter().collect(),
-        default_option_index: 0,
+        default_option_display_name: "Automatic".into(),
         gui: ChoiceControlType::Dropdown,
     })
 }
@@ -467,7 +467,7 @@ ALVR bindings: use ALVR hand tracking button bindings. Check the wiki for help.
         ]
         .into_iter()
         .collect(),
-        default_option_index: 1,
+        default_option_display_name: "SteamVR Input 2.0".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -511,7 +511,7 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
         ]
         .into_iter()
         .collect(),
-        default_option_index: 0,
+        default_option_display_name: "Disabled".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }

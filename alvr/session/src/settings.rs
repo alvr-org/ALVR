@@ -672,7 +672,8 @@ pub struct VideoConfig {
     pub preferred_codec: CodecType,
 
     #[schema(strings(
-        critical = "Disabling foveated encoding may result in signifficantly higher encode/decode times and stuttering. If you want to reduce amount of pixelation on edges, increase center region width and height"
+        notice = r"Disabling foveated encoding may result in signifficantly higher encode/decode times and stuttering.
+If you want to reduce amount of pixelation on edges, increase center region width and height"
     ))]
     #[schema(flag = "steamvr-restart")]
     pub foveated_encoding: Switch<FoveatedEncodingConfig>,

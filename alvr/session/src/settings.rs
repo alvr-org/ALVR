@@ -557,7 +557,31 @@ pub enum H264Profile {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub struct ChromaKeyConfig {
+pub struct RgbChromaKeyConfig {
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0, max = 255)))]
+    pub red: u8,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0, max = 255)))]
+    pub green: u8,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0, max = 255)))]
+    pub blue: u8,
+
+    #[schema(strings(help = "The threshold is applied per-channel"))]
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 1, max = 255)))]
+    pub distance_threshold: u8,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0.01, max = 1.0, step = 0.01)))]
+    pub feathering: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct HsvChromaKeyConfig {
     #[schema(strings(display_name = "Hue start max"), suffix = "°")]
     #[schema(flag = "real-time")]
     #[schema(gui(slider(min = -179.0, max = 539.0, step = 1.0)))]
@@ -614,23 +638,28 @@ pub struct ChromaKeyConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[schema(gui = "button_group")]
 pub enum PassthroughMode {
-    AugmentedReality {
-        #[schema(flag = "real-time")]
-        #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
-        brightness: f32,
-    },
     Blend {
+        #[schema(strings(
+            help = "Enabling this will adapt transparency based on the brightness of each pixel.
+This is a similar effect to AR glasses."
+        ))]
+        #[schema(flag = "real-time")]
+        premultiplied_alpha: bool,
+
         #[schema(flag = "real-time")]
         #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
-        opacity: f32,
+        threshold: f32,
     },
-    ChromaKey(#[schema(flag = "real-time")] ChromaKeyConfig),
+
+    #[schema(strings(display_name = "RGB Chroma Key"))]
+    RgbChromaKey(#[schema(flag = "real-time")] RgbChromaKeyConfig),
+
+    #[schema(strings(display_name = "HSV Chroma Key"))]
+    HsvChromaKey(#[schema(flag = "real-time")] HsvChromaKeyConfig),
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct VideoConfig {
-    #[schema(strings(help = r"Augmented reality: corresponds to premultiplied alpha
-Blend: corresponds to un-premultiplied alpha"))]
     #[schema(flag = "real-time")]
     pub passthrough: Switch<PassthroughMode>,
 
@@ -1495,10 +1524,19 @@ pub fn session_settings_default() -> SettingsDefault {
             passthrough: SwitchDefault {
                 enabled: false,
                 content: PassthroughModeDefault {
-                    variant: PassthroughModeDefaultVariant::AugmentedReality,
-                    AugmentedReality: PassthroughModeAugmentedRealityDefault { brightness: 0.4 },
-                    Blend: PassthroughModeBlendDefault { opacity: 0.5 },
-                    ChromaKey: ChromaKeyConfigDefault {
+                    variant: PassthroughModeDefaultVariant::Blend,
+                    Blend: PassthroughModeBlendDefault {
+                        premultiplied_alpha: true,
+                        threshold: 0.5,
+                    },
+                    RgbChromaKey: RgbChromaKeyConfigDefault {
+                        red: 0,
+                        green: 255,
+                        blue: 0,
+                        distance_threshold: 85,
+                        feathering: 0.05,
+                    },
+                    HsvChromaKey: HsvChromaKeyConfigDefault {
                         hue_start_max_deg: 70.0,
                         hue_start_min_deg: 80.0,
                         hue_end_min_deg: 160.0,

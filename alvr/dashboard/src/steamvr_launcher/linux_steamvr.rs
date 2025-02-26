@@ -173,12 +173,14 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     if have_igpu {
         if have_nvidia_dgpu {
             let base_path = "/usr/share/vulkan/icd.d/nvidia_icd";
-            let nvidia_icd_path = if Path::new(&format!("{base_path}.json")).exists() {
-                format!("{base_path}.json")
+            let nvidia_vk_override_path = if Path::new(&format!("{base_path}.json")).exists() {
+                format!("VK_DRIVER_FILES={base_path}.json")
+            } else if Path::new(&format!("{base_path}.x86_64.json")).exists() {
+                format!("VK_DRIVER_FILES={base_path}.x86_64.json")
             } else {
-                format!("{base_path}.x86_64.json")
+                "__VK_LAYER_NV_optimus=NVIDIA_only".to_string()
             };
-            let nv_options = format!("__GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 VK_DRIVER_FILES={nvidia_icd_path}");
+            let nv_options = format!("__GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 {nvidia_vk_override_path}");
 
             warn!("{steamvr_opts}\n{nv_options} {vrmonitor_path_string} %command%");
             warn!("{game_opts}\n{nv_options} %command%");

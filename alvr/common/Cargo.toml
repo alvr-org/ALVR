@@ -20,4 +20,4 @@ settings-schema = { git = "https://github.com/alvr-org/settings-schema-rs", rev 
 # settings-schema = { path = "../../../../settings-schema-rs/settings-schema" }
 
 [target.'cfg(all(not(target_os = "android"), not(target_os = "ios")))'.dependencies]
-rfd = "0.15"
+rfd = "0.14"

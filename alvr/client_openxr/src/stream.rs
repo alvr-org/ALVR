@@ -13,7 +13,7 @@ use alvr_common::{
     parking_lot::RwLock,
     Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
-use alvr_graphics::{GraphicsContext, StreamRenderer, StreamViewParams};
+use alvr_graphics::{scale_resolution, GraphicsContext, StreamRenderer, StreamViewParams};
 use alvr_packets::{FaceData, RealTimeConfig, StreamConfig, ViewParams};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, CodecType, FoveatedEncodingConfig,
@@ -148,7 +148,7 @@ impl StreamContext {
         };
 
         let target_resolution = if let Some(upscaling) = config.upscaling.clone() {
-            (config.view_resolution.as_vec2() * upscaling.upscale_factor).as_uvec2()
+            scale_resolution(config.view_resolution, upscaling)
         } else {
             config.view_resolution
         };

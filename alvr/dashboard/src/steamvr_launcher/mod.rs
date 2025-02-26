@@ -4,12 +4,21 @@ mod linux_steamvr;
 mod windows_steamvr;
 
 use crate::data_sources;
-use alvr_common::{debug, glam::bool, once_cell::sync::Lazy, parking_lot::Mutex};
+use alvr_common::{
+    anyhow::{Context, Result},
+    debug,
+    glam::bool,
+    once_cell::sync::Lazy,
+    parking_lot::Mutex,
+    warn,
+};
 use alvr_filesystem as afs;
 use alvr_session::{DriverLaunchAction, DriversBackup};
+use serde_json::{self, json};
 use std::{
     env,
     ffi::OsStr,
+    fs,
     marker::PhantomData,
     thread,
     time::{Duration, Instant},
@@ -17,6 +26,8 @@ use std::{
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, RefreshKind, System};
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
+const DRIVER_KEY: &str = "driver_alvr_server";
+const BLOCKED_KEY: &str = "blocked_by_safe_mode";
 
 pub fn is_steamvr_running() -> bool {
     let mut system = System::new_with_specifics(
@@ -65,6 +76,49 @@ pub fn maybe_kill_steamvr() {
     }
 }
 
+fn unblock_alvr_driver() -> Result<()> {
+    if !cfg!(target_os = "linux") {
+        return Ok(());
+    }
+
+    let path = alvr_server_io::steamvr_settings_file_path()?;
+    let text = fs::read_to_string(&path).with_context(|| format!("Failed to read {:?}", path))?;
+    let new_text = unblock_alvr_driver_within_vrsettings(text.as_str())
+        .with_context(|| "Failed to rewrite .vrsettings.")?;
+    fs::write(&path, new_text)
+        .with_context(|| "Failed to write .vrsettings back after changing it.")?;
+    Ok(())
+}
+
+// Reads and writes back steamvr.vrsettings in order to
+// ensure the ALVR driver is not blocked (safe mode).
+fn unblock_alvr_driver_within_vrsettings(text: &str) -> Result<String> {
+    let mut settings = serde_json::from_str::<serde_json::Value>(text)?;
+    let values = settings
+        .as_object_mut()
+        .with_context(|| "Failed to parse .vrsettings.")?;
+    let blocked = values
+        .get(DRIVER_KEY)
+        .and_then(|driver| driver.get(BLOCKED_KEY))
+        .and_then(|blocked| blocked.as_bool())
+        .unwrap_or(false);
+
+    if blocked {
+        debug!("Unblocking ALVR driver in SteamVR.");
+        if !values.contains_key(DRIVER_KEY) {
+            values.insert(DRIVER_KEY.into(), json!({}));
+        }
+        let driver = settings[DRIVER_KEY]
+            .as_object_mut()
+            .with_context(|| "Did not find ALVR key in settings.")?;
+        driver.insert(BLOCKED_KEY.into(), json!(false)); // overwrites if present
+    } else {
+        debug!("ALVR is not blocked in SteamVR.");
+    }
+
+    Ok(serde_json::to_string_pretty(&settings)?)
+}
+
 pub struct Launcher {
     _phantom: PhantomData<()>,
 }
@@ -106,6 +160,10 @@ impl Launcher {
                 alvr_path: alvr_driver_dir,
                 other_paths: other_drivers_paths,
             });
+        }
+
+        if let Err(err) = unblock_alvr_driver() {
+            warn!("Failed to unblock ALVR driver: {:?}", err);
         }
 
         #[cfg(target_os = "linux")]

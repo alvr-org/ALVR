@@ -1,3 +1,5 @@
+use crate::dashboard::components::f64_eq;
+
 use super::{reset, NestingInfo};
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{NumberType, NumericGuiType};
@@ -5,7 +7,6 @@ use eframe::{
     egui::{DragValue, Layout, Slider, Ui},
     emath::Align,
 };
-use float_cmp::approx_eq;
 use json::Number;
 use serde_json as json;
 
@@ -13,7 +14,10 @@ fn to_json_value(number: f64, ty: NumberType) -> json::Value {
     match ty {
         NumberType::UnsignedInteger => json::Value::from(number.abs() as u64),
         NumberType::SignedInteger => json::Value::from(number as i64),
-        NumberType::Float => json::Value::Number(Number::from_f64(number).unwrap()),
+        NumberType::Float => {
+            let rounded: f64 = format!("{:.6}", number).parse().unwrap();
+            json::Value::Number(Number::from_f64(rounded).unwrap())
+        }
     }
 }
 
@@ -125,7 +129,7 @@ impl Control {
 
             if reset::reset_button(
                 ui,
-                !approx_eq!(f64, session_value, self.default, epsilon = 1e-6),
+                !f64_eq(session_value, self.default),
                 &self.default_string,
             )
             .clicked()

@@ -98,7 +98,7 @@ impl DataSources {
             move || {
                 let uri = format!("http://127.0.0.1:{port}/api/dashboard-request");
                 let request_agent: ureq::Agent = ureq::Agent::config_builder()
-                    .timeout_connect(Some(REQUEST_TIMEOUT))
+                    .timeout_global(Some(REQUEST_TIMEOUT))
                     .build()
                     .into();
 
@@ -288,7 +288,7 @@ impl DataSources {
                 let uri = format!("http://127.0.0.1:{port}/api/version");
 
                 let request_agent: ureq::Agent = ureq::Agent::config_builder()
-                    .timeout_connect(Some(REQUEST_TIMEOUT))
+                    .timeout_global(Some(REQUEST_TIMEOUT))
                     .build()
                     .into();
 

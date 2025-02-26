@@ -135,9 +135,8 @@ impl StreamRenderer {
             ]);
 
             // scale up both view and shading res after running foveated rendering stuff
-            view_resolution = (view_resolution.as_vec2() * upscaling.upscale_factor).as_uvec2();
-            staging_resolution =
-                (staging_resolution.as_vec2() * upscaling.upscale_factor).as_uvec2();
+            view_resolution = scale_resolution(view_resolution, upscaling.clone());
+            staging_resolution = scale_resolution(staging_resolution, upscaling);
         };
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -508,4 +507,10 @@ pub fn foveated_encoding_shader_constants(
     .collect();
 
     (optimized_view_resolution_aligned.as_uvec2(), constants)
+}
+
+pub fn scale_resolution(resolution: UVec2, upscaling: UpscalingConfig) -> UVec2 {
+    let mut target_resolution = resolution.as_vec2();
+    target_resolution *= upscaling.upscale_factor;
+    return target_resolution.as_uvec2();
 }

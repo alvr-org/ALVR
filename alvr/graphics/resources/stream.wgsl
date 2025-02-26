@@ -3,7 +3,6 @@ const DIV12: f32 = 0.0773993808;// 1.0 / 12.92
 const DIV1: f32 = 0.94786729857; // 1.0 / 1.055
 const THRESHOLD: f32 = 0.04045;
 const GAMMA: vec3f = vec3f(2.4);
-const UPSCALE_OPERATION_MODE: i32 = 1;
 
 override ENABLE_SRGB_CORRECTION: bool;
 override ENCODING_GAMMA: f32;
@@ -252,88 +251,80 @@ fn sgsr(in_TEXCOORD0: vec4f) -> vec4f {
     color.x = texSample.x;
     color.y = texSample.y;
     color.z = texSample.z;
-    if UPSCALE_OPERATION_MODE != 1 {
-        color.w = texSample.w;
-    }
 
-    //var xCenter: f32 = abs(in_TEXCOORD0.x + -0.5);
-    //var yCenter: f32 = abs(in_TEXCOORD0.y + -0.5);
+    // all of these 1 values are the OperationMode
+    // see https://github.com/SnapdragonStudios/snapdragon-gsr/tree/main/sgsr/v1#operation-mode
+    let imgCoord: vec2f = (in_TEXCOORD0.xy * viewport_info.zw) + vec2f(-0.5, 0.5);
+    let imgCoordPixel: vec2f = floor(imgCoord);
+    var coord: vec2f = (imgCoordPixel * viewport_info.xy);
+    let pl: vec2f = (imgCoord + (-imgCoordPixel));
+    var left: vec4f = textureGather(1, stream_texture, stream_sampler, coord);
 
-    //todo: config the SR region based on needs
-    //if ( UPSCALE_OPERATION_MODE!=4 && xCenter*xCenter+yCenter*yCenter<=0.4 * 0.4)
-    if UPSCALE_OPERATION_MODE != 4 {
-        let imgCoord: vec2f = (in_TEXCOORD0.xy * viewport_info.zw) + vec2f(-0.5, 0.5);
-        let imgCoordPixel: vec2f = floor(imgCoord);
-        var coord: vec2f = (imgCoordPixel * viewport_info.xy);
-        let pl: vec2f = (imgCoord + (-imgCoordPixel));
-        var left: vec4f = textureGather(UPSCALE_OPERATION_MODE, stream_texture, stream_sampler, coord);
+    let edgeVote: f32 = abs(left.z - left.y) + abs(color[1] - left.y) + abs(color[1] - left.z);
+    if edgeVote > UPSCALE_EDGE_THRESHOLD {
+        coord.x += viewport_info.x;
 
-        let edgeVote: f32 = abs(left.z - left.y) + abs(color[UPSCALE_OPERATION_MODE] - left.y) + abs(color[UPSCALE_OPERATION_MODE] - left.z);
-        if edgeVote > UPSCALE_EDGE_THRESHOLD {
-            coord.x += viewport_info.x;
+        var right: vec4f = textureGather(1, stream_texture, stream_sampler, coord + vec2f(viewport_info.x, 0.0));
+        var upDown: vec4f;
+        let texGatherA = textureGather(1, stream_texture, stream_sampler, coord + vec2f(0.0, -viewport_info.y));
+        upDown.x = texGatherA.w;
+        upDown.y = texGatherA.z;
+        let texGatherB = textureGather(1, stream_texture, stream_sampler, coord + vec2f(0.0, viewport_info.y));
+        upDown.z = texGatherB.y;
+        upDown.w = texGatherB.x;
 
-            var right: vec4f = textureGather(UPSCALE_OPERATION_MODE, stream_texture, stream_sampler, coord + vec2f(viewport_info.x, 0.0));
-            var upDown: vec4f;
-            let texGatherA = textureGather(UPSCALE_OPERATION_MODE, stream_texture, stream_sampler, coord + vec2f(0.0, -viewport_info.y));
-            upDown.x = texGatherA.w;
-            upDown.y = texGatherA.z;
-            let texGatherB = textureGather(UPSCALE_OPERATION_MODE, stream_texture, stream_sampler, coord + vec2f(0.0, viewport_info.y));
-            upDown.z = texGatherB.y;
-            upDown.w = texGatherB.x;
+        let mean: f32 = (left.y + left.z + right.x + right.w) * 0.25;
+        left = left - vec4(mean);
+        right = right - vec4(mean);
+        upDown = upDown - vec4(mean);
+        color.w = color[1] - mean;
 
-            let mean: f32 = (left.y + left.z + right.x + right.w) * 0.25;
-            left = left - vec4(mean);
-            right = right - vec4(mean);
-            upDown = upDown - vec4(mean);
-            color.w = color[UPSCALE_OPERATION_MODE] - mean;
+        let sum: f32 = (((((abs(left.x) + abs(left.y)) + abs(left.z)) + abs(left.w)) + (((abs(right.x) + abs(right.y)) + abs(right.z)) + abs(right.w))) + (((abs(upDown.x) + abs(upDown.y)) + abs(upDown.z)) + abs(upDown.w)));
+        let sumMean: f32 = 1.014185e+01 / sum;
+        let stdA: f32 = (sumMean * sumMean);
 
-            let sum: f32 = (((((abs(left.x) + abs(left.y)) + abs(left.z)) + abs(left.w)) + (((abs(right.x) + abs(right.y)) + abs(right.z)) + abs(right.w))) + (((abs(upDown.x) + abs(upDown.y)) + abs(upDown.z)) + abs(upDown.w)));
-            let sumMean: f32 = 1.014185e+01 / sum;
-            let stdA: f32 = (sumMean * sumMean);
-
-            var aWY: vec2f;
-            if UPSCALE_USE_EDGE_DIRECTION {
-                let data = vec3f(stdA, edgeDirection(left, right));
-                aWY = weightY(pl.x, pl.y + 1.0, upDown.x, data);
-                aWY += weightY(pl.x - 1.0, pl.y + 1.0, upDown.y, data);
-                aWY += weightY(pl.x - 1.0, pl.y - 2.0, upDown.z, data);
-                aWY += weightY(pl.x, pl.y - 2.0, upDown.w, data);
-                aWY += weightY(pl.x + 1.0, pl.y - 1.0, left.x, data);
-                aWY += weightY(pl.x, pl.y - 1.0, left.y, data);
-                aWY += weightY(pl.x, pl.y, left.z, data);
-                aWY += weightY(pl.x + 1.0, pl.y, left.w, data);
-                aWY += weightY(pl.x - 1.0, pl.y - 1.0, right.x, data);
-                aWY += weightY(pl.x - 2.0, pl.y - 1.0, right.y, data);
-                aWY += weightY(pl.x - 2.0, pl.y, right.z, data);
-                aWY += weightY(pl.x - 1.0, pl.y, right.w, data);
-            } else {
-                let data: f32 = stdA;
-                aWY = weightYned(pl.x, pl.y + 1.0, upDown.x, data);
-                aWY += weightYned(pl.x - 1.0, pl.y + 1.0, upDown.y, data);
-                aWY += weightYned(pl.x - 1.0, pl.y - 2.0, upDown.z, data);
-                aWY += weightYned(pl.x, pl.y - 2.0, upDown.w, data);
-                aWY += weightYned(pl.x + 1.0, pl.y - 1.0, left.x, data);
-                aWY += weightYned(pl.x, pl.y - 1.0, left.y, data);
-                aWY += weightYned(pl.x, pl.y, left.z, data);
-                aWY += weightYned(pl.x + 1.0, pl.y, left.w, data);
-                aWY += weightYned(pl.x - 1.0, pl.y - 1.0, right.x, data);
-                aWY += weightYned(pl.x - 2.0, pl.y - 1.0, right.y, data);
-                aWY += weightYned(pl.x - 2.0, pl.y, right.z, data);
-                aWY += weightYned(pl.x - 1.0, pl.y, right.w, data);
-            }
-
-            let finalY: f32 = aWY.y / aWY.x;
-            let maxY: f32 = max(max(left.y, left.z), max(right.x, right.w));
-            let minY: f32 = min(min(left.y, left.z), min(right.x, right.w));
-            var deltaY: f32 = clamp(UPSCALE_EDGE_SHARPNESS * finalY, minY, maxY) - color.w;
-
-            //smooth high contrast input
-            deltaY = clamp(deltaY, -23.0 / 255.0, 23.0 / 255.0);
-
-            color.x = clamp((color.x + deltaY), 0.0, 1.0);
-            color.y = clamp((color.y + deltaY), 0.0, 1.0);
-            color.z = clamp((color.z + deltaY), 0.0, 1.0);
+        var aWY: vec2f;
+        if UPSCALE_USE_EDGE_DIRECTION {
+            let data = vec3f(stdA, edgeDirection(left, right));
+            aWY = weightY(pl.x, pl.y + 1.0, upDown.x, data);
+            aWY += weightY(pl.x - 1.0, pl.y + 1.0, upDown.y, data);
+            aWY += weightY(pl.x - 1.0, pl.y - 2.0, upDown.z, data);
+            aWY += weightY(pl.x, pl.y - 2.0, upDown.w, data);
+            aWY += weightY(pl.x + 1.0, pl.y - 1.0, left.x, data);
+            aWY += weightY(pl.x, pl.y - 1.0, left.y, data);
+            aWY += weightY(pl.x, pl.y, left.z, data);
+            aWY += weightY(pl.x + 1.0, pl.y, left.w, data);
+            aWY += weightY(pl.x - 1.0, pl.y - 1.0, right.x, data);
+            aWY += weightY(pl.x - 2.0, pl.y - 1.0, right.y, data);
+            aWY += weightY(pl.x - 2.0, pl.y, right.z, data);
+            aWY += weightY(pl.x - 1.0, pl.y, right.w, data);
+        } else {
+            let data: f32 = stdA;
+            aWY = weightYned(pl.x, pl.y + 1.0, upDown.x, data);
+            aWY += weightYned(pl.x - 1.0, pl.y + 1.0, upDown.y, data);
+            aWY += weightYned(pl.x - 1.0, pl.y - 2.0, upDown.z, data);
+            aWY += weightYned(pl.x, pl.y - 2.0, upDown.w, data);
+            aWY += weightYned(pl.x + 1.0, pl.y - 1.0, left.x, data);
+            aWY += weightYned(pl.x, pl.y - 1.0, left.y, data);
+            aWY += weightYned(pl.x, pl.y, left.z, data);
+            aWY += weightYned(pl.x + 1.0, pl.y, left.w, data);
+            aWY += weightYned(pl.x - 1.0, pl.y - 1.0, right.x, data);
+            aWY += weightYned(pl.x - 2.0, pl.y - 1.0, right.y, data);
+            aWY += weightYned(pl.x - 2.0, pl.y, right.z, data);
+            aWY += weightYned(pl.x - 1.0, pl.y, right.w, data);
         }
+
+        let finalY: f32 = aWY.y / aWY.x;
+        let maxY: f32 = max(max(left.y, left.z), max(right.x, right.w));
+        let minY: f32 = min(min(left.y, left.z), min(right.x, right.w));
+        var deltaY: f32 = clamp(UPSCALE_EDGE_SHARPNESS * finalY, minY, maxY) - color.w;
+
+        //smooth high contrast input
+        deltaY = clamp(deltaY, -23.0 / 255.0, 23.0 / 255.0);
+
+        color.x = clamp((color.x + deltaY), 0.0, 1.0);
+        color.y = clamp((color.y + deltaY), 0.0, 1.0);
+        color.z = clamp((color.z + deltaY), 0.0, 1.0);
     }
 
     color.w = 1.0; //assume alpha channel is not used

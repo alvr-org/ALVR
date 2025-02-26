@@ -91,7 +91,7 @@ pub struct StreamContext {
     input_thread: Option<JoinHandle<()>>,
     input_thread_running: Arc<RelaxedAtomic>,
     config: ParsedStreamConfig,
-    target_resolution: UVec2,
+    target_view_resolution: UVec2,
     renderer: StreamRenderer,
     decoder: Option<(VideoDecoderConfig, VideoDecoderSource)>,
 }
@@ -149,7 +149,7 @@ impl StreamContext {
             None
         };
 
-        let target_resolution =
+        let target_view_resolution =
             compute_target_view_resolution(config.view_resolution, &config.upscaling);
         let format = graphics::swapchain_format(&gfx_ctx, &xr_session, config.enable_hdr);
 
@@ -157,14 +157,14 @@ impl StreamContext {
             graphics::create_swapchain(
                 &xr_session,
                 &gfx_ctx,
-                target_resolution,
+                target_view_resolution,
                 format,
                 foveation_profile.as_ref(),
             ),
             graphics::create_swapchain(
                 &xr_session,
                 &gfx_ctx,
-                target_resolution,
+                target_view_resolution,
                 format,
                 foveation_profile.as_ref(),
             ),
@@ -173,7 +173,7 @@ impl StreamContext {
         let renderer = StreamRenderer::new(
             gfx_ctx,
             config.view_resolution,
-            target_resolution,
+            target_view_resolution,
             [
                 swapchains[0]
                     .enumerate_images()
@@ -227,7 +227,7 @@ impl StreamContext {
             input_thread: None,
             input_thread_running,
             config,
-            target_resolution,
+            target_view_resolution,
             renderer,
             decoder: None,
         };
@@ -400,8 +400,8 @@ impl StreamContext {
         let rect = xr::Rect2Di {
             offset: xr::Offset2Di { x: 0, y: 0 },
             extent: xr::Extent2Di {
-                width: self.target_resolution.x as _,
-                height: self.target_resolution.y as _,
+                width: self.target_view_resolution.x as _,
+                height: self.target_view_resolution.y as _,
             },
         };
 

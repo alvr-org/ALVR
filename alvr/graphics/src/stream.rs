@@ -4,8 +4,6 @@ use alvr_common::{
     Fov,
 };
 use alvr_session::{FoveatedEncodingConfig, PassthroughMode, UpscalingConfig};
-use glow::COMPUTE_SHADER;
-use khronos_egl::Upcast;
 use std::{collections::HashMap, ffi::c_void, iter, mem, rc::Rc};
 use wgpu::{
     hal::{api, gles},
@@ -134,7 +132,6 @@ impl StreamRenderer {
                     "UPSCALE_EDGE_SHARPNESS".into(),
                     upscaling.edge_sharpness.into(),
                 ),
-                ("UPSCALE_FACTOR".into(), upscaling.upscale_factor.into()),
             ]);
         };
 

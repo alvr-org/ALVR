@@ -244,7 +244,7 @@ fn edgeDirection(left: vec4f, right: vec4f) -> vec2f
 fn sgsr(in_TEXCOORD0: vec4f) -> vec4f {
     // https://github.com/SnapdragonStudios/snapdragon-gsr/issues/2
     let dim = vec2f(textureDimensions(stream_texture));
-    let viewport_info = vec4f(UPSCALE_FACTOR/dim.x, UPSCALE_FACTOR/dim.y, dim.x/UPSCALE_FACTOR, dim.y/UPSCALE_FACTOR);
+    let viewport_info = vec4f(1/dim.x, 1/dim.y, dim.x, dim.y);
 
     var color: vec4f;
     let texSample = textureSampleLevel(stream_texture, stream_sampler, in_TEXCOORD0.xy, 0.0);

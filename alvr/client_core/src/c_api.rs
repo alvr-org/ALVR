@@ -15,7 +15,8 @@ use alvr_common::{
     warn, DeviceMotion, Fov, OptLazy, Pose,
 };
 use alvr_graphics::{
-    GraphicsContext, LobbyRenderer, LobbyViewParams, StreamRenderer, StreamViewParams,
+    compute_target_view_resolution, GraphicsContext, LobbyRenderer, LobbyViewParams,
+    StreamRenderer, StreamViewParams,
 };
 use alvr_packets::{ButtonEntry, ButtonValue, FaceData, ViewParams};
 use alvr_session::{
@@ -802,6 +803,7 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
     STREAM_RENDERER.set(Some(StreamRenderer::new(
         GRAPHICS_CONTEXT.with_borrow(|c| c.as_ref().unwrap().clone()),
         view_resolution,
+        compute_target_view_resolution(view_resolution, &upscaling),
         swapchain_textures,
         alvr_graphics::SDR_FORMAT_GL,
         foveated_encoding,

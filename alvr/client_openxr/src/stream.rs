@@ -13,7 +13,9 @@ use alvr_common::{
     parking_lot::RwLock,
     Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
-use alvr_graphics::{scale_resolution, GraphicsContext, StreamRenderer, StreamViewParams};
+use alvr_graphics::{
+    compute_target_view_resolution, GraphicsContext, StreamRenderer, StreamViewParams,
+};
 use alvr_packets::{FaceData, RealTimeConfig, StreamConfig, ViewParams};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, CodecType, FoveatedEncodingConfig,
@@ -147,11 +149,8 @@ impl StreamContext {
             None
         };
 
-        let target_resolution = if let Some(upscaling) = config.upscaling.clone() {
-            scale_resolution(config.view_resolution, upscaling)
-        } else {
-            config.view_resolution
-        };
+        let target_resolution =
+            compute_target_view_resolution(config.view_resolution, &config.upscaling);
         let format = graphics::swapchain_format(&gfx_ctx, &xr_session, config.enable_hdr);
 
         let swapchains = [
@@ -173,8 +172,8 @@ impl StreamContext {
 
         let renderer = StreamRenderer::new(
             gfx_ctx,
-            // pass config.view_resolution as streamrenderer needs to perform own operations with upscaler
             config.view_resolution,
+            target_resolution,
             [
                 swapchains[0]
                     .enumerate_images()

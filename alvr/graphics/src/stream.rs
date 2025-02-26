@@ -4,6 +4,8 @@ use alvr_common::{
     Fov,
 };
 use alvr_session::{FoveatedEncodingConfig, PassthroughMode, UpscalingConfig};
+use glow::COMPUTE_SHADER;
+use khronos_egl::Upcast;
 use std::{collections::HashMap, ffi::c_void, iter, mem, rc::Rc};
 use wgpu::{
     hal::{api, gles},
@@ -60,6 +62,7 @@ impl StreamRenderer {
     pub fn new(
         context: Rc<GraphicsContext>,
         base_view_resolution: UVec2,
+        target_view_resolution: UVec2,
         swapchain_textures: [Vec<u32>; 2],
         target_format: u32,
         foveated_encoding: Option<FoveatedEncodingConfig>,
@@ -106,8 +109,7 @@ impl StreamRenderer {
             ("ENCODING_GAMMA".into(), encoding_gamma.into()),
         ]);
 
-        let mut view_resolution = base_view_resolution;
-        let mut staging_resolution = if let Some(foveated_encoding) = foveated_encoding {
+        let staging_resolution = if let Some(foveated_encoding) = foveated_encoding {
             let (staging_resolution, ffe_constants) =
                 foveated_encoding_shader_constants(base_view_resolution, foveated_encoding);
             constants.extend(ffe_constants);
@@ -134,10 +136,6 @@ impl StreamRenderer {
                 ),
                 ("UPSCALE_FACTOR".into(), upscaling.upscale_factor.into()),
             ]);
-
-            // scale up both view and shading res after running foveated rendering stuff
-            view_resolution = scale_resolution(view_resolution, upscaling.clone());
-            staging_resolution = scale_resolution(staging_resolution, upscaling);
         };
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -223,7 +221,7 @@ impl StreamRenderer {
             let render_target = super::create_gl_swapchain(
                 device,
                 target_swapchain,
-                view_resolution,
+                target_view_resolution,
                 target_format,
             );
 
@@ -496,8 +494,13 @@ pub fn foveated_encoding_shader_constants(
     (optimized_view_resolution_aligned.as_uvec2(), constants)
 }
 
-pub fn scale_resolution(resolution: UVec2, upscaling: UpscalingConfig) -> UVec2 {
+pub fn compute_target_view_resolution(
+    resolution: UVec2,
+    upscaling: &Option<UpscalingConfig>,
+) -> UVec2 {
     let mut target_resolution = resolution.as_vec2();
-    target_resolution *= upscaling.upscale_factor;
+    if let Some(upscaling) = upscaling {
+        target_resolution *= upscaling.upscale_factor;
+    }
     return target_resolution.as_uvec2();
 }

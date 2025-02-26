@@ -148,14 +148,15 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     });
     debug!("have_intel_dgpu: {}", have_intel_dgpu);
 
-    let steamvr_root_dir = match alvr_server_io::steamvr_root_dir() {
-        Ok(dir) => dir,
-        Err(e) => {
-            error!("Couldn't detect openvr or steamvr files. \
+    let steamvr_root_dir = if let Ok(dir) = alvr_server_io::steamvr_root_dir() {
+        dir
+    } else {
+        error!(
+            "Couldn't detect openvr or steamvr files. \
             Please make sure you have installed and ran SteamVR at least once \
-            Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR Launcher {}", e);
-            return;
-        }
+            Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR"
+        );
+        return;
     };
     let vrmonitor_path_string = steamvr_root_dir
         .join("bin")
@@ -172,24 +173,17 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     if have_igpu {
         if have_nvidia_dgpu {
             let base_path = "/usr/share/vulkan/icd.d/nvidia_icd";
-            let nvidia_icd_path = if Path::new(&format!("{}.json", base_path)).exists() {
-                Some(format!("{}.json", base_path))
-            } else if Path::new(&format!("{}.x86_64.json", base_path)).exists() {
-                Some(format!("{}.x86_64.json", base_path)) // Might be only on Fedora
+            let nvidia_icd_path = if Path::new(&format!("{base_path}.json")).exists() {
+                format!("{base_path}.json")
             } else {
-                None
+                format!("{base_path}.x86_64.json")
             };
-            if let Some(path) = nvidia_icd_path {
-                let nv_options = format!("__GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only \
-                VK_ICD_FILENAMES={}", path);
+            let nv_options = format!("__GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 VK_DRIVER_FILES={nvidia_icd_path}");
 
-                warn!("{steamvr_opts}\n{nv_options} {vrmonitor_path_string} %command%");
-                warn!("{game_opts}\n{nv_options} %command%");
+            warn!("{steamvr_opts}\n{nv_options} {vrmonitor_path_string} %command%");
+            warn!("{game_opts}\n{nv_options} %command%");
 
-                vrmonitor_path_written = true;
-            } else {
-                warn!("Couldn't find vulkan nvidia icd file. You may fail to launch SteamVR.");
-            }
+            vrmonitor_path_written = true;
         } else if have_intel_dgpu || have_amd_dgpu {
             warn!("{steamvr_opts}\nDRI_PRIME=1 {vrmonitor_path_string} %command%");
             warn!("{game_opts}\nDRI_PRIME=1 %command%");

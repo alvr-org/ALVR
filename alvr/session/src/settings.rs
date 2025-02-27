@@ -866,9 +866,15 @@ pub struct BodyTrackingFBConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-pub struct BodyTrackingBDConfig {
-    pub high_accuracy: bool,
-    pub prompt_calibration_on_start: bool,
+#[schema(gui = "button_group")]
+pub enum BodyTrackingBDConfig {
+    #[schema(strings(display_name = "Body Tracking"))]
+    BodyTracking {
+        high_accuracy: bool,
+        prompt_calibration_on_start: bool,
+    },
+    #[schema(strings(display_name = "Object Tracking"))]
+    ObjectTracking,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1820,8 +1826,11 @@ pub fn session_settings_default() -> SettingsDefault {
                         body_tracking_bd: SwitchDefault {
                             enabled: true,
                             content: BodyTrackingBDConfigDefault {
-                                high_accuracy: true,
-                                prompt_calibration_on_start: true,
+                                BodyTracking: BodyTrackingBDConfigBodyTrackingDefault {
+                                    high_accuracy: true,
+                                    prompt_calibration_on_start: true,
+                                },
+                                variant: BodyTrackingBDConfigDefaultVariant::BodyTracking,
                             },
                         },
                     },

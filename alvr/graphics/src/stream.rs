@@ -512,5 +512,5 @@ pub fn compute_target_view_resolution(
     if let Some(upscaling) = upscaling {
         target_resolution *= upscaling.upscale_factor;
     }
-    return target_resolution.as_uvec2();
+    target_resolution.as_uvec2()
 }

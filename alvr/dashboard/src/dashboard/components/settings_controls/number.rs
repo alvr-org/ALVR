@@ -1,3 +1,5 @@
+use crate::dashboard::components::f64_eq;
+
 use super::{reset, NestingInfo};
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{NumberType, NumericGuiType};
@@ -12,7 +14,10 @@ fn to_json_value(number: f64, ty: NumberType) -> json::Value {
     match ty {
         NumberType::UnsignedInteger => json::Value::from(number.abs() as u64),
         NumberType::SignedInteger => json::Value::from(number as i64),
-        NumberType::Float => json::Value::Number(Number::from_f64(number).unwrap()),
+        NumberType::Float => {
+            let rounded: f64 = format!("{:.6}", number).parse().unwrap();
+            json::Value::Number(Number::from_f64(rounded).unwrap())
+        }
     }
 }
 
@@ -122,8 +127,12 @@ impl Control {
                 self.editing_value_f64 = None;
             }
 
-            if reset::reset_button(ui, session_value != self.default, &self.default_string)
-                .clicked()
+            if reset::reset_button(
+                ui,
+                !f64_eq(session_value, self.default),
+                &self.default_string,
+            )
+            .clicked()
             {
                 request = get_request(&self.nesting_info, self.default, self.ty);
             }

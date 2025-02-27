@@ -65,9 +65,10 @@ impl DevicesTab {
                             ui.add_space(10.0);
                             ui.heading(
                                 RichText::new(
-                                    "The streamer is not connected! VR headsets will not be discovered",
+                                    "ALVR requires running SteamVR! Devices will not be discovered or connected",
                                 )
-                                .color(Color32::BLACK),
+                                .color(Color32::BLACK)
+                                .size(16.0),
                             );
                         });
 
@@ -77,7 +78,7 @@ impl DevicesTab {
                                 crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr();
                             }
                         });
-                    });
+                    })
                 });
         }
 

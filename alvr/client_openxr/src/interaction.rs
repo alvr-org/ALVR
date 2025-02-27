@@ -13,7 +13,7 @@ use crate::{
 };
 use alvr_common::{glam::Vec3, *};
 use alvr_packets::{ButtonEntry, ButtonValue, StreamConfig, ViewParams};
-use alvr_session::{BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
+use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
 use std::{collections::HashMap, time::Duration};
 use xr::SpaceLocationFlags;
@@ -509,58 +509,49 @@ impl InteractionContext {
             .map(|tracker| (tracker, xr::BodyJointFB::COUNT.into_raw() as usize))
         });
 
-        let prompt_calibration_bd = config
+        if let Some(body_tracking_config) = config
             .body_tracking
             .as_ref()
             .and_then(|s| s.body_tracking_bd.as_option())
-            .map(|c| c.prompt_calibration_on_start)
-            .unwrap_or(false);
-
-        self.body_sources.body_tracker_bd = create_ext_object(
-            "BodyTrackerBD (high accuracy)",
-            config
-                .body_tracking
-                .as_ref()
-                .and_then(|s| s.body_tracking_bd.as_option())
-                .map(|c| c.high_accuracy),
-            || {
-                BodyTrackerBD::new(
-                    self.xr_session.clone(),
-                    BodyJointSetBD::FULL_BODY_JOINTS,
-                    &self.extra_extensions,
-                    self.xr_system,
-                    prompt_calibration_bd,
-                )
-            },
-        )
-        .or_else(|| {
-            create_ext_object(
-                "BodyTrackerBD (low accuracy)",
-                config
-                    .body_tracking
-                    .as_ref()
-                    .map(|s| s.body_tracking_bd.enabled()),
-                || {
-                    BodyTrackerBD::new(
-                        self.xr_session.clone(),
-                        BodyJointSetBD::BODY_WITHOUT_ARM,
-                        &self.extra_extensions,
-                        self.xr_system,
-                        prompt_calibration_bd,
+        {
+            match body_tracking_config {
+                BodyTrackingBDConfig::BodyTracking {
+                    high_accuracy,
+                    prompt_calibration_on_start,
+                } => {
+                    self.body_sources.body_tracker_bd = create_ext_object(
+                        "BodyTrackerBD (high accuracy)",
+                        Some(*high_accuracy),
+                        || {
+                            BodyTrackerBD::new(
+                                self.xr_session.clone(),
+                                BodyJointSetBD::FULL_BODY_JOINTS,
+                                &self.extra_extensions,
+                                self.xr_system,
+                                *prompt_calibration_on_start,
+                            )
+                        },
                     )
-                },
-            )
-        });
-
-        self.body_sources.motion_tracker_bd = create_ext_object(
-            "MotionTrackerBD (object tracking)",
-            config
-                .body_tracking
-                .as_ref()
-                .and_then(|s| s.body_tracking_bd.as_option())
-                .map(|c| c.object_tracking),
-            || MotionTrackerBD::new(self.xr_session.clone(), &self.extra_extensions),
-        );
+                    .or_else(|| {
+                        create_ext_object("BodyTrackerBD (low accuracy)", Some(true), || {
+                            BodyTrackerBD::new(
+                                self.xr_session.clone(),
+                                BodyJointSetBD::BODY_WITHOUT_ARM,
+                                &self.extra_extensions,
+                                self.xr_system,
+                                *prompt_calibration_on_start,
+                            )
+                        })
+                    })
+                }
+                BodyTrackingBDConfig::ObjectTracking => {
+                    self.body_sources.motion_tracker_bd =
+                        create_ext_object("MotionTrackerBD (object tracking)", Some(true), || {
+                            MotionTrackerBD::new(self.xr_session.clone(), &self.extra_extensions)
+                        });
+                }
+            }
+        }
 
         if let Some(face_tracker) = &self.face_sources.face_tracker_pico {
             face_tracker.start_face_tracking().ok();

@@ -292,10 +292,9 @@ pub fn entry_point() {
         );
         let lobby_body_tracking_config = BodyTrackingSourcesConfig {
             body_tracking_fb: Switch::Disabled,
-            body_tracking_bd: Switch::Enabled(BodyTrackingBDConfig {
+            body_tracking_bd: Switch::Enabled(BodyTrackingBDConfig::BodyTracking {
                 high_accuracy: true,
                 prompt_calibration_on_start: false,
-                object_tracking: true,
             }),
         };
         let lobby_interaction_sources = InteractionSourcesConfig {

@@ -63,14 +63,13 @@ impl MotionTrackerModeBD {
     pub const MOTION_TRACKING: MotionTrackerModeBD = Self(1i32);
 }
 
-type GetMotionTrackerModeBD =
-    unsafe extern "system" fn(sys::Instance, *mut MotionTrackerModeBD) -> sys::Result;
+pub type CheckMotionTrackerModeAndNumberBD =
+    unsafe extern "system" fn(sys::Instance, MotionTrackerModeBD, i32) -> sys::Result;
 
 pub struct MotionTrackerBD {
     session: xr::Session<AnyGraphics>,
     get_motion_tracker_connect_state: GetMotionTrackerConnectStateBD,
     get_motion_tracker_locations: GetMotionTrackerLocationsBD,
-    get_motion_tracker_mode: GetMotionTrackerModeBD,
 }
 
 impl MotionTrackerBD {
@@ -86,10 +85,16 @@ impl MotionTrackerBD {
         let get_motion_tracker_locations =
             get_instance_proc(&session, "xrGetMotionTrackerLocationsBD")?;
         let set_config: SetConfigPICO = get_instance_proc(&session, "xrSetConfigPICO")?;
-        let get_motion_tracker_mode: GetMotionTrackerModeBD =
-            get_instance_proc(&session, "xrGetMotionTrackerModeBD")?;
+        let check_motion_tracker_mode_and_number: CheckMotionTrackerModeAndNumberBD =
+            get_instance_proc(&session, "xrCheckMotionTrackerModeAndNumberBD")?;
 
         unsafe {
+            super::xr_res(check_motion_tracker_mode_and_number(
+                session.instance().as_raw(),
+                MotionTrackerModeBD::MOTION_TRACKING,
+                0,
+            ))?;
+
             //Floor height tracking origin
             let str = CString::new("1").unwrap();
             //Set config property for tracking origin
@@ -100,7 +105,6 @@ impl MotionTrackerBD {
             session: session.into_any_graphics(),
             get_motion_tracker_connect_state,
             get_motion_tracker_locations,
-            get_motion_tracker_mode,
         })
     }
 
@@ -109,18 +113,6 @@ impl MotionTrackerBD {
         time: xr::Time,
     ) -> xr::Result<Option<Vec<MotionTrackerLocationsBD>>> {
         let mut locations = Vec::with_capacity(6);
-
-        unsafe {
-            let mut tracker_mode = MotionTrackerModeBD::BODY_TRACKING;
-            super::xr_res((self.get_motion_tracker_mode)(
-                self.session.instance().as_raw(),
-                &mut tracker_mode,
-            ))?;
-
-            if tracker_mode != MotionTrackerModeBD::MOTION_TRACKING {
-                return Ok(None);
-            }
-        }
 
         let mut connect_state = MotionTrackerConnectStateBD {
             tracker_count: 0,

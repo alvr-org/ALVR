@@ -3,7 +3,8 @@ use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     once_cell::sync::Lazy,
     settings_schema::Switch,
-    DeviceMotion, Pose, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID,
+    DeviceMotion, Pose, BD_TRACKER_OBJECT_FIRST_ID, BD_TRACKER_OBJECT_SECOND_ID,
+    BD_TRACKER_OBJECT_THIRD_ID, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID,
     BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, HAND_LEFT_ID,
 };
 use alvr_session::HeadsetConfig;
@@ -11,7 +12,7 @@ use std::f32::consts::{FRAC_PI_2, PI};
 
 const DEG_TO_RAD: f32 = PI / 180.0;
 
-pub static BODY_TRACKER_IDS: Lazy<[u64; 8]> = Lazy::new(|| {
+pub static TRACKER_IDS: Lazy<[u64; 11]> = Lazy::new(|| {
     [
         // Upper body
         *BODY_CHEST_ID,
@@ -23,6 +24,10 @@ pub static BODY_TRACKER_IDS: Lazy<[u64; 8]> = Lazy::new(|| {
         *BODY_LEFT_FOOT_ID,
         *BODY_RIGHT_KNEE_ID,
         *BODY_RIGHT_FOOT_ID,
+        // ByteDance object tracking
+        *BD_TRACKER_OBJECT_FIRST_ID,
+        *BD_TRACKER_OBJECT_SECOND_ID,
+        *BD_TRACKER_OBJECT_THIRD_ID,
     ]
 });
 

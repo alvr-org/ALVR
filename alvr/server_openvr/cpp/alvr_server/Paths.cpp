@@ -14,6 +14,9 @@ uint64_t BODY_LEFT_KNEE_ID;
 uint64_t BODY_LEFT_FOOT_ID;
 uint64_t BODY_RIGHT_KNEE_ID;
 uint64_t BODY_RIGHT_FOOT_ID;
+uint64_t BD_TRACKER_OBJECT_FIRST_ID;
+uint64_t BD_TRACKER_OBJECT_SECOND_ID;
+uint64_t BD_TRACKER_OBJECT_THIRD_ID;
 
 uint64_t LEFT_A_TOUCH_ID;
 uint64_t LEFT_B_TOUCH_ID;
@@ -34,7 +37,7 @@ uint64_t RIGHT_TRIGGER_TOUCH_ID;
 uint64_t RIGHT_TRIGGER_VALUE_ID;
 uint64_t RIGHT_SQUEEZE_VALUE_ID;
 
-std::set<uint64_t> BODY_IDS;
+std::set<uint64_t> TRACKER_IDS;
 std::map<uint64_t, ButtonInfo> LEFT_CONTROLLER_BUTTON_MAPPING;
 std::map<uint64_t, ButtonInfo> RIGHT_CONTROLLER_BUTTON_MAPPING;
 std::map<uint64_t, std::vector<uint64_t>> ALVR_TO_STEAMVR_PATH_IDS;
@@ -53,6 +56,9 @@ void init_paths() {
     BODY_LEFT_FOOT_ID = PathStringToHash("/user/body/left_foot");
     BODY_RIGHT_KNEE_ID = PathStringToHash("/user/body/right_knee");
     BODY_RIGHT_FOOT_ID = PathStringToHash("/user/body/right_foot");
+    BD_TRACKER_OBJECT_FIRST_ID = PathStringToHash("/user/tracker_bd/object_1");
+    BD_TRACKER_OBJECT_SECOND_ID = PathStringToHash("/user/tracker_bd/object_2");
+    BD_TRACKER_OBJECT_THIRD_ID = PathStringToHash("/user/tracker_bd/object_3");
 
     LEFT_A_TOUCH_ID = PathStringToHash("/user/hand/left/input/a/touch");
     LEFT_B_TOUCH_ID = PathStringToHash("/user/hand/left/input/b/touch");
@@ -73,14 +79,17 @@ void init_paths() {
     RIGHT_TRIGGER_VALUE_ID = PathStringToHash("/user/hand/right/input/trigger/value");
     RIGHT_SQUEEZE_VALUE_ID = PathStringToHash("/user/hand/right/input/squeeze/value");
 
-    BODY_IDS.insert(BODY_CHEST_ID);
-    BODY_IDS.insert(BODY_HIPS_ID);
-    BODY_IDS.insert(BODY_LEFT_ELBOW_ID);
-    BODY_IDS.insert(BODY_RIGHT_ELBOW_ID);
-    BODY_IDS.insert(BODY_LEFT_KNEE_ID);
-    BODY_IDS.insert(BODY_LEFT_FOOT_ID);
-    BODY_IDS.insert(BODY_RIGHT_KNEE_ID);
-    BODY_IDS.insert(BODY_RIGHT_FOOT_ID);
+    TRACKER_IDS.insert(BODY_CHEST_ID);
+    TRACKER_IDS.insert(BODY_HIPS_ID);
+    TRACKER_IDS.insert(BODY_LEFT_ELBOW_ID);
+    TRACKER_IDS.insert(BODY_RIGHT_ELBOW_ID);
+    TRACKER_IDS.insert(BODY_LEFT_KNEE_ID);
+    TRACKER_IDS.insert(BODY_LEFT_FOOT_ID);
+    TRACKER_IDS.insert(BODY_RIGHT_KNEE_ID);
+    TRACKER_IDS.insert(BODY_RIGHT_FOOT_ID);
+    TRACKER_IDS.insert(BD_TRACKER_OBJECT_FIRST_ID);
+    TRACKER_IDS.insert(BD_TRACKER_OBJECT_SECOND_ID);
+    TRACKER_IDS.insert(BD_TRACKER_OBJECT_THIRD_ID);
 
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/system/click"),
                                             { { "/input/system/click" }, ButtonType::Binary } });

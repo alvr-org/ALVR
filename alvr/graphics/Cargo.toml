@@ -13,6 +13,6 @@ alvr_session.workspace = true
 glow = "0.16"
 glyph_brush_layout = "0.2"
 khronos-egl = { version = "6", features = ["dynamic"] }
-pollster = "0.3"
+pollster = "0.4"
 wgpu = "24"
 wgpu-core = { version = "24", features = ["gles"] }

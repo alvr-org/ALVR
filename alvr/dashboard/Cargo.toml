@@ -20,22 +20,22 @@ bincode = "1"
 chrono = "0.4"
 eframe = "0.31"
 env_logger = "0.11"
-ico = "0.3"
-rand = "0.8"
+ico = "0.4"
+rand = "0.9"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 settings-schema = { git = "https://github.com/alvr-org/settings-schema-rs", rev = "676185f" }
-statrs = "0.17"
+statrs = "0.18"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 alvr_server_io.workspace = true
-sysinfo = "0.31"
-tungstenite = "0.24"
+sysinfo = "0.33"
+tungstenite = "0.26"
 ureq = { version = "3", features = ["json"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 wgpu = "24"
-libva = { package = "cros-libva", version = "0.0.7" }
+libva = { package = "cros-libva", version = "0.0.13" }
 nvml-wrapper = "0.10.0"
 
 [target.'cfg(windows)'.build-dependencies]

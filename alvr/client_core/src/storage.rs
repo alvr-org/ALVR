@@ -24,15 +24,15 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         Self {
             hostname: format!(
                 "{}{}{}{}.client.local.",
-                rng.gen_range(0..10),
-                rng.gen_range(0..10),
-                rng.gen_range(0..10),
-                rng.gen_range(0..10),
+                rng.random_range(0..10),
+                rng.random_range(0..10),
+                rng.random_range(0..10),
+                rng.random_range(0..10),
             ),
             protocol_id: alvr_common::protocol_id(),
         }

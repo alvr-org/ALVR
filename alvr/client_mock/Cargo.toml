@@ -14,4 +14,4 @@ alvr_session.workspace = true
 
 eframe = "0.31"
 env_logger = "0.11"
-rand = "0.8"
+rand = "0.9"

@@ -23,31 +23,21 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, RefreshKind, System};
+use sysinfo::{ProcessesToUpdate, System};
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 const DRIVER_KEY: &str = "driver_alvr_server";
 const BLOCKED_KEY: &str = "blocked_by_safe_mode";
 
 pub fn is_steamvr_running() -> bool {
-    let mut system = System::new_with_specifics(
-        RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
-    );
-    system.refresh_processes(ProcessesToUpdate::All);
-
-    system
+    System::new_all()
         .processes_by_name(OsStr::new(&afs::exec_fname("vrserver")))
         .count()
         != 0
 }
 
 pub fn maybe_kill_steamvr() {
-    let mut system = System::new_with_specifics(
-        RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
-    );
-    system.refresh_processes(ProcessesToUpdate::All);
-
-    // first kill vrmonitor, then kill vrserver if it is hung.
+    let mut system = System::new_all();
 
     #[allow(unused_variables)]
     for process in system.processes_by_name(OsStr::new(&afs::exec_fname("vrmonitor"))) {
@@ -61,7 +51,7 @@ pub fn maybe_kill_steamvr() {
         thread::sleep(Duration::from_secs(1));
     }
 
-    system.refresh_processes(ProcessesToUpdate::All);
+    system.refresh_processes(ProcessesToUpdate::All, true);
 
     #[allow(unused_variables)]
     for process in system.processes_by_name(OsStr::new(&afs::exec_fname("vrserver"))) {

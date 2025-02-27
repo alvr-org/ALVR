@@ -52,13 +52,15 @@ pub fn get_display_name(id: &str, strings: &HashMap<String, String>) -> String {
 }
 
 pub fn f64_eq(f1: f64, f2: f64) -> bool {
-    format!("{:.6}", f1) == format!("{:.6}", f2)
+    f64::abs(f1 - f2) < f32::EPSILON as f64
 }
 
 pub fn serde_values_eq(a: &serde_json::Value, b: &serde_json::Value) -> bool {
     if let (serde_json::Value::Number(n1), serde_json::Value::Number(n2)) = (a, b) {
-        if let (Some(f1), Some(f2)) = (n1.as_f64(), n2.as_f64()) {
-            return f64_eq(f1, f2);
+        if !n1.is_i64() || !n2.is_i64() {
+            if let (Some(f1), Some(f2)) = (n1.as_f64(), n2.as_f64()) {
+                return f64_eq(f1, f2);
+            }
         }
     }
     a == b

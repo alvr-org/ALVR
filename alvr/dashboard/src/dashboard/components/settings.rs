@@ -120,7 +120,7 @@ impl SettingsTab {
             preset.update_session_settings(json);
             self.game_audio_preset = Some(preset);
 
-            let mut preset = PresetControl::new(builtin_schema::microphone_schema(list.output));
+            let mut preset = PresetControl::new(builtin_schema::microphone_schema());
             preset.update_session_settings(json);
             self.microphone_preset = Some(preset);
         }

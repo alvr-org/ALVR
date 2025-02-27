@@ -262,7 +262,7 @@ pub fn game_audio_schema(_: Vec<String>) -> PresetSchemaNode {
 }
 
 #[cfg(target_os = "linux")]
-pub fn microphone_schema(_: Vec<String>) -> PresetSchemaNode {
+pub fn microphone_schema() -> PresetSchemaNode {
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
         name: "Headset microphone".into(),
         strings: HashMap::new(),
@@ -351,7 +351,7 @@ pub fn game_audio_schema(devices: Vec<String>) -> PresetSchemaNode {
 }
 
 #[cfg(not(target_os = "linux"))]
-pub fn microphone_schema(devices: Vec<String>) -> PresetSchemaNode {
+pub fn microphone_schema() -> PresetSchemaNode {
     let mut microhone_options = vec![HigherOrderChoiceOption {
         display_name: "Disabled".to_owned(),
         modifiers: vec![bool_modifier(
@@ -382,28 +382,14 @@ pub fn microphone_schema(devices: Vec<String>) -> PresetSchemaNode {
                 content: None,
             })
         }
-    } else {
-        const PREFIX: &str = "session_settings.audio.microphone.content.devices";
-        for name in devices {
-            microhone_options.push(HigherOrderChoiceOption {
-                display_name: name.clone(),
-                modifiers: vec![
-                    bool_modifier("session_settings.audio.microphone.enabled", true),
-                    string_modifier(&format!("{PREFIX}.variant"), "Custom"),
-                    string_modifier(&format!("{PREFIX}.Custom.sink.variant"), "NameSubstring"),
-                    string_modifier(&format!("{PREFIX}.Custom.sink.NameSubstring"), &name),
-                ],
-                content: None,
-            })
-        }
-    };
+    }
 
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
         name: "Headset microphone".into(),
         strings: HashMap::new(),
         flags: HashSet::new(),
         options: microhone_options.into_iter().collect(),
-        default_option_display_name: "Automatic".into(),
+        default_option_display_name: "Disabled".into(),
         gui: ChoiceControlType::Dropdown,
     })
 }

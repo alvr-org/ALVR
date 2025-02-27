@@ -1087,7 +1087,7 @@ pub fn get_bd_motion_trackers(
 ) -> Vec<(u64, DeviceMotion)> {
     let xr_time = crate::to_xr_time(time);
 
-    if let Some(trackers) = motion_tracker
+    if let Some(mut trackers) = motion_tracker
         .locate_motion_trackers(xr_time)
         .ok()
         .flatten()
@@ -1102,6 +1102,8 @@ pub fn get_bd_motion_trackers(
             *BODY_LEFT_KNEE_ID,
             *BODY_LEFT_FOOT_ID,
         ];
+
+        trackers.sort_by(|a, b| a.serial.cmp(&b.serial));
 
         for (i, item) in trackers.iter().enumerate() {
             joints.push((

@@ -12,7 +12,7 @@ struct MotionTrackerConnectStateBD {
 }
 
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Ord, Eq, PartialEq, PartialOrd)]
 pub struct MotionTrackerSerialBD {
     pub serial: [u8; 24],
 }

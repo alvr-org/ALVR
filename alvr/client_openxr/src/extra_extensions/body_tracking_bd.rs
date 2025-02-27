@@ -1,7 +1,4 @@
-use crate::extra_extensions::{
-    get_instance_proc, CheckMotionTrackerModeAndNumberBD, MotionTrackerModeBD,
-    BD_MOTION_TRACKING_EXTENSION_NAME,
-};
+use crate::extra_extensions::get_instance_proc;
 use alvr_common::once_cell::sync::Lazy;
 use openxr::{self as xr, sys, AnyGraphics};
 use std::ffi::{c_char, c_void, CString};
@@ -139,9 +136,7 @@ impl BodyTrackerBD {
         system: xr::SystemId,
         prompt_calibration: bool,
     ) -> xr::Result<Self> {
-        if !extra_extensions.contains(&BD_BODY_TRACKING_EXTENSION_NAME.to_owned())
-            || !extra_extensions.contains(&BD_MOTION_TRACKING_EXTENSION_NAME.to_owned())
-        {
+        if !extra_extensions.contains(&BD_BODY_TRACKING_EXTENSION_NAME.to_owned()) {
             return Err(sys::Result::ERROR_EXTENSION_NOT_PRESENT);
         }
 
@@ -153,8 +148,6 @@ impl BodyTrackerBD {
             get_instance_proc(&session, "xrGetBodyTrackingStateBD")?;
         let destroy_body_tracker = get_instance_proc(&session, "xrDestroyBodyTrackerBD")?;
         let locate_body_joints = get_instance_proc(&session, "xrLocateBodyJointsBD")?;
-        let check_motion_tracker_mode_and_number: CheckMotionTrackerModeAndNumberBD =
-            get_instance_proc(&session, "xrCheckMotionTrackerModeAndNumberBD")?;
 
         let props = super::get_props(
             &session,
@@ -186,12 +179,6 @@ impl BodyTrackerBD {
 
         if prompt_calibration {
             unsafe {
-                super::xr_res(check_motion_tracker_mode_and_number(
-                    session.instance().as_raw(),
-                    MotionTrackerModeBD::BODY_TRACKING,
-                    0,
-                ))?;
-
                 super::xr_res(get_body_tracking_state(
                     session.instance().as_raw(),
                     &mut status_code,

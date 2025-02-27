@@ -30,7 +30,7 @@ pub fn maybe_wrap_vrcompositor_launcher() -> alvr_common::anyhow::Result<()> {
         Ok(exists) => {
             if !exists {
                 bail!(
-                    "SteamVR linux files missing, aborting startup, please re-check compatibility tools for SteamVR, verify integrity of files for SteamVR and make sure you're not using Flatpak Steam with non-Flatpak ALVR."
+                    "SteamVR Linux files missing, aborting startup, please re-check compatibility tools for SteamVR, verify integrity of files for SteamVR and make sure you're not using Flatpak Steam with non-Flatpak ALVR."
                 );
             }
         }
@@ -152,8 +152,8 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
         Ok(dir) => dir,
         Err(e) => {
             error!("Couldn't detect openvr or steamvr files. \
-            Please make sure you have installed and ran SteamVR at least once \
-            Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR {e}");
+            Please make sure you have installed and ran SteamVR at least once. \
+            Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR. {e}");
             return;
         }
     };

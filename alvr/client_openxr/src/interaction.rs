@@ -414,6 +414,7 @@ impl InteractionContext {
         self.face_sources.face_tracker_pico = None;
         self.body_sources.body_tracker_fb = None;
         self.body_sources.body_tracker_bd = None;
+        self.body_sources.motion_tracker_bd = None;
 
         // todo: check which permissions are needed for htc
         if let Some(config) = &config.face_tracking {

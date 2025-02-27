@@ -14,7 +14,7 @@ use std::{
 // This corresponds to the length of the payload
 const FRAMED_PREFIX_LENGTH: usize = mem::size_of::<u32>();
 
-struct RecvState {
+pub(crate) struct RecvState {
     packet_length: usize, // contains length prefix
     packet_cursor: usize, // counts also the length prefix bytes
 }
@@ -96,9 +96,9 @@ fn framed_recv<R: DeserializeOwned>(
 }
 
 pub struct ControlSocketSender<T> {
-    inner: TcpStream,
-    buffer: Vec<u8>,
-    _phantom: PhantomData<T>,
+    pub(crate) inner: TcpStream,
+    pub(crate) buffer: Vec<u8>,
+    pub(crate) _phantom: PhantomData<T>,
 }
 
 impl<S: Serialize> ControlSocketSender<S> {
@@ -108,10 +108,10 @@ impl<S: Serialize> ControlSocketSender<S> {
 }
 
 pub struct ControlSocketReceiver<T> {
-    inner: TcpStream,
-    buffer: Vec<u8>,
-    recv_state: Option<RecvState>,
-    _phantom: PhantomData<T>,
+    pub(crate) inner: TcpStream,
+    pub(crate) buffer: Vec<u8>,
+    pub(crate) recv_state: Option<RecvState>,
+    pub(crate) _phantom: PhantomData<T>,
 }
 
 impl<R: DeserializeOwned> ControlSocketReceiver<R> {
@@ -140,7 +140,7 @@ pub fn get_server_listener(timeout: Duration) -> Result<TcpListener> {
 // Proto-control-socket that can send and receive any packet. After the split, only the packets of
 // the specified types can be exchanged
 pub struct ProtoControlSocket {
-    inner: TcpStream,
+    pub(crate) inner: TcpStream,
 }
 
 pub enum PeerType<'a> {

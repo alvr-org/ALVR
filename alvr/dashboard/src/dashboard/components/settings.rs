@@ -16,6 +16,7 @@ use std::time::Duration;
 use std::time::Instant;
 
 const DATA_UPDATE_INTERVAL: Duration = Duration::from_secs(1);
+const MIN_COLUMN_SIZE: f32 = 300.0;
 
 struct TopLevelEntry {
     id: DisplayString,
@@ -172,6 +173,7 @@ impl SettingsTab {
                     Grid::new("presets_grid")
                         .striped(true)
                         .num_columns(2)
+                        .min_col_width(MIN_COLUMN_SIZE)
                         .show(ui, |ui| {
                             path_value_pairs.extend(self.resolution_preset.ui(ui));
                             ui.end_row();
@@ -212,6 +214,7 @@ impl SettingsTab {
                     Grid::new(format!("{}_grid", self.selected_top_tab_id))
                         .striped(true)
                         .num_columns(2)
+                        .min_col_width(MIN_COLUMN_SIZE)
                         .show(ui, |ui| {
                             if let Some(session_fragment) = &mut self.session_settings_json {
                                 let session_fragments_mut =

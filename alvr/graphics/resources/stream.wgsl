@@ -73,6 +73,8 @@ fn vertex_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 @fragment
 fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
     var corrected_uv = uv;
+    // tell upscaler to target a lower resolution for the edges
+    var upscale_source_resolution = 1.0;
     if ENABLE_FFE {
         let view_size_ratio = vec2f(VIEW_WIDTH_RATIO, VIEW_HEIGHT_RATIO);
         let edge_ratio = vec2f(EDGE_X_RATIO, EDGE_Y_RATIO);
@@ -99,16 +101,20 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
 
         if corrected_uv.x < lo_bound.x {
             corrected_uv.x = left_edge.x;
+            upscale_source_resolution = upscale_source_resolution * edge_ratio.x;
         } else if corrected_uv.x > hi_bound.x {
             corrected_uv.x = right_edge.x;
+            upscale_source_resolution = upscale_source_resolution * edge_ratio.x;
         } else {
             corrected_uv.x = center.x;
         }
 
         if corrected_uv.y < lo_bound.y {
             corrected_uv.y = left_edge.y;
+            upscale_source_resolution = upscale_source_resolution * edge_ratio.y;
         } else if corrected_uv.y > hi_bound.y {
             corrected_uv.y = right_edge.y;
+            upscale_source_resolution = upscale_source_resolution * edge_ratio.y;
         } else {
             corrected_uv.y = center.y;
         }
@@ -122,7 +128,7 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
 
     var color: vec3f;
     if ENABLE_UPSCALING {
-        color = sgsr(vec4f(corrected_uv.x, corrected_uv.y, 0.0, 0.0)).xyz;
+        color = sgsr(vec4f(corrected_uv.x, corrected_uv.y, 0.0, 0.0), upscale_source_resolution).xyz;
     } else {
         color = textureSample(stream_texture, stream_sampler, corrected_uv).rgb;
     }
@@ -240,9 +246,9 @@ fn edgeDirection(left: vec4f, right: vec4f) -> vec2f
     return dir;
 }
 
-fn sgsr(in_TEXCOORD0: vec4f) -> vec4f {
+fn sgsr(in_TEXCOORD0: vec4f, source_resolution_multiplier: f32) -> vec4f {
     // https://github.com/SnapdragonStudios/snapdragon-gsr/issues/2
-    let dim = vec2f(textureDimensions(stream_texture));
+    let dim = vec2f(textureDimensions(stream_texture)) * source_resolution_multiplier;
     let viewport_info = vec4f(1/dim.x, 1/dim.y, dim.x, dim.y);
 
     var color: vec4f;

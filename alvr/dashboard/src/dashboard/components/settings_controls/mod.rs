@@ -53,6 +53,8 @@ pub fn get_display_name(id: &str, strings: &HashMap<String, String>) -> String {
 
 pub fn f64_eq(f1: f64, f2: f64) -> bool {
     f64::abs(f1 - f2) < f32::EPSILON as f64
+    // Alternative solution:
+    // format!("{:.6}", f1) == format!("{:.6}", f2)
 }
 
 pub fn serde_values_eq(a: &serde_json::Value, b: &serde_json::Value) -> bool {

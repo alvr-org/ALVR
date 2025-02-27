@@ -49,7 +49,6 @@ use std::{
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
-use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, RefreshKind};
 use tokio::{runtime::Runtime, sync::broadcast};
 use tracking::TrackingManager;
 
@@ -144,12 +143,7 @@ pub fn create_recording_file(connection_context: &ConnectionContext, settings: &
 }
 
 pub fn notify_restart_driver() {
-    let mut system = sysinfo::System::new_with_specifics(
-        RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
-    );
-    system.refresh_processes(ProcessesToUpdate::All);
-
-    if system
+    if sysinfo::System::new_all()
         .processes_by_name(OsStr::new(&afs::dashboard_fname()))
         .next()
         .is_some()

@@ -1092,16 +1092,9 @@ pub fn get_bd_motion_trackers(
         .ok()
         .flatten()
     {
-        let mut joints = Vec::<(u64, DeviceMotion)>::with_capacity(6);
+        let mut joints = Vec::<(u64, DeviceMotion)>::with_capacity(3);
 
-        let joints_ids = [
-            *BODY_RIGHT_ELBOW_ID,
-            *BODY_RIGHT_KNEE_ID,
-            *BODY_RIGHT_FOOT_ID,
-            *BODY_LEFT_ELBOW_ID,
-            *BODY_LEFT_KNEE_ID,
-            *BODY_LEFT_FOOT_ID,
-        ];
+        let joints_ids = [*BODY_LEFT_FOOT_ID, *BODY_RIGHT_FOOT_ID, *BODY_HIPS_ID];
 
         trackers.sort_by(|a, b| a.serial.cmp(&b.serial));
 

@@ -504,7 +504,7 @@ impl LobbyRenderer {
                 transform_draw(&mut pass, view_proj * transform, 4);
             }
 
-            fn draw_cross_air(
+            fn draw_crosshair(
                 pass: &mut RenderPass,
                 motion: &DeviceMotion,
                 view_proj: Mat4,
@@ -588,7 +588,7 @@ impl LobbyRenderer {
                 }
 
                 if let Some(motion) = maybe_motion {
-                    draw_cross_air(&mut pass, motion, view_proj, show_velocities);
+                    draw_crosshair(&mut pass, motion, view_proj, show_velocities);
                 }
             }
 

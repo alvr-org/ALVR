@@ -113,6 +113,14 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         .as_option()
         .and_then(|c| c.sources.body_tracking_fb.as_option().cloned())
         .map(|c| c.full_body)
+        .or_else(|| {
+            settings
+                .headset
+                .body_tracking
+                .as_option()
+                .and_then(|c| c.sources.body_tracking_bd.as_option().cloned())
+                .map(|c| c.body_tracking)
+        })
         .unwrap_or(false);
 
     let mut foveation_center_size_x = 0.0;

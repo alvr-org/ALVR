@@ -1033,8 +1033,6 @@ dependencies = [
  "cexpr",
  "clang-sys",
  "itertools 0.13.0",
- "log",
- "prettyplease",
  "proc-macro2",
  "quote",
  "regex",
@@ -1543,15 +1541,13 @@ dependencies = [
 
 [[package]]
 name = "cros-libva"
-version = "0.0.13"
+version = "0.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0d5dfcdd9b868cc52eb2b5f5b8dea053314b205073ab9f13fa118c479d3a161"
+checksum = "1b1546af142fbf11a5cad3d1ee2ef64e4d7b69a28b244a79484024a1bc931c17"
 dependencies = [
- "bindgen 0.70.1",
  "bitflags 2.8.0",
  "log",
  "pkg-config",
- "regex",
  "thiserror 1.0.69",
 ]
 

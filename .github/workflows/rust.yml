@@ -11,7 +11,7 @@ env:
 
 jobs:
   check-windows:
-    runs-on: windows-2022
+    runs-on: windows-latest
     env:
       LIBCLANG_PATH: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
@@ -30,8 +30,8 @@ jobs:
 
       - run: cargo xtask clippy --ci
 
-  check-linux:
-    runs-on: ubuntu-24.04
+  check-linux-latest:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,6 +45,32 @@ jobs:
         run: |
           sudo apt update
           sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libasound2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
+
+      - name: Prepare deps
+        env:
+          RUST_BACKTRACE: 1
+        run:  cargo xtask prepare-deps --platform linux --no-nvidia
+
+      - run: cargo xtask clippy --ci
+
+  check-linux-old:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 25088A0359807596
+          echo "deb http://ppa.launchpad.net/pipewire-debian/pipewire-upstream/ubuntu $(lsb_release -cs) main" | sudo tee -a /etc/apt/sources.list.d/pipewire-upstream.list
+          sudo add-apt-repository universe
+          sudo apt-get update
+          sudo apt-get install libfuse2 build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
 
       - name: Prepare deps
         env:
@@ -70,7 +96,7 @@ jobs:
       - run: cargo clippy
 
   build-android:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -104,7 +130,7 @@ jobs:
         run: cargo xtask build-client
 
   tests:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -116,7 +142,7 @@ jobs:
         run: cargo test -p alvr_session
 
   check-format:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -126,7 +152,7 @@ jobs:
       - run: cargo xtask check-format
 
   check-msrv-windows:
-    runs-on: windows-2022
+    runs-on: windows-latest
     env:
       LIBCLANG_PATH: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
@@ -147,7 +173,7 @@ jobs:
       - run: cargo xtask check-msrv
 
   check-msrv-linux:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:

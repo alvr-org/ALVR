@@ -152,7 +152,7 @@ pub fn construct_negotiated_streaming_config(
         streaming_caps.preferred_encoding_gamma
     };
 
-    #[cfg_attr(target_os = "linux", allow(unused_variables))]
+    #[cfg_attr(target_os = "linux", expect(unused_variables))]
     let game_audio_sample_rate = if let Switch::Enabled(game_audio_config) =
         &settings.audio.game_audio
     {
@@ -205,7 +205,7 @@ pub fn construct_negotiated_streaming_config(
     })
 }
 
-pub fn contruct_openvr_config(
+pub fn construct_openvr_config(
     session: &SessionConfig,
     streaming_caps: Option<&VideoStreamingCapabilities>,
     stream_config: Option<&NegotiatedStreamingConfig>,
@@ -727,16 +727,6 @@ fn connection_pipeline(
     let mut session_manager_lock = SESSION_MANAGER.write();
     let initial_settings = session_manager_lock.settings().clone();
 
-    dbg_connection!("connection_pipeline: Setting client state in session");
-    session_manager_lock.update_client_list(
-        client_hostname.clone(),
-        ClientListAction::SetConnectionState(ConnectionState::Connecting),
-    );
-    session_manager_lock.update_client_list(
-        client_hostname.clone(),
-        ClientListAction::UpdateCurrentIp(Some(client_ip)),
-    );
-
     let maybe_streaming_caps = if let ClientConnectionResult::ConnectionAccepted {
         client_protocol_id,
         display_name,
@@ -765,6 +755,16 @@ fn connection_pipeline(
         return Ok(());
     };
 
+    dbg_connection!("connection_pipeline: Setting client state in session");
+    session_manager_lock.update_client_list(
+        client_hostname.clone(),
+        ClientListAction::SetConnectionState(ConnectionState::Connecting),
+    );
+    session_manager_lock.update_client_list(
+        client_hostname.clone(),
+        ClientListAction::UpdateCurrentIp(Some(client_ip)),
+    );
+
     let streaming_caps = if let Some(streaming_caps) = maybe_streaming_caps {
         alvr_packets::decode_video_streaming_capabilities(&streaming_caps).to_con()?
     } else {
@@ -782,7 +782,7 @@ fn connection_pipeline(
     .to_con()?;
 
     dbg_connection!("connection_pipeline: checking openvr config");
-    let new_openvr_config = contruct_openvr_config(
+    let new_openvr_config = construct_openvr_config(
         session_manager_lock.session(),
         Some(&streaming_caps),
         Some(&negotiated_streaming_config),
@@ -823,7 +823,7 @@ fn connection_pipeline(
         },
     )?;
 
-    dbg_connection!("connection_pipeline: Handshake successful, contructing threads");
+    dbg_connection!("connection_pipeline: Handshake successful, spawning threads");
 
     let disconnect_notif = Arc::new(Condvar::new());
 
@@ -882,7 +882,7 @@ fn connection_pipeline(
         }
     });
 
-    #[cfg_attr(target_os = "linux", allow(unused_variables))]
+    #[cfg_attr(target_os = "linux", expect(unused_variables))]
     let game_audio_thread = if let Switch::Enabled(config) =
         initial_settings.audio.game_audio.clone()
     {

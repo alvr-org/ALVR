@@ -547,7 +547,7 @@ impl Drop for ServerCoreContext {
         {
             let mut session_manager_lock = SESSION_MANAGER.write();
             session_manager_lock.session_mut().openvr_config =
-                connection::contruct_openvr_config(session_manager_lock.session(), None, None);
+                connection::construct_openvr_config(session_manager_lock.session(), None, None);
         }
 
         dbg_server_core!("Restore drivers registration backup");

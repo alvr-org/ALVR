@@ -128,11 +128,11 @@ pub fn listen_to_server<T: DeserializeOwned>(
     Ok((control_socket, config_packet))
 }
 
-// We must send the config packet before, which will be unused
 pub fn send_restart_signal(
     mut control_socket: ProtoControlSocket,
     stream_config_packet: impl Serialize,
 ) -> ConResult<()> {
+    // We must send the config packet before, which will be unused
     control_socket.send(&stream_config_packet).to_con()?;
 
     control_socket
@@ -160,7 +160,6 @@ pub struct SocketConnection {
 }
 
 impl SocketConnection {
-    // Must be called by the server
     // Note: the timeout resets after each internal operation
     pub fn from_client_connection(
         mut control_socket: ProtoControlSocket,
@@ -198,7 +197,7 @@ impl SocketConnection {
         })
     }
 
-    // Must be called by the client
+    // Note: the timeout resets after each internal operation
     pub fn from_server_connection(
         mut control_socket: ProtoControlSocket,
         timeout: Duration,

@@ -209,7 +209,7 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                         };
 
                         let ffi_body_tracker_motions = if track_body {
-                            tracking::TRACKER_IDS
+                            tracking::BODY_TRACKER_IDS
                                 .iter()
                                 .filter_map(|id| {
                                     Some(tracking::to_ffi_motion(

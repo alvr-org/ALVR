@@ -113,22 +113,6 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         .as_option()
         .and_then(|c| c.sources.body_tracking_fb.as_option().cloned())
         .map(|c| c.full_body)
-        .or_else(|| {
-            settings
-                .headset
-                .body_tracking
-                .as_option()
-                .and_then(|c| c.sources.body_tracking_bd.as_option().cloned())
-                .map(|c| c.body_tracking)
-        })
-        .unwrap_or(false);
-
-    let body_tracking_object_tracking_bd = settings
-        .headset
-        .body_tracking
-        .as_option()
-        .and_then(|c| c.sources.body_tracking_bd.as_option().cloned())
-        .map(|c| c.object_tracking)
         .unwrap_or(false);
 
     let mut foveation_center_size_x = 0.0;
@@ -200,7 +184,6 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         controller_is_tracker,
         body_tracking_vive_enabled,
         body_tracking_has_legs,
-        body_tracking_object_tracking_bd,
         enable_foveated_encoding,
         foveation_center_size_x,
         foveation_center_size_y,

@@ -124,16 +124,6 @@ bool FakeViveTracker::activate() {
         name = "ALVR/tracker/left_knee";
     } else if (this->device_id == BODY_RIGHT_KNEE_ID) {
         name = "ALVR/tracker/right_knee";
-    } else if (this->device_id == BODY_LEFT_ELBOW_ID) {
-        name = "ALVR/tracker/left_elbow";
-    } else if (this->device_id == BODY_RIGHT_ELBOW_ID) {
-        name = "ALVR/tracker/right_elbow";
-    } else if (this->device_id == BODY_RIGHT_KNEE_ID) {
-        name = "ALVR/tracker_bd/object_1";
-    } else if (this->device_id == BODY_RIGHT_KNEE_ID) {
-        name = "ALVR/tracker_bd/object_2";
-    } else if (this->device_id == BODY_RIGHT_KNEE_ID) {
-        name = "ALVR/tracker_bd/object_3";
     } else {
         name = "ALVR/tracker/unknown";
     }

@@ -15,10 +15,9 @@ use crate::{
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     parking_lot::Mutex,
-    ConnectionError, DeviceMotion, Pose, BD_TRACKER_OBJECT_FIRST_ID, BD_TRACKER_OBJECT_SECOND_ID,
-    BD_TRACKER_OBJECT_THIRD_ID, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID,
-    BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID,
-    DEVICE_ID_TO_PATH, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
+    ConnectionError, DeviceMotion, Pose, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID,
+    BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID,
+    BODY_RIGHT_KNEE_ID, DEVICE_ID_TO_PATH, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
 use alvr_events::{EventType, TrackingEvent};
 use alvr_packets::{FaceData, Tracking};
@@ -139,9 +138,6 @@ impl TrackingManager {
             (*BODY_LEFT_FOOT_ID, MotionConfig::default()),
             (*BODY_RIGHT_KNEE_ID, MotionConfig::default()),
             (*BODY_RIGHT_FOOT_ID, MotionConfig::default()),
-            (*BD_TRACKER_OBJECT_FIRST_ID, MotionConfig::default()),
-            (*BD_TRACKER_OBJECT_SECOND_ID, MotionConfig::default()),
-            (*BD_TRACKER_OBJECT_THIRD_ID, MotionConfig::default()),
         ]);
 
         if let Switch::Enabled(controllers) = &headset_config.controllers {

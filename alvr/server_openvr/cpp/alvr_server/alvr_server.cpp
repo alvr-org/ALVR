@@ -172,23 +172,6 @@ public:
                 rightFootTracker->register_device();
                 generic_trackers.push_back(std::move(rightFootTracker));
             }
-
-            if (Settings::Instance().m_bodyTrackingObjectTrackingBD) {
-                auto firstTracker = std::make_unique<FakeViveTracker>(BD_TRACKER_OBJECT_FIRST_ID);
-                tracked_devices.insert({ BD_TRACKER_OBJECT_FIRST_ID, firstTracker.get() });
-                firstTracker->register_device();
-                generic_trackers.push_back(std::move(firstTracker));
-
-                auto secondTracker = std::make_unique<FakeViveTracker>(BD_TRACKER_OBJECT_SECOND_ID);
-                tracked_devices.insert({ BD_TRACKER_OBJECT_SECOND_ID, secondTracker.get() });
-                secondTracker->register_device();
-                generic_trackers.push_back(std::move(secondTracker));
-
-                auto thirdTracker = std::make_unique<FakeViveTracker>(BD_TRACKER_OBJECT_THIRD_ID);
-                tracked_devices.insert({ BD_TRACKER_OBJECT_THIRD_ID, thirdTracker.get() });
-                thirdTracker->register_device();
-                generic_trackers.push_back(std::move(thirdTracker));
-            }
         }
 
         return vr::VRInitError_None;
@@ -201,9 +184,7 @@ public:
         this->left_controller.reset();
         this->right_controller.reset();
         this->hmd.reset();
-        for (auto& tracker : generic_trackers) {
-            tracker.reset();
-        }
+        // this->generic_trackers.clear();
 
         CleanupDriverLog();
 
@@ -396,7 +377,7 @@ void SetTracking(
             motionsMap.insert({ m.deviceID, m });
         }
 
-        for (auto id : TRACKER_IDS) {
+        for (auto id : BODY_IDS) {
             auto* maybeTracker = (FakeViveTracker*)g_driver_provider.tracked_devices.at(id);
             if (maybeTracker) {
                 auto res = motionsMap.find(id);

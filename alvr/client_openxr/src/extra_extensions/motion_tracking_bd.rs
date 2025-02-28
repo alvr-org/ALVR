@@ -93,7 +93,7 @@ impl MotionTrackerBD {
         &self,
         time: xr::Time,
     ) -> xr::Result<Option<Vec<MotionTrackerLocationsBD>>> {
-        let mut locations = Vec::with_capacity(3);
+        let mut locations = Vec::with_capacity(6);
 
         let mut connect_state = MotionTrackerConnectStateBD {
             tracker_count: 0,
@@ -105,11 +105,6 @@ impl MotionTrackerBD {
                 self.session.instance().as_raw(),
                 &mut connect_state,
             ))?;
-
-            // Pico doesn't provide a way to connect more than three trackers now
-            if connect_state.tracker_count > 3 {
-                connect_state.tracker_count = 3
-            }
 
             for i in 0..connect_state.tracker_count as usize {
                 let mut location = MotionTrackerLocationsBD {

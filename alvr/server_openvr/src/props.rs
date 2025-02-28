@@ -8,11 +8,10 @@ use crate::{
     FfiOpenvrPropertyType_Uint64, FfiOpenvrPropertyType_Vector3, FfiOpenvrPropertyValue,
 };
 use alvr_common::{
-    debug, settings_schema::Switch, warn, BD_TRACKER_OBJECT_FIRST_ID, BD_TRACKER_OBJECT_SECOND_ID,
-    BD_TRACKER_OBJECT_THIRD_ID, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID,
-    BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID,
-    DEVICE_ID_TO_PATH, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID,
-    HEAD_ID,
+    debug, settings_schema::Switch, warn, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID,
+    BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID,
+    BODY_RIGHT_KNEE_ID, DEVICE_ID_TO_PATH, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID,
+    HAND_TRACKER_RIGHT_ID, HEAD_ID,
 };
 use alvr_session::{
     ControllersEmulationMode, HeadsetEmulationMode, OpenvrPropKey, OpenvrPropType, OpenvrProperty,
@@ -167,12 +166,6 @@ fn serial_number(device_id: u64) -> String {
         "ALVR Tracker (left foot)".into()
     } else if device_id == *BODY_RIGHT_FOOT_ID {
         "ALVR Tracker (right foot)".into()
-    } else if device_id == *BD_TRACKER_OBJECT_FIRST_ID {
-        "ALVR Tracker (BD first object)".into()
-    } else if device_id == *BD_TRACKER_OBJECT_SECOND_ID {
-        "ALVR Tracker (BD second object)".into()
-    } else if device_id == *BD_TRACKER_OBJECT_THIRD_ID {
-        "ALVR Tracker (BD third object)".into()
     } else {
         "Unknown".into()
     }

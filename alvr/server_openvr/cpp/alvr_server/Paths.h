@@ -20,9 +20,6 @@ extern uint64_t BODY_LEFT_KNEE_ID;
 extern uint64_t BODY_LEFT_FOOT_ID;
 extern uint64_t BODY_RIGHT_KNEE_ID;
 extern uint64_t BODY_RIGHT_FOOT_ID;
-extern uint64_t BD_TRACKER_OBJECT_FIRST_ID;
-extern uint64_t BD_TRACKER_OBJECT_SECOND_ID;
-extern uint64_t BD_TRACKER_OBJECT_THIRD_ID;
 
 // These values are needed to determine the hand skeleton when holding a controller.
 // todo: move inferred hand skeleton to rust
@@ -58,7 +55,7 @@ struct ButtonInfo {
     ButtonType type;
 };
 
-extern std::set<uint64_t> TRACKER_IDS;
+extern std::set<uint64_t> BODY_IDS;
 extern std::map<uint64_t, ButtonInfo> LEFT_CONTROLLER_BUTTON_MAPPING;
 extern std::map<uint64_t, ButtonInfo> RIGHT_CONTROLLER_BUTTON_MAPPING;
 extern std::map<uint64_t, std::vector<uint64_t>> ALVR_TO_STEAMVR_PATH_IDS;

@@ -91,6 +91,5 @@ public:
     int m_controllerIsTracker = false;
     int m_enableBodyTrackingFakeVive = false;
     int m_bodyTrackingHasLegs = false;
-    int m_bodyTrackingObjectTrackingBD = false;
     bool m_useSeparateHandTrackers = false;
 };

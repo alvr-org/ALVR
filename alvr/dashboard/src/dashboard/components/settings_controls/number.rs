@@ -13,10 +13,7 @@ fn to_json_value(number: f64, ty: NumberType) -> json::Value {
     match ty {
         NumberType::UnsignedInteger => json::Value::from(number.abs() as u64),
         NumberType::SignedInteger => json::Value::from(number as i64),
-        NumberType::Float => {
-            let rounded: f64 = format!("{:.6}", number).parse().unwrap();
-            json::Value::Number(Number::from_f64(rounded).unwrap())
-        }
+        NumberType::Float => json::Value::Number(Number::from_f64(number).unwrap()),
     }
 }
 

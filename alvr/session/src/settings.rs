@@ -248,8 +248,8 @@ CABAC produces better compression but it's significantly slower and may lead to 
     pub use_10bit: bool,
 
     #[schema(strings(
-        display_name = "Override headset's preference for 10-bit encoding",
-        help = "Override the headset client's preference for 10-bit encoding."
+        display_name = "Override for 10-bit encoding",
+        help = "The server will override the headset client's preference for 10-bit encoding."
     ))]
     #[schema(flag = "steamvr-restart")]
     pub server_overrides_use_10bit: bool,
@@ -262,7 +262,7 @@ CABAC produces better compression but it's significantly slower and may lead to 
     pub use_full_range: bool,
 
     #[schema(strings(
-        display_name = "Override headset's preference for full range color",
+        display_name = "Override for full range color",
         help = "The server will override the headset client's preference for full range color."
     ))]
     #[schema(flag = "steamvr-restart")]
@@ -276,7 +276,7 @@ CABAC produces better compression but it's significantly slower and may lead to 
     pub encoding_gamma: f32,
 
     #[schema(strings(
-        display_name = "Override headset's preference for encoding gamma",
+        display_name = "Override for encoding gamma",
         help = "The server will override the headset client's preference for encoding gamma."
     ))]
     #[schema(flag = "steamvr-restart")]
@@ -290,7 +290,7 @@ CABAC produces better compression but it's significantly slower and may lead to 
     pub enable_hdr: bool,
 
     #[schema(strings(
-        display_name = "Override headset's preference for HDR",
+        display_name = "Override for HDR",
         help = "The server will override the headset client's preference for HDR."
     ))]
     #[schema(flag = "steamvr-restart")]
@@ -671,6 +671,10 @@ pub struct VideoConfig {
     #[schema(flag = "steamvr-restart")]
     pub preferred_codec: CodecType,
 
+    #[schema(strings(
+        notice = r"Disabling foveated encoding may result in significantly higher encode/decode times and stuttering, or even crashing.
+If you want to reduce the amount of pixelation on the edges, increase the center region width and height"
+    ))]
     #[schema(flag = "steamvr-restart")]
     pub foveated_encoding: Switch<FoveatedEncodingConfig>,
 

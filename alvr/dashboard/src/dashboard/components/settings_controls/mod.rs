@@ -57,7 +57,7 @@ pub fn f64_eq(f1: f64, f2: f64) -> bool {
     // format!("{:.6}", f1) == format!("{:.6}", f2)
 }
 
-/// a and b must be the same json type
+/// a and b must be the same underlying type. For example both f32 or both i64
 pub fn serde_values_eq(a: &serde_json::Value, b: &serde_json::Value) -> bool {
     if let (serde_json::Value::Number(n1), serde_json::Value::Number(n2)) = (a, b) {
         if !n1.is_i64() {

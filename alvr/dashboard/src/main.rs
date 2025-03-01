@@ -91,7 +91,7 @@ fn main() {
         NativeOptions {
             viewport: ViewportBuilder::default()
                 .with_app_id("alvr.dashboard")
-                .with_inner_size((870.0, 600.0))
+                .with_inner_size((900.0, 600.0))
                 .with_icon(IconData {
                     rgba: image.rgba_data().to_owned(),
                     width: image.width(),

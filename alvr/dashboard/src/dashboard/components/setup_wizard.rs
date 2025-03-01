@@ -105,7 +105,7 @@ impl SetupWizard {
             Page::HardwareRequirements => page_content(
                 ui,
                 "Hardware requirements",
-                r"ALVR requires a dedicated and recent graphics card.
+                r"ALVR requires a dedicated and recent graphics card. Low-end Intel integrated graphics may fail to work.
 Make sure you have at least one output audio device.",
                 |_| (),
             ),
@@ -115,7 +115,7 @@ Make sure you have at least one output audio device.",
                 if cfg!(windows) {
                     r"To stream the headset microphone on Windows you need to install VB-Cable, Voicemeeter, or Virtual Audio Cable."
                 } else if cfg!(target_os = "linux") {
-                    r"You need the PipeWire package to be able to stream audio."
+                    r"You need the PipeWire (0.3.49+ version) audio system to be able to stream audio and use microphone."
                 } else {
                     r"Unsupported OS"
                 },
@@ -145,7 +145,7 @@ This requires administrator rights!",
             Page::Recommendations => page_content(
                 ui,
                 "Recommendations",
-                r"ALVR supports multiple types of PC hardware and headsets but not all might work correctly with default settings. Please try tweaking different settings like encoder, bitrate and others if your ALVR experience is great or not optimal.",
+                r"ALVR supports multiple types of PC hardware and headsets but not all might work correctly with default settings. Please try tweaking different settings like resolution, bitrate, encoder and others if your ALVR experience is not optimal.",
                 |_| (),
             ),
             Page::Finished => page_content(

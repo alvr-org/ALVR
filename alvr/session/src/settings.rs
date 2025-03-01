@@ -660,6 +660,9 @@ This is a similar effect to AR glasses."
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct UpscalingConfig {
+    #[schema(strings(
+        help = "Improves visual quality by using the edge direction to upscale at a slight performance loss"
+    ))]
     pub edge_direction: bool,
     #[schema(gui(slider(min = 1.0, max = 16.0, step = 1.0)))]
     pub edge_threshold: f32,

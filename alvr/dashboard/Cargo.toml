@@ -35,7 +35,7 @@ ureq = { version = "3", features = ["json"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 wgpu = "24"
-libva = { package = "cros-libva", version = "0.0.13" }
+libva = { package = "cros-libva", version = "0.0.7" } # Latest that works on Ubuntu 22.04
 nvml-wrapper = "0.10.0"
 
 [target.'cfg(windows)'.build-dependencies]

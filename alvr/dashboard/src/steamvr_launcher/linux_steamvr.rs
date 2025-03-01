@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::Path;
 use std::{env, process::Command};
 
 use alvr_common::anyhow::bail;
@@ -29,7 +30,7 @@ pub fn maybe_wrap_vrcompositor_launcher() -> alvr_common::anyhow::Result<()> {
         Ok(exists) => {
             if !exists {
                 bail!(
-                    "SteamVR linux files missing, aborting startup, please re-check compatibility tools for SteamVR or verify integrity of files for SteamVR."
+                    "SteamVR Linux files missing, aborting startup, please re-check compatibility tools for SteamVR, verify integrity of files for SteamVR and make sure you're not using Flatpak Steam with non-Flatpak ALVR."
                 );
             }
         }
@@ -147,8 +148,17 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     });
     debug!("have_intel_dgpu: {}", have_intel_dgpu);
 
-    let vrmonitor_path_string = alvr_server_io::steamvr_root_dir()
-        .unwrap()
+    let steamvr_root_dir = match alvr_server_io::steamvr_root_dir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            error!("Couldn't detect openvr or steamvr files. \
+            Please make sure you have installed and ran SteamVR at least once. \
+            Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR. {e}");
+            return;
+        }
+    };
+
+    let vrmonitor_path_string = steamvr_root_dir
         .join("bin")
         .join("vrmonitor.sh")
         .into_os_string()
@@ -162,8 +172,15 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     let mut vrmonitor_path_written = false;
     if have_igpu {
         if have_nvidia_dgpu {
-            let nv_options = "__GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only \
-            VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json";
+            let base_path = "/usr/share/vulkan/icd.d/nvidia_icd";
+            let nvidia_vk_override_path = if Path::new(&format!("{base_path}.json")).exists() {
+                format!("VK_DRIVER_FILES={base_path}.json")
+            } else if Path::new(&format!("{base_path}.x86_64.json")).exists() {
+                format!("VK_DRIVER_FILES={base_path}.x86_64.json")
+            } else {
+                "__VK_LAYER_NV_optimus=NVIDIA_only".to_string()
+            };
+            let nv_options = format!("__GLX_VENDOR_LIBRARY_NAME=nvidia __NV_PRIME_RENDER_OFFLOAD=1 {nvidia_vk_override_path}");
 
             warn!("{steamvr_opts}\n{nv_options} {vrmonitor_path_string} %command%");
             warn!("{game_opts}\n{nv_options} %command%");

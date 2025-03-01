@@ -658,6 +658,23 @@ This is a similar effect to AR glasses."
     HsvChromaKey(#[schema(flag = "real-time")] HsvChromaKeyConfig),
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct UpscalingConfig {
+    #[schema(strings(
+        help = "Improves visual quality by using the edge direction to upscale at a slight performance loss"
+    ))]
+    pub edge_direction: bool,
+    #[schema(gui(slider(min = 1.0, max = 16.0, step = 1.0)))]
+    pub edge_threshold: f32,
+    #[schema(gui(slider(min = 1.0, max = 2.0, step = 0.01)))]
+    pub edge_sharpness: f32,
+    #[schema(gui(slider(min = 1.0, max = 3.0, step = 0.01)))]
+    #[schema(strings(
+        help = "Dimensional resolution multiplier, high values will cause performance issues with weaker headset hardware or higher resolutions"
+    ))]
+    pub upscale_factor: f32,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct VideoConfig {
     #[schema(flag = "real-time")]
@@ -732,6 +749,9 @@ If you want to reduce the amount of pixelation on the edges, increase the center
     pub adapter_index: u32,
 
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,
+
+    #[schema(strings(help = "Snapdragon Game Super Resolution client-side upscaling"))]
+    pub upscaling: Switch<UpscalingConfig>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1554,6 +1574,15 @@ pub fn session_settings_default() -> SettingsDefault {
                         value_end_min: 1.0,
                         value_end_max: 1.1,
                     },
+                },
+            },
+            upscaling: SwitchDefault {
+                enabled: false,
+                content: UpscalingConfigDefault {
+                    edge_direction: true,
+                    edge_threshold: 4.0,
+                    edge_sharpness: 2.0,
+                    upscale_factor: 1.5,
                 },
             },
             adapter_index: 0,

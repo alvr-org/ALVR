@@ -728,25 +728,27 @@ fn connection_pipeline(
             let game_audio_device =
                 alvr_audio::AudioDevice::new_output(game_audio_config.device.as_ref()).to_con()?;
             if let Switch::Enabled(microphone_config) = &initial_settings.audio.microphone {
-                let (sink, source) = alvr_audio::AudioDevice::new_virtual_microphone_pair(
+                if let Ok((sink, source)) = alvr_audio::AudioDevice::new_virtual_microphone_pair(
                     microphone_config.devices.clone(),
-                )
-                .to_con()?;
-                if matches!(
-                    microphone_config.devices,
-                    alvr_session::MicrophoneDevicesConfig::VBCable
                 ) {
-                    // VoiceMeeter and Custom devices may have arbitrary internal routing.
-                    // Therefore, we cannot detect the loopback issue without knowing the routing.
-                    if alvr_audio::is_same_device(&game_audio_device, &sink)
-                        || alvr_audio::is_same_device(&game_audio_device, &source)
-                    {
-                        con_bail!("Game audio and microphone cannot point to the same device!");
+                    if matches!(
+                        microphone_config.devices,
+                        alvr_session::MicrophoneDevicesConfig::VBCable
+                    ) {
+                        // VoiceMeeter and Custom devices may have arbitrary internal routing.
+                        // Therefore, we cannot detect the loopback issue without knowing the
+                        // routing.
+                        if alvr_audio::is_same_device(&game_audio_device, &sink)
+                            || alvr_audio::is_same_device(&game_audio_device, &source)
+                        {
+                            con_bail!("Game audio and microphone cannot point to the same device!");
+                        }
                     }
+                    // else:
+                    // Stream played via VA-CABLE-X will be directly routed to VA-CABLE-X's virtual
+                    // microphone. Game audio will loop back to the game microphone if they are set
+                    // to the same VA-CABLE-X device.
                 }
-                // else:
-                // Stream played via VA-CABLE-X will be directly routed to VA-CABLE-X's virtual microphone.
-                // Game audio will loop back to the game microphone if they are set to the same VA-CABLE-X device.
             }
 
             game_audio_device.input_sample_rate().to_con()?
@@ -965,55 +967,64 @@ fn connection_pipeline(
         thread::spawn(|| ())
     };
 
-    let microphone_thread =
-        if let Switch::Enabled(config) = initial_settings.audio.microphone.clone() {
-            #[cfg(not(target_os = "linux"))]
-            #[allow(unused_variables)]
-            let (sink, source) =
-                alvr_audio::AudioDevice::new_virtual_microphone_pair(config.devices).to_con()?;
+    let microphone_thread = if let Switch::Enabled(config) =
+        initial_settings.audio.microphone.clone()
+    {
+        let client_hostname = client_hostname.clone();
 
-            #[cfg(windows)]
-            if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
-                ctx.events_sender
-                    .send(ServerCoreEvent::SetOpenvrProperty {
-                        device_id: *alvr_common::HEAD_ID,
-                        prop: alvr_session::OpenvrProperty {
-                            key: alvr_session::OpenvrPropKey::AudioDefaultRecordingDeviceIdString,
-                            value: id,
+        #[cfg(not(target_os = "linux"))]
+        match alvr_audio::AudioDevice::new_virtual_microphone_pair(config.devices) {
+            #[cfg_attr(not(windows), expect(unused_variables))]
+            Ok((sink, source)) => {
+                #[cfg(windows)]
+                if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
+                    ctx.events_sender
+                        .send(ServerCoreEvent::SetOpenvrProperty {
+                            device_id: *alvr_common::HEAD_ID,
+                            prop: alvr_session::OpenvrProperty {
+                                key: alvr_session::OpenvrPropKey::AudioDefaultRecordingDeviceIdString,
+                                value: id,
+                            },
+                        })
+                        .ok();
+                }
+
+                thread::spawn(move || {
+                    alvr_common::show_err(alvr_audio::play_audio_loop(
+                        {
+                            let client_hostname = client_hostname.clone();
+                            move || is_streaming(&client_hostname)
                         },
-                    })
-                    .ok();
+                        &sink,
+                        1,
+                        streaming_caps.microphone_sample_rate,
+                        config.buffering,
+                        &mut microphone_receiver,
+                    ));
+                })
             }
+            Err(e) => {
+                error!("Failed to create virtual microphone pair: {e:?}");
 
-            let client_hostname = client_hostname.clone();
-            thread::spawn(move || {
-                #[cfg(not(target_os = "linux"))]
-                alvr_common::show_err(alvr_audio::play_audio_loop(
-                    {
-                        let client_hostname = client_hostname.clone();
-                        move || is_streaming(&client_hostname)
-                    },
-                    &sink,
-                    1,
-                    streaming_caps.microphone_sample_rate,
-                    config.buffering,
-                    &mut microphone_receiver,
-                ));
-                #[cfg(target_os = "linux")]
-                alvr_common::show_err(alvr_audio::linux::play_microphone_loop_pipewire(
-                    {
-                        let client_hostname = client_hostname.clone();
-                        move || is_streaming(&client_hostname)
-                    },
-                    1,
-                    streaming_caps.microphone_sample_rate,
-                    config.buffering,
-                    &mut microphone_receiver,
-                ));
-            })
-        } else {
-            thread::spawn(|| ())
-        };
+                thread::spawn(|| ())
+            }
+        }
+        #[cfg(target_os = "linux")]
+        thread::spawn(move || {
+            alvr_common::show_err(alvr_audio::linux::play_microphone_loop_pipewire(
+                {
+                    let client_hostname = client_hostname.clone();
+                    move || is_streaming(&client_hostname)
+                },
+                1,
+                streaming_caps.microphone_sample_rate,
+                config.buffering,
+                &mut microphone_receiver,
+            ));
+        })
+    } else {
+        thread::spawn(|| ())
+    };
 
     *ctx.tracking_manager.write() =
         TrackingManager::new(initial_settings.connection.statistics_history_size);

@@ -113,7 +113,7 @@ pub enum ClientConnectionResult {
     ConnectionAccepted {
         client_protocol_id: u64,
         display_name: String,
-        server_ip: IpAddr,
+        server_ip: IpAddr, // must be unused for now
         streaming_capabilities: Option<VideoStreamingCapabilitiesLegacy>, // todo: use String
     },
     ClientStandby,

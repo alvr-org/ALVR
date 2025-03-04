@@ -294,7 +294,7 @@ pub fn entry_point() {
             body_tracking_fb: Switch::Disabled,
             body_tracking_bd: Switch::Enabled(BodyTrackingBDConfig {
                 body_tracking: true,
-                object_tracking: false,
+                object_tracking: true,
                 high_accuracy: true,
                 prompt_calibration_on_start: false,
             }),

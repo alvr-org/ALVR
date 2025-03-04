@@ -824,6 +824,7 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(
                 [(None, None), (None, None)],
                 None,
                 None,
+                None,
                 render_background,
                 false,
             );

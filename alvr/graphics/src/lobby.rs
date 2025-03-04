@@ -405,10 +405,12 @@ impl LobbyRenderer {
         );
     }
 
+    #[expect(clippy::too_many_arguments)]
     pub fn render(
         &self,
         view_params: [LobbyViewParams; 2],
         hand_data: [(Option<DeviceMotion>, Option<[Pose; 26]>); 2],
+        additional_motions: Option<Vec<DeviceMotion>>,
         body_skeleton: Option<Vec<Option<Pose>>>,
         body_tracking_type: Option<BodyTrackingType>,
         render_background: bool,
@@ -588,6 +590,12 @@ impl LobbyRenderer {
                 }
 
                 if let Some(motion) = maybe_motion {
+                    draw_crosshair(&mut pass, motion, view_proj, show_velocities);
+                }
+            }
+
+            if let Some(motions) = &additional_motions {
+                for motion in motions {
                     draw_crosshair(&mut pass, motion, view_proj, show_velocities);
                 }
             }

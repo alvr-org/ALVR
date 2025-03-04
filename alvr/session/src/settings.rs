@@ -1776,7 +1776,7 @@ pub fn session_settings_default() -> SettingsDefault {
                             enabled: true,
                             content: BodyTrackingBDConfigDefault {
                                 body_tracking: true,
-                                object_tracking: false,
+                                object_tracking: true,
                                 high_accuracy: true,
                                 prompt_calibration_on_start: true,
                             },

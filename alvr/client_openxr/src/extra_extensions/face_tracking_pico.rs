@@ -52,12 +52,7 @@ impl FaceTrackerPico {
 
         let mut tracking_flags = 0;
 
-        if visual {
-            tracking_flags |= TRACKING_MODE_FACE_BIT;
-        }
-        if audio {
-            tracking_flags |= TRACKING_MODE_FACE_LIPSYNC | TRACKING_MODE_FACE_LIPSYNC_BLEND_SHAPES;
-        }
+        tracking_flags |= TRACKING_MODE_FACE_BIT;
 
         Ok(Self {
             session: session.into_any_graphics(),

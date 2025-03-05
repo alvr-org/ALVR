@@ -834,7 +834,13 @@ pub struct BodyTrackingFBConfig {
 pub enum BodyTrackingBDConfig {
     #[schema(strings(display_name = "Body Tracking"))]
     BodyTracking {
+        #[schema(strings(
+            help = "Improves accuracy of the tracking at the cost of higher latency."
+        ))]
         high_accuracy: bool,
+        #[schema(strings(
+            help = "If trackers have not been calibrated before, the calibration process will start after you connect to the streamer."
+        ))]
         prompt_calibration_on_start: bool,
     },
     #[schema(strings(display_name = "Object Tracking"))]

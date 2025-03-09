@@ -55,17 +55,6 @@ type GetMotionTrackerLocationsBD = unsafe extern "system" fn(
 
 type SetConfigPICO = unsafe extern "system" fn(sys::Session, i32, *const c_char) -> sys::Result;
 
-#[repr(transparent)]
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub struct MotionTrackerModeBD(i32);
-impl MotionTrackerModeBD {
-    pub const BODY_TRACKING: MotionTrackerModeBD = Self(0i32);
-    pub const MOTION_TRACKING: MotionTrackerModeBD = Self(1i32);
-}
-
-pub type CheckMotionTrackerModeAndNumberBD =
-    unsafe extern "system" fn(sys::Instance, MotionTrackerModeBD, i32) -> sys::Result;
-
 pub struct MotionTrackerBD {
     session: xr::Session<AnyGraphics>,
     get_motion_tracker_connect_state: GetMotionTrackerConnectStateBD,
@@ -85,16 +74,8 @@ impl MotionTrackerBD {
         let get_motion_tracker_locations =
             get_instance_proc(&session, "xrGetMotionTrackerLocationsBD")?;
         let set_config: SetConfigPICO = get_instance_proc(&session, "xrSetConfigPICO")?;
-        let check_motion_tracker_mode_and_number: CheckMotionTrackerModeAndNumberBD =
-            get_instance_proc(&session, "xrCheckMotionTrackerModeAndNumberBD")?;
 
         unsafe {
-            super::xr_res(check_motion_tracker_mode_and_number(
-                session.instance().as_raw(),
-                MotionTrackerModeBD::MOTION_TRACKING,
-                0,
-            ))?;
-
             //Floor height tracking origin
             let str = CString::new("1").unwrap();
             //Set config property for tracking origin

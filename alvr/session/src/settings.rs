@@ -817,6 +817,9 @@ pub struct FaceTrackingConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BodyTrackingSourcesConfig {
     pub body_tracking_fb: Switch<BodyTrackingFBConfig>,
+    #[schema(strings(
+        help = "It's recommended to set Tracking Mode to Full-Body Tracking in Motion Tracker app settings on your Pico headset."
+    ))]
     pub body_tracking_bd: Switch<BodyTrackingBDConfig>,
     // todo:
     // pub detached_controllers_as_feet: bool,

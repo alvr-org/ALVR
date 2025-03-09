@@ -1,4 +1,5 @@
 use crate::{
+    from_xr_time,
     graphics::{self, ProjectionLayerAlphaConfig, ProjectionLayerBuilder},
     interaction::{self, InteractionContext},
 };
@@ -132,6 +133,17 @@ impl Lobby {
             &mut Pose::default(),
         );
 
+        let additional_motions = self
+            .interaction_ctx
+            .read()
+            .body_sources
+            .motion_tracker_bd
+            .as_ref()
+            .map(|tracker| {
+                interaction::get_bd_motion_trackers(from_xr_time(xr_vsync_time), tracker)
+            })
+            .map(|vec| vec.iter().map(|(_, motion)| *motion).collect());
+
         let body_skeleton_fb = self
             .interaction_ctx
             .read()
@@ -191,6 +203,7 @@ impl Lobby {
                 },
             ],
             [left_hand_data, right_hand_data],
+            additional_motions,
             body_skeleton,
             body_tracking_type,
             false,

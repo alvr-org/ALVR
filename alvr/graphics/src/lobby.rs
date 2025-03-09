@@ -405,10 +405,12 @@ impl LobbyRenderer {
         );
     }
 
+    #[expect(clippy::too_many_arguments)]
     pub fn render(
         &self,
         view_params: [LobbyViewParams; 2],
         hand_data: [(Option<DeviceMotion>, Option<[Pose; 26]>); 2],
+        additional_motions: Option<Vec<DeviceMotion>>,
         body_skeleton: Option<Vec<Option<Pose>>>,
         body_tracking_type: Option<BodyTrackingType>,
         render_background: bool,
@@ -504,6 +506,66 @@ impl LobbyRenderer {
                 transform_draw(&mut pass, view_proj * transform, 4);
             }
 
+            fn draw_crosshair(
+                pass: &mut RenderPass,
+                motion: &DeviceMotion,
+                view_proj: Mat4,
+                show_velocities: bool,
+            ) {
+                let hand_transform = Mat4::from_scale_rotation_translation(
+                    Vec3::ONE * 0.2,
+                    motion.pose.orientation,
+                    motion.pose.position,
+                );
+
+                // Draw crosshair
+                let segment_rotations = [
+                    Mat4::IDENTITY,
+                    Mat4::from_rotation_y(FRAC_PI_2),
+                    Mat4::from_rotation_x(FRAC_PI_2),
+                ];
+                pass.set_push_constants(
+                    ShaderStages::VERTEX_FRAGMENT,
+                    COLOR_CONST_OFFSET,
+                    &[255, 255, 255, 255],
+                );
+                for rot in &segment_rotations {
+                    let transform = hand_transform
+                        * *rot
+                        * Mat4::from_scale(Vec3::ONE * 0.5)
+                        * Mat4::from_translation(Vec3::Z * 0.5);
+                    transform_draw(pass, view_proj * transform, 2);
+                }
+
+                if show_velocities {
+                    // Draw linear velocity
+                    let transform = Mat4::from_scale_rotation_translation(
+                        Vec3::ONE * motion.linear_velocity.length() * 0.2,
+                        Quat::from_rotation_arc(-Vec3::Z, motion.linear_velocity.normalize()),
+                        motion.pose.position,
+                    );
+                    pass.set_push_constants(
+                        ShaderStages::VERTEX_FRAGMENT,
+                        COLOR_CONST_OFFSET,
+                        &[255, 0, 0, 255],
+                    );
+                    transform_draw(pass, view_proj * transform, 2);
+
+                    // Draw angular velocity
+                    let transform = Mat4::from_scale_rotation_translation(
+                        Vec3::ONE * motion.angular_velocity.length() * 0.01,
+                        Quat::from_rotation_arc(-Vec3::Z, motion.angular_velocity.normalize()),
+                        motion.pose.position,
+                    );
+                    pass.set_push_constants(
+                        ShaderStages::VERTEX_FRAGMENT,
+                        COLOR_CONST_OFFSET,
+                        &[0, 255, 0, 255],
+                    );
+                    transform_draw(pass, view_proj * transform, 2);
+                }
+            }
+
             // Render hands and body skeleton
             pass.set_pipeline(&self.line_pipeline);
             for (maybe_motion, maybe_skeleton) in &hand_data {
@@ -528,58 +590,13 @@ impl LobbyRenderer {
                 }
 
                 if let Some(motion) = maybe_motion {
-                    let hand_transform = Mat4::from_scale_rotation_translation(
-                        Vec3::ONE * 0.2,
-                        motion.pose.orientation,
-                        motion.pose.position,
-                    );
+                    draw_crosshair(&mut pass, motion, view_proj, show_velocities);
+                }
+            }
 
-                    // Draw crossair
-                    let segment_rotations = [
-                        Mat4::IDENTITY,
-                        Mat4::from_rotation_y(FRAC_PI_2),
-                        Mat4::from_rotation_x(FRAC_PI_2),
-                    ];
-                    pass.set_push_constants(
-                        ShaderStages::VERTEX_FRAGMENT,
-                        COLOR_CONST_OFFSET,
-                        &[255, 255, 255, 255],
-                    );
-                    for rot in &segment_rotations {
-                        let transform = hand_transform
-                            * *rot
-                            * Mat4::from_scale(Vec3::ONE * 0.5)
-                            * Mat4::from_translation(Vec3::Z * 0.5);
-                        transform_draw(&mut pass, view_proj * transform, 2);
-                    }
-
-                    if show_velocities {
-                        // Draw linear velocity
-                        let transform = Mat4::from_scale_rotation_translation(
-                            Vec3::ONE * motion.linear_velocity.length() * 0.2,
-                            Quat::from_rotation_arc(-Vec3::Z, motion.linear_velocity.normalize()),
-                            motion.pose.position,
-                        );
-                        pass.set_push_constants(
-                            ShaderStages::VERTEX_FRAGMENT,
-                            COLOR_CONST_OFFSET,
-                            &[255, 0, 0, 255],
-                        );
-                        transform_draw(&mut pass, view_proj * transform, 2);
-
-                        // Draw angular velocity
-                        let transform = Mat4::from_scale_rotation_translation(
-                            Vec3::ONE * motion.angular_velocity.length() * 0.01,
-                            Quat::from_rotation_arc(-Vec3::Z, motion.angular_velocity.normalize()),
-                            motion.pose.position,
-                        );
-                        pass.set_push_constants(
-                            ShaderStages::VERTEX_FRAGMENT,
-                            COLOR_CONST_OFFSET,
-                            &[0, 255, 0, 255],
-                        );
-                        transform_draw(&mut pass, view_proj * transform, 2);
-                    }
+            if let Some(motions) = &additional_motions {
+                for motion in motions {
+                    draw_crosshair(&mut pass, motion, view_proj, show_velocities);
                 }
             }
 

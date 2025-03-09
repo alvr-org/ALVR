@@ -1,32 +1,39 @@
 use super::{staging::StagingRenderer, GraphicsContext, MAX_PUSH_CONSTANTS_SIZE};
 use alvr_common::{
-    glam::{self, Mat4, Quat, UVec2, Vec3},
+    glam::{self, Mat4, Quat, UVec2, Vec3, Vec4},
     Fov,
 };
-use alvr_session::{FoveatedEncodingConfig, PassthroughMode};
+use alvr_session::{FoveatedEncodingConfig, PassthroughMode, UpscalingConfig};
 use std::{collections::HashMap, ffi::c_void, iter, mem, rc::Rc};
 use wgpu::{
     hal::{api, gles},
     include_wgsl, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, Color, ColorTargetState, ColorWrites,
     FragmentState, LoadOp, PipelineCompilationOptions, PipelineLayoutDescriptor, PrimitiveState,
-    PrimitiveTopology, PushConstantRange, RenderPassColorAttachment, RenderPassDescriptor,
-    RenderPipeline, RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages,
-    StoreOp, TextureSampleType, TextureView, TextureViewDescriptor, TextureViewDimension,
-    VertexState,
+    PrimitiveTopology, PushConstantRange, RenderPass, RenderPassColorAttachment,
+    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, SamplerBindingType,
+    SamplerDescriptor, ShaderStages, StoreOp, TextureSampleType, TextureView,
+    TextureViewDescriptor, TextureViewDimension, VertexState,
 };
 
-const TRANSFORM_CONST_SIZE: u32 = mem::size_of::<Mat4>() as u32;
-const VIEW_INDEX_CONST_SIZE: u32 = mem::size_of::<u32>() as u32;
+const FLOAT_SIZE: u32 = mem::size_of::<f32>() as u32;
+const U32_SIZE: u32 = mem::size_of::<u32>() as u32;
+const VEC4_SIZE: u32 = mem::size_of::<Vec4>() as u32;
+const TRANSFORM_SIZE: u32 = mem::size_of::<Mat4>() as u32;
 
-const PUSH_CONSTANTS_SIZE: u32 = TRANSFORM_CONST_SIZE + VIEW_INDEX_CONST_SIZE;
+const TRANSFORM_CONST_OFFSET: u32 = 0;
+const VIEW_INDEX_CONST_OFFSET: u32 = TRANSFORM_SIZE;
+const PASSTHROUGH_MODE_OFFSET: u32 = VIEW_INDEX_CONST_OFFSET + U32_SIZE;
+const ALPHA_CONST_OFFSET: u32 = PASSTHROUGH_MODE_OFFSET + U32_SIZE;
+const CK_CHANNEL0_CONST_OFFSET: u32 = ALPHA_CONST_OFFSET + FLOAT_SIZE + U32_SIZE;
+const CK_CHANNEL1_CONST_OFFSET: u32 = CK_CHANNEL0_CONST_OFFSET + VEC4_SIZE;
+const CK_CHANNEL2_CONST_OFFSET: u32 = CK_CHANNEL1_CONST_OFFSET + VEC4_SIZE;
+const PUSH_CONSTANTS_SIZE: u32 = CK_CHANNEL2_CONST_OFFSET + VEC4_SIZE;
+
 const _: () = assert!(
     PUSH_CONSTANTS_SIZE <= MAX_PUSH_CONSTANTS_SIZE,
     "Push constants size exceeds the maximum size"
 );
-
-const TRANSFORM_CONST_OFFSET: u32 = 0;
-const VIEW_INDEX_CONST_OFFSET: u32 = TRANSFORM_CONST_SIZE;
 
 pub struct StreamViewParams {
     pub swapchain_index: u32,
@@ -48,17 +55,18 @@ pub struct StreamRenderer {
 }
 
 impl StreamRenderer {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         context: Rc<GraphicsContext>,
-        view_resolution: UVec2,
+        base_view_resolution: UVec2,
+        target_view_resolution: UVec2,
         swapchain_textures: [Vec<u32>; 2],
         target_format: u32,
         foveated_encoding: Option<FoveatedEncodingConfig>,
         enable_srgb_correction: bool,
         fix_limited_range: bool,
         encoding_gamma: f32,
-        passthrough: Option<PassthroughMode>,
+        upscaling: Option<UpscalingConfig>,
     ) -> Self {
         let device = &context.device;
 
@@ -98,22 +106,32 @@ impl StreamRenderer {
             ("ENCODING_GAMMA".into(), encoding_gamma.into()),
         ]);
 
-        if let Some(mode) = passthrough {
-            let ps_alpha = match mode {
-                PassthroughMode::AugmentedReality { brightness } => brightness,
-                PassthroughMode::Blend { opacity } => opacity,
-            };
-            constants.extend([("COLOR_ALPHA".into(), (1. - ps_alpha).into())]);
-        }
-
         let staging_resolution = if let Some(foveated_encoding) = foveated_encoding {
             let (staging_resolution, ffe_constants) =
-                foveated_encoding_shader_constants(view_resolution, foveated_encoding);
+                foveated_encoding_shader_constants(base_view_resolution, foveated_encoding);
             constants.extend(ffe_constants);
 
             staging_resolution
         } else {
-            view_resolution
+            base_view_resolution
+        };
+
+        if let Some(upscaling) = upscaling {
+            constants.extend([
+                ("ENABLE_UPSCALING".into(), true.into()),
+                (
+                    "UPSCALE_USE_EDGE_DIRECTION".into(),
+                    upscaling.edge_direction.into(),
+                ),
+                (
+                    "UPSCALE_EDGE_THRESHOLD".into(),
+                    (upscaling.edge_threshold / 255.0).into(),
+                ),
+                (
+                    "UPSCALE_EDGE_SHARPNESS".into(),
+                    upscaling.edge_sharpness.into(),
+                ),
+            ]);
         };
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -129,7 +147,7 @@ impl StreamRenderer {
             })),
             vertex: VertexState {
                 module: &shader_module,
-                entry_point: "vertex_main",
+                entry_point: None,
                 compilation_options: PipelineCompilationOptions {
                     constants: &constants,
                     zero_initialize_workgroup_memory: false,
@@ -144,7 +162,7 @@ impl StreamRenderer {
             multisample: Default::default(),
             fragment: Some(FragmentState {
                 module: &shader_module,
-                entry_point: "fragment_main",
+                entry_point: None,
                 compilation_options: PipelineCompilationOptions {
                     constants: &constants,
                     zero_initialize_workgroup_memory: false,
@@ -156,6 +174,7 @@ impl StreamRenderer {
                 })],
             }),
             multiview: None,
+            cache: None,
         });
 
         let sampler = device.create_sampler(&SamplerDescriptor {
@@ -198,7 +217,7 @@ impl StreamRenderer {
             let render_target = super::create_gl_swapchain(
                 device,
                 target_swapchain,
-                view_resolution,
+                target_view_resolution,
                 target_format,
             );
 
@@ -224,7 +243,14 @@ impl StreamRenderer {
         }
     }
 
-    pub unsafe fn render(&self, hardware_buffer: *mut c_void, view_params: [StreamViewParams; 2]) {
+    /// # Safety
+    /// `hardware_buffer` must be a valid pointer to a ANativeWindowBuffer.
+    pub unsafe fn render(
+        &self,
+        hardware_buffer: *mut c_void,
+        view_params: [StreamViewParams; 2],
+        passthrough: Option<&PassthroughMode>,
+    ) {
         // if hardware_buffer is available copy stream to staging texture
         if !hardware_buffer.is_null() {
             self.staging_renderer.render(hardware_buffer);
@@ -287,10 +313,114 @@ impl StreamRenderer {
                 &(view_idx as u32).to_le_bytes(),
             );
             render_pass.set_bind_group(0, &self.views_objects[view_idx].bind_group, &[]);
+            set_passthrough_push_constants(&mut render_pass, passthrough);
             render_pass.draw(0..4, 0..1);
         }
 
         self.context.queue.submit(iter::once(encoder.finish()));
+    }
+}
+
+fn set_passthrough_push_constants(render_pass: &mut RenderPass, config: Option<&PassthroughMode>) {
+    const DEG_TO_NORM: f32 = 1. / 360.;
+
+    fn set_u32(render_pass: &mut RenderPass, offset: u32, value: u32) {
+        render_pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, offset, &value.to_le_bytes());
+    }
+
+    fn set_float(render_pass: &mut RenderPass, offset: u32, value: f32) {
+        render_pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, offset, &value.to_le_bytes());
+    }
+
+    fn set_vec4(render_pass: &mut RenderPass, offset: u32, value: Vec4) {
+        render_pass.set_push_constants(
+            ShaderStages::VERTEX_FRAGMENT,
+            offset,
+            &value.x.to_le_bytes(),
+        );
+        render_pass.set_push_constants(
+            ShaderStages::VERTEX_FRAGMENT,
+            offset + FLOAT_SIZE,
+            &value.y.to_le_bytes(),
+        );
+        render_pass.set_push_constants(
+            ShaderStages::VERTEX_FRAGMENT,
+            offset + 2 * FLOAT_SIZE,
+            &value.z.to_le_bytes(),
+        );
+        render_pass.set_push_constants(
+            ShaderStages::VERTEX_FRAGMENT,
+            offset + 3 * FLOAT_SIZE,
+            &value.w.to_le_bytes(),
+        );
+    }
+
+    match config {
+        None => {
+            set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 0);
+            set_float(render_pass, ALPHA_CONST_OFFSET, 1.);
+        }
+        Some(PassthroughMode::Blend { threshold, .. }) => {
+            set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 0);
+            set_float(render_pass, ALPHA_CONST_OFFSET, 1. - threshold);
+        }
+        Some(PassthroughMode::RgbChromaKey(config)) => {
+            set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 1);
+
+            let norm = |v| v as f32 / 255.;
+
+            let red = norm(config.red);
+            let green = norm(config.green);
+            let blue = norm(config.blue);
+
+            let thresh = norm(config.distance_threshold);
+
+            let up_feather = 1. + config.feathering;
+            let down_feather = 1. - config.feathering;
+
+            let range_vec =
+                thresh * Vec4::new(-up_feather, -down_feather, down_feather, up_feather);
+
+            set_vec4(render_pass, CK_CHANNEL0_CONST_OFFSET, red + range_vec);
+            set_vec4(render_pass, CK_CHANNEL1_CONST_OFFSET, green + range_vec);
+            set_vec4(render_pass, CK_CHANNEL2_CONST_OFFSET, blue + range_vec);
+        }
+        Some(PassthroughMode::HsvChromaKey(config)) => {
+            set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 2);
+
+            set_vec4(
+                render_pass,
+                CK_CHANNEL0_CONST_OFFSET,
+                Vec4::new(
+                    config.hue_start_max_deg,
+                    config.hue_start_min_deg,
+                    config.hue_end_min_deg,
+                    config.hue_end_max_deg,
+                ) * DEG_TO_NORM,
+            );
+
+            set_vec4(
+                render_pass,
+                CK_CHANNEL1_CONST_OFFSET,
+                Vec4::new(
+                    config.saturation_start_max,
+                    config.saturation_start_min,
+                    config.saturation_end_min,
+                    config.saturation_end_max,
+                ),
+            );
+
+            set_vec4(
+                render_pass,
+                CK_CHANNEL2_CONST_OFFSET,
+                Vec4::new(
+                    config.value_start_max,
+                    config.value_start_min,
+                    config.value_end_min,
+                    config.value_end_max,
+                ),
+            );
+        }
     }
 }
 
@@ -372,4 +502,15 @@ pub fn foveated_encoding_shader_constants(
     .collect();
 
     (optimized_view_resolution_aligned.as_uvec2(), constants)
+}
+
+pub fn compute_target_view_resolution(
+    resolution: UVec2,
+    upscaling: &Option<UpscalingConfig>,
+) -> UVec2 {
+    let mut target_resolution = resolution.as_vec2();
+    if let Some(upscaling) = upscaling {
+        target_resolution *= upscaling.upscale_factor;
+    }
+    target_resolution.as_uvec2()
 }

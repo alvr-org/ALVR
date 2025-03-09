@@ -9,7 +9,7 @@ license.workspace = true
 [dependencies]
 anyhow = { version = "1", features = ["backtrace"] }
 backtrace = "0.3"
-glam = { version = "0.29", features = ["serde"] }
+glam = { version = "0.30", features = ["serde"] }
 log = "0.4"
 once_cell = "1"
 parking_lot = "0.12"

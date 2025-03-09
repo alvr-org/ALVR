@@ -2,17 +2,19 @@ use alvr_common::{anyhow::Result, glam::EulerRot};
 use alvr_packets::FaceData;
 use alvr_session::FaceTrackingSinkConfig;
 use rosc::{OscMessage, OscPacket, OscType};
-use std::{f32::consts::PI, mem, net::UdpSocket};
+use std::{f32::consts::PI, net::UdpSocket};
 
 const RAD_TO_DEG: f32 = 180.0 / PI;
 
 const VRCFT_PORT: u16 = 0xA1F7;
 
+const FB_FACE_EXPRESSION_COUNT: usize = 70;
+const PICO_FACE_EXPRESSION_COUNT: usize = 72;
+
 pub struct FaceTrackingSink {
     config: FaceTrackingSinkConfig,
     socket: UdpSocket,
     packet_buffer: Vec<u8>,
-    packet_cursor: usize,
 }
 
 impl FaceTrackingSink {
@@ -29,7 +31,6 @@ impl FaceTrackingSink {
             config,
             socket,
             packet_buffer: vec![],
-            packet_cursor: 0,
         })
     }
 
@@ -46,22 +47,29 @@ impl FaceTrackingSink {
     }
 
     fn append_packet_vrcft(&mut self, prefix: &[u8; 8], data: &[f32]) {
-        let new_buffer_len = self.packet_cursor + prefix.len() + data.len() * 4;
-        if self.packet_buffer.len() < new_buffer_len {
-            self.packet_buffer.resize(new_buffer_len, 0);
-        }
-
-        self.packet_buffer[self.packet_cursor..][..prefix.len()].copy_from_slice(prefix.as_slice());
-        self.packet_cursor += prefix.len();
+        self.packet_buffer.extend(prefix);
 
         for val in data {
-            self.packet_buffer[self.packet_cursor..][..mem::size_of::<f32>()]
-                .copy_from_slice(&val.to_le_bytes());
-            self.packet_cursor += mem::size_of::<f32>();
+            self.packet_buffer.extend(val.to_le_bytes());
         }
     }
 
     pub fn send_tracking(&mut self, face_data: FaceData) {
+        // todo: introduce pico_face_expression field in FaceData
+        let fb_face_expression = match &face_data.fb_face_expression {
+            Some(face_expression) if face_expression.len() == FB_FACE_EXPRESSION_COUNT => {
+                Some(face_expression)
+            }
+            _ => None,
+        };
+
+        let pico_face_expression = match &face_data.fb_face_expression {
+            Some(face_expression) if face_expression.len() == PICO_FACE_EXPRESSION_COUNT => {
+                Some(face_expression)
+            }
+            _ => None,
+        };
+
         match self.config {
             FaceTrackingSinkConfig::VrchatEyeOsc { .. } => {
                 if let [Some(left), Some(right)] = face_data.eye_gazes {
@@ -89,15 +97,14 @@ impl FaceTrackingSink {
                     );
                 }
 
-                let left_eye_blink = face_data
-                    .fb_face_expression
-                    .as_ref()
+                let left_eye_blink = fb_face_expression
                     .map(|v| v[12])
-                    .or_else(|| face_data.htc_eye_expression.as_ref().map(|v| v[0]));
-                let right_eye_blink = face_data
-                    .fb_face_expression
+                    .or_else(|| face_data.htc_eye_expression.as_ref().map(|v| v[0]))
+                    .or_else(|| pico_face_expression.map(|v| v[28]));
+                let right_eye_blink = fb_face_expression
                     .map(|v| v[13])
-                    .or_else(|| face_data.htc_eye_expression.map(|v| v[2]));
+                    .or_else(|| face_data.htc_eye_expression.as_ref().map(|v| v[2]))
+                    .or_else(|| pico_face_expression.map(|v| v[38]));
 
                 if let (Some(left), Some(right)) = (left_eye_blink, right_eye_blink) {
                     self.send_osc_message(
@@ -112,7 +119,7 @@ impl FaceTrackingSink {
                 }
             }
             FaceTrackingSinkConfig::VrcFaceTracking { .. } => {
-                self.packet_cursor = 0;
+                self.packet_buffer.clear();
 
                 match face_data.eye_gazes {
                     [Some(left_quat), Some(right_quat)] => {
@@ -130,8 +137,12 @@ impl FaceTrackingSink {
                     _ => (),
                 }
 
-                if let Some(arr) = face_data.fb_face_expression {
-                    self.append_packet_vrcft(b"Face2Fb\0", &arr);
+                if let Some(arr) = fb_face_expression {
+                    self.append_packet_vrcft(b"Face2Fb\0", arr);
+                }
+
+                if let Some(arr) = pico_face_expression {
+                    self.append_packet_vrcft(b"FacePico", arr);
                 }
 
                 if let Some(arr) = face_data.htc_eye_expression {

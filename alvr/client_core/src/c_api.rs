@@ -15,10 +15,13 @@ use alvr_common::{
     warn, DeviceMotion, Fov, OptLazy, Pose,
 };
 use alvr_graphics::{
-    GraphicsContext, LobbyRenderer, LobbyViewParams, StreamRenderer, StreamViewParams,
+    compute_target_view_resolution, GraphicsContext, LobbyRenderer, LobbyViewParams,
+    StreamRenderer, StreamViewParams,
 };
 use alvr_packets::{ButtonEntry, ButtonValue, FaceData, ViewParams};
-use alvr_session::{CodecType, FoveatedEncodingConfig, MediacodecPropType, MediacodecProperty};
+use alvr_session::{
+    CodecType, FoveatedEncodingConfig, MediacodecPropType, MediacodecProperty, UpscalingConfig,
+};
 use std::{
     cell::RefCell,
     ffi::{c_char, c_void, CStr, CString},
@@ -81,6 +84,8 @@ pub enum AlvrEvent {
     DecoderConfig {
         codec: AlvrCodec,
     },
+    // Unimplemented
+    RealTimeConfig {},
 }
 
 #[repr(C)]
@@ -373,6 +378,7 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                         },
                     }
                 }
+                ClientCoreEvent::RealTimeConfig(_) => AlvrEvent::RealTimeConfig {},
             };
 
             unsafe { *out_event = event };
@@ -705,6 +711,11 @@ pub struct AlvrStreamConfig {
     foveation_center_shift_y: f32,
     foveation_edge_ratio_x: f32,
     foveation_edge_ratio_y: f32,
+    enable_upscaling: bool,
+    upscaling_edge_direction: bool,
+    upscaling_edge_threshold: f32,
+    upscaling_edge_sharpness: f32,
+    upscale_factor: f32,
 }
 
 #[no_mangle]
@@ -782,17 +793,24 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
         edge_ratio_x: config.foveation_edge_ratio_x,
         edge_ratio_y: config.foveation_edge_ratio_y,
     });
+    let upscaling = config.enable_upscaling.then_some(UpscalingConfig {
+        edge_direction: config.upscaling_edge_direction,
+        edge_sharpness: config.upscaling_edge_sharpness,
+        edge_threshold: config.upscaling_edge_threshold,
+        upscale_factor: config.upscale_factor,
+    });
 
     STREAM_RENDERER.set(Some(StreamRenderer::new(
         GRAPHICS_CONTEXT.with_borrow(|c| c.as_ref().unwrap().clone()),
         view_resolution,
+        compute_target_view_resolution(view_resolution, &upscaling),
         swapchain_textures,
         alvr_graphics::SDR_FORMAT_GL,
         foveated_encoding,
         true,
         false, // TODO: limited range fix config
         1.0,   // TODO: encoding gamma config
-        None,  // TODO: passthrough config
+        upscaling,
     )));
 }
 
@@ -820,6 +838,8 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(
             renderer.render(
                 view_inputs,
                 [(None, None), (None, None)],
+                None,
+                None,
                 None,
                 render_background,
                 false,
@@ -852,6 +872,7 @@ pub unsafe extern "C" fn alvr_render_stream_opengl(
                         fov: from_capi_fov(right_params.fov),
                     },
                 ],
+                None,
             );
         }
     });

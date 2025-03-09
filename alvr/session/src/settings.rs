@@ -248,8 +248,8 @@ CABAC produces better compression but it's significantly slower and may lead to 
     pub use_10bit: bool,
 
     #[schema(strings(
-        display_name = "Override headset's preference for 10-bit encoding",
-        help = "Override the headset client's preference for 10-bit encoding."
+        display_name = "Override for 10-bit encoding",
+        help = "The server will override the headset client's preference for 10-bit encoding."
     ))]
     #[schema(flag = "steamvr-restart")]
     pub server_overrides_use_10bit: bool,
@@ -262,7 +262,7 @@ CABAC produces better compression but it's significantly slower and may lead to 
     pub use_full_range: bool,
 
     #[schema(strings(
-        display_name = "Override headset's preference for full range color",
+        display_name = "Override for full range color",
         help = "The server will override the headset client's preference for full range color."
     ))]
     #[schema(flag = "steamvr-restart")]
@@ -276,7 +276,7 @@ CABAC produces better compression but it's significantly slower and may lead to 
     pub encoding_gamma: f32,
 
     #[schema(strings(
-        display_name = "Override headset's preference for encoding gamma",
+        display_name = "Override for encoding gamma",
         help = "The server will override the headset client's preference for encoding gamma."
     ))]
     #[schema(flag = "steamvr-restart")]
@@ -290,7 +290,7 @@ CABAC produces better compression but it's significantly slower and may lead to 
     pub enable_hdr: bool,
 
     #[schema(strings(
-        display_name = "Override headset's preference for HDR",
+        display_name = "Override for HDR",
         help = "The server will override the headset client's preference for HDR."
     ))]
     #[schema(flag = "steamvr-restart")]
@@ -556,23 +556,128 @@ pub enum H264Profile {
     Baseline = 2,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct RgbChromaKeyConfig {
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0, max = 255)))]
+    pub red: u8,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0, max = 255)))]
+    pub green: u8,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0, max = 255)))]
+    pub blue: u8,
+
+    #[schema(strings(help = "The threshold is applied per-channel"))]
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 1, max = 255)))]
+    pub distance_threshold: u8,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0.01, max = 1.0, step = 0.01)))]
+    pub feathering: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct HsvChromaKeyConfig {
+    #[schema(strings(display_name = "Hue start max"), suffix = "°")]
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -179.0, max = 539.0, step = 1.0)))]
+    pub hue_start_max_deg: f32,
+
+    #[schema(strings(display_name = "Hue start min"), suffix = "°")]
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -179.0, max = 539.0, step = 1.0)))]
+    pub hue_start_min_deg: f32,
+
+    #[schema(strings(display_name = "Hue end min"), suffix = "°")]
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -179.0, max = 539.0, step = 1.0)))]
+    pub hue_end_min_deg: f32,
+
+    #[schema(strings(display_name = "Hue end max"), suffix = "°")]
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -179.0, max = 539.0, step = 1.0)))]
+    pub hue_end_max_deg: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -0.5, max = 1.5, step = 0.01)))]
+    pub saturation_start_max: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -0.5, max = 1.5, step = 0.01)))]
+    pub saturation_start_min: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -0.5, max = 1.5, step = 0.01)))]
+    pub saturation_end_min: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -0.5, max = 1.5,step = 0.01)))]
+    pub saturation_end_max: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -0.5, max = 1.5, step = 0.01)))]
+    pub value_start_max: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -0.5, max = 1.5, step = 0.01)))]
+    pub value_start_min: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -0.5, max = 1.5, step = 0.01)))]
+    pub value_end_min: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -0.5, max = 1.5, step = 0.01)))]
+    pub value_end_max: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
 #[schema(gui = "button_group")]
 pub enum PassthroughMode {
-    AugmentedReality {
-        #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
-        brightness: f32,
-    },
     Blend {
+        #[schema(strings(
+            help = "Enabling this will adapt transparency based on the brightness of each pixel.
+This is a similar effect to AR glasses."
+        ))]
+        #[schema(flag = "real-time")]
+        premultiplied_alpha: bool,
+
+        #[schema(flag = "real-time")]
         #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
-        opacity: f32,
+        threshold: f32,
     },
+
+    #[schema(strings(display_name = "RGB Chroma Key"))]
+    RgbChromaKey(#[schema(flag = "real-time")] RgbChromaKeyConfig),
+
+    #[schema(strings(display_name = "HSV Chroma Key"))]
+    HsvChromaKey(#[schema(flag = "real-time")] HsvChromaKeyConfig),
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct UpscalingConfig {
+    #[schema(strings(
+        help = "Improves visual quality by using the edge direction to upscale at a slight performance loss"
+    ))]
+    pub edge_direction: bool,
+    #[schema(gui(slider(min = 1.0, max = 16.0, step = 1.0)))]
+    pub edge_threshold: f32,
+    #[schema(gui(slider(min = 1.0, max = 2.0, step = 0.01)))]
+    pub edge_sharpness: f32,
+    #[schema(gui(slider(min = 1.0, max = 3.0, step = 0.01)))]
+    #[schema(strings(
+        help = "Dimensional resolution multiplier, high values will cause performance issues with weaker headset hardware or higher resolutions"
+    ))]
+    pub upscale_factor: f32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct VideoConfig {
-    #[schema(strings(help = r"Augmented reality: corresponds to premultiplied alpha
-Blend: corresponds to un-premultiplied alpha"))]
+    #[schema(flag = "real-time")]
     pub passthrough: Switch<PassthroughMode>,
 
     pub bitrate: BitrateConfig,
@@ -583,6 +688,10 @@ Blend: corresponds to un-premultiplied alpha"))]
     #[schema(flag = "steamvr-restart")]
     pub preferred_codec: CodecType,
 
+    #[schema(strings(
+        notice = r"Disabling foveated encoding may result in significantly higher encode/decode times and stuttering, or even crashing.
+If you want to reduce the amount of pixelation on the edges, increase the center region width and height"
+    ))]
     #[schema(flag = "steamvr-restart")]
     pub foveated_encoding: Switch<FoveatedEncodingConfig>,
 
@@ -640,6 +749,9 @@ Blend: corresponds to un-premultiplied alpha"))]
     pub adapter_index: u32,
 
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,
+
+    #[schema(strings(help = "Snapdragon Game Super Resolution client-side upscaling"))]
+    pub upscaling: Switch<UpscalingConfig>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -713,7 +825,14 @@ pub struct AudioConfig {
     #[schema(strings(display_name = "Headset speaker"))]
     pub game_audio: Switch<GameAudioConfig>,
 
-    #[schema(strings(display_name = "Headset microphone"))]
+    #[cfg_attr(
+        windows,
+        schema(strings(
+            display_name = "Headset microphone",
+            notice = r"To be able to use the microphone on Windows, you need to install VB-Cable or VoiceMeeter"
+        ))
+    )]
+    #[cfg_attr(not(windows), schema(strings(display_name = "Headset microphone")))]
     pub microphone: Switch<MicrophoneConfig>,
 }
 
@@ -737,6 +856,7 @@ pub struct FaceTrackingSourcesConfig {
     pub face_tracking_fb: bool,
     pub eye_expressions_htc: bool,
     pub lip_expressions_htc: bool,
+    pub face_tracking_pico: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -757,6 +877,10 @@ pub struct FaceTrackingConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BodyTrackingSourcesConfig {
     pub body_tracking_fb: Switch<BodyTrackingFBConfig>,
+    #[schema(strings(
+        help = "It's recommended to set Tracking Mode to Full-Body Tracking in Motion Tracker app settings on your Pico headset."
+    ))]
+    pub body_tracking_bd: Switch<BodyTrackingBDConfig>,
     // todo:
     // pub detached_controllers_as_feet: bool,
     // unfortunately multimodal is incompatible with body tracking. To make this usable we need to
@@ -766,6 +890,24 @@ pub struct BodyTrackingSourcesConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BodyTrackingFBConfig {
     pub full_body: bool,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[schema(gui = "button_group")]
+pub enum BodyTrackingBDConfig {
+    #[schema(strings(display_name = "Body Tracking"))]
+    BodyTracking {
+        #[schema(strings(
+            help = "Improves accuracy of the tracking at the cost of higher latency."
+        ))]
+        high_accuracy: bool,
+        #[schema(strings(
+            help = "If trackers have not been calibrated before, the calibration process will start after you connect to the streamer."
+        ))]
+        prompt_calibration_on_start: bool,
+    },
+    #[schema(strings(display_name = "Object Tracking"))]
+    ObjectTracking,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -808,6 +950,8 @@ pub enum ControllersEmulationMode {
     Quest3Plus,
     #[schema(strings(display_name = "Quest Pro"))]
     QuestPro,
+    #[schema(strings(display_name = "Pico 4"))]
+    Pico4,
     #[schema(strings(display_name = "Valve Index"))]
     ValveIndex,
     #[schema(strings(display_name = "Vive Wand"))]
@@ -1419,9 +1563,41 @@ pub fn session_settings_default() -> SettingsDefault {
             passthrough: SwitchDefault {
                 enabled: false,
                 content: PassthroughModeDefault {
-                    variant: PassthroughModeDefaultVariant::AugmentedReality,
-                    AugmentedReality: PassthroughModeAugmentedRealityDefault { brightness: 0.4 },
-                    Blend: PassthroughModeBlendDefault { opacity: 0.5 },
+                    variant: PassthroughModeDefaultVariant::Blend,
+                    Blend: PassthroughModeBlendDefault {
+                        premultiplied_alpha: true,
+                        threshold: 0.5,
+                    },
+                    RgbChromaKey: RgbChromaKeyConfigDefault {
+                        red: 0,
+                        green: 255,
+                        blue: 0,
+                        distance_threshold: 85,
+                        feathering: 0.05,
+                    },
+                    HsvChromaKey: HsvChromaKeyConfigDefault {
+                        hue_start_max_deg: 70.0,
+                        hue_start_min_deg: 80.0,
+                        hue_end_min_deg: 160.0,
+                        hue_end_max_deg: 170.0,
+                        saturation_start_max: 0.2,
+                        saturation_start_min: 0.3,
+                        saturation_end_min: 1.0,
+                        saturation_end_max: 1.1,
+                        value_start_max: 0.0,
+                        value_start_min: 0.1,
+                        value_end_min: 1.0,
+                        value_end_max: 1.1,
+                    },
+                },
+            },
+            upscaling: SwitchDefault {
+                enabled: false,
+                content: UpscalingConfigDefault {
+                    edge_direction: true,
+                    edge_threshold: 4.0,
+                    edge_sharpness: 2.0,
+                    upscale_factor: 1.5,
                 },
             },
             adapter_index: 0,
@@ -1672,6 +1848,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         face_tracking_fb: true,
                         eye_expressions_htc: true,
                         lip_expressions_htc: true,
+                        face_tracking_pico: true,
                     },
                     sink: FaceTrackingSinkConfigDefault {
                         VrchatEyeOsc: FaceTrackingSinkConfigVrchatEyeOscDefault { port: 9000 },
@@ -1687,6 +1864,16 @@ pub fn session_settings_default() -> SettingsDefault {
                         body_tracking_fb: SwitchDefault {
                             enabled: true,
                             content: BodyTrackingFBConfigDefault { full_body: true },
+                        },
+                        body_tracking_bd: SwitchDefault {
+                            enabled: true,
+                            content: BodyTrackingBDConfigDefault {
+                                BodyTracking: BodyTrackingBDConfigBodyTrackingDefault {
+                                    high_accuracy: true,
+                                    prompt_calibration_on_start: true,
+                                },
+                                variant: BodyTrackingBDConfigDefaultVariant::BodyTracking,
+                            },
                         },
                     },
                     sink: BodyTrackingSinkConfigDefault {

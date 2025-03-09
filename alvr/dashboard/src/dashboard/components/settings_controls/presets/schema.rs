@@ -28,7 +28,7 @@ pub struct HigherOrderChoiceSchema {
     pub strings: HashMap<String, String>,
     pub flags: HashSet<String>,
     pub options: Vec<HigherOrderChoiceOption>,
-    pub default_option_index: usize,
+    pub default_option_display_name: String,
     pub gui: ChoiceControlType,
 }
 

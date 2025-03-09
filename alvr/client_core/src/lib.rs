@@ -25,8 +25,8 @@ use alvr_common::{
     HEAD_ID,
 };
 use alvr_packets::{
-    BatteryInfo, ButtonEntry, ClientControlPacket, FaceData, ReservedClientControlPacket,
-    StreamConfig, Tracking, ViewParams, ViewsConfig,
+    BatteryInfo, ButtonEntry, ClientControlPacket, FaceData, RealTimeConfig,
+    ReservedClientControlPacket, StreamConfig, Tracking, ViewParams, ViewsConfig,
 };
 use alvr_session::CodecType;
 use connection::{ConnectionContext, DecoderCallback};
@@ -55,6 +55,7 @@ pub enum ClientCoreEvent {
         codec: CodecType,
         config_nal: Vec<u8>,
     },
+    RealTimeConfig(RealTimeConfig),
 }
 
 // Note: this struct may change without breaking network protocol changes
@@ -242,6 +243,9 @@ impl ClientCoreContext {
             poll_timestamp
         };
 
+        // Guarantee that sent timestamps never go backwards by sending the poll time
+        let reported_timestamp = poll_timestamp;
+
         for (id, motion) in &mut device_motions {
             let velocity_multiplier = *self.connection_context.velocities_multiplier.read();
             motion.linear_velocity *= velocity_multiplier;
@@ -252,7 +256,7 @@ impl ClientCoreContext {
 
                 let mut head_pose_queue = self.connection_context.head_pose_queue.write();
 
-                head_pose_queue.push_back((target_timestamp, motion.pose));
+                head_pose_queue.push_back((reported_timestamp, motion.pose));
 
                 while head_pose_queue.len() > 1024 {
                     head_pose_queue.pop_front();
@@ -299,7 +303,7 @@ impl ClientCoreContext {
         if let Some(sender) = &mut *self.connection_context.tracking_sender.lock() {
             sender
                 .send_header(&Tracking {
-                    target_timestamp,
+                    target_timestamp: reported_timestamp,
                     device_motions,
                     hand_skeletons,
                     face_data,
@@ -307,7 +311,7 @@ impl ClientCoreContext {
                 .ok();
 
             if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
-                stats.report_input_acquired(target_timestamp);
+                stats.report_input_acquired(reported_timestamp);
             }
         }
     }

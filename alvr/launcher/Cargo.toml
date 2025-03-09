@@ -14,10 +14,10 @@ alvr_gui_common.workspace = true
 alvr_system_info.workspace = true
 
 anyhow = "1"
-eframe = "0.28"
+eframe = "0.31"
 flate2 = "1.0.18"
 futures-util = "0.3.28"
-ico = "0.3"
+ico = "0.4"
 open = "5"
 reqwest = { version = "0.12", default-features = false, features = [
     "rustls-tls",

@@ -26,6 +26,24 @@ fn openvr_source_file_path() -> Result<PathBuf> {
     }
 }
 
+pub fn steamvr_settings_file_path() -> Result<PathBuf> {
+    let path = if cfg!(windows) {
+        // N.B. if ever implementing this: given Steam can be installed on another
+        // drive, etc., this should probably start by looking at Windows registry keys.
+        bail!("Not implemented for Windows.") // Original motive for implementation had little reason for Windows.
+    } else {
+        dirs::data_dir()
+    }
+    .to_any()?
+    .join("Steam/config/steamvr.vrsettings");
+
+    if path.exists() {
+        Ok(path)
+    } else {
+        bail!("{} does not exist", path.to_string_lossy())
+    }
+}
+
 pub(crate) fn load_openvr_paths_json() -> Result<json::Value> {
     let file = File::open(openvr_source_file_path()?)?;
 

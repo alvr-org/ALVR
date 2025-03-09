@@ -273,6 +273,7 @@ fn client_thread(
 
                     window_output.decoder_codec = Some(codec);
                 }
+                ClientCoreEvent::RealTimeConfig(_) => (),
             }
 
             output_sender.send(window_output.clone()).ok();

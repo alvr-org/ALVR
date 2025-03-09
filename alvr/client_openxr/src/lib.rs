@@ -8,6 +8,7 @@ mod stream;
 
 use crate::stream::ParsedStreamConfig;
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
+use alvr_common::settings_schema::Switch;
 use alvr_common::{
     error,
     glam::{Quat, UVec2, Vec3},
@@ -16,10 +17,12 @@ use alvr_common::{
     Fov, Pose, HAND_LEFT_ID,
 };
 use alvr_graphics::GraphicsContext;
+use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig};
 use alvr_system_info::Platform;
 use extra_extensions::{
+    BD_BODY_TRACKING_EXTENSION_NAME, BD_MOTION_TRACKING_EXTENSION_NAME,
     META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME, META_DETACHED_CONTROLLERS_EXTENSION_NAME,
-    META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,
+    META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME, PICO_CONFIGURATION_EXTENSION_NAME,
 };
 use interaction::{InteractionContext, InteractionSourcesConfig};
 use lobby::Lobby;
@@ -137,8 +140,12 @@ pub fn entry_point() {
 
     let loader_suffix = match platform {
         Platform::Quest1 => "_quest1",
-        Platform::PicoNeo3 | Platform::PicoG3 | Platform::Pico4 => "_pico_old",
-        Platform::Yvr => "_yvr",
+        Platform::PicoNeo3
+        | Platform::PicoG3
+        | Platform::Pico4
+        | Platform::Pico4Pro
+        | Platform::Pico4Enterprise => "_pico_old",
+        p if p.is_yvr() => "_yvr",
         Platform::Lynx => "_lynx",
         _ => "",
     };
@@ -187,6 +194,9 @@ pub fn entry_point() {
                 META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
                 META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,
                 META_DETACHED_CONTROLLERS_EXTENSION_NAME,
+                BD_BODY_TRACKING_EXTENSION_NAME,
+                BD_MOTION_TRACKING_EXTENSION_NAME,
+                PICO_CONFIGURATION_EXTENSION_NAME,
             ]
             .contains(&ext.as_str())
         })
@@ -245,7 +255,9 @@ pub fn entry_point() {
         };
 
         if exts.fb_color_space {
-            xr_session.set_color_space(xr::ColorSpaceFB::P3).unwrap();
+            xr_session
+                .set_color_space(xr::ColorSpaceFB::REC709)
+                .unwrap();
         }
 
         let capabilities = ClientCapabilities {
@@ -267,7 +279,7 @@ pub fn entry_point() {
 
         let interaction_context = Arc::new(RwLock::new(InteractionContext::new(
             xr_session.clone(),
-            &exts.other,
+            exts.other.clone(),
             xr_system,
             platform,
         )));
@@ -280,9 +292,16 @@ pub fn entry_point() {
             default_view_resolution,
             &last_lobby_message,
         );
+        let lobby_body_tracking_config = BodyTrackingSourcesConfig {
+            body_tracking_fb: Switch::Disabled,
+            body_tracking_bd: Switch::Enabled(BodyTrackingBDConfig::BodyTracking {
+                high_accuracy: true,
+                prompt_calibration_on_start: false,
+            }),
+        };
         let lobby_interaction_sources = InteractionSourcesConfig {
             face_tracking: None,
-            body_tracking: None,
+            body_tracking: Some(lobby_body_tracking_config),
             prefers_multimodal_input: true,
         };
         interaction_context
@@ -309,7 +328,7 @@ pub fn entry_point() {
 
                             core_context.resume();
 
-                            passthrough_layer = PassthroughLayer::new(&xr_session).ok();
+                            passthrough_layer = PassthroughLayer::new(&xr_session, platform).ok();
 
                             session_running = true;
                         }
@@ -388,7 +407,7 @@ pub fn entry_point() {
                     }
                     ClientCoreEvent::StreamingStopped => {
                         if passthrough_layer.is_none() {
-                            passthrough_layer = PassthroughLayer::new(&xr_session).ok();
+                            passthrough_layer = PassthroughLayer::new(&xr_session, platform).ok();
                         }
 
                         interaction_context
@@ -421,6 +440,17 @@ pub fn entry_point() {
                     ClientCoreEvent::DecoderConfig { codec, config_nal } => {
                         if let Some(stream) = &mut stream_context {
                             stream.maybe_initialize_decoder(codec, config_nal);
+                        }
+                    }
+                    ClientCoreEvent::RealTimeConfig(config) => {
+                        if config.passthrough.is_some() && passthrough_layer.is_none() {
+                            passthrough_layer = PassthroughLayer::new(&xr_session, platform).ok();
+                        } else if config.passthrough.is_none() && passthrough_layer.is_some() {
+                            passthrough_layer = None;
+                        }
+
+                        if let Some(stream) = &mut stream_context {
+                            stream.update_real_time_config(&config);
                         }
                     }
                 }

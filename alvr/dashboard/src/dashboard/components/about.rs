@@ -22,7 +22,7 @@ pub fn about_tab_ui(ui: &mut Ui) {
         .inner_margin(egui::vec2(15.0, 12.0))
         .show(ui, |ui| {
             ScrollArea::new([false, true])
-                .id_source("license_scroll")
+                .id_salt("license_scroll")
                 .show(ui, |ui| ui.label(include_str!("../../../../../LICENSE")))
         });
 }

@@ -13,11 +13,13 @@ use alvr_common::{
     parking_lot::RwLock,
     Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
-use alvr_graphics::{GraphicsContext, StreamRenderer, StreamViewParams};
-use alvr_packets::{FaceData, StreamConfig, ViewParams};
+use alvr_graphics::{
+    compute_target_view_resolution, GraphicsContext, StreamRenderer, StreamViewParams,
+};
+use alvr_packets::{FaceData, RealTimeConfig, StreamConfig, ViewParams};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, CodecType, FoveatedEncodingConfig,
-    MediacodecProperty, PassthroughMode,
+    MediacodecProperty, PassthroughMode, UpscalingConfig,
 };
 use alvr_system_info::Platform;
 use openxr as xr;
@@ -40,6 +42,7 @@ pub struct ParsedStreamConfig {
     pub passthrough: Option<PassthroughMode>,
     pub foveated_encoding_config: Option<FoveatedEncodingConfig>,
     pub clientside_foveation_config: Option<ClientsideFoveationConfig>,
+    pub upscaling: Option<UpscalingConfig>,
     pub force_software_decoder: bool,
     pub max_buffering_frames: f32,
     pub buffering_history_weight: f32,
@@ -67,6 +70,7 @@ impl ParsedStreamConfig {
                 .clientside_foveation
                 .as_option()
                 .cloned(),
+            upscaling: config.settings.video.upscaling.as_option().cloned(),
             force_software_decoder: config.settings.video.force_software_decoder,
             max_buffering_frames: config.settings.video.max_buffering_frames,
             buffering_history_weight: config.settings.video.buffering_history_weight,
@@ -87,6 +91,7 @@ pub struct StreamContext {
     input_thread: Option<JoinHandle<()>>,
     input_thread_running: Arc<RelaxedAtomic>,
     config: ParsedStreamConfig,
+    target_view_resolution: UVec2,
     renderer: StreamRenderer,
     decoder: Option<(VideoDecoderConfig, VideoDecoderSource)>,
 }
@@ -144,20 +149,22 @@ impl StreamContext {
             None
         };
 
+        let target_view_resolution =
+            compute_target_view_resolution(config.view_resolution, &config.upscaling);
         let format = graphics::swapchain_format(&gfx_ctx, &xr_session, config.enable_hdr);
 
         let swapchains = [
             graphics::create_swapchain(
                 &xr_session,
                 &gfx_ctx,
-                config.view_resolution,
+                target_view_resolution,
                 format,
                 foveation_profile.as_ref(),
             ),
             graphics::create_swapchain(
                 &xr_session,
                 &gfx_ctx,
-                config.view_resolution,
+                target_view_resolution,
                 format,
                 foveation_profile.as_ref(),
             ),
@@ -166,6 +173,7 @@ impl StreamContext {
         let renderer = StreamRenderer::new(
             gfx_ctx,
             config.view_resolution,
+            target_view_resolution,
             [
                 swapchains[0]
                     .enumerate_images()
@@ -185,7 +193,7 @@ impl StreamContext {
             platform != Platform::Lynx && !((platform.is_pico()) && config.enable_hdr),
             config.use_full_range && !config.enable_hdr, // TODO: figure out why HDR doesn't need the limited range hackfix in staging?
             config.encoding_gamma,
-            config.passthrough.clone(),
+            config.upscaling.clone(),
         );
 
         core_ctx.send_active_interaction_profile(
@@ -219,6 +227,7 @@ impl StreamContext {
             input_thread: None,
             input_thread_running,
             config,
+            target_view_resolution,
             renderer,
             decoder: None,
         };
@@ -311,6 +320,10 @@ impl StreamContext {
         }
     }
 
+    pub fn update_real_time_config(&mut self, config: &RealTimeConfig) {
+        self.config.passthrough = config.passthrough.clone();
+    }
+
     pub fn render(
         &mut self,
         frame_interval: Duration,
@@ -368,6 +381,7 @@ impl StreamContext {
                         fov: view_params[1].fov,
                     },
                 ],
+                self.config.passthrough.as_ref(),
             )
         };
 
@@ -386,8 +400,8 @@ impl StreamContext {
         let rect = xr::Rect2Di {
             offset: xr::Offset2Di { x: 0, y: 0 },
             extent: xr::Extent2Di {
-                width: self.config.view_resolution.x as _,
-                height: self.config.view_resolution.y as _,
+                width: self.target_view_resolution.x as _,
+                height: self.target_view_resolution.y as _,
             },
         };
 
@@ -417,7 +431,14 @@ impl StreamContext {
                 .passthrough
                 .clone()
                 .map(|mode| ProjectionLayerAlphaConfig {
-                    premultiplied: !matches!(mode, PassthroughMode::Blend { .. }),
+                    premultiplied: matches!(
+                        mode,
+                        PassthroughMode::Blend {
+                            premultiplied_alpha: true,
+                            ..
+                        } | PassthroughMode::RgbChromaKey(_)
+                            | PassthroughMode::HsvChromaKey(_)
+                    ),
                 }),
         );
 
@@ -528,9 +549,11 @@ fn stream_input_loop(
                 stage_reference_space,
                 now,
             ),
-            fb_face_expression: interaction::get_fb_face_expression(&int_ctx.face_sources, now),
-            htc_eye_expression: interaction::get_htc_eye_expression(&int_ctx.face_sources),
-            htc_lip_expression: interaction::get_htc_lip_expression(&int_ctx.face_sources),
+            fb_face_expression: interaction::get_fb_face_expression(&int_ctx.face_sources, now).or(
+                interaction::get_pico_face_expression(&int_ctx.face_sources, now),
+            ),
+            htc_eye_expression: interaction::get_htc_eye_expression(&int_ctx.face_sources, now),
+            htc_lip_expression: interaction::get_htc_lip_expression(&int_ctx.face_sources, now),
         };
 
         if let Some((tracker, joint_count)) = &int_ctx.body_sources.body_tracker_fb {
@@ -540,6 +563,18 @@ fn stream_input_loop(
                 tracker,
                 *joint_count,
             ));
+        }
+
+        if let Some(tracker) = &int_ctx.body_sources.body_tracker_bd {
+            device_motions.append(&mut interaction::get_bd_body_tracking_points(
+                stage_reference_space,
+                now,
+                tracker,
+            ));
+        }
+
+        if let Some(tracker) = &int_ctx.body_sources.motion_tracker_bd {
+            device_motions.append(&mut interaction::get_bd_motion_trackers(now, tracker));
         }
 
         core_ctx.send_tracking(

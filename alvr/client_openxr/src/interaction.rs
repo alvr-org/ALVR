@@ -1,7 +1,11 @@
+use crate::extra_extensions::MotionTrackerBD;
 use crate::{
     extra_extensions::{
-        self, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB, FacialTrackerHTC, MultimodalMeta,
-        BODY_JOINT_SET_FULL_BODY_META, FULL_BODY_JOINT_COUNT_META,
+        self, BodyJointSetBD, BodyTrackerBD, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB,
+        FaceTrackerPico, FacialTrackerHTC, MultimodalMeta, BODY_JOINT_LEFT_ELBOW_BD,
+        BODY_JOINT_LEFT_FOOT_BD, BODY_JOINT_LEFT_KNEE_BD, BODY_JOINT_PELVIS_BD,
+        BODY_JOINT_RIGHT_ELBOW_BD, BODY_JOINT_RIGHT_FOOT_BD, BODY_JOINT_RIGHT_KNEE_BD,
+        BODY_JOINT_SET_FULL_BODY_META, BODY_JOINT_SPINE3_BD, FULL_BODY_JOINT_COUNT_META,
         FULL_BODY_JOINT_LEFT_FOOT_BALL_META, FULL_BODY_JOINT_LEFT_LOWER_LEG_META,
         FULL_BODY_JOINT_RIGHT_FOOT_BALL_META, FULL_BODY_JOINT_RIGHT_LOWER_LEG_META,
     },
@@ -9,7 +13,7 @@ use crate::{
 };
 use alvr_common::{glam::Vec3, *};
 use alvr_packets::{ButtonEntry, ButtonValue, StreamConfig, ViewParams};
-use alvr_session::{BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
+use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
 use std::{collections::HashMap, time::Duration};
 use xr::SpaceLocationFlags;
@@ -63,10 +67,13 @@ pub struct FaceSources {
     pub face_tracker_fb: Option<FaceTracker2FB>,
     pub eye_tracker_htc: Option<FacialTrackerHTC>,
     pub lip_tracker_htc: Option<FacialTrackerHTC>,
+    pub face_tracker_pico: Option<FaceTrackerPico>,
 }
 
 pub struct BodySources {
     pub body_tracker_fb: Option<(BodyTrackerFB, usize)>,
+    pub body_tracker_bd: Option<BodyTrackerBD>,
+    pub motion_tracker_bd: Option<MotionTrackerBD>,
 }
 
 #[derive(Clone)]
@@ -104,6 +111,8 @@ impl InteractionSourcesConfig {
 
 pub struct InteractionContext {
     xr_session: xr::Session<xr::OpenGlEs>,
+    xr_system: xr::SystemId,
+    extra_extensions: Vec<String>,
     platform: Platform,
     pub action_set: xr::ActionSet,
     pub button_actions: HashMap<u64, ButtonAction>,
@@ -117,7 +126,7 @@ pub struct InteractionContext {
 impl InteractionContext {
     pub fn new(
         xr_session: xr::Session<xr::OpenGlEs>,
-        extra_extensions: &[String],
+        extra_extensions: Vec<String>,
         xr_system: xr::SystemId,
         platform: Platform,
     ) -> Self {
@@ -135,10 +144,15 @@ impl InteractionContext {
 
         let controllers_profile_path = match platform {
             p if p.is_quest() => QUEST_CONTROLLER_PROFILE_PATH, // todo: create new controller profile for quest pro and 3
+            Platform::PicoG3 => PICO_G3_CONTROLLER_PROFILE_PATH,
             Platform::PicoNeo3 => PICO_NEO3_CONTROLLER_PROFILE_PATH,
-            p if p.is_pico() => PICO4_CONTROLLER_PROFILE_PATH,
+            Platform::Pico4Ultra => PICO4S_CONTROLLER_PROFILE_PATH,
+            Platform::Pico4 | Platform::Pico4Pro | Platform::Pico4Enterprise => {
+                PICO4_CONTROLLER_PROFILE_PATH
+            }
+            p if p.is_pico() => PICO4S_CONTROLLER_PROFILE_PATH,
             p if p.is_vive() => FOCUS3_CONTROLLER_PROFILE_PATH,
-            Platform::Yvr => YVR_CONTROLLER_PROFILE_PATH,
+            p if p.is_yvr() => YVR_CONTROLLER_PROFILE_PATH,
             _ => QUEST_CONTROLLER_PROFILE_PATH,
         };
         let controllers_profile_id = alvr_common::hash_string(controllers_profile_path);
@@ -231,7 +245,7 @@ impl InteractionContext {
         ));
 
         let multimodal_handle = create_ext_object("MultimodalMeta", Some(true), || {
-            MultimodalMeta::new(xr_session.clone(), extra_extensions, xr_system)
+            MultimodalMeta::new(xr_session.clone(), &extra_extensions, xr_system)
         });
 
         let left_detached_controller_pose_action;
@@ -284,8 +298,12 @@ impl InteractionContext {
             && !platform.is_vive()
             && extra_extensions::supports_eye_gaze_interaction(&xr_session, xr_system)
         {
+            // todo: research Pico Neo 3 Pro Eye platform detection
             #[cfg(target_os = "android")]
-            if platform.is_pico() {
+            if matches!(
+                platform,
+                Platform::PicoNeo3 | Platform::Pico4Pro | Platform::Pico4Enterprise
+            ) {
                 alvr_system_info::try_get_permission("com.picovr.permission.EYE_TRACKING")
             }
 
@@ -335,8 +353,27 @@ impl InteractionContext {
             xr_session.create_hand_tracker(xr::Hand::RIGHT)
         });
 
+        // Note: HTC facial tracking can only be created at startup before xrBeginSession. We don't
+        // know the reason.
+        let eye_tracker_htc = create_ext_object("FacialTrackerHTC (eyes)", Some(true), || {
+            FacialTrackerHTC::new(
+                xr_session.clone(),
+                xr_system,
+                xr::FacialTrackingTypeHTC::EYE_DEFAULT,
+            )
+        });
+        let lip_tracker_htc = create_ext_object("FacialTrackerHTC (lips)", Some(true), || {
+            FacialTrackerHTC::new(
+                xr_session.clone(),
+                xr_system,
+                xr::FacialTrackingTypeHTC::LIP_DEFAULT,
+            )
+        });
+
         Self {
             xr_session,
+            xr_system,
+            extra_extensions,
             platform,
             action_set,
             button_actions,
@@ -366,11 +403,14 @@ impl InteractionContext {
                 combined_eyes_source,
                 eye_tracker_fb: None,
                 face_tracker_fb: None,
-                eye_tracker_htc: None,
-                lip_tracker_htc: None,
+                eye_tracker_htc,
+                lip_tracker_htc,
+                face_tracker_pico: None,
             },
             body_sources: BodySources {
                 body_tracker_fb: None,
+                body_tracker_bd: None,
+                motion_tracker_bd: None,
             },
         }
     }
@@ -380,12 +420,16 @@ impl InteractionContext {
         if let Some(handle) = &mut self.multimodal_handle {
             handle.pause().ok();
         }
+        if let Some(face_tracker) = &self.face_sources.face_tracker_pico {
+            face_tracker.stop_face_tracking().ok();
+        }
         self.multimodal_hands_enabled = false;
         self.face_sources.eye_tracker_fb = None;
         self.face_sources.face_tracker_fb = None;
-        self.face_sources.eye_tracker_htc = None;
-        self.face_sources.lip_tracker_htc = None;
+        self.face_sources.face_tracker_pico = None;
         self.body_sources.body_tracker_fb = None;
+        self.body_sources.body_tracker_bd = None;
+        self.body_sources.motion_tracker_bd = None;
 
         // todo: check which permissions are needed for htc
         if let Some(config) = &config.face_tracking {
@@ -398,6 +442,13 @@ impl InteractionContext {
                 {
                     alvr_system_info::try_get_permission("android.permission.RECORD_AUDIO");
                     alvr_system_info::try_get_permission("com.oculus.permission.FACE_TRACKING")
+                }
+            }
+            if config.face_tracking_pico && self.platform.is_pico() {
+                #[cfg(target_os = "android")]
+                {
+                    alvr_system_info::try_get_permission("android.permission.RECORD_AUDIO");
+                    alvr_system_info::try_get_permission("com.picovr.permission.FACE_TRACKING")
                 }
             }
         }
@@ -431,27 +482,21 @@ impl InteractionContext {
         self.face_sources.face_tracker_fb = create_ext_object(
             "FaceTracker2FB",
             config.face_tracking.as_ref().map(|s| s.face_tracking_fb),
-            || FaceTracker2FB::new(&self.xr_session, true, true),
+            || FaceTracker2FB::new(self.xr_session.clone(), true, true),
         );
 
-        self.face_sources.eye_tracker_htc = create_ext_object(
-            "FacialTrackerHTC (eyes)",
-            config.face_tracking.as_ref().map(|s| s.eye_expressions_htc),
-            || FacialTrackerHTC::new(&self.xr_session, xr::FacialTrackingTypeHTC::EYE_DEFAULT),
-        );
-
-        self.face_sources.lip_tracker_htc = create_ext_object(
-            "FacialTrackerHTC (lips)",
-            config.face_tracking.as_ref().map(|s| s.lip_expressions_htc),
-            || FacialTrackerHTC::new(&self.xr_session, xr::FacialTrackingTypeHTC::LIP_DEFAULT),
+        self.face_sources.face_tracker_pico = create_ext_object(
+            "FaceTrackerPico",
+            config.face_tracking.as_ref().map(|s| s.face_tracking_pico),
+            || FaceTrackerPico::new(self.xr_session.clone(), true, true),
         );
 
         self.body_sources.body_tracker_fb = create_ext_object(
             "BodyTrackerFB (full set)",
             config
                 .body_tracking
-                .clone()
-                .and_then(|s| s.body_tracking_fb.into_option())
+                .as_ref()
+                .and_then(|s| s.body_tracking_fb.as_option())
                 .map(|c| c.full_body),
             || BodyTrackerFB::new(&self.xr_session, *BODY_JOINT_SET_FULL_BODY_META),
         )
@@ -467,6 +512,54 @@ impl InteractionContext {
             )
             .map(|tracker| (tracker, xr::BodyJointFB::COUNT.into_raw() as usize))
         });
+
+        if let Some(body_tracking_config) = config
+            .body_tracking
+            .as_ref()
+            .and_then(|s| s.body_tracking_bd.as_option())
+        {
+            match body_tracking_config {
+                BodyTrackingBDConfig::BodyTracking {
+                    high_accuracy,
+                    prompt_calibration_on_start,
+                } => {
+                    self.body_sources.body_tracker_bd = create_ext_object(
+                        "BodyTrackerBD (high accuracy)",
+                        Some(*high_accuracy),
+                        || {
+                            BodyTrackerBD::new(
+                                self.xr_session.clone(),
+                                BodyJointSetBD::FULL_BODY_JOINTS,
+                                &self.extra_extensions,
+                                self.xr_system,
+                                *prompt_calibration_on_start,
+                            )
+                        },
+                    )
+                    .or_else(|| {
+                        create_ext_object("BodyTrackerBD (low accuracy)", Some(true), || {
+                            BodyTrackerBD::new(
+                                self.xr_session.clone(),
+                                BodyJointSetBD::BODY_WITHOUT_ARM,
+                                &self.extra_extensions,
+                                self.xr_system,
+                                *prompt_calibration_on_start,
+                            )
+                        })
+                    })
+                }
+                BodyTrackingBDConfig::ObjectTracking => {
+                    self.body_sources.motion_tracker_bd =
+                        create_ext_object("MotionTrackerBD (object tracking)", Some(true), || {
+                            MotionTrackerBD::new(self.xr_session.clone(), &self.extra_extensions)
+                        });
+                }
+            }
+        }
+
+        if let Some(face_tracker) = &self.face_sources.face_tracker_pico {
+            face_tracker.start_face_tracking().ok();
+        }
     }
 }
 
@@ -544,18 +637,19 @@ pub fn get_head_data(
             return None;
         }
 
-        let time_offset_s = future_time
-            .saturating_sub(time)
-            .max(Duration::from_millis(1))
-            .as_secs_f32();
+        let time_offset = future_time.saturating_sub(time);
 
-        motion.linear_velocity = (crate::from_xr_vec3(predicted_location.pose.position)
-            - motion.pose.position)
-            / time_offset_s;
-        motion.angular_velocity = (crate::from_xr_quat(predicted_location.pose.orientation)
-            * motion.pose.orientation.inverse())
-        .to_scaled_axis()
-            / time_offset_s;
+        if !time_offset.is_zero() {
+            let time_offset_s = time_offset.as_secs_f32();
+
+            motion.linear_velocity = (crate::from_xr_vec3(predicted_location.pose.position)
+                - motion.pose.position)
+                / time_offset_s;
+            motion.angular_velocity = (crate::from_xr_quat(predicted_location.pose.orientation)
+                * motion.pose.orientation.inverse())
+            .to_scaled_axis()
+                / time_offset_s;
+        }
     }
 
     let last_ipd_m = last_view_params[0]
@@ -632,14 +726,20 @@ pub fn get_hand_data(
                         xr::SpaceLocationFlags::ORIENTATION_VALID
                             | xr::SpaceLocationFlags::POSITION_VALID,
                     ) {
-                        let time_offset_s = future_time.saturating_sub(time).as_secs_f32();
-                        linear_velocity = (crate::from_xr_vec3(future_location.pose.position)
-                            - last_controller_pose.position)
-                            / time_offset_s;
-                        angular_velocity = (crate::from_xr_quat(future_location.pose.orientation)
-                            * last_controller_pose.orientation.inverse())
-                        .to_scaled_axis()
-                            / time_offset_s;
+                        let time_offset = future_time.saturating_sub(time);
+
+                        if !time_offset.is_zero() {
+                            let time_offset_s = time_offset.as_secs_f32();
+
+                            linear_velocity = (crate::from_xr_vec3(future_location.pose.position)
+                                - last_controller_pose.position)
+                                / time_offset_s;
+                            angular_velocity =
+                                (crate::from_xr_quat(future_location.pose.orientation)
+                                    * last_controller_pose.orientation.inverse())
+                                .to_scaled_axis()
+                                    / time_offset_s;
+                        }
                     }
                 }
             }
@@ -790,20 +890,32 @@ pub fn get_fb_face_expression(context: &FaceSources, time: Duration) -> Option<V
         .map(|weights| weights.into_iter().collect())
 }
 
-pub fn get_htc_eye_expression(context: &FaceSources) -> Option<Vec<f32>> {
+pub fn get_pico_face_expression(context: &FaceSources, time: Duration) -> Option<Vec<f32>> {
+    let xr_time = crate::to_xr_time(time);
+
     context
-        .eye_tracker_htc
+        .face_tracker_pico
         .as_ref()
-        .and_then(|t| t.get_facial_expressions().ok().flatten())
+        .and_then(|t| t.get_face_tracking_data(xr_time).ok().flatten())
         .map(|weights| weights.into_iter().collect())
 }
 
-pub fn get_htc_lip_expression(context: &FaceSources) -> Option<Vec<f32>> {
+pub fn get_htc_eye_expression(context: &FaceSources, time: Duration) -> Option<Vec<f32>> {
+    let xr_time = crate::to_xr_time(time);
+
+    context
+        .eye_tracker_htc
+        .as_ref()
+        .and_then(|t| t.get_facial_expressions(xr_time).ok().flatten())
+}
+
+pub fn get_htc_lip_expression(context: &FaceSources, time: Duration) -> Option<Vec<f32>> {
+    let xr_time = crate::to_xr_time(time);
+
     context
         .lip_tracker_htc
         .as_ref()
-        .and_then(|t| t.get_facial_expressions().ok().flatten())
-        .map(|weights| weights.into_iter().collect())
+        .and_then(|t| t.get_facial_expressions(xr_time).ok().flatten())
 }
 
 pub fn get_fb_body_skeleton(
@@ -946,6 +1058,192 @@ pub fn get_fb_body_tracking_points(
         }
 
         if let Some(joint) = joint_locations.get(FULL_BODY_JOINT_RIGHT_FOOT_BALL_META) {
+            if joint.location_flags.contains(valid_flags) {
+                joints.push((
+                    *BODY_RIGHT_FOOT_ID,
+                    DeviceMotion {
+                        pose: crate::from_xr_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        return joints;
+    }
+
+    Vec::new()
+}
+
+pub fn get_bd_motion_trackers(
+    time: Duration,
+    motion_tracker: &MotionTrackerBD,
+) -> Vec<(u64, DeviceMotion)> {
+    let xr_time = crate::to_xr_time(time);
+
+    if let Some(mut trackers) = motion_tracker
+        .locate_motion_trackers(xr_time)
+        .ok()
+        .flatten()
+    {
+        let mut joints = Vec::<(u64, DeviceMotion)>::with_capacity(3);
+
+        let joints_ids = [*BODY_HIPS_ID, *BODY_LEFT_FOOT_ID, *BODY_RIGHT_FOOT_ID];
+
+        trackers.sort_by(|a, b| a.serial.cmp(&b.serial));
+
+        for (i, item) in trackers.iter().enumerate() {
+            joints.push((
+                joints_ids[i],
+                DeviceMotion {
+                    pose: crate::from_xr_pose(item.local_pose.pose),
+                    linear_velocity: crate::from_xr_vec3(item.local_pose.linear_velocity),
+                    angular_velocity: crate::from_xr_vec3(item.local_pose.angular_velocity),
+                },
+            ))
+        }
+
+        return joints;
+    }
+
+    Vec::new()
+}
+
+pub fn get_bd_body_skeleton(
+    reference_space: &xr::Space,
+    time: xr::Time,
+    body_tracker: &BodyTrackerBD,
+) -> Option<Vec<Option<Pose>>> {
+    body_tracker
+        .locate_body_joints(time, reference_space)
+        .ok()
+        .flatten()
+        .map(|joints| {
+            let valid_flags: SpaceLocationFlags =
+                SpaceLocationFlags::ORIENTATION_VALID | SpaceLocationFlags::POSITION_VALID;
+
+            joints
+                .iter()
+                .map(|joint| {
+                    joint
+                        .location_flags
+                        .contains(valid_flags)
+                        .then(|| crate::from_xr_pose(joint.pose))
+                })
+                .collect()
+        })
+}
+
+pub fn get_bd_body_tracking_points(
+    reference_space: &xr::Space,
+    time: Duration,
+    body_tracker: &BodyTrackerBD,
+) -> Vec<(u64, DeviceMotion)> {
+    let xr_time = crate::to_xr_time(time);
+
+    if let Some(joint_locations) = body_tracker
+        .locate_body_joints(xr_time, reference_space)
+        .ok()
+        .flatten()
+    {
+        let valid_flags: SpaceLocationFlags =
+            SpaceLocationFlags::ORIENTATION_VALID | SpaceLocationFlags::POSITION_VALID;
+
+        let mut joints = Vec::<(u64, DeviceMotion)>::with_capacity(8);
+
+        if let Some(joint) = joint_locations.get(BODY_JOINT_SPINE3_BD) {
+            if joint.location_flags.contains(valid_flags) {
+                joints.push((
+                    *BODY_CHEST_ID,
+                    DeviceMotion {
+                        pose: crate::from_xr_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        if let Some(joint) = joint_locations.get(BODY_JOINT_PELVIS_BD) {
+            if joint.location_flags.contains(valid_flags) {
+                joints.push((
+                    *BODY_HIPS_ID,
+                    DeviceMotion {
+                        pose: crate::from_xr_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        if let Some(joint) = joint_locations.get(BODY_JOINT_LEFT_ELBOW_BD) {
+            if joint.location_flags.contains(valid_flags) {
+                joints.push((
+                    *BODY_LEFT_ELBOW_ID,
+                    DeviceMotion {
+                        pose: crate::from_xr_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        if let Some(joint) = joint_locations.get(BODY_JOINT_RIGHT_ELBOW_BD) {
+            if joint.location_flags.contains(valid_flags) {
+                joints.push((
+                    *BODY_RIGHT_ELBOW_ID,
+                    DeviceMotion {
+                        pose: crate::from_xr_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        if let Some(joint) = joint_locations.get(BODY_JOINT_LEFT_KNEE_BD) {
+            if joint.location_flags.contains(valid_flags) {
+                joints.push((
+                    *BODY_LEFT_KNEE_ID,
+                    DeviceMotion {
+                        pose: crate::from_xr_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        if let Some(joint) = joint_locations.get(BODY_JOINT_LEFT_FOOT_BD) {
+            if joint.location_flags.contains(valid_flags) {
+                joints.push((
+                    *BODY_LEFT_FOOT_ID,
+                    DeviceMotion {
+                        pose: crate::from_xr_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        if let Some(joint) = joint_locations.get(BODY_JOINT_RIGHT_KNEE_BD) {
+            if joint.location_flags.contains(valid_flags) {
+                joints.push((
+                    *BODY_RIGHT_KNEE_ID,
+                    DeviceMotion {
+                        pose: crate::from_xr_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        if let Some(joint) = joint_locations.get(BODY_JOINT_RIGHT_FOOT_BD) {
             if joint.location_flags.contains(valid_flags) {
                 joints.push((
                     *BODY_RIGHT_FOOT_ID,

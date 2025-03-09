@@ -1,4 +1,5 @@
 use super::{reset, NestingInfo};
+use crate::dashboard::components::f64_eq;
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{NumberType, NumericGuiType};
 use eframe::{
@@ -122,8 +123,12 @@ impl Control {
                 self.editing_value_f64 = None;
             }
 
-            if reset::reset_button(ui, session_value != self.default, &self.default_string)
-                .clicked()
+            if reset::reset_button(
+                ui,
+                !f64_eq(session_value, self.default),
+                &self.default_string,
+            )
+            .clicked()
             {
                 request = get_request(&self.nesting_info, self.default, self.ty);
             }

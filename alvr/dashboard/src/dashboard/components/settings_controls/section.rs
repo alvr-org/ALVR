@@ -1,4 +1,4 @@
-use super::{collapsible, NestingInfo, SettingControl, INDENTATION_STEP};
+use super::{collapsible, notice, NestingInfo, SettingControl, INDENTATION_STEP};
 use alvr_gui_common::{
     theme::{
         log_colors::{INFO_LIGHT, WARNING_LIGHT},
@@ -14,7 +14,7 @@ use serde_json as json;
 struct Entry {
     id: DisplayString,
     help: Option<String>,
-    // notice: Option<String>,
+    notice: Option<String>,
     hidden: bool,
     steamvr_restart_flag: bool,
     real_time_flag: bool,
@@ -41,7 +41,7 @@ impl Control {
                 let id = entry.name;
                 let display = super::get_display_name(&id, &entry.strings);
                 let help = entry.strings.get("help").cloned();
-                // let notice = entry.strings.get("notice").cloned();
+                let notice = entry.strings.get("notice").cloned();
                 let hidden = entry.flags.contains("hidden");
                 let steamvr_restart_flag = entry.flags.contains("steamvr-restart");
                 let real_time_flag = entry.flags.contains("real-time");
@@ -52,7 +52,7 @@ impl Control {
                 Entry {
                     id: DisplayString { id, display },
                     help,
-                    // notice,
+                    notice,
                     hidden,
                     steamvr_restart_flag,
                     real_time_flag,
@@ -144,6 +144,15 @@ impl Control {
                         );
                     }
                 });
+
+                if let Some(string) = &entry.notice {
+                    notice::notice(ui, string);
+
+                    ui.end_row();
+
+                    ui.label(" ");
+                }
+
                 request = entry
                     .control
                     .ui(ui, &mut session_fragment[&entry.id.id], true)

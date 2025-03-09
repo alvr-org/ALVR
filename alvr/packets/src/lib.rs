@@ -4,7 +4,7 @@ use alvr_common::{
     semver::Version,
     ConnectionState, DeviceMotion, Fov, LogEntry, LogSeverity, Pose, ToAny,
 };
-use alvr_session::{CodecType, SessionConfig, Settings};
+use alvr_session::{CodecType, PassthroughMode, SessionConfig, Settings};
 use serde::{Deserialize, Serialize};
 use serde_json as json;
 use std::{
@@ -404,6 +404,23 @@ pub enum ServerRequest {
     GetDriverList,
     RestartSteamvr,
     ShutdownSteamvr,
+}
+
+// Note: server sends a packet to the client at low frequency, binary encoding, without ensuring
+// compatibility between different versions, even if within the same major version.
+#[derive(Serialize, Deserialize)]
+pub struct RealTimeConfig {
+    pub passthrough: Option<PassthroughMode>,
+}
+
+pub fn encode_real_time_config(config: &RealTimeConfig) -> Result<ServerControlPacket> {
+    Ok(ServerControlPacket::ReservedBuffer(bincode::serialize(
+        config,
+    )?))
+}
+
+pub fn decode_real_time_config(buffer: &[u8]) -> Result<RealTimeConfig> {
+    Ok(bincode::deserialize(buffer)?)
 }
 
 // Per eye view parameters

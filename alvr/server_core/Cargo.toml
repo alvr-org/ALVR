@@ -27,7 +27,7 @@ ash = "0.38"
 bincode = "1"
 bytes = "1"
 chrono = "0.4"
-fern = "0.6"
+fern = "0.7"
 flume = "0.11"
 futures = "0.3"
 headers = "0.3"
@@ -38,7 +38,7 @@ hyper = { version = "0.14", features = [
     "runtime",
     "tcp",
 ] }
-mdns-sd = "0.11"
+mdns-sd = "0.13"
 profiling = { version = "1", optional = true }
 reqwest = "0.11" # not used but webserver does not work without it. todo: investigate
 rosc = "0.10"
@@ -54,4 +54,4 @@ tokio-tungstenite = "0.20"
 tokio-util = { version = "0.7", features = ["codec"] }
 serde = "1"
 serde_json = "1"
-sysinfo = "0.31"
+sysinfo = "0.33"

@@ -3,8 +3,8 @@ use alvr_events::{GraphStatistics, StatisticsSummary};
 use alvr_gui_common::theme;
 use eframe::{
     egui::{
-        popup, pos2, vec2, Align2, Color32, FontId, Frame, Grid, Id, Painter, Rect, RichText,
-        Rounding, ScrollArea, Shape, Stroke, Ui,
+        popup, pos2, vec2, Align2, Color32, CornerRadius, FontId, Frame, Grid, Id, Painter, Rect,
+        RichText, ScrollArea, Shape, Stroke, Ui,
     },
     emath::RectTransform,
     epaint::Pos2,
@@ -53,7 +53,10 @@ impl StatisticsTab {
                 self.draw_statistics_overview(ui, stats);
             });
         } else {
-            ui.heading("No statistics available");
+            ui.heading(
+                "No statistics available. 
+            Start SteamVR and connect to a device to gather statistics",
+            );
         }
 
         None
@@ -155,7 +158,7 @@ impl StatisticsTab {
                                 min: to_screen_trans * pos2(i as f32, offset + value * 1000.0),
                                 max: to_screen_trans * pos2(i as f32 + 2.0, offset),
                             },
-                            Rounding::ZERO,
+                            CornerRadius::ZERO,
                             *color,
                         );
                         offset += value * 1000.0;

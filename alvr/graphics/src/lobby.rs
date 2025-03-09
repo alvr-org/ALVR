@@ -12,11 +12,11 @@ use wgpu::{
     include_wgsl, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendComponent,
     BlendFactor, BlendOperation, BlendState, Color, ColorTargetState, ColorWrites,
-    CommandEncoderDescriptor, Device, Extent3d, FilterMode, FragmentState, ImageCopyTexture,
-    ImageDataLayout, LoadOp, Operations, Origin3d, PipelineLayoutDescriptor, PrimitiveState,
-    PrimitiveTopology, PushConstantRange, RenderPass, RenderPassColorAttachment,
-    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, SamplerBindingType,
-    SamplerDescriptor, ShaderModuleDescriptor, ShaderStages, StoreOp, Texture, TextureAspect,
+    CommandEncoderDescriptor, Device, Extent3d, FilterMode, FragmentState, LoadOp, Operations,
+    Origin3d, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, PushConstantRange,
+    RenderPass, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
+    RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor,
+    ShaderStages, StoreOp, TexelCopyBufferLayout, TexelCopyTextureInfo, Texture, TextureAspect,
     TextureSampleType, TextureView, TextureViewDimension, VertexState,
 };
 
@@ -122,6 +122,42 @@ const BODY_SKELETON_BONES_FB: [(usize, usize); 30] = [
     (82, 83),
 ];
 
+const BODY_SKELETON_BONES_BD: [(usize, usize); 23] = [
+    // Left leg
+    (0, 1),
+    (1, 4),
+    (4, 7),
+    (7, 10),
+    // Right leg
+    (0, 2),
+    (2, 5),
+    (5, 8),
+    (8, 11),
+    // Spine
+    (0, 3),
+    (3, 6),
+    (6, 9),
+    (9, 12),
+    (12, 15),
+    // Left arm
+    (9, 13),
+    (13, 16),
+    (16, 18),
+    (18, 20),
+    (20, 22),
+    // Right arm
+    (9, 14),
+    (14, 17),
+    (17, 19),
+    (19, 21),
+    (21, 23),
+];
+
+pub enum BodyTrackingType {
+    Meta,
+    Pico,
+}
+
 fn create_pipeline(
     device: &Device,
     label: &str,
@@ -144,7 +180,7 @@ fn create_pipeline(
         })),
         vertex: VertexState {
             module: &shader_module,
-            entry_point: "vertex_main",
+            entry_point: None,
             compilation_options: Default::default(),
             buffers: &[],
         },
@@ -156,7 +192,7 @@ fn create_pipeline(
         multisample: Default::default(),
         fragment: Some(FragmentState {
             module: &shader_module,
-            entry_point: "fragment_main",
+            entry_point: None,
             compilation_options: Default::default(),
             targets: &[Some(ColorTargetState {
                 format: SDR_FORMAT,
@@ -176,6 +212,7 @@ fn create_pipeline(
             })],
         }),
         multiview: None,
+        cache: None,
     })
 }
 
@@ -348,14 +385,14 @@ impl LobbyRenderer {
         }
 
         self.context.queue.write_texture(
-            ImageCopyTexture {
+            TexelCopyTextureInfo {
                 texture: &self.hud_texture,
                 mip_level: 0,
                 origin: Origin3d::ZERO,
                 aspect: TextureAspect::All,
             },
             &buffer,
-            ImageDataLayout {
+            TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(HUD_TEXTURE_SIDE as u32 * 4),
                 rows_per_image: Some(HUD_TEXTURE_SIDE as u32),
@@ -368,11 +405,14 @@ impl LobbyRenderer {
         );
     }
 
+    #[expect(clippy::too_many_arguments)]
     pub fn render(
         &self,
         view_params: [LobbyViewParams; 2],
         hand_data: [(Option<DeviceMotion>, Option<[Pose; 26]>); 2],
-        body_skeleton_fb: Option<Vec<Option<Pose>>>,
+        additional_motions: Option<Vec<DeviceMotion>>,
+        body_skeleton: Option<Vec<Option<Pose>>>,
+        body_tracking_type: Option<BodyTrackingType>,
         render_background: bool,
         show_velocities: bool,
     ) {
@@ -466,6 +506,66 @@ impl LobbyRenderer {
                 transform_draw(&mut pass, view_proj * transform, 4);
             }
 
+            fn draw_crosshair(
+                pass: &mut RenderPass,
+                motion: &DeviceMotion,
+                view_proj: Mat4,
+                show_velocities: bool,
+            ) {
+                let hand_transform = Mat4::from_scale_rotation_translation(
+                    Vec3::ONE * 0.2,
+                    motion.pose.orientation,
+                    motion.pose.position,
+                );
+
+                // Draw crosshair
+                let segment_rotations = [
+                    Mat4::IDENTITY,
+                    Mat4::from_rotation_y(FRAC_PI_2),
+                    Mat4::from_rotation_x(FRAC_PI_2),
+                ];
+                pass.set_push_constants(
+                    ShaderStages::VERTEX_FRAGMENT,
+                    COLOR_CONST_OFFSET,
+                    &[255, 255, 255, 255],
+                );
+                for rot in &segment_rotations {
+                    let transform = hand_transform
+                        * *rot
+                        * Mat4::from_scale(Vec3::ONE * 0.5)
+                        * Mat4::from_translation(Vec3::Z * 0.5);
+                    transform_draw(pass, view_proj * transform, 2);
+                }
+
+                if show_velocities {
+                    // Draw linear velocity
+                    let transform = Mat4::from_scale_rotation_translation(
+                        Vec3::ONE * motion.linear_velocity.length() * 0.2,
+                        Quat::from_rotation_arc(-Vec3::Z, motion.linear_velocity.normalize()),
+                        motion.pose.position,
+                    );
+                    pass.set_push_constants(
+                        ShaderStages::VERTEX_FRAGMENT,
+                        COLOR_CONST_OFFSET,
+                        &[255, 0, 0, 255],
+                    );
+                    transform_draw(pass, view_proj * transform, 2);
+
+                    // Draw angular velocity
+                    let transform = Mat4::from_scale_rotation_translation(
+                        Vec3::ONE * motion.angular_velocity.length() * 0.01,
+                        Quat::from_rotation_arc(-Vec3::Z, motion.angular_velocity.normalize()),
+                        motion.pose.position,
+                    );
+                    pass.set_push_constants(
+                        ShaderStages::VERTEX_FRAGMENT,
+                        COLOR_CONST_OFFSET,
+                        &[0, 255, 0, 255],
+                    );
+                    transform_draw(pass, view_proj * transform, 2);
+                }
+            }
+
             // Render hands and body skeleton
             pass.set_pipeline(&self.line_pipeline);
             for (maybe_motion, maybe_skeleton) in &hand_data {
@@ -490,64 +590,26 @@ impl LobbyRenderer {
                 }
 
                 if let Some(motion) = maybe_motion {
-                    let hand_transform = Mat4::from_scale_rotation_translation(
-                        Vec3::ONE * 0.2,
-                        motion.pose.orientation,
-                        motion.pose.position,
-                    );
-
-                    // Draw crossair
-                    let segment_rotations = [
-                        Mat4::IDENTITY,
-                        Mat4::from_rotation_y(FRAC_PI_2),
-                        Mat4::from_rotation_x(FRAC_PI_2),
-                    ];
-                    pass.set_push_constants(
-                        ShaderStages::VERTEX_FRAGMENT,
-                        COLOR_CONST_OFFSET,
-                        &[255, 255, 255, 255],
-                    );
-                    for rot in &segment_rotations {
-                        let transform = hand_transform
-                            * *rot
-                            * Mat4::from_scale(Vec3::ONE * 0.5)
-                            * Mat4::from_translation(Vec3::Z * 0.5);
-                        transform_draw(&mut pass, view_proj * transform, 2);
-                    }
-
-                    if show_velocities {
-                        // Draw linear velocity
-                        let transform = Mat4::from_scale_rotation_translation(
-                            Vec3::ONE * motion.linear_velocity.length() * 0.2,
-                            Quat::from_rotation_arc(-Vec3::Z, motion.linear_velocity.normalize()),
-                            motion.pose.position,
-                        );
-                        pass.set_push_constants(
-                            ShaderStages::VERTEX_FRAGMENT,
-                            COLOR_CONST_OFFSET,
-                            &[255, 0, 0, 255],
-                        );
-                        transform_draw(&mut pass, view_proj * transform, 2);
-
-                        // Draw angular velocity
-                        let transform = Mat4::from_scale_rotation_translation(
-                            Vec3::ONE * motion.angular_velocity.length() * 0.01,
-                            Quat::from_rotation_arc(-Vec3::Z, motion.angular_velocity.normalize()),
-                            motion.pose.position,
-                        );
-                        pass.set_push_constants(
-                            ShaderStages::VERTEX_FRAGMENT,
-                            COLOR_CONST_OFFSET,
-                            &[0, 255, 0, 255],
-                        );
-                        transform_draw(&mut pass, view_proj * transform, 2);
-                    }
+                    draw_crosshair(&mut pass, motion, view_proj, show_velocities);
                 }
             }
-            if let Some(skeleton) = &body_skeleton_fb {
-                for (joint1_idx, joint2_idx) in BODY_SKELETON_BONES_FB {
+
+            if let Some(motions) = &additional_motions {
+                for motion in motions {
+                    draw_crosshair(&mut pass, motion, view_proj, show_velocities);
+                }
+            }
+
+            let body_skeleton_bones = match body_tracking_type {
+                Some(BodyTrackingType::Meta) => Some(BODY_SKELETON_BONES_FB.as_slice()),
+                Some(BodyTrackingType::Pico) => Some(BODY_SKELETON_BONES_BD.as_slice()),
+                _ => None,
+            };
+
+            if let (Some(skeleton), Some(skeleton_bones)) = (&body_skeleton, body_skeleton_bones) {
+                for (joint1_idx, joint2_idx) in skeleton_bones {
                     if let (Some(Some(j1_pose)), Some(Some(j2_pose))) =
-                        (skeleton.get(joint1_idx), skeleton.get(joint2_idx))
+                        (skeleton.get(*joint1_idx), skeleton.get(*joint2_idx))
                     {
                         let transform = Mat4::from_scale_rotation_translation(
                             Vec3::ONE * Vec3::distance(j1_pose.position, j2_pose.position),

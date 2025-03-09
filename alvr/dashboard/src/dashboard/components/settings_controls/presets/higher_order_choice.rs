@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
 use super::schema::{HigherOrderChoiceSchema, PresetModifierOperation};
-use crate::dashboard::components::{self, NestingInfo, SettingControl, INDENTATION_STEP};
+use crate::dashboard::components::{
+    self, serde_values_eq, NestingInfo, SettingControl, INDENTATION_STEP,
+};
 use alvr_gui_common::theme::{
     log_colors::{INFO_LIGHT, WARNING_LIGHT},
     OK_GREEN,
@@ -48,9 +50,12 @@ impl Control {
                 )
             })
             .collect();
-
         let control_schema = SchemaNode::Choice {
-            default: schema.options[schema.default_option_index]
+            default: schema
+                .options
+                .iter()
+                .find(|option| option.display_name == schema.default_option_display_name)
+                .unwrap()
                 .display_name
                 .clone(),
             variants: schema
@@ -118,7 +123,7 @@ impl Control {
                     };
                 }
 
-                if *session_ref != desc.value {
+                if !serde_values_eq(session_ref, &desc.value) {
                     continue 'outer;
                 }
             }

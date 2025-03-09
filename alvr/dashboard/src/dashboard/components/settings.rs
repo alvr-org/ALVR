@@ -16,6 +16,7 @@ use std::time::Duration;
 use std::time::Instant;
 
 const DATA_UPDATE_INTERVAL: Duration = Duration::from_secs(1);
+const MIN_COLUMN_SIZE: f32 = 300.0;
 
 struct TopLevelEntry {
     id: DisplayString,
@@ -27,6 +28,8 @@ pub struct SettingsTab {
     resolution_preset: PresetControl,
     framerate_preset: PresetControl,
     encoder_preset: PresetControl,
+    foveation_preset: PresetControl,
+    codec_preset: PresetControl,
     game_audio_preset: Option<PresetControl>,
     microphone_preset: Option<PresetControl>,
     hand_tracking_interaction_preset: PresetControl,
@@ -70,6 +73,8 @@ impl SettingsTab {
             resolution_preset: PresetControl::new(builtin_schema::resolution_schema()),
             framerate_preset: PresetControl::new(builtin_schema::framerate_schema()),
             encoder_preset: PresetControl::new(builtin_schema::encoder_preset_schema()),
+            foveation_preset: PresetControl::new(builtin_schema::foveation_preset_schema()),
+            codec_preset: PresetControl::new(builtin_schema::codec_preset_schema()),
             game_audio_preset: None,
             microphone_preset: None,
             hand_tracking_interaction_preset: PresetControl::new(
@@ -90,6 +95,9 @@ impl SettingsTab {
         self.framerate_preset
             .update_session_settings(&settings_json);
         self.encoder_preset.update_session_settings(&settings_json);
+        self.foveation_preset
+            .update_session_settings(&settings_json);
+        self.codec_preset.update_session_settings(&settings_json);
         if let Some(preset) = self.game_audio_preset.as_mut() {
             preset.update_session_settings(&settings_json)
         }
@@ -113,7 +121,7 @@ impl SettingsTab {
             preset.update_session_settings(json);
             self.game_audio_preset = Some(preset);
 
-            let mut preset = PresetControl::new(builtin_schema::microphone_schema(list.output));
+            let mut preset = PresetControl::new(builtin_schema::microphone_schema());
             preset.update_session_settings(json);
             self.microphone_preset = Some(preset);
         }
@@ -160,11 +168,12 @@ impl SettingsTab {
 
         if self.selected_top_tab_id == "presets" {
             ScrollArea::new([false, true])
-                .id_source("presets_scroll")
+                .id_salt("presets_scroll")
                 .show(ui, |ui| {
                     Grid::new("presets_grid")
                         .striped(true)
                         .num_columns(2)
+                        .min_col_width(MIN_COLUMN_SIZE)
                         .show(ui, |ui| {
                             path_value_pairs.extend(self.resolution_preset.ui(ui));
                             ui.end_row();
@@ -173,6 +182,12 @@ impl SettingsTab {
                             ui.end_row();
 
                             path_value_pairs.extend(self.encoder_preset.ui(ui));
+                            ui.end_row();
+
+                            path_value_pairs.extend(self.foveation_preset.ui(ui));
+                            ui.end_row();
+
+                            path_value_pairs.extend(self.codec_preset.ui(ui));
                             ui.end_row();
 
                             if let Some(preset) = &mut self.game_audio_preset {
@@ -194,11 +209,12 @@ impl SettingsTab {
                 });
         } else {
             ScrollArea::new([false, true])
-                .id_source(format!("{}_scroll", self.selected_top_tab_id))
+                .id_salt(format!("{}_scroll", self.selected_top_tab_id))
                 .show(ui, |ui| {
                     Grid::new(format!("{}_grid", self.selected_top_tab_id))
                         .striped(true)
                         .num_columns(2)
+                        .min_col_width(MIN_COLUMN_SIZE)
                         .show(ui, |ui| {
                             if let Some(session_fragment) = &mut self.session_settings_json {
                                 let session_fragments_mut =

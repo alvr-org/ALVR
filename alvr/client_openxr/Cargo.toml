@@ -30,6 +30,7 @@ package = "alvr.client.stable"             # Changed for Meta Store
 install_location = "auto"
 build_targets = ["aarch64-linux-android"]
 runtime_libs = "../../deps/android_openxr"
+resources = "resources"
 
 [package.metadata.android.signing.release]
 path = "../../build/alvr_client_android/debug.keystore"
@@ -80,7 +81,7 @@ authorities = "org.khronos.openxr.runtime_broker;org.khronos.openxr.system_runti
 [package.metadata.android.application]
 debuggable = false
 theme = "@android:style/Theme.Black.NoTitleBar.Fullscreen"
-# icon = todo
+icon = "@mipmap/ic_launcher"
 label = "ALVR"
 
 [package.metadata.android.application.activity]
@@ -141,10 +142,16 @@ value = "HIGH"
 name = "com.oculus.handtracking.version"
 value = "V2.0"
 
-# Vive Focus 3 entries
+# Vive entries
+[[package.metadata.android.uses_feature]]
+name = "wave.feature.eyetracking"
+required = false
 [[package.metadata.android.uses_feature]]
 name = "wave.feature.handtracking"
 required = true
+[[package.metadata.android.uses_feature]]
+name = "wave.feature.lipexpression"
+required = false
 [[package.metadata.android.application.meta_data]]
 name = "minWaveSDKVersion"
 value = "1"
@@ -161,6 +168,8 @@ value = "3,6DoF"
 # Pico entries
 [[package.metadata.android.uses_permission]]
 name = "com.picovr.permission.EYE_TRACKING"
+[[package.metadata.android.uses_permission]]
+name = "com.picovr.permission.FACE_TRACKING"
 [[package.metadata.android.application.meta_data]]
 name = "eyetracking_calibration"
 value = "true"
@@ -170,6 +179,9 @@ value = "1"
 [[package.metadata.android.application.meta_data]]
 name = "picovr.software.eye_tracking"
 value = "1"
+[[package.metadata.android.application.meta_data]]
+name = "picovr.software.face_tracking"
+value = "true"
 [[package.metadata.android.application.meta_data]]
 name = "pvr.app.type"
 value = "vr"

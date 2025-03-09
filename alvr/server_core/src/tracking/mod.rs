@@ -35,9 +35,6 @@ use std::{
 };
 
 const DEG_TO_RAD: f32 = PI / 180.0;
-// A small history size is used, we just need to cover the time from packet received to data
-// processed.
-const MAX_HISTORY_SIZE: usize = 16;
 
 #[derive(Debug)]
 pub enum HandType {
@@ -60,16 +57,18 @@ pub struct TrackingManager {
     device_motions_history: HashMap<u64, VecDeque<(Duration, DeviceMotion)>>,
     hand_skeletons_history: [VecDeque<(Duration, [Pose; 26])>; 2],
     last_face_data: FaceData,
+    max_history_size: usize,
 }
 
 impl TrackingManager {
-    pub fn new() -> TrackingManager {
+    pub fn new(max_history_size: usize) -> TrackingManager {
         TrackingManager {
             last_head_pose: Pose::default(),
             inverse_recentering_origin: Pose::default(),
             device_motions_history: HashMap::new(),
             hand_skeletons_history: [VecDeque::new(), VecDeque::new()],
             last_face_data: FaceData::default(),
+            max_history_size,
         }
     }
 
@@ -124,7 +123,7 @@ impl TrackingManager {
     // Performs all kinds of tracking transformations, driven by settings.
     pub fn report_device_motions(
         &mut self,
-        config: &HeadsetConfig,
+        headset_config: &HeadsetConfig,
         timestamp: Duration,
         device_motions: &[(u64, DeviceMotion)],
     ) {
@@ -141,7 +140,7 @@ impl TrackingManager {
             (*BODY_RIGHT_FOOT_ID, MotionConfig::default()),
         ]);
 
-        if let Switch::Enabled(controllers) = &config.controllers {
+        if let Switch::Enabled(controllers) = &headset_config.controllers {
             let t = controllers.left_controller_position_offset;
             let r = controllers.left_controller_rotation_offset;
 
@@ -219,7 +218,7 @@ impl TrackingManager {
             if let Some(motions) = self.device_motions_history.get_mut(&device_id) {
                 motions.push_front((timestamp, motion));
 
-                if motions.len() > MAX_HISTORY_SIZE {
+                if motions.len() > self.max_history_size {
                     motions.pop_back();
                 }
             } else {
@@ -247,7 +246,7 @@ impl TrackingManager {
                     // Note: we are iterating from most recent to oldest
                     for (ts, m) in motions {
                         match ts.cmp(&sample_timestamp) {
-                            Ordering::Equal => return Some(*best_motion_ref),
+                            Ordering::Equal => return Some(*m),
                             Ordering::Greater => {
                                 let diff = ts.saturating_sub(sample_timestamp);
                                 if diff < best_timestamp_diff {
@@ -280,7 +279,7 @@ impl TrackingManager {
 
         skeleton_history.push_back((timestamp, skeleton));
 
-        if skeleton_history.len() > MAX_HISTORY_SIZE {
+        if skeleton_history.len() > self.max_history_size {
             skeleton_history.pop_front();
         }
     }

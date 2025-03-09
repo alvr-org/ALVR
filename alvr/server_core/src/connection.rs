@@ -20,12 +20,12 @@ use alvr_common::{
 use alvr_events::{AdbEvent, ButtonEvent, EventType};
 use alvr_packets::{
     BatteryInfo, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
-    NegotiatedStreamingConfig, ReservedClientControlPacket, ServerControlPacket, Tracking,
-    VideoPacketHeader, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
+    NegotiatedStreamingConfig, RealTimeConfig, ReservedClientControlPacket, ServerControlPacket,
+    Tracking, VideoPacketHeader, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{
-    BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile,
-    OpenvrConfig, SessionConfig, SocketProtocol,
+    BodyTrackingBDConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize,
+    H264Profile, OpenvrConfig, SessionConfig, SocketProtocol,
 };
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSocketBuilder, CONTROL_PORT, KEEPALIVE_INTERVAL,
@@ -43,6 +43,7 @@ use std::{
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const HANDSHAKE_ACTION_TIMEOUT: Duration = Duration::from_secs(2);
 pub const STREAMING_RECV_TIMEOUT: Duration = Duration::from_millis(500);
+const REAL_TIME_UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
 const MAX_UNREAD_PACKETS: usize = 10; // Applies per stream
 
@@ -82,6 +83,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
             ControllersEmulationMode::Quest2Touch => 1,
             ControllersEmulationMode::Quest3Plus => 2,
             ControllersEmulationMode::QuestPro => 3,
+            ControllersEmulationMode::Pico4 => 10,
             ControllersEmulationMode::ValveIndex => 20,
             ControllersEmulationMode::ViveWand => 40,
             ControllersEmulationMode::ViveTracker => 41,
@@ -112,6 +114,14 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         .as_option()
         .and_then(|c| c.sources.body_tracking_fb.as_option().cloned())
         .map(|c| c.full_body)
+        .or_else(|| {
+            settings.headset.body_tracking.as_option().map(|c| {
+                matches!(
+                    c.sources.body_tracking_bd.as_option(),
+                    Some(BodyTrackingBDConfig::BodyTracking { .. })
+                )
+            })
+        })
         .unwrap_or(false);
 
     let mut foveation_center_size_x = 0.0;
@@ -312,8 +322,9 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                 }
             };
 
-            if let WiredConnectionStatus::NotReady(m) = status {
-                dbg_connection!("handshake_loop: Wired connection not ready: {m}");
+            #[cfg_attr(not(debug_assertions), expect(unused_variables))]
+            if let WiredConnectionStatus::NotReady(s) = status {
+                dbg_connection!("handshake_loop: Wired connection not ready: {s}");
                 thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                 continue;
             }
@@ -1012,7 +1023,8 @@ fn connection_pipeline(
             thread::spawn(|| ())
         };
 
-    *ctx.tracking_manager.write() = TrackingManager::new();
+    *ctx.tracking_manager.write() =
+        TrackingManager::new(initial_settings.connection.statistics_history_size);
     let hand_gesture_manager = Arc::new(Mutex::new(HandGestureManager::new()));
 
     let tracking_receive_thread = thread::spawn({
@@ -1068,6 +1080,29 @@ fn connection_pipeline(
     });
 
     let control_sender = Arc::new(Mutex::new(control_sender));
+
+    let real_time_update_thread = thread::spawn({
+        let control_sender = Arc::clone(&control_sender);
+        let client_hostname = client_hostname.clone();
+        move || {
+            while is_streaming(&client_hostname) {
+                let config = {
+                    let session_manager_lock = SESSION_MANAGER.read();
+                    let settings = session_manager_lock.settings();
+
+                    RealTimeConfig {
+                        passthrough: settings.video.passthrough.clone().into_option(),
+                    }
+                };
+
+                if let Ok(config) = alvr_packets::encode_real_time_config(&config) {
+                    control_sender.lock().send(&config).ok();
+                }
+
+                thread::sleep(REAL_TIME_UPDATE_INTERVAL);
+            }
+        }
+    });
 
     let keepalive_thread = thread::spawn({
         let control_sender = Arc::clone(&control_sender);
@@ -1436,6 +1471,7 @@ fn connection_pipeline(
     microphone_thread.join().ok();
     tracking_receive_thread.join().ok();
     statistics_thread.join().ok();
+    real_time_update_thread.join().ok();
     control_receive_thread.join().ok();
     stream_receive_thread.join().ok();
     keepalive_thread.join().ok();

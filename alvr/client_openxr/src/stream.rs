@@ -573,6 +573,10 @@ fn stream_input_loop(
             ));
         }
 
+        if let Some(tracker) = &int_ctx.body_sources.motion_tracker_bd {
+            device_motions.append(&mut interaction::get_bd_motion_trackers(now, tracker));
+        }
+
         core_ctx.send_tracking(
             Duration::from_nanos(now.as_nanos() as u64),
             device_motions,

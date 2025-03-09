@@ -20,9 +20,9 @@ use alvr_graphics::GraphicsContext;
 use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig};
 use alvr_system_info::Platform;
 use extra_extensions::{
-    BD_BODY_TRACKING_EXTENSION_NAME, META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
-    META_DETACHED_CONTROLLERS_EXTENSION_NAME,
-    META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,
+    BD_BODY_TRACKING_EXTENSION_NAME, BD_MOTION_TRACKING_EXTENSION_NAME,
+    META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME, META_DETACHED_CONTROLLERS_EXTENSION_NAME,
+    META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME, PICO_CONFIGURATION_EXTENSION_NAME,
 };
 use interaction::{InteractionContext, InteractionSourcesConfig};
 use lobby::Lobby;
@@ -195,6 +195,8 @@ pub fn entry_point() {
                 META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,
                 META_DETACHED_CONTROLLERS_EXTENSION_NAME,
                 BD_BODY_TRACKING_EXTENSION_NAME,
+                BD_MOTION_TRACKING_EXTENSION_NAME,
+                PICO_CONFIGURATION_EXTENSION_NAME,
             ]
             .contains(&ext.as_str())
         })
@@ -292,7 +294,7 @@ pub fn entry_point() {
         );
         let lobby_body_tracking_config = BodyTrackingSourcesConfig {
             body_tracking_fb: Switch::Disabled,
-            body_tracking_bd: Switch::Enabled(BodyTrackingBDConfig {
+            body_tracking_bd: Switch::Enabled(BodyTrackingBDConfig::BodyTracking {
                 high_accuracy: true,
                 prompt_calibration_on_start: false,
             }),

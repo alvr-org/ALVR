@@ -877,6 +877,9 @@ pub struct FaceTrackingConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BodyTrackingSourcesConfig {
     pub body_tracking_fb: Switch<BodyTrackingFBConfig>,
+    #[schema(strings(
+        help = "It's recommended to set Tracking Mode to Full-Body Tracking in Motion Tracker app settings on your Pico headset."
+    ))]
     pub body_tracking_bd: Switch<BodyTrackingBDConfig>,
     // todo:
     // pub detached_controllers_as_feet: bool,
@@ -890,9 +893,21 @@ pub struct BodyTrackingFBConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-pub struct BodyTrackingBDConfig {
-    pub high_accuracy: bool,
-    pub prompt_calibration_on_start: bool,
+#[schema(gui = "button_group")]
+pub enum BodyTrackingBDConfig {
+    #[schema(strings(display_name = "Body Tracking"))]
+    BodyTracking {
+        #[schema(strings(
+            help = "Improves accuracy of the tracking at the cost of higher latency."
+        ))]
+        high_accuracy: bool,
+        #[schema(strings(
+            help = "If trackers have not been calibrated before, the calibration process will start after you connect to the streamer."
+        ))]
+        prompt_calibration_on_start: bool,
+    },
+    #[schema(strings(display_name = "Object Tracking"))]
+    ObjectTracking,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1853,8 +1868,11 @@ pub fn session_settings_default() -> SettingsDefault {
                         body_tracking_bd: SwitchDefault {
                             enabled: true,
                             content: BodyTrackingBDConfigDefault {
-                                high_accuracy: true,
-                                prompt_calibration_on_start: true,
+                                BodyTracking: BodyTrackingBDConfigBodyTrackingDefault {
+                                    high_accuracy: true,
+                                    prompt_calibration_on_start: true,
+                                },
+                                variant: BodyTrackingBDConfigDefaultVariant::BodyTracking,
                             },
                         },
                     },

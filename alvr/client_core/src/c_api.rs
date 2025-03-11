@@ -219,11 +219,13 @@ pub unsafe extern "C" fn alvr_log(level: AlvrLogLevel, message: *const c_char) {
 }
 
 #[no_mangle]
+#[cfg_attr(not(debug_assertions), expect(unused_variables))]
 pub unsafe extern "C" fn alvr_dbg_client_impl(message: *const c_char) {
     alvr_common::dbg_client_impl!("{}", CStr::from_ptr(message).to_str().unwrap())
 }
 
 #[no_mangle]
+#[cfg_attr(not(debug_assertions), expect(unused_variables))]
 pub unsafe extern "C" fn alvr_dbg_decoder(message: *const c_char) {
     alvr_common::dbg_decoder!("{}", CStr::from_ptr(message).to_str().unwrap())
 }

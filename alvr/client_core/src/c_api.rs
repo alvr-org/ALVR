@@ -394,7 +394,7 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
     }
 }
 
-// Returns the length of the message. message_buffer can be null.
+/// Returns the length of the message. message_buffer can be null.
 #[no_mangle]
 pub extern "C" fn alvr_hud_message(message_buffer: *mut c_char) -> u64 {
     let cstring = CString::new(HUD_MESSAGE.lock().clone()).unwrap();
@@ -722,9 +722,14 @@ pub struct AlvrStreamConfig {
 
 #[no_mangle]
 pub extern "C" fn alvr_initialize_opengl() {
-    GRAPHICS_CONTEXT.set(Some(Rc::new(GraphicsContext::new_gl())));
+    let context = GraphicsContext::new_gl();
+    context.make_current();
+
+    GRAPHICS_CONTEXT.set(Some(Rc::new(context)));
 }
 
+/// The GL context might be invalid after this function! Destroy any GL resources before calling
+/// this.
 #[no_mangle]
 pub extern "C" fn alvr_destroy_opengl() {
     GRAPHICS_CONTEXT.set(None);
@@ -764,12 +769,24 @@ pub unsafe extern "C" fn alvr_resume_opengl(
         convert_swapchain_array(swapchain_textures, swapchain_length),
         "",
     )));
+
+    GRAPHICS_CONTEXT.with_borrow(|context| {
+        if let Some(ctx) = context {
+            ctx.make_current();
+        }
+    });
 }
 
 #[no_mangle]
 pub extern "C" fn alvr_pause_opengl() {
     STREAM_RENDERER.set(None);
-    LOBBY_RENDERER.set(None)
+    LOBBY_RENDERER.set(None);
+
+    GRAPHICS_CONTEXT.with_borrow(|context| {
+        if let Some(ctx) = context {
+            ctx.make_current();
+        }
+    });
 }
 
 #[no_mangle]
@@ -777,6 +794,12 @@ pub unsafe extern "C" fn alvr_update_hud_message_opengl(message: *const c_char) 
     LOBBY_RENDERER.with_borrow(|renderer| {
         if let Some(renderer) = renderer {
             renderer.update_hud_message(CStr::from_ptr(message).to_str().unwrap());
+        }
+    });
+
+    GRAPHICS_CONTEXT.with_borrow(|context| {
+        if let Some(ctx) = context {
+            ctx.make_current();
         }
     });
 }
@@ -814,6 +837,12 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
         1.0,   // TODO: encoding gamma config
         upscaling,
     )));
+
+    GRAPHICS_CONTEXT.with_borrow(|context| {
+        if let Some(ctx) = context {
+            ctx.make_current();
+        }
+    });
 }
 
 // todo: support hands
@@ -848,6 +877,12 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(
             );
         }
     });
+
+    GRAPHICS_CONTEXT.with_borrow(|context| {
+        if let Some(ctx) = context {
+            ctx.make_current();
+        }
+    });
 }
 
 /// view_params: array of 2
@@ -876,6 +911,12 @@ pub unsafe extern "C" fn alvr_render_stream_opengl(
                 ],
                 None,
             );
+        }
+    });
+
+    GRAPHICS_CONTEXT.with_borrow(|context| {
+        if let Some(ctx) = context {
+            ctx.make_current();
         }
     });
 }
@@ -995,7 +1036,7 @@ pub extern "C" fn alvr_destroy_decoder() {
     *DECODER_SOURCE.lock() = None;
 }
 
-// Returns true if the timestamp and buffer has been written to
+/// Returns true if the timestamp and buffer has been written to
 #[no_mangle]
 pub extern "C" fn alvr_get_frame(
     out_timestamp_ns: *mut u64,

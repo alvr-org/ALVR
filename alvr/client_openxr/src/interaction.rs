@@ -11,7 +11,10 @@ use crate::{
     },
     Platform,
 };
-use alvr_common::{glam::Vec3, *};
+use alvr_common::{
+    glam::{Quat, Vec3},
+    *,
+};
 use alvr_packets::{ButtonEntry, ButtonValue, StreamConfig, ViewParams};
 use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
@@ -19,6 +22,56 @@ use std::{collections::HashMap, time::Duration};
 use xr::SpaceLocationFlags;
 
 const IPD_CHANGE_EPS: f32 = 0.001;
+
+// Most OpenXR runtime, including Meta's one, do not follow perfectly the specification regarding
+// controller pose. The Z axis should point down through the center of the controller grip, the X
+// axis should go out perpendicular from the palm, and the position should be aligned roughtly with
+// the center of the palm.
+// https://registry.khronos.org/OpenXR/specs/1.1/html/xrspec.html
+// Note: right controller offsets are calculated from left controller offsets by mirroring along the
+// Y-Z plane.
+fn get_controller_offset(platform: Platform, is_right_hand: bool) -> Pose {
+    const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
+
+    let left_offset = match platform {
+        Platform::Quest1 => Pose {
+            position: Vec3::new(-0.013, -0.005, 0.0),
+            orientation: Quat::from_rotation_x(-20.0 * DEG_TO_RAD),
+        },
+        // todo: check Quest 2
+        p if p.is_quest() => Pose {
+            position: Vec3::new(-0.005, -0.005, 0.00),
+            orientation: Quat::from_rotation_x(-15.0 * DEG_TO_RAD),
+        },
+        Platform::PicoNeo3 => Pose {
+            position: Vec3::new(-0.013, -0.035, 0.0),
+            orientation: Quat::IDENTITY,
+        },
+        // todo: check (base) Pico 4
+        p if p.is_pico() => Pose {
+            position: Vec3::new(-0.01, -0.035, 0.0),
+            orientation: Quat::from_rotation_y(6.0 * DEG_TO_RAD)
+                * Quat::from_rotation_x(-6.0 * DEG_TO_RAD),
+        },
+        p if p.is_vive() => Pose {
+            position: Vec3::new(0.0, 0.0, -0.02),
+            orientation: Quat::IDENTITY,
+        },
+        _ => Pose::default(),
+    };
+
+    if is_right_hand {
+        let p = left_offset.position;
+        let q = left_offset.orientation;
+
+        Pose {
+            position: Vec3::new(-p[0], p[1], p[2]),
+            orientation: Quat::from_xyzw(-q.x, q.y, q.z, -q.w),
+        }
+    } else {
+        left_offset
+    }
+}
 
 fn create_ext_object<T>(
     name: &str,
@@ -49,6 +102,8 @@ pub enum ButtonAction {
 
 pub struct HandInteraction {
     pub controllers_profile_id: u64,
+    pub pose_offset: Pose,
+
     pub grip_action: xr::Action<xr::Posef>,
     pub grip_space: xr::Space,
 
@@ -380,6 +435,7 @@ impl InteractionContext {
             hands_interaction: [
                 HandInteraction {
                     controllers_profile_id,
+                    pose_offset: get_controller_offset(platform, false),
                     grip_action: left_grip_action,
                     grip_space: left_grip_space,
                     aim_action: left_aim_action,
@@ -389,6 +445,7 @@ impl InteractionContext {
                 },
                 HandInteraction {
                     controllers_profile_id,
+                    pose_offset: get_controller_offset(platform, true),
                     grip_action: right_grip_action,
                     grip_space: right_grip_space,
                     aim_action: right_aim_action,
@@ -710,6 +767,8 @@ pub fn get_hand_data(
                 last_controller_pose.position = crate::from_xr_vec3(location.pose.position);
             }
 
+            let pose = *last_controller_pose * hand_source.pose_offset;
+
             let mut linear_velocity = crate::from_xr_vec3(velocity.linear_velocity);
             let mut angular_velocity = crate::from_xr_vec3(velocity.angular_velocity);
 
@@ -745,7 +804,7 @@ pub fn get_hand_data(
             }
 
             Some(DeviceMotion {
-                pose: *last_controller_pose,
+                pose,
                 linear_velocity,
                 angular_velocity,
             })

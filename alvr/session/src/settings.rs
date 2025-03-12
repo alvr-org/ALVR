@@ -1172,20 +1172,24 @@ Currently this cannot be reliably estimated automatically. The correct value sho
     pub angular_velocity_cutoff: f32,
 
     #[schema(flag = "real-time")]
+    #[schema(strings(help = "Right controller offset is mirrored horizontally"))]
     // note: logarithmic scale seems to be glitchy for this control
     #[schema(gui(slider(min = -0.5, max = 0.5, step = 0.001)), suffix = "m")]
     pub left_controller_position_offset: [f32; 3],
 
     #[schema(flag = "real-time")]
+    #[schema(strings(help = "Right controller offset is mirrored horizontally"))]
     #[schema(gui(slider(min = -180.0, max = 180.0, step = 1.0)), suffix = "°")]
     pub left_controller_rotation_offset: [f32; 3],
 
     #[schema(flag = "real-time")]
+    #[schema(strings(help = "Right controller offset is mirrored horizontally"))]
     // note: logarithmic scale seems to be glitchy for this control
     #[schema(gui(slider(min = -0.5, max = 0.5, step = 0.001)), suffix = "m")]
     pub left_hand_tracking_position_offset: [f32; 3],
 
     #[schema(flag = "real-time")]
+    #[schema(strings(help = "Right controller offset is mirrored horizontally"))]
     #[schema(gui(slider(min = -180.0, max = 180.0, step = 1.0)), suffix = "°")]
     pub left_hand_tracking_rotation_offset: [f32; 3],
 
@@ -1988,7 +1992,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                     left_controller_rotation_offset: ArrayDefault {
                         gui_collapsed: true,
-                        content: [-20.0, 0.0, 0.0],
+                        content: [0.0; 3],
                     },
                     left_hand_tracking_position_offset: ArrayDefault {
                         gui_collapsed: true,

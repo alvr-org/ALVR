@@ -556,12 +556,6 @@ impl Drop for ServerCoreContext {
                 connection::contruct_openvr_config(session_manager_lock.session());
         }
 
-        dbg_server_core!("Restore drivers registration backup");
-        if let Some(backup) = SESSION_MANAGER.write().session_mut().drivers_backup.take() {
-            alvr_server_io::driver_registration(&backup.other_paths, true).ok();
-            alvr_server_io::driver_registration(&[backup.alvr_path], false).ok();
-        }
-
         // todo: check if this is still needed
         while SESSION_MANAGER
             .read()

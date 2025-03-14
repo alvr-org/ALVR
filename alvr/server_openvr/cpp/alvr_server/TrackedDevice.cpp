@@ -1,6 +1,8 @@
 #include "TrackedDevice.h"
 #include "Logger.h"
 #include "Utils.h"
+#include <chrono>
+#include <thread>
 
 TrackedDevice::TrackedDevice(uint64_t device_id, vr::ETrackedDeviceClass device_class)
     : device_id(device_id)
@@ -24,14 +26,24 @@ std::string TrackedDevice::get_serial_number() {
     return std::string(&buffer[0]);
 }
 
-void TrackedDevice::register_device() {
+bool TrackedDevice::register_device() {
     if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
             this->get_serial_number().c_str(),
             this->device_class,
             (vr::ITrackedDeviceServerDriver*)this
         )) {
         Error("Failed to register device");
+
+        return false;
     }
+
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+    while (this->activation_state == ActivationState::Pending
+           && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    return this->activation_state == ActivationState::Success;
 }
 
 void TrackedDevice::set_prop(FfiOpenvrProperty prop) {
@@ -95,5 +107,12 @@ vr::EVRInitError TrackedDevice::Activate(vr::TrackedDeviceIndex_t object_id) {
     this->object_id = object_id;
     this->prop_container = vr::VRProperties()->TrackedDeviceToPropertyContainer(this->object_id);
 
-    return activate() ? vr::VRInitError_None : vr::VRInitError_Driver_Failed;
+    if (this->activate()) {
+        this->activation_state = ActivationState::Success;
+    } else {
+        this->activation_state = ActivationState::Failure;
+    }
+
+    return this->activation_state == ActivationState::Success ? vr::VRInitError_None
+                                                              : vr::VRInitError_Driver_Failed;
 }

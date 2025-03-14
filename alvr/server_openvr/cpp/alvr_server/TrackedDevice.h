@@ -3,6 +3,13 @@
 #include "bindings.h"
 #include "openvr_driver_wrap.h"
 #include <map>
+#include <optional>
+
+enum class ActivationState {
+    Pending,
+    Success,
+    Failure,
+};
 
 class TrackedDevice : vr::ITrackedDeviceServerDriver {
 public:
@@ -10,12 +17,13 @@ public:
     vr::PropertyContainerHandle_t prop_container = vr::k_ulInvalidPropertyContainer;
     vr::DriverPose_t last_pose;
 
-    void register_device();
+    bool register_device();
     void set_prop(FfiOpenvrProperty prop);
 
 protected:
     uint64_t device_id;
     vr::ETrackedDeviceClass device_class;
+    ActivationState activation_state = ActivationState::Pending;
 
     TrackedDevice(uint64_t device_id, vr::ETrackedDeviceClass device_class);
     std::string get_serial_number();

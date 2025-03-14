@@ -2,7 +2,16 @@
 
 #include "bindings.h"
 #include "openvr_driver_wrap.h"
+#include <condition_variable>
 #include <map>
+#include <mutex>
+#include <optional>
+
+enum class ActivationState {
+    Pending,
+    Success,
+    Failure,
+};
 
 class TrackedDevice : vr::ITrackedDeviceServerDriver {
 public:
@@ -10,7 +19,7 @@ public:
     vr::PropertyContainerHandle_t prop_container = vr::k_ulInvalidPropertyContainer;
     vr::DriverPose_t last_pose;
 
-    void register_device();
+    bool register_device();
     void set_prop(FfiOpenvrProperty prop);
 
 protected:
@@ -24,6 +33,10 @@ protected:
     virtual void* get_component(const char*) = 0;
 
 private:
+    ActivationState activation_state = ActivationState::Pending;
+    std::mutex activation_mutex = {};
+    std::condition_variable activation_condvar = {};
+
     // ITrackedDeviceServerDriver
     vr::EVRInitError Activate(vr::TrackedDeviceIndex_t object_id) final;
     void Deactivate() final {

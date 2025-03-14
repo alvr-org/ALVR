@@ -26,26 +26,6 @@ std::string TrackedDevice::get_serial_number() {
     return std::string(&buffer[0]);
 }
 
-bool TrackedDevice::register_device() {
-    if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
-            this->get_serial_number().c_str(),
-            this->device_class,
-            (vr::ITrackedDeviceServerDriver*)this
-        )) {
-        Error("Failed to register device");
-
-        return false;
-    }
-
-    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(1);
-    while (this->activation_state == ActivationState::Pending
-           && std::chrono::steady_clock::now() < deadline) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-
-    return this->activation_state == ActivationState::Success;
-}
-
 void TrackedDevice::set_prop(FfiOpenvrProperty prop) {
     if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
         return;
@@ -103,15 +83,39 @@ void TrackedDevice::submit_pose(vr::DriverPose_t pose) {
     );
 }
 
+bool TrackedDevice::register_device() {
+    if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+            this->get_serial_number().c_str(),
+            this->device_class,
+            (vr::ITrackedDeviceServerDriver*)this
+        )) {
+        Error("Failed to register device");
+
+        return false;
+    }
+
+    auto lock = std::unique_lock<std::mutex>(this->activation_mutex);
+    this->activation_condvar.wait_for(lock, std::chrono::seconds(1), [this] {
+        return this->activation_state != ActivationState::Pending;
+    });
+
+    return this->activation_state == ActivationState::Success;
+}
+
 vr::EVRInitError TrackedDevice::Activate(vr::TrackedDeviceIndex_t object_id) {
     this->object_id = object_id;
     this->prop_container = vr::VRProperties()->TrackedDeviceToPropertyContainer(this->object_id);
 
-    if (this->activate()) {
-        this->activation_state = ActivationState::Success;
-    } else {
-        this->activation_state = ActivationState::Failure;
+    {
+        auto guard = std::lock_guard<std::mutex>(this->activation_mutex);
+
+        if (this->activate()) {
+            this->activation_state = ActivationState::Success;
+        } else {
+            this->activation_state = ActivationState::Failure;
+        }
     }
+    this->activation_condvar.notify_one();
 
     return this->activation_state == ActivationState::Success ? vr::VRInitError_None
                                                               : vr::VRInitError_Driver_Failed;

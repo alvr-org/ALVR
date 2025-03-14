@@ -2,7 +2,9 @@
 
 #include "bindings.h"
 #include "openvr_driver_wrap.h"
+#include <condition_variable>
 #include <map>
+#include <mutex>
 #include <optional>
 
 enum class ActivationState {
@@ -23,7 +25,6 @@ public:
 protected:
     uint64_t device_id;
     vr::ETrackedDeviceClass device_class;
-    ActivationState activation_state = ActivationState::Pending;
 
     TrackedDevice(uint64_t device_id, vr::ETrackedDeviceClass device_class);
     std::string get_serial_number();
@@ -32,6 +33,10 @@ protected:
     virtual void* get_component(const char*) = 0;
 
 private:
+    ActivationState activation_state = ActivationState::Pending;
+    std::mutex activation_mutex = {};
+    std::condition_variable activation_condvar = {};
+
     // ITrackedDeviceServerDriver
     vr::EVRInitError Activate(vr::TrackedDeviceIndex_t object_id) final;
     void Deactivate() final {

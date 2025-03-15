@@ -302,30 +302,30 @@ static LAYOUT_FROM_ENV: Lazy<Option<Layout>> =
 
 // The path should include the executable file name
 // The path argument is used only if ALVR is built as portable
-pub fn filesystem_layout_from_dashboard_exe(path: &Path) -> Layout {
-    LAYOUT_FROM_ENV.clone().unwrap_or_else(|| {
+pub fn filesystem_layout_from_dashboard_exe(path: &Path) -> Option<Layout> {
+    LAYOUT_FROM_ENV.clone().or_else(|| {
         let root = if cfg!(target_os = "linux") {
             // FHS path is expected
-            path.parent().unwrap().parent().unwrap().to_owned()
+            path.parent()?.parent()?.to_owned()
         } else {
-            path.parent().unwrap().to_owned()
+            path.parent()?.to_owned()
         };
 
-        Layout::new(&root)
+        Some(Layout::new(&root))
     })
 }
 
 // The dir argument is used only if ALVR is built as portable
-pub fn filesystem_layout_from_openvr_driver_root_dir(dir: &Path) -> Layout {
-    LAYOUT_FROM_ENV.clone().unwrap_or_else(|| {
+pub fn filesystem_layout_from_openvr_driver_root_dir(dir: &Path) -> Option<Layout> {
+    LAYOUT_FROM_ENV.clone().or_else(|| {
         let root = if cfg!(target_os = "linux") {
             // FHS path is expected
-            dir.parent().unwrap().parent().unwrap().to_owned()
+            dir.parent()?.parent()?.to_owned()
         } else {
             dir.to_owned()
         };
 
-        Layout::new(&root)
+        Some(Layout::new(&root))
     })
 }
 

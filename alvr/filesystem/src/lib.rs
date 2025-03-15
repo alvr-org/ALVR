@@ -199,6 +199,14 @@ impl Layout {
         self.executables_dir.join(dashboard_fname())
     }
 
+    pub fn local_adb_dir(&self) -> PathBuf {
+        self.executables_dir.join("platform-tools")
+    }
+
+    pub fn local_adb_exe(&self) -> PathBuf {
+        self.local_adb_dir().join(exec_fname("adb"))
+    }
+
     pub fn resources_dir(&self) -> PathBuf {
         self.openvr_driver_root_dir.join("resources")
     }

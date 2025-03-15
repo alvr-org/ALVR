@@ -17,7 +17,12 @@ use data_sources::DataSources;
 #[cfg(target_arch = "wasm32")]
 use data_sources_wasm::DataSources;
 
+use alvr_filesystem as afs;
 use dashboard::Dashboard;
+
+fn get_filesystem_layout() -> afs::Layout {
+    afs::filesystem_layout_from_dashboard_exe(&std::env::current_exe().unwrap())
+}
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {

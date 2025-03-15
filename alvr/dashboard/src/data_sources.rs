@@ -4,7 +4,6 @@ use alvr_packets::ServerRequest;
 use alvr_server_io::ServerSessionManager;
 use eframe::egui;
 use std::{
-    env,
     io::ErrorKind,
     net::{SocketAddr, TcpStream},
     str::FromStr,
@@ -25,9 +24,7 @@ enum SessionSource {
 }
 
 pub fn get_local_session_source() -> ServerSessionManager {
-    let session_file_path =
-        alvr_filesystem::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
-            .session();
+    let session_file_path = crate::get_filesystem_layout().session();
 
     ServerSessionManager::new(Some(session_file_path))
 }
@@ -150,10 +147,7 @@ impl DataSources {
                                 }
                                 ServerRequest::RegisterAlvrDriver => {
                                     let alvr_driver_dir =
-                                        alvr_filesystem::filesystem_layout_from_dashboard_exe(
-                                            &env::current_exe().unwrap(),
-                                        )
-                                        .openvr_driver_root_dir;
+                                        crate::get_filesystem_layout().openvr_driver_root_dir;
 
                                     alvr_server_io::driver_registration(&[alvr_driver_dir], true)
                                         .ok();

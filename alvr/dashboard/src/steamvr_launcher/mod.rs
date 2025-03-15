@@ -119,6 +119,17 @@ impl Launcher {
         let alvr_driver_dir =
             afs::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
                 .openvr_driver_root_dir;
+
+        // Make sure to unregister any other ALVR driver because it would cause a socket conflict
+        let other_alvr_dirs = alvr_server_io::get_registered_drivers()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|path| {
+                path.to_string_lossy().to_lowercase().contains("alvr") && *path != alvr_driver_dir
+            })
+            .collect::<Vec<_>>();
+        alvr_server_io::driver_registration(&other_alvr_dirs, false).ok();
+
         alvr_server_io::driver_registration(&[alvr_driver_dir], true).ok();
 
         if let Err(err) = unblock_alvr_driver() {

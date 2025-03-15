@@ -115,6 +115,18 @@ pub struct Launcher {
 
 impl Launcher {
     pub fn launch_steamvr(&self) {
+        // The ADB server might be left running because of a unclean termination of SteamVR
+        let local_adb_path = crate::get_filesystem_layout().local_adb_exe();
+        for proc in
+            sysinfo::System::new_all().processes_by_name(OsStr::new(&afs::exec_fname("adb")))
+        {
+            if let Some(proc_path) = proc.exe() {
+                if proc_path == local_adb_path {
+                    proc.kill();
+                }
+            }
+        }
+
         #[cfg(target_os = "linux")]
         linux_steamvr::linux_hardware_checks();
 

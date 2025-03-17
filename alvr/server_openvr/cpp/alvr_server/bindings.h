@@ -129,13 +129,13 @@ extern "C" void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long 
 extern "C" void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" FfiDynamicEncoderParams (*GetDynamicEncoderParams)();
 extern "C" unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char* outString);
-extern "C" void (*SetOpenvrProps)(unsigned long long deviceID);
-extern "C" void (*RegisterButtons)(unsigned long long deviceID);
+extern "C" void (*SetOpenvrProps)(void* instancePtr, unsigned long long deviceID);
+extern "C" void (*RegisterButtons)(void* instancePtr, unsigned long long deviceID);
 extern "C" void (*WaitForVSync)();
 
 extern "C" void CppInit();
 extern "C" void* CppOpenvrEntryPoint(const char* pInterfaceName, int* pReturnCode);
-extern "C" void InitializeStreaming();
+extern "C" bool InitializeStreaming();
 extern "C" void DeinitializeStreaming();
 extern "C" void SendVSync();
 extern "C" void RequestIDR();
@@ -152,8 +152,9 @@ extern "C" void VideoErrorReportReceive();
 extern "C" void RequestDriverResync();
 extern "C" void ShutdownSteamvr();
 
-extern "C" void SetOpenvrProperty(unsigned long long deviceID, FfiOpenvrProperty prop);
-extern "C" void RegisterButton(unsigned long long deviceID, unsigned long long buttonID);
+extern "C" void SetOpenvrProperty(void* instancePtr, FfiOpenvrProperty prop);
+extern "C" void SetOpenvrPropByDeviceID(unsigned long long deviceID, FfiOpenvrProperty prop);
+extern "C" void RegisterButton(void* instancePtr, unsigned long long buttonID);
 extern "C" void SetViewsConfig(FfiViewsConfig config);
 extern "C" void SetBattery(unsigned long long deviceID, float gauge_value, bool is_plugged);
 extern "C" void SetButton(unsigned long long buttonID, FfiButtonValue value);

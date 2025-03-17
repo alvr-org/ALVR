@@ -84,7 +84,7 @@ bool Hmd::activate() {
 
     auto vr_properties = vr::VRProperties();
 
-    SetOpenvrProps(this->device_id);
+    SetOpenvrProps((void*)this, this->device_id);
 
     vr_properties->SetFloatProperty(
         this->prop_container,

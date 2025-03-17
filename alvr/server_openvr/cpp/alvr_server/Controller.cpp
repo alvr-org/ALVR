@@ -23,9 +23,9 @@ bool Controller::activate() {
 
     auto vr_driver_input = vr::VRDriverInput();
 
-    SetOpenvrProps(this->device_id);
+    SetOpenvrProps((void*)this, this->device_id);
 
-    RegisterButtons(this->device_id);
+    RegisterButtons((void*)this, this->device_id);
 
     vr_driver_input->CreateHapticComponent(this->prop_container, "/output/haptic", &m_compHaptic);
 

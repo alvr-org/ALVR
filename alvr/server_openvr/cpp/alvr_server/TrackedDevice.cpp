@@ -89,7 +89,7 @@ bool TrackedDevice::register_device() {
             this->device_class,
             (vr::ITrackedDeviceServerDriver*)this
         )) {
-        Error("Failed to register device");
+        Error("Failed to register device (%s)", this->get_serial_number().c_str());
 
         return false;
     }

@@ -52,7 +52,7 @@ pub fn set_theme(ctx: &Context) {
     style.spacing.button_padding = egui::vec2(10.0, 10.0);
     style.text_styles.get_mut(&TextStyle::Body).unwrap().size = 14.0;
 
-    ctx.set_style(style);
+    ctx.all_styles_mut(|s| *s = style.clone());
 
     let mut visuals = Visuals::dark();
 
@@ -79,5 +79,6 @@ pub fn set_theme(ctx: &Context) {
     visuals.widgets.noninteractive.bg_stroke = Stroke::new(0.5, SEPARATOR_BG);
     visuals.widgets.noninteractive.corner_radius = corner_radius;
 
-    ctx.set_visuals(visuals);
+    ctx.set_visuals_of(egui::Theme::Dark, visuals.clone());
+    ctx.set_visuals_of(egui::Theme::Light, visuals.clone());
 }

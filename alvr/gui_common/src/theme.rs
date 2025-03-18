@@ -1,4 +1,4 @@
-use egui::{self, Color32, Context, CornerRadius, Stroke, TextStyle, Visuals};
+use egui::{self, Color32, Context, CornerRadius, Stroke, TextStyle, ThemePreference, Visuals};
 
 pub const ACCENT: Color32 = Color32::from_rgb(0, 76, 176);
 pub const BG: Color32 = Color32::from_rgb(30, 30, 30);
@@ -46,6 +46,8 @@ pub mod graph_colors {
 }
 
 pub fn set_theme(ctx: &Context) {
+    ctx.set_theme(ThemePreference::Dark);
+
     let mut style = (*ctx.style()).clone();
     style.spacing.slider_width = 200_f32; // slider width can only be set globally
     style.spacing.item_spacing = egui::vec2(15.0, 15.0);

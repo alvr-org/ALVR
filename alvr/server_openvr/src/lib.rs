@@ -411,16 +411,14 @@ pub extern "C" fn shutdown_driver() {
 
 // Check that there is no active dashboard instance not part of this driver installation
 pub fn should_initialize_driver(driver_layout: &afs::Layout) -> bool {
-    if let Some(proc) = sysinfo::System::new_all()
+    // Note: if the iterator is empty, `all()` returns true
+    sysinfo::System::new_all()
         .processes_by_name(OsStr::new(&afs::dashboard_fname()))
-        .next()
-    {
-        if let Some(dashboard_path) = proc.exe() {
-            return driver_layout.dashboard_exe() == dashboard_path;
-        }
-    }
-
-    true
+        .all(|proc| {
+            proc.exe()
+                .map(|path| path == driver_layout.dashboard_exe())
+                .unwrap_or(true) // if path is unreadable then don't care
+        })
 }
 
 /// This is the SteamVR/OpenVR entry point

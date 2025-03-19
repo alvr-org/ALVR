@@ -23,18 +23,13 @@ use alvr_packets::{ButtonValue, Haptics};
 use alvr_server_core::{HandType, ServerCoreContext, ServerCoreEvent};
 use alvr_session::{CodecType, ControllersConfig};
 use std::{
-    ffi::{c_char, c_void, CString},
+    ffi::{c_char, c_void, CString, OsStr},
     ptr,
     sync::{mpsc, Once},
     thread,
     time::{Duration, Instant},
 };
 
-static FILESYSTEM_LAYOUT: Lazy<afs::Layout> = Lazy::new(|| {
-    afs::filesystem_layout_from_openvr_driver_root_dir(
-        &alvr_server_io::get_driver_dir_from_registered().unwrap(),
-    )
-});
 static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> =
     Lazy::new(|| RwLock::new(None));
 
@@ -414,6 +409,18 @@ pub extern "C" fn shutdown_driver() {
     SERVER_CORE_CONTEXT.write().take();
 }
 
+// Check that there is no active dashboard instance not part of this driver installation
+pub fn should_initialize_driver(driver_layout: &afs::Layout) -> bool {
+    // Note: if the iterator is empty, `all()` returns true
+    sysinfo::System::new_all()
+        .processes_by_name(OsStr::new(&afs::dashboard_fname()))
+        .all(|proc| {
+            proc.exe()
+                .map(|path| path == driver_layout.dashboard_exe())
+                .unwrap_or(true) // if path is unreadable then don't care
+        })
+}
+
 /// This is the SteamVR/OpenVR entry point
 /// # Safety
 #[no_mangle]
@@ -421,23 +428,36 @@ pub unsafe extern "C" fn HmdDriverFactory(
     interface_name: *const c_char,
     return_code: *mut i32,
 ) -> *mut c_void {
+    let Ok(driver_dir) = alvr_server_io::get_driver_dir_from_registered() else {
+        return ptr::null_mut();
+    };
+    let Some(filesystem_layout) =
+        alvr_filesystem::filesystem_layout_from_openvr_driver_root_dir(&driver_dir)
+    else {
+        return ptr::null_mut();
+    };
+
+    if !should_initialize_driver(&filesystem_layout) {
+        return ptr::null_mut();
+    }
+
     static ONCE: Once = Once::new();
-    ONCE.call_once(|| {
-        alvr_server_core::initialize_environment(FILESYSTEM_LAYOUT.clone());
+    ONCE.call_once(move || {
+        alvr_server_core::initialize_environment(filesystem_layout.clone());
 
         let log_to_disk = alvr_server_core::settings().extra.logging.log_to_disk;
 
         alvr_server_core::init_logging(
-            log_to_disk.then(|| FILESYSTEM_LAYOUT.session_log()),
-            Some(FILESYSTEM_LAYOUT.crash_log()),
+            log_to_disk.then(|| filesystem_layout.session_log()),
+            Some(filesystem_layout.crash_log()),
         );
 
         unsafe {
-            g_sessionPath = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())
+            g_sessionPath = CString::new(filesystem_layout.session().to_string_lossy().to_string())
                 .unwrap()
                 .into_raw();
             g_driverRootDir = CString::new(
-                FILESYSTEM_LAYOUT
+                filesystem_layout
                     .openvr_driver_root_dir
                     .to_string_lossy()
                     .to_string(),

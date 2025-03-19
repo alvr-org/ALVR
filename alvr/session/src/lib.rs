@@ -14,18 +14,11 @@ use settings_schema::{NumberType, SchemaNode};
 use std::{
     collections::{HashMap, HashSet},
     net::IpAddr,
-    path::PathBuf,
 };
 
 // SessionSettings is similar to Settings but it contains every branch, even unused ones. This is
 // the settings representation that the UI uses.
 pub type SessionSettings = settings::SettingsDefault;
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct DriversBackup {
-    pub alvr_path: PathBuf,
-    pub other_paths: Vec<PathBuf>,
-}
 
 // This structure is used to store the minimum configuration data that ALVR driver needs to
 // initialize OpenVR before having the chance to communicate with a client. When a client is
@@ -134,7 +127,6 @@ pub struct ClientConnectionConfig {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SessionConfig {
     pub server_version: Version,
-    pub drivers_backup: Option<DriversBackup>,
     pub openvr_config: OpenvrConfig,
     // The hashmap key is the hostname
     pub client_connections: HashMap<String, ClientConnectionConfig>,
@@ -145,7 +137,6 @@ impl Default for SessionConfig {
     fn default() -> Self {
         Self {
             server_version: ALVR_VERSION.clone(),
-            drivers_backup: None,
             openvr_config: OpenvrConfig {
                 // avoid realistic resolutions, as on first start, on Linux, it
                 // could trigger direct mode on an existing monitor

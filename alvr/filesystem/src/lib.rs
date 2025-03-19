@@ -105,7 +105,9 @@ pub struct Layout {
 }
 
 impl Layout {
-    pub fn new(root: &Path) -> Self {
+    pub fn new(root: &Path) -> Option<Self> {
+        let root = root.canonicalize().ok()?;
+
         #[cfg(target_os = "linux")]
         {
             // Get paths from environment or use FHS compliant paths
@@ -165,7 +167,7 @@ impl Layout {
                 root.join("share/vulkan/explicit_layer.d")
             };
 
-            Self {
+            Some(Self {
                 executables_dir,
                 libraries_dir,
                 static_resources_dir,
@@ -177,10 +179,10 @@ impl Layout {
                 firewalld_config_dir,
                 ufw_config_dir,
                 vulkan_layer_manifest_dir,
-            }
+            })
         }
         #[cfg(not(target_os = "linux"))]
-        Self {
+        Some(Self {
             executables_dir: root.to_owned(),
             libraries_dir: root.to_owned(),
             static_resources_dir: root.to_owned(),
@@ -192,7 +194,7 @@ impl Layout {
             firewalld_config_dir: root.to_owned(),
             ufw_config_dir: root.to_owned(),
             vulkan_layer_manifest_dir: root.to_owned(),
-        }
+        })
     }
 
     pub fn dashboard_exe(&self) -> PathBuf {
@@ -297,18 +299,26 @@ impl Layout {
     }
 }
 
-static LAYOUT_FROM_ENV: Lazy<Option<Layout>> =
-    Lazy::new(|| (!env!("root").is_empty()).then(|| Layout::new(Path::new(env!("root")))));
+// Use static var to prevent issues if the "root" env is changed at runtime
+static LAYOUT_FROM_ENV: Lazy<Option<Layout>> = Lazy::new(|| {
+    let root_dir_str = env!("root");
+    if !root_dir_str.is_empty() {
+        Layout::new(Path::new(root_dir_str))
+    } else {
+        None
+    }
+});
 
 // The path should include the executable file name
 // The path argument is used only if ALVR is built as portable
-pub fn filesystem_layout_from_dashboard_exe(path: &Path) -> Layout {
-    LAYOUT_FROM_ENV.clone().unwrap_or_else(|| {
+pub fn filesystem_layout_from_dashboard_exe(path: &Path) -> Option<Layout> {
+    LAYOUT_FROM_ENV.clone().or_else(|| {
+        let path = path.canonicalize().ok()?;
         let root = if cfg!(target_os = "linux") {
             // FHS path is expected
-            path.parent().unwrap().parent().unwrap().to_owned()
+            path.parent()?.parent()?.to_owned()
         } else {
-            path.parent().unwrap().to_owned()
+            path.parent()?.to_owned()
         };
 
         Layout::new(&root)
@@ -316,11 +326,12 @@ pub fn filesystem_layout_from_dashboard_exe(path: &Path) -> Layout {
 }
 
 // The dir argument is used only if ALVR is built as portable
-pub fn filesystem_layout_from_openvr_driver_root_dir(dir: &Path) -> Layout {
-    LAYOUT_FROM_ENV.clone().unwrap_or_else(|| {
+pub fn filesystem_layout_from_openvr_driver_root_dir(dir: &Path) -> Option<Layout> {
+    LAYOUT_FROM_ENV.clone().or_else(|| {
+        let dir = dir.canonicalize().ok()?;
         let root = if cfg!(target_os = "linux") {
             // FHS path is expected
-            dir.parent().unwrap().parent().unwrap().to_owned()
+            dir.parent()?.parent()?.to_owned()
         } else {
             dir.to_owned()
         };
@@ -335,5 +346,5 @@ pub fn filesystem_layout_from_openvr_driver_root_dir(dir: &Path) -> Layout {
 pub fn filesystem_layout_invalid() -> Layout {
     LAYOUT_FROM_ENV
         .clone()
-        .unwrap_or_else(|| Layout::new(Path::new("")))
+        .unwrap_or_else(|| Layout::new(Path::new("./")).unwrap())
 }

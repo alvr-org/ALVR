@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::Path;
-use std::{env, process::Command};
+use std::process::Command;
 
 use alvr_common::anyhow::bail;
 use alvr_common::{debug, error, info, warn};
@@ -48,8 +48,7 @@ pub fn maybe_wrap_vrcompositor_launcher() -> alvr_common::anyhow::Result<()> {
     }
 
     std::os::unix::fs::symlink(
-        alvr_filesystem::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
-            .vrcompositor_wrapper(),
+        crate::get_filesystem_layout().vrcompositor_wrapper(),
         &launcher_path,
     )?;
 

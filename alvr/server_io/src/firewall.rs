@@ -22,7 +22,10 @@ fn netsh_delete_rule_command_string(rule_name: &str) -> String {
 // 1: firewall rule is already set
 // 126: pkexec request dismissed
 // other: command failed
-pub fn firewall_rules(action: FirewallRulesAction) -> Result<(), i32> {
+pub fn firewall_rules(
+    action: FirewallRulesAction,
+    filesystem_layout: &alvr_filesystem::Layout,
+) -> Result<(), i32> {
     let exit_status = if cfg!(target_os = "linux") {
         let action = if matches!(action, FirewallRulesAction::Add) {
             "add"
@@ -33,11 +36,9 @@ pub fn firewall_rules(action: FirewallRulesAction) -> Result<(), i32> {
         Command::new("bash")
             .arg(
                 PathBuf::from("../").join(
-                    alvr_filesystem::filesystem_layout_from_dashboard_exe(
-                        &env::current_exe().unwrap(),
-                    )
-                    .firewall_script_dir
-                    .join("alvr_fw_config.sh"),
+                    filesystem_layout
+                        .firewall_script_dir
+                        .join("alvr_fw_config.sh"),
                 ),
             )
             .arg(action)

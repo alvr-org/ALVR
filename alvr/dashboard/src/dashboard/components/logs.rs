@@ -7,7 +7,7 @@ use eframe::{
     epaint::Color32,
 };
 use settings_schema::Switch;
-use std::{collections::VecDeque, env};
+use std::collections::VecDeque;
 
 struct Entry {
     color: Color32,
@@ -89,10 +89,7 @@ impl LogsTab {
                 })
             }
             if ui.button("Open logs directory").clicked() {
-                let log_dir = alvr_filesystem::filesystem_layout_from_dashboard_exe(
-                    &env::current_exe().unwrap(),
-                )
-                .log_dir;
+                let log_dir = crate::get_filesystem_layout().log_dir;
                 ui.output_mut(|out| {
                     out.commands
                         .push(OutputCommand::OpenUrl(OpenUrl::same_tab(format!(

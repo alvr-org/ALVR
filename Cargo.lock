@@ -449,6 +449,7 @@ dependencies = [
  "cc",
  "pkg-config",
  "serde_json",
+ "sysinfo",
  "walkdir",
 ]
 

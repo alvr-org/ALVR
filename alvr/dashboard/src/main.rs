@@ -17,18 +17,34 @@ use data_sources::DataSources;
 #[cfg(target_arch = "wasm32")]
 use data_sources_wasm::DataSources;
 
+use alvr_filesystem as afs;
 use dashboard::Dashboard;
+
+fn get_filesystem_layout() -> afs::Layout {
+    afs::filesystem_layout_from_dashboard_exe(&std::env::current_exe().unwrap()).unwrap()
+}
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
     use alvr_common::ALVR_VERSION;
+    use alvr_filesystem as afs;
     use eframe::{
         egui::{IconData, ViewportBuilder},
         NativeOptions,
     };
     use ico::IconDir;
-    use std::{env, fs};
+    use std::{env, ffi::OsStr, fs};
     use std::{io::Cursor, sync::mpsc};
+
+    // Kill any other dashboard instance
+    let self_path = std::env::current_exe().unwrap();
+    for proc in sysinfo::System::new_all().processes_by_name(OsStr::new(&afs::dashboard_fname())) {
+        if let Some(other_path) = proc.exe() {
+            if other_path != self_path {
+                proc.kill();
+            }
+        }
+    }
 
     let (server_events_sender, server_events_receiver) = mpsc::channel();
     logging_backend::init_logging(server_events_sender.clone());

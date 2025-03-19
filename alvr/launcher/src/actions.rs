@@ -152,7 +152,9 @@ fn install_and_launch_apk(
         file.write_all(&apk_buffer)?;
     }
 
-    let layout = alvr_filesystem::Layout::new(&root);
+    let layout = alvr_filesystem::Layout::new(&root).ok_or_else(|| {
+        anyhow::anyhow!("Failed to obtain filesystem layout from installation directory")
+    })?;
     let adb_path = alvr_adb::commands::require_adb(&layout, |downloaded, total| {
         let progress = total.map(|t| downloaded as f32 / t as f32).unwrap_or(0.0);
         worker_message_sender

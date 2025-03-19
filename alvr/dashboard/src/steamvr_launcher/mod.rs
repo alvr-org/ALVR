@@ -3,7 +3,6 @@ mod linux_steamvr;
 #[cfg(windows)]
 mod windows_steamvr;
 
-use crate::data_sources;
 use alvr_common::{
     anyhow::{Context, Result},
     debug,
@@ -13,10 +12,8 @@ use alvr_common::{
     warn,
 };
 use alvr_filesystem as afs;
-use alvr_session::{DriverLaunchAction, DriversBackup};
 use serde_json::{self, json};
 use std::{
-    env,
     ffi::OsStr,
     fs,
     marker::PhantomData,
@@ -118,39 +115,19 @@ impl Launcher {
         #[cfg(target_os = "linux")]
         linux_steamvr::linux_hardware_checks();
 
-        let mut data_source = data_sources::get_local_session_source();
+        let alvr_driver_dir = crate::get_filesystem_layout().openvr_driver_root_dir;
 
-        let launch_action = &data_source
-            .settings()
-            .extra
-            .steamvr_launcher
-            .driver_launch_action;
+        // Make sure to unregister any other ALVR driver because it would cause a socket conflict
+        let other_alvr_dirs = alvr_server_io::get_registered_drivers()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|path| {
+                path.to_string_lossy().to_lowercase().contains("alvr") && *path != alvr_driver_dir
+            })
+            .collect::<Vec<_>>();
+        alvr_server_io::driver_registration(&other_alvr_dirs, false).ok();
 
-        if !matches!(launch_action, DriverLaunchAction::NoAction) {
-            let other_drivers_paths = if matches!(
-                launch_action,
-                DriverLaunchAction::UnregisterOtherDriversAtStartup
-            ) && data_source.session().drivers_backup.is_none()
-            {
-                let drivers_paths = alvr_server_io::get_registered_drivers().unwrap_or_default();
-
-                alvr_server_io::driver_registration(&drivers_paths, false).ok();
-
-                drivers_paths
-            } else {
-                vec![]
-            };
-            let alvr_driver_dir =
-                afs::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
-                    .openvr_driver_root_dir;
-
-            alvr_server_io::driver_registration(&[alvr_driver_dir.clone()], true).ok();
-
-            data_source.session_mut().drivers_backup = Some(DriversBackup {
-                alvr_path: alvr_driver_dir,
-                other_paths: other_drivers_paths,
-            });
-        }
+        alvr_server_io::driver_registration(&[alvr_driver_dir], true).ok();
 
         if let Err(err) = unblock_alvr_driver() {
             warn!("Failed to unblock ALVR driver: {:?}", err);

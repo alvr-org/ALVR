@@ -247,10 +247,12 @@ async fn http_api(
                         *connection_context.video_recording_file.lock() = None
                     }
                     ServerRequest::FirewallRules(action) => {
-                        if alvr_server_io::firewall_rules(action).is_ok() {
-                            info!("Setting firewall rules succeeded!");
+                        if let Err(e) =
+                            alvr_server_io::firewall_rules(action, FILESYSTEM_LAYOUT.get().unwrap())
+                        {
+                            error!("Setting firewall rules failed! code: {e}");
                         } else {
-                            error!("Setting firewall rules failed!");
+                            info!("Setting firewall rules succeeded!");
                         }
                     }
                     ServerRequest::RegisterAlvrDriver => {

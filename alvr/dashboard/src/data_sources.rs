@@ -4,7 +4,6 @@ use alvr_packets::ServerRequest;
 use alvr_server_io::ServerSessionManager;
 use eframe::egui;
 use std::{
-    env,
     io::ErrorKind,
     net::{SocketAddr, TcpStream},
     str::FromStr,
@@ -25,10 +24,7 @@ enum SessionSource {
 }
 
 pub fn get_local_session_source() -> ServerSessionManager {
-    let session_file_path =
-        alvr_filesystem::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
-            .session();
-
+    let session_file_path = crate::get_filesystem_layout().session();
     ServerSessionManager::new(Some(session_file_path))
 }
 
@@ -82,6 +78,8 @@ impl DataSources {
         events_sender: mpsc::Sender<PolledEvent>,
         events_receiver: mpsc::Receiver<PolledEvent>,
     ) -> Self {
+        let filesystem_layout = crate::get_filesystem_layout();
+
         let running = Arc::new(RelaxedAtomic::new(true));
         let (requests_sender, requests_receiver) = mpsc::channel();
         let server_connected = Arc::new(RelaxedAtomic::new(false));
@@ -142,7 +140,9 @@ impl DataSources {
                                     }
                                 }
                                 ServerRequest::FirewallRules(action) => {
-                                    if alvr_server_io::firewall_rules(action).is_ok() {
+                                    if alvr_server_io::firewall_rules(action, &filesystem_layout)
+                                        .is_ok()
+                                    {
                                         info!("Setting firewall rules succeeded!");
                                     } else {
                                         error!("Setting firewall rules failed!");
@@ -150,10 +150,7 @@ impl DataSources {
                                 }
                                 ServerRequest::RegisterAlvrDriver => {
                                     let alvr_driver_dir =
-                                        alvr_filesystem::filesystem_layout_from_dashboard_exe(
-                                            &env::current_exe().unwrap(),
-                                        )
-                                        .openvr_driver_root_dir;
+                                        filesystem_layout.openvr_driver_root_dir.clone();
 
                                     alvr_server_io::driver_registration(&[alvr_driver_dir], true)
                                         .ok();

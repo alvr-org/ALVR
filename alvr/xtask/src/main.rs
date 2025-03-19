@@ -75,7 +75,9 @@ enum BuildPlatform {
 pub fn run_streamer() {
     let sh = Shell::new().unwrap();
 
-    let dashboard_exe = Layout::new(&afs::streamer_build_dir()).dashboard_exe();
+    let dashboard_exe = Layout::new(&afs::streamer_build_dir())
+        .unwrap()
+        .dashboard_exe();
     cmd!(sh, "{dashboard_exe}").run().unwrap();
 }
 

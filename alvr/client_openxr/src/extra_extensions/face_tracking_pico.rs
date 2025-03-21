@@ -2,8 +2,7 @@ use crate::extra_extensions::get_instance_proc;
 use openxr::{self as xr, sys};
 
 const TRACKING_MODE_FACE_BIT: u64 = 0x00000008;
-const TRACKING_MODE_FACE_LIPSYNC: u64 = 0x00002000;
-const TRACKING_MODE_FACE_LIPSYNC_BLEND_SHAPES: u64 = 0x00000100;
+const PICO_FACE_EXPRESSION_COUNT: usize = 52;
 
 #[repr(C)]
 struct FaceTrackingDataPICO {
@@ -30,7 +29,6 @@ type GetFaceTrackingDataPICO = unsafe extern "system" fn(
 
 pub struct FaceTrackerPico {
     session: xr::Session<xr::AnyGraphics>,
-    tracking_flags: u64,
     start_eye_tracking: StartEyeTrackingPICO,
     stop_eye_tracking: StopEyeTrackingPICO,
     set_tracking_mode: SetTrackingModePICO,
@@ -38,7 +36,7 @@ pub struct FaceTrackerPico {
 }
 
 impl FaceTrackerPico {
-    pub fn new<G>(session: xr::Session<G>, visual: bool, audio: bool) -> xr::Result<Self> {
+    pub fn new<G>(session: xr::Session<G>) -> xr::Result<Self> {
         session
             .instance()
             .exts()
@@ -50,18 +48,8 @@ impl FaceTrackerPico {
         let set_tracking_mode = get_instance_proc(&session, "xrSetTrackingModePICO")?;
         let get_face_tracking_data = get_instance_proc(&session, "xrGetFaceTrackingDataPICO")?;
 
-        let mut tracking_flags = 0;
-
-        if visual {
-            tracking_flags |= TRACKING_MODE_FACE_BIT;
-        }
-        if audio {
-            tracking_flags |= TRACKING_MODE_FACE_LIPSYNC | TRACKING_MODE_FACE_LIPSYNC_BLEND_SHAPES;
-        }
-
         Ok(Self {
             session: session.into_any_graphics(),
-            tracking_flags,
             start_eye_tracking,
             stop_eye_tracking,
             set_tracking_mode,
@@ -88,7 +76,10 @@ impl FaceTrackerPico {
             ))?;
 
             if face_tracking_data.time.as_nanos() != 0 {
-                Ok(Some(face_tracking_data.blend_shape_weight.to_vec()))
+                let blend_shape_slice =
+                    face_tracking_data.blend_shape_weight[..PICO_FACE_EXPRESSION_COUNT].to_vec();
+
+                Ok(Some(blend_shape_slice))
             } else {
                 Ok(None)
             }
@@ -100,7 +91,7 @@ impl FaceTrackerPico {
             super::xr_res((self.start_eye_tracking)(self.session.as_raw()))?;
             super::xr_res((self.set_tracking_mode)(
                 self.session.as_raw(),
-                self.tracking_flags,
+                TRACKING_MODE_FACE_BIT,
             ))
         }
     }
@@ -109,7 +100,7 @@ impl FaceTrackerPico {
         unsafe {
             super::xr_res((self.stop_eye_tracking)(
                 self.session.as_raw(),
-                self.tracking_flags,
+                TRACKING_MODE_FACE_BIT,
             ))
         }
     }

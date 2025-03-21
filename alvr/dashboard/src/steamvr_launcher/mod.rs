@@ -3,7 +3,6 @@ mod linux_steamvr;
 #[cfg(windows)]
 mod windows_steamvr;
 
-use crate::data_sources;
 use alvr_common::{
     anyhow::{Context, Result},
     debug,
@@ -129,8 +128,6 @@ impl Launcher {
         alvr_server_io::driver_registration(&other_alvr_dirs, false).ok();
 
         alvr_server_io::driver_registration(&[alvr_driver_dir], true).ok();
-
-        data_sources::get_local_session_source().session_mut();
 
         if let Err(err) = unblock_alvr_driver() {
             warn!("Failed to unblock ALVR driver: {:?}", err);

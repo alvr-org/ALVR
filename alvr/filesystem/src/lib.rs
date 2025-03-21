@@ -105,7 +105,7 @@ pub struct Layout {
 }
 
 impl Layout {
-    pub fn new(root: &Path) -> Option<Self> {
+    pub fn new(root: &Path) -> Self {
         #[cfg(target_os = "linux")]
         {
             // Get paths from environment or use FHS compliant paths
@@ -165,7 +165,7 @@ impl Layout {
                 root.join("share/vulkan/explicit_layer.d")
             };
 
-            Some(Self {
+            Self {
                 executables_dir,
                 libraries_dir,
                 static_resources_dir,
@@ -177,10 +177,10 @@ impl Layout {
                 firewalld_config_dir,
                 ufw_config_dir,
                 vulkan_layer_manifest_dir,
-            })
+            }
         }
         #[cfg(not(target_os = "linux"))]
-        Some(Self {
+        Self {
             executables_dir: root.to_owned(),
             libraries_dir: root.to_owned(),
             static_resources_dir: root.to_owned(),
@@ -192,7 +192,7 @@ impl Layout {
             firewalld_config_dir: root.to_owned(),
             ufw_config_dir: root.to_owned(),
             vulkan_layer_manifest_dir: root.to_owned(),
-        })
+        }
     }
 
     pub fn dashboard_exe(&self) -> PathBuf {
@@ -301,7 +301,7 @@ impl Layout {
 static LAYOUT_FROM_ENV: Lazy<Option<Layout>> = Lazy::new(|| {
     let root_dir_str = env!("root");
     if !root_dir_str.is_empty() {
-        Layout::new(Path::new(root_dir_str))
+        Some(Layout::new(Path::new(root_dir_str)))
     } else {
         None
     }
@@ -318,7 +318,7 @@ pub fn filesystem_layout_from_dashboard_exe(path: &Path) -> Option<Layout> {
             path.parent()?.to_owned()
         };
 
-        Layout::new(&root)
+        Some(Layout::new(&root))
     })
 }
 
@@ -332,7 +332,7 @@ pub fn filesystem_layout_from_openvr_driver_root_dir(dir: &Path) -> Option<Layou
             dir.to_owned()
         };
 
-        Layout::new(&root)
+        Some(Layout::new(&root))
     })
 }
 
@@ -342,5 +342,5 @@ pub fn filesystem_layout_from_openvr_driver_root_dir(dir: &Path) -> Option<Layou
 pub fn filesystem_layout_invalid() -> Layout {
     LAYOUT_FROM_ENV
         .clone()
-        .unwrap_or_else(|| Layout::new(Path::new("./")).unwrap())
+        .unwrap_or_else(|| Layout::new(Path::new("./")))
 }

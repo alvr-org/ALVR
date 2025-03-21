@@ -3,6 +3,7 @@ mod linux_steamvr;
 #[cfg(windows)]
 mod windows_steamvr;
 
+use crate::data_sources;
 use alvr_common::{
     anyhow::{Context, Result},
     debug,
@@ -21,7 +22,6 @@ use std::{
     time::{Duration, Instant},
 };
 use sysinfo::{ProcessesToUpdate, System};
-use crate::data_sources;
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 const DRIVER_KEY: &str = "driver_alvr_server";

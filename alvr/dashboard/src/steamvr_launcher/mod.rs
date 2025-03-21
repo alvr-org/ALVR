@@ -21,6 +21,7 @@ use std::{
     time::{Duration, Instant},
 };
 use sysinfo::{ProcessesToUpdate, System};
+use crate::data_sources;
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 const DRIVER_KEY: &str = "driver_alvr_server";
@@ -128,6 +129,8 @@ impl Launcher {
         alvr_server_io::driver_registration(&other_alvr_dirs, false).ok();
 
         alvr_server_io::driver_registration(&[alvr_driver_dir], true).ok();
+
+        data_sources::get_local_session_source().session_mut();
 
         if let Err(err) = unblock_alvr_driver() {
             warn!("Failed to unblock ALVR driver: {:?}", err);

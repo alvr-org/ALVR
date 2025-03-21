@@ -130,6 +130,7 @@ impl Launcher {
 
         alvr_server_io::driver_registration(&[alvr_driver_dir], true).ok();
 
+        // HACK: Save session file before starting up SteamVR to avoid "Error on parsing session config"
         data_sources::get_local_session_source().session_mut();
 
         if let Err(err) = unblock_alvr_driver() {

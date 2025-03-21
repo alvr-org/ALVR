@@ -545,7 +545,7 @@ impl InteractionContext {
         self.face_sources.face_tracker_pico = create_ext_object(
             "FaceTrackerPico",
             config.face_tracking.as_ref().map(|s| s.face_tracking_pico),
-            || FaceTrackerPico::new(self.xr_session.clone(), true, true),
+            || FaceTrackerPico::new(self.xr_session.clone()),
         );
 
         self.body_sources.body_tracker_fb = create_ext_object(

@@ -9,7 +9,7 @@ const RAD_TO_DEG: f32 = 180.0 / PI;
 const VRCFT_PORT: u16 = 0xA1F7;
 
 const FB_FACE_EXPRESSION_COUNT: usize = 70;
-const PICO_FACE_EXPRESSION_COUNT: usize = 72;
+const PICO_FACE_EXPRESSION_COUNT: usize = 52;
 
 pub struct FaceTrackingSink {
     config: FaceTrackingSinkConfig,

@@ -67,6 +67,7 @@ static SESSION_MANAGER: Lazy<RwLock<ServerSessionManager>> = Lazy::new(|| {
 pub fn initialize_environment(layout: afs::Layout) {
     FILESYSTEM_LAYOUT.set(layout).unwrap();
 
+    // This ensures that the session is written to disk
     SESSION_MANAGER.write().session_mut();
 }
 

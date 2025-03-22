@@ -54,10 +54,6 @@ use tracking::TrackingManager;
 
 static FILESYSTEM_LAYOUT: OnceLock<afs::Layout> = OnceLock::new();
 
-pub fn initialize_environment(layout: afs::Layout) {
-    FILESYSTEM_LAYOUT.set(layout).unwrap();
-}
-
 // This is lazily initialized when initializing logging or ServerCoreContext. So FILESYSTEM_LAYOUT
 // needs to be initialized first using initialize_environment().
 // NB: this must remain a global because only one instance should exist for the whole application
@@ -67,6 +63,13 @@ static SESSION_MANAGER: Lazy<RwLock<ServerSessionManager>> = Lazy::new(|| {
         FILESYSTEM_LAYOUT.get().map(|l| l.session()),
     ))
 });
+
+pub fn initialize_environment(layout: afs::Layout) {
+    FILESYSTEM_LAYOUT.set(layout).unwrap();
+
+    // This ensures that the session is written to disk
+    SESSION_MANAGER.write().session_mut();
+}
 
 // todo: use this as the network packet
 pub struct ViewsConfig {

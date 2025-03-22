@@ -81,7 +81,7 @@ pub fn build_streamer(
 ) {
     let sh = Shell::new().unwrap();
 
-    let build_layout = Layout::new(&afs::streamer_build_dir()).unwrap();
+    let build_layout = Layout::new(&afs::streamer_build_dir());
 
     let mut common_flags = vec![];
     match profile {

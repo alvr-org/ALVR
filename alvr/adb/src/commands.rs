@@ -1,12 +1,11 @@
 // https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/user/adb.1.md
 
 use crate::parse::{self, Device, ForwardedPorts};
-use alvr_filesystem::Layout;
+use alvr_filesystem as afs;
 use anyhow::{anyhow, Context, Result};
 use std::{
     collections::HashSet,
     io::{Cursor, Read},
-    path::PathBuf,
     process::Command,
     time::Duration,
 };
@@ -137,7 +136,7 @@ pub fn is_activity_resumed(
 // ADB Installation
 
 pub fn require_adb(
-    layout: &Layout,
+    layout: &afs::Layout,
     progress_callback: impl Fn(usize, Option<usize>),
 ) -> Result<String> {
     match get_adb_path(layout) {
@@ -150,11 +149,12 @@ pub fn require_adb(
     }
 }
 
-fn install_adb(layout: &Layout, progress_callback: impl Fn(usize, Option<usize>)) -> Result<()> {
-    let buffer = download_adb(progress_callback)?;
-    let mut reader = Cursor::new(buffer);
-    let path = get_installation_path(layout);
-    ZipArchive::new(&mut reader)?.extract(path)?;
+fn install_adb(
+    layout: &afs::Layout,
+    progress_callback: impl Fn(usize, Option<usize>),
+) -> Result<()> {
+    let mut reader = Cursor::new(download_adb(progress_callback)?);
+    ZipArchive::new(&mut reader)?.extract(layout.executables_dir.clone())?;
 
     Ok(())
 }
@@ -261,34 +261,20 @@ pub fn list_installed_packages(adb_path: &str, device_serial: &str) -> Result<Ha
 // Paths
 
 /// Returns the path of a local (i.e. installed by ALVR) or OS version of `adb` if found, `None` otherwise.
-fn get_adb_path(layout: &Layout) -> Option<String> {
-    get_os_adb_path().or(get_local_adb_path(layout))
-}
+pub fn get_adb_path(layout: &afs::Layout) -> Option<String> {
+    let exe_name = afs::exec_fname("adb").to_owned();
+    let adb_path = get_command(&exe_name, &[])
+        .output()
+        .is_ok()
+        .then_some(exe_name);
 
-fn get_os_adb_path() -> Option<String> {
-    let name = get_executable_name().to_owned();
+    adb_path.or_else(|| {
+        let path = layout.local_adb_exe();
 
-    get_command(&name, &[]).output().is_ok().then_some(name)
-}
-
-fn get_local_adb_path(layout: &Layout) -> Option<String> {
-    let path = get_platform_tools_path(layout).join(get_executable_name());
-
-    path.try_exists()
-        .is_ok_and(|e| e)
-        .then(|| path.to_string_lossy().to_string())
-}
-
-fn get_installation_path(layout: &Layout) -> PathBuf {
-    layout.executables_dir.to_owned()
-}
-
-fn get_platform_tools_path(layout: &Layout) -> PathBuf {
-    get_installation_path(layout).join("platform-tools")
-}
-
-fn get_executable_name() -> String {
-    alvr_filesystem::exec_fname("adb")
+        path.try_exists()
+            .unwrap_or(false)
+            .then(|| path.to_string_lossy().to_string())
+    })
 }
 
 //////////////////

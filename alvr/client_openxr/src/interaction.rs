@@ -173,6 +173,8 @@ pub struct InteractionContext {
     pub button_actions: HashMap<u64, ButtonAction>,
     pub hands_interaction: [HandInteraction; 2],
     multimodal_handle: Option<MultimodalMeta>,
+    // Stores head orientation relative to the first created reference space.
+    // Used by head rotation correction for eye gazes on Pico.
     pub relative_head_orientation: Quat,
     pub multimodal_hands_enabled: bool,
     pub face_sources: FaceSources,

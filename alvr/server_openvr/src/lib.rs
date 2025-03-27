@@ -88,7 +88,12 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                             FfiPose {
                                 orientation: {
                                     let q = config.local_view_transforms[0].orientation;
-                                    FfiQuat{w: q.w, x: q.x, y: q.y, z: q.z}
+                                    FfiQuat {
+                                        w: q.w,
+                                        x: q.x,
+                                        y: q.y,
+                                        z: q.z,
+                                    }
                                 },
                                 position: {
                                     let v = config.local_view_transforms[0].position;
@@ -98,7 +103,12 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                             FfiPose {
                                 orientation: {
                                     let q = config.local_view_transforms[1].orientation;
-                                    FfiQuat{w: q.w, x: q.x, y: q.y, z: q.z}
+                                    FfiQuat {
+                                        w: q.w,
+                                        x: q.x,
+                                        y: q.y,
+                                        z: q.z,
+                                    }
                                 },
                                 position: {
                                     let v = config.local_view_transforms[1].position;

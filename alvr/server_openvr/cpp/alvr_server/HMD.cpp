@@ -18,9 +18,6 @@
 #include "platform/linux/CEncoder.h"
 #endif
 
-const vr::HmdMatrix34_t MATRIX_IDENTITY
-    = { { { 1.0, 0.0, 0.0, 0.0 }, { 0.0, 1.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0, 0.0 } } };
-
 vr::HmdRect2_t fov_to_projection(FfiFov fov) {
     auto proj_bounds = vr::HmdRect2_t {};
     proj_bounds.vTopLeft.v[0] = tanf(fov.left);
@@ -29,6 +26,16 @@ vr::HmdRect2_t fov_to_projection(FfiFov fov) {
     proj_bounds.vBottomRight.v[1] = tanf(fov.up);
 
     return proj_bounds;
+}
+
+vr::HmdMatrix34_t pose_to_transform(FfiPose pose) {
+    vr::HmdMatrix34_t transform;
+    HmdMatrix_QuatToMat(pose.orientation.w, pose.orientation.x, pose.orientation.y, pose.orientation.z,
+                        &transform);
+    transform.m[0][3] = pose.position[0];
+    transform.m[1][3] = pose.position[1];
+    transform.m[2][3] = pose.position[2];
+    return transform;
 }
 
 Hmd::Hmd()
@@ -42,11 +49,13 @@ Hmd::Hmd()
     Debug("Hmd::constructor");
 
     auto dummy_fov = FfiFov { -1.0, 1.0, 1.0, -1.0 };
+    auto identity_pose = FfiPose{{0, 0, 0, 1}, {0, 0, 0}};
 
     this->views_config = FfiViewsConfig {};
-    this->views_config.ipd_m = 0.063;
     this->views_config.fov[0] = dummy_fov;
     this->views_config.fov[1] = dummy_fov;
+    this->views_config.pose[0] = identity_pose;
+    this->views_config.pose[1] = identity_pose;
 
     m_poseHistory = std::make_shared<PoseHistory>();
 
@@ -286,10 +295,9 @@ void Hmd::SetViewsConfig(FfiViewsConfig config) {
     // The OpenXR spec defines the HMD position as the midpoint
     // between the eyes, so conversion to this is handled by the
     // client.
-    auto left_transform = MATRIX_IDENTITY;
-    left_transform.m[0][3] = -config.ipd_m / 2.0;
-    auto right_transform = MATRIX_IDENTITY;
-    right_transform.m[0][3] = config.ipd_m / 2.0;
+    auto left_transform = pose_to_transform(config.pose[0]);
+    auto right_transform = pose_to_transform(config.pose[1]);
+
     vr::VRServerDriverHost()->SetDisplayEyeToHead(object_id, left_transform, right_transform);
 
     auto left_proj = fov_to_projection(config.fov[0]);

@@ -1214,16 +1214,7 @@ fn connection_pipeline(
                     ClientControlPacket::ViewsConfig(config) => {
                         ctx.events_sender
                             .send(ServerCoreEvent::ViewsConfig(ViewsConfig {
-                                local_view_transforms: [
-                                    Pose {
-                                        position: Vec3::new(-config.ipd_m / 2., 0., 0.),
-                                        orientation: Quat::IDENTITY,
-                                    },
-                                    Pose {
-                                        position: Vec3::new(config.ipd_m / 2., 0., 0.),
-                                        orientation: Quat::IDENTITY,
-                                    },
-                                ],
+                                local_view_transforms: config.pose,
                                 fov: config.fov,
                             }))
                             .ok();

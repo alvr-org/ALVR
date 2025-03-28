@@ -86,11 +86,15 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                         ],
                         pose: [
                             FfiPose {
-                                orientation: tracking::to_ffi_quat(config.local_view_transforms[0].orientation),
+                                orientation: tracking::to_ffi_quat(
+                                    config.local_view_transforms[0].orientation,
+                                ),
                                 position: config.local_view_transforms[0].position.to_array(),
                             },
                             FfiPose {
-                                orientation: tracking::to_ffi_quat(config.local_view_transforms[1].orientation),
+                                orientation: tracking::to_ffi_quat(
+                                    config.local_view_transforms[1].orientation,
+                                ),
                                 position: config.local_view_transforms[1].position.to_array(),
                             },
                         ],

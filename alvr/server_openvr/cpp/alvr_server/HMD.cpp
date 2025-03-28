@@ -30,8 +30,9 @@ vr::HmdRect2_t fov_to_projection(FfiFov fov) {
 
 vr::HmdMatrix34_t pose_to_transform(FfiPose pose) {
     vr::HmdMatrix34_t transform;
-    HmdMatrix_QuatToMat(pose.orientation.w, pose.orientation.x, pose.orientation.y, pose.orientation.z,
-                        &transform);
+    HmdMatrix_QuatToMat(
+        pose.orientation.w, pose.orientation.x, pose.orientation.y, pose.orientation.z, &transform
+    );
     transform.m[0][3] = pose.position[0];
     transform.m[1][3] = pose.position[1];
     transform.m[2][3] = pose.position[2];
@@ -49,7 +50,7 @@ Hmd::Hmd()
     Debug("Hmd::constructor");
 
     auto dummy_fov = FfiFov { -1.0, 1.0, 1.0, -1.0 };
-    auto identity_pose = FfiPose{{0, 0, 0, 1}, {0, 0, 0}};
+    auto identity_pose = FfiPose { { 0, 0, 0, 1 }, { 0, 0, 0 } };
 
     this->views_config = FfiViewsConfig {};
     this->views_config.fov[0] = dummy_fov;

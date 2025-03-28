@@ -8,7 +8,7 @@
 class Controller : public TrackedDevice {
 public:
     Controller(uint64_t deviceID, vr::EVRSkeletalTrackingLevel skeletonLevel);
-    virtual ~Controller() { };
+    virtual ~Controller() {};
     void RegisterButton(uint64_t id);
     void SetButton(uint64_t id, FfiButtonValue value);
     bool OnPoseUpdate(uint64_t targetTimestampNs, float predictionS, FfiHandData handData);

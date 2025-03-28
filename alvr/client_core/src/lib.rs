@@ -217,8 +217,8 @@ impl ClientCoreContext {
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender
                 .send(&ClientControlPacket::ViewsConfig(ViewsConfig {
+                    pose: [views[0].pose, views[1].pose],
                     fov: [views[0].fov, views[1].fov],
-                    ipd_m: (views[0].pose.position - views[1].pose.position).length(),
                 }))
                 .ok();
         }

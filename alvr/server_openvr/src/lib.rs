@@ -86,34 +86,12 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                         ],
                         pose: [
                             FfiPose {
-                                orientation: {
-                                    let q = config.local_view_transforms[0].orientation;
-                                    FfiQuat {
-                                        w: q.w,
-                                        x: q.x,
-                                        y: q.y,
-                                        z: q.z,
-                                    }
-                                },
-                                position: {
-                                    let v = config.local_view_transforms[0].position;
-                                    [v.x, v.y, v.z]
-                                },
+                                orientation: tracking::to_ffi_quat(config.local_view_transforms[0].orientation),
+                                position: config.local_view_transforms[0].position.to_array(),
                             },
                             FfiPose {
-                                orientation: {
-                                    let q = config.local_view_transforms[1].orientation;
-                                    FfiQuat {
-                                        w: q.w,
-                                        x: q.x,
-                                        y: q.y,
-                                        z: q.z,
-                                    }
-                                },
-                                position: {
-                                    let v = config.local_view_transforms[1].position;
-                                    [v.x, v.y, v.z]
-                                },
+                                orientation: tracking::to_ffi_quat(config.local_view_transforms[1].orientation),
+                                position: config.local_view_transforms[1].position.to_array(),
                             },
                         ],
                     });

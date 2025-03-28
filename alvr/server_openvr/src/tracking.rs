@@ -26,7 +26,7 @@ pub static BODY_TRACKER_IDS: Lazy<[u64; 8]> = Lazy::new(|| {
     ]
 });
 
-fn to_ffi_quat(quat: Quat) -> FfiQuat {
+pub fn to_ffi_quat(quat: Quat) -> FfiQuat {
     FfiQuat {
         x: quat.x,
         y: quat.y,

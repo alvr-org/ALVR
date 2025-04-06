@@ -210,7 +210,7 @@ impl Launcher {
                 let version = version.clone();
                 move |ui: &mut Ui| {
                     ui.with_layout(Layout::top_down(Align::Center), |ui| {
-                        ui.label(format!("This will permanently delete version {}", version));
+                        ui.label(format!("This will permanently delete version {version}"));
                     });
                 }
             }),

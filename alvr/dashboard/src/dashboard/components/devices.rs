@@ -272,7 +272,7 @@ fn new_clients_section(
                     .fill(theme::DARKER_BG)
                     .inner_margin(egui::vec2(15.0, 12.0))
                     .show(ui, |ui| {
-                        Grid::new(format!("{}-new-clients", hostname))
+                        Grid::new(format!("{hostname}-new-clients"))
                             .num_columns(2)
                             .spacing(egui::vec2(8.0, 8.0))
                             .show(ui, |ui| {
@@ -328,7 +328,7 @@ fn trusted_clients_section(
                     .fill(theme::DARKER_BG)
                     .inner_margin(egui::vec2(15.0, 12.0))
                     .show(ui, |ui| {
-                        Grid::new(format!("{}-clients", hostname))
+                        Grid::new(format!("{hostname}-clients"))
                             .num_columns(2)
                             .spacing(egui::vec2(8.0, 8.0))
                             .show(ui, |ui| {

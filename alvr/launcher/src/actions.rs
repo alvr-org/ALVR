@@ -34,7 +34,7 @@ pub fn worker(
             let version_data = match fetch_all_releases(&client).await {
                 Ok(data) => data,
                 Err(e) => {
-                    eprintln!("Error fetching version data: {}", e);
+                    eprintln!("Error fetching version data: {e}");
                     return;
                 }
             };
@@ -221,7 +221,7 @@ async fn download(
                 }))?
             }
             None => worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
-                message: format!("{} (Progress unavailable)", message),
+                message: format!("{message} (Progress unavailable)"),
                 progress: 0.5,
             }))?,
         }
@@ -290,7 +290,7 @@ pub fn get_installations() -> Vec<InstallationInfo> {
                     .filter(|entry| match entry.file_type() {
                         Ok(file_type) => file_type.is_dir(),
                         Err(e) => {
-                            eprintln!("Failed to read entry file type: {}", e);
+                            eprintln!("Failed to read entry file type: {e}");
                             false
                         }
                     })
@@ -305,7 +305,7 @@ pub fn get_installations() -> Vec<InstallationInfo> {
             })
             .collect(),
         Err(e) => {
-            eprintln!("Failed to read versions dir: {}", e);
+            eprintln!("Failed to read versions dir: {e}");
             Vec::new()
         }
     }

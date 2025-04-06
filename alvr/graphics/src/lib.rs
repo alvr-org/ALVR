@@ -102,7 +102,7 @@ pub fn gl_format_to_wgpu(format: u32) -> TextureFormat {
         gl::SRGB8_ALPHA8 => TextureFormat::Rgba8UnormSrgb,
         gl::RGBA8 => TextureFormat::Rgba8Unorm,
         gl::RGBA16F => TextureFormat::Rgba16Float,
-        _ => panic!("Unsupported GL format: {}", format),
+        _ => panic!("Unsupported GL format: {format}"),
     }
 }
 

@@ -234,7 +234,7 @@ fn linux_encoder_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
                         }
                     }
                     Err(e) => {
-                        alvr_common::show_e(format!("Can't initialize NVML engine, error: {}.", e))
+                        alvr_common::show_e(format!("Can't initialize NVML engine, error: {e}."))
                     }
                 }
             }
@@ -292,8 +292,7 @@ fn probe_nvenc_encoder_profile(
         }
         Err(e) => match e {
             nvml_wrapper::error::NvmlError::NotSupported => alvr_common::show_e(format!(
-                "Your NVIDIA gpu doesn't support {}. Please make sure CUDA is installed properly. Error: {}",
-                profile_name, e
+                "Your NVIDIA gpu doesn't support {profile_name}. Please make sure CUDA is installed properly. Error: {e}"
             )),
             _ => error!("{}", e),
         },
@@ -309,15 +308,14 @@ fn probe_libva_encoder_profile(
     let profile_probe = libva_display.query_config_entrypoints(profile_type);
     let mut message = String::new();
     if profile_probe.is_err() {
-        message = format!("Couldn't find {} encoder.", profile_name);
+        message = format!("Couldn't find {profile_name} encoder.");
     } else if let Ok(profile) = profile_probe {
         if profile.is_empty() {
-            message = format!("{} profile entrypoint is empty.", profile_name);
+            message = format!("{profile_name} profile entrypoint is empty.");
         }
         if !profile.contains(&libva::VAEntrypoint::VAEntrypointEncSlice) {
             message = format!(
-                "{} profile does not contain encoding entrypoint.",
-                profile_name
+                "{profile_name} profile does not contain encoding entrypoint."
             );
         }
     }

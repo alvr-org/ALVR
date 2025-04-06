@@ -316,8 +316,8 @@ pub fn forward_port(adb_path: &str, device_serial: &str, port: u16) -> Result<()
             "-s",
             device_serial,
             "forward",
-            &format!("tcp:{}", port),
-            &format!("tcp:{}", port),
+            &format!("tcp:{port}"),
+            &format!("tcp:{port}"),
         ],
     )
     .output()

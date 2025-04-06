@@ -15,7 +15,7 @@ impl Display for ModalButton {
             ModalButton::Ok => write!(f, "OK"),
             ModalButton::Cancel => write!(f, "Cancel"),
             ModalButton::Close => write!(f, "Close"),
-            ModalButton::Custom(text) => write!(f, "{}", text),
+            ModalButton::Custom(text) => write!(f, "{text}"),
         }
     }
 }

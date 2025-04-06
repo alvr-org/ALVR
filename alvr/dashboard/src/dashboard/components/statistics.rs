@@ -97,14 +97,14 @@ impl StatisticsTab {
             ui.painter().text(
                 to_screen * pos2(0.0, min),
                 Align2::LEFT_BOTTOM,
-                format!("{:.0}", min),
+                format!("{min:.0}"),
                 FontId::monospace(20.0),
                 Color32::GRAY,
             );
             ui.painter().text(
                 to_screen * pos2(0.0, max),
                 Align2::LEFT_TOP,
-                format!("{:.0}", max),
+                format!("{max:.0}"),
                 FontId::monospace(20.0),
                 Color32::GRAY,
             );
@@ -254,7 +254,7 @@ impl StatisticsTab {
                 Grid::new("fps_tooltip").num_columns(2).show(ui, |ui| {
                     fn label(ui: &mut Ui, text: &str, value: f32, color: Color32) {
                         ui.colored_label(color, text);
-                        ui.colored_label(color, format!("{:.2}Hz", value));
+                        ui.colored_label(color, format!("{value:.2}Hz"));
                         ui.end_row();
                     }
 

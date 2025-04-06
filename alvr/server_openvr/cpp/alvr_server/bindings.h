@@ -14,6 +14,11 @@ struct FfiQuat {
     float w;
 };
 
+struct FfiPose {
+    FfiQuat orientation;
+    float position[3];
+};
+
 struct FfiHandSkeleton {
     float jointPositions[31][3];
     FfiQuat jointRotations[31];
@@ -62,7 +67,7 @@ struct FfiOpenvrProperty {
 
 struct FfiViewsConfig {
     FfiFov fov[2];
-    float ipd_m;
+    FfiPose pose[2];
 };
 
 enum FfiButtonType {

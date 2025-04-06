@@ -532,7 +532,7 @@ impl Drop for ServerCoreContext {
                 .filter(|&(_, info)| {
                     !matches!(
                         info.connection_state,
-                        ConnectionState::Disconnected | ConnectionState::Disconnecting { .. }
+                        ConnectionState::Disconnected | ConnectionState::Disconnecting
                     )
                 })
                 .map(|(hostname, _)| hostname.clone())

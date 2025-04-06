@@ -118,7 +118,7 @@ impl FaceTrackingSink {
                     );
                 }
             }
-            FaceTrackingSinkConfig::VrcFaceTracking { .. } => {
+            FaceTrackingSinkConfig::VrcFaceTracking => {
                 self.packet_buffer.clear();
 
                 match face_data.eye_gazes {

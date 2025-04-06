@@ -38,7 +38,7 @@ impl BodyTrackingSink {
                     socket: Some(socket),
                 })
             }
-            BodyTrackingSinkConfig::FakeViveTracker {} => Ok(Self {
+            BodyTrackingSinkConfig::FakeViveTracker => Ok(Self {
                 config,
                 socket: None,
             }),

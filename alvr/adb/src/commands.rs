@@ -140,14 +140,12 @@ pub fn require_adb(
     layout: &Layout,
     progress_callback: impl Fn(usize, Option<usize>),
 ) -> Result<String> {
-    match get_adb_path(layout) {
-        Some(path) => Ok(path),
-        None => {
-            install_adb(layout, progress_callback).context("Failed to install ADB")?;
-            let path = get_adb_path(layout).context("Failed to get ADB path after installation")?;
-            Ok(path)
-        }
-    }
+    Ok(if let Some(path) = get_adb_path(layout) {
+        path
+    } else {
+        install_adb(layout, progress_callback).context("Failed to install ADB")?;
+        get_adb_path(layout).context("Failed to get ADB path after installation")?
+    })
 }
 
 fn install_adb(layout: &Layout, progress_callback: impl Fn(usize, Option<usize>)) -> Result<()> {
@@ -266,7 +264,7 @@ fn get_adb_path(layout: &Layout) -> Option<String> {
 }
 
 fn get_os_adb_path() -> Option<String> {
-    let name = get_executable_name().to_owned();
+    let name = get_executable_name();
 
     get_command(&name, &[]).output().is_ok().then_some(name)
 }

@@ -32,7 +32,8 @@ fn main() {
         .collect::<Vec<_>>();
 
     let mut mappings_fn_string: String = String::from(
-        r"#[repr(u32)]
+        r"
+#[repr(u32)]
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy, Debug)]
 pub enum OpenvrPropKey {",
     );
@@ -51,6 +52,7 @@ pub enum OpenvrPropKey {",
         r"
 }
 
+#[allow(clippy::match_same_arms)]
 pub fn openvr_prop_key_to_type(key: OpenvrPropKey) -> OpenvrPropType {
     match key {",
     );

@@ -171,7 +171,7 @@ fn tracking_thread(
         let position = Vec3::new(0.0, input_lock.height, 0.0);
 
         context.send_tracking(
-            Instant::now() - timestamp_origin,
+            timestamp_origin.elapsed(),
             vec![(
                 *HEAD_ID,
                 DeviceMotion {

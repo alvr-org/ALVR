@@ -64,9 +64,8 @@ pub(crate) fn save_openvr_paths_json(openvr_paths: &json::Value) -> Result<()> {
 }
 
 pub(crate) fn from_openvr_paths(paths: &json::Value) -> Vec<std::path::PathBuf> {
-    let paths_vec = match paths.as_array() {
-        Some(vec) => vec,
-        None => return vec![],
+    let Some(paths_vec) = paths.as_array() else {
+        return vec![];
     };
 
     paths_vec

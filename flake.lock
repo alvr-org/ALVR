@@ -1,0 +1,95 @@
+{
+  "nodes": {
+    "flakeUtils": {
+      "inputs": {
+        "systems": "systems"
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1739486406,
+        "narHash": "sha256-b3JGAmrZLF8LK/Ufguac8R/eDJ4RouCOnk9FN/0CLCM=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "4ef254b3bd20bd0553c903f124e2321d5814a370",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "master",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgsStaging": {
+      "locked": {
+        "lastModified": 1739470556,
+        "narHash": "sha256-D67sFmdCo8vLqlQJHxB7eTSjv0+g5LyrWv+H7AJg22c=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "496b396e7d429afe3d8fdf16097744d2dadd1051",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "staging",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "openvr": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1711497237,
+        "narHash": "sha256-bIKjZ7DvJVmDK386WgXaAFQrS0E1TNEUMhfQp7FNnvk=",
+        "owner": "ValveSoftware",
+        "repo": "openvr",
+        "rev": "ae46a8dd0172580648c8922658a100439115d3eb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ValveSoftware",
+        "repo": "openvr",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "flakeUtils": "flakeUtils",
+        "nixpkgs": "nixpkgs",
+        "nixpkgsStaging": "nixpkgsStaging",
+        "openvr": "openvr"
+      }
+    },
+    "systems": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

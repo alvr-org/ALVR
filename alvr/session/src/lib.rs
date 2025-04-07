@@ -284,8 +284,10 @@ fn extrapolate_session_settings_from_session_settings(
                         .iter()
                         .any(|named_entry| *variant_str == named_entry.name)
                 })
-                .map(json::Value::String)
-                .unwrap_or_else(|| old_session_settings["variant"].clone());
+                .map_or_else(
+                    || old_session_settings["variant"].clone(),
+                    json::Value::String,
+                );
 
             let mut fields: json::Map<_, _> = variants
                 .iter()
@@ -421,8 +423,10 @@ fn extrapolate_session_settings_from_session_settings(
                             })
                             .collect()
                     })
-                    .map(json::Value::Array)
-                    .unwrap_or_else(|| old_session_settings["content"].clone());
+                    .map_or_else(
+                        || old_session_settings["content"].clone(),
+                        json::Value::Array,
+                    );
 
             json::json!({
                 "gui_collapsed": gui_collapsed,
@@ -468,8 +472,10 @@ fn extrapolate_session_settings_from_session_settings(
                     })
                     .collect()
             })
-            .map(json::Value::Array)
-            .unwrap_or_else(|| old_session_settings["content"].clone());
+            .map_or_else(
+                || old_session_settings["content"].clone(),
+                json::Value::Array,
+            );
 
             json::json!({
                 "gui_collapsed": gui_collapsed,

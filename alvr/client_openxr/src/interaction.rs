@@ -158,8 +158,7 @@ impl InteractionSourcesConfig {
                 .headset
                 .controllers
                 .as_option()
-                .map(|c| c.multimodal_tracking)
-                .unwrap_or(false),
+                .is_some_and(|c| c.multimodal_tracking),
         }
     }
 }

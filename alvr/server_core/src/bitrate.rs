@@ -151,12 +151,7 @@ impl BitrateManager {
     ) -> Option<(DynamicEncoderParams, BitrateDirectives)> {
         let now = Instant::now();
 
-        if self
-            .previous_config
-            .as_ref()
-            .map(|prev| config != prev)
-            .unwrap_or(true)
-        {
+        if self.previous_config.as_ref() != Some(config) {
             self.previous_config = Some(config.clone());
             // Continue method. Always update bitrate in this case
         } else if !self.update_needed

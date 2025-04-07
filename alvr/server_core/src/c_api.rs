@@ -422,7 +422,7 @@ pub unsafe extern "C" fn alvr_get_hand_skeleton(
 /// call with non-null out_entries to get the buttons and advanced the internal queue
 #[no_mangle]
 pub unsafe extern "C" fn alvr_get_buttons(out_entries: *mut AlvrButtonEntry) -> u64 {
-    let entries_count = BUTTONS_QUEUE.lock().front().map(|e| e.len()).unwrap_or(0) as u64;
+    let entries_count = BUTTONS_QUEUE.lock().front().map_or(0, |e| e.len()) as u64;
 
     if out_entries.is_null() {
         return entries_count;

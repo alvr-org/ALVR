@@ -315,10 +315,10 @@ impl ServerCoreContext {
 
             if session_manager_lock.settings().extra.logging.log_haptics {
                 alvr_events::send_event(EventType::Haptics(HapticsEvent {
-                    path: DEVICE_ID_TO_PATH
-                        .get(&haptics.device_id)
-                        .map(|p| (*p).to_owned())
-                        .unwrap_or_else(|| format!("Unknown (ID: {:#16x})", haptics.device_id)),
+                    path: DEVICE_ID_TO_PATH.get(&haptics.device_id).map_or_else(
+                        || format!("Unknown (ID: {:#16x})", haptics.device_id),
+                        |p| (*p).to_owned(),
+                    ),
                     duration: haptics.duration,
                     frequency: haptics.frequency,
                     amplitude: haptics.amplitude,

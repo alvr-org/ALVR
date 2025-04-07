@@ -140,7 +140,7 @@ fn install_and_launch_apk(
             .get(apk_name)
             .ok_or(anyhow::anyhow!("Unable to determine download URL"))?;
         let apk_buffer = alvr_adb::commands::download(apk_url, |downloaded, total| {
-            let progress = total.map(|t| downloaded as f32 / t as f32).unwrap_or(0.0);
+            let progress = total.map_or(0.0, |t| downloaded as f32 / t as f32);
             worker_message_sender
                 .send(WorkerMessage::ProgressUpdate(Progress {
                     message: "Downloading Client APK".into(),
@@ -154,7 +154,7 @@ fn install_and_launch_apk(
 
     let layout = alvr_filesystem::Layout::new(&root);
     let adb_path = alvr_adb::commands::require_adb(&layout, |downloaded, total| {
-        let progress = total.map(|t| downloaded as f32 / t as f32).unwrap_or(0.0);
+        let progress = total.map_or(0.0, |t| downloaded as f32 / t as f32);
         worker_message_sender
             .send(WorkerMessage::ProgressUpdate(Progress {
                 message: "Downloading ADB".into(),

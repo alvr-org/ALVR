@@ -286,15 +286,13 @@ impl GraphicsContext {
                 let gl_context = gl::Context::from_loader_function(|fn_name| {
                     egl_instance
                         .get_proc_address(fn_name)
-                        .map(|f| f as *const c_void)
-                        .unwrap_or(ptr::null())
+                        .map_or(ptr::null(), |f| f as *const c_void)
                 });
 
                 let get_fn_ptr = |fn_name| {
                     egl_instance
                         .get_proc_address(fn_name)
-                        .map(|f| f as *const c_void)
-                        .unwrap_or(ptr::null())
+                        .map_or(ptr::null(), |f| f as *const c_void)
                 };
 
                 let create_image: CreateImageFn = mem::transmute(get_fn_ptr(CREATE_IMAGE_FN_STR));

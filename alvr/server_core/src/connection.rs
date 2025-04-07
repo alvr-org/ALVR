@@ -61,8 +61,7 @@ fn is_streaming(client_hostname: &str) -> bool {
         .read()
         .client_list()
         .get(client_hostname)
-        .map(|c| c.connection_state == ConnectionState::Streaming)
-        .unwrap_or(false)
+        .is_some_and(|c| c.connection_state == ConnectionState::Streaming)
 }
 
 pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
@@ -92,8 +91,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         use_separate_hand_trackers = config
             .hand_skeleton
             .as_option()
-            .map(|c| c.steamvr_input_2_0)
-            .unwrap_or(false);
+            .is_some_and(|c| c.steamvr_input_2_0);
 
         true
     } else {
@@ -422,8 +420,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                     session_manager
                         .client_list()
                         .get(&client_hostname)
-                        .map(|c| c.trusted)
-                        .unwrap_or(false)
+                        .is_some_and(|c| c.trusted)
                 };
 
                 // do not attempt connection if the client is already connected
@@ -432,8 +429,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                         .read()
                         .client_list()
                         .get(&client_hostname)
-                        .map(|c| c.connection_state == ConnectionState::Disconnected)
-                        .unwrap_or(false)
+                        .is_some_and(|c| c.connection_state == ConnectionState::Disconnected)
                 {
                     if let Err(e) = try_connect(
                         Arc::clone(&ctx),
@@ -592,10 +588,13 @@ fn connection_pipeline(
                 let width = width as f32;
                 Vec2::new(
                     width,
-                    height.map(|h| h as f32).unwrap_or_else(|| {
-                        let default_res = default_res.as_vec2();
-                        width * default_res.y / default_res.x
-                    }),
+                    height.map_or_else(
+                        || {
+                            let default_res = default_res.as_vec2();
+                            width * default_res.y / default_res.x
+                        },
+                        |h| h as f32,
+                    ),
                 )
             }
         };
@@ -1258,12 +1257,10 @@ fn connection_pipeline(
                                     entries
                                         .iter()
                                         .map(|e| ButtonEvent {
-                                            path: BUTTON_INFO
-                                                .get(&e.path_id)
-                                                .map(|info| info.path.to_owned())
-                                                .unwrap_or_else(|| {
-                                                    format!("Unknown (ID: {:#16x})", e.path_id)
-                                                }),
+                                            path: BUTTON_INFO.get(&e.path_id).map_or_else(
+                                                || format!("Unknown (ID: {:#16x})", e.path_id),
+                                                |info| info.path.to_owned(),
+                                            ),
                                             value: e.value,
                                         })
                                         .collect(),
@@ -1384,8 +1381,7 @@ fn connection_pipeline(
                 .read()
                 .client_list()
                 .get(&client_hostname)
-                .map(|c| c.connection_state == ConnectionState::Streaming)
-                .unwrap_or(false)
+                .is_some_and(|c| c.connection_state == ConnectionState::Streaming)
                 && *lifecycle_state.read() == LifecycleState::Resumed
             {
                 thread::sleep(STREAMING_RECV_TIMEOUT);

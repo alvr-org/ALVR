@@ -344,8 +344,7 @@ fn trusted_clients_section(
                                 ui.label(format!(
                                     "{hostname}: {}",
                                     data.current_ip
-                                        .map(|ip| ip.to_string())
-                                        .unwrap_or_else(|| "Unknown IP".into()),
+                                        .map_or_else(|| "Unknown IP".into(), |ip| ip.to_string()),
                                 ));
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     if ui.button("Remove").clicked() {

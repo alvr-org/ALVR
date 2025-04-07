@@ -67,7 +67,7 @@ impl Launcher {
         }
     }
 
-    fn version_popup(&mut self, ctx: &Context, mut version: Version) -> PopupType {
+    fn version_popup(&self, ctx: &Context, mut version: Version) -> PopupType {
         let response = alvr_gui_common::modal(
             ctx,
             "Add version",

@@ -43,7 +43,7 @@ impl StatisticsTab {
         self.history.push_back(statistics);
     }
 
-    pub fn ui(&mut self, ui: &mut Ui) -> Option<ServerRequest> {
+    pub fn ui(&self, ui: &mut Ui) -> Option<ServerRequest> {
         if let Some(stats) = &self.last_statistics_summary {
             ScrollArea::new([false, true]).show(ui, |ui| {
                 let available_width = ui.available_width();

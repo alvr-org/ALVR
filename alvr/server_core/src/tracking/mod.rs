@@ -179,7 +179,6 @@ impl TrackingManager {
             );
         }
 
-        let mut transformed_motions = vec![];
         for &(device_id, mut motion) in device_motions {
             if device_id == *HEAD_ID {
                 self.last_head_pose = motion.pose;
@@ -211,8 +210,6 @@ impl TrackingManager {
                     cutoff(motion.linear_velocity, config.linear_velocity_cutoff);
                 motion.angular_velocity =
                     cutoff(motion.angular_velocity, config.angular_velocity_cutoff);
-
-                transformed_motions.push((device_id, motion));
             }
 
             if let Some(motions) = self.device_motions_history.get_mut(&device_id) {

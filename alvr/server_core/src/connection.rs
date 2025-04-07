@@ -19,7 +19,7 @@ use alvr_common::{
 };
 use alvr_events::{AdbEvent, ButtonEvent, EventType};
 use alvr_packets::{
-    BatteryInfo, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
+    ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
     NegotiatedStreamingConfig, RealTimeConfig, ReservedClientControlPacket, ServerControlPacket,
     Tracking, VideoPacketHeader, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
@@ -245,7 +245,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
 pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<LifecycleState>>) {
     dbg_connection!("handshake_loop: Begin");
 
-    let mut welcome_socket = match WelcomeSocket::new() {
+    let welcome_socket = match WelcomeSocket::new() {
         Ok(socket) => socket,
         Err(e) => {
             error!("Failed to create discovery socket: {e:?}");
@@ -1229,11 +1229,7 @@ fn connection_pipeline(
                     }
                     ClientControlPacket::Battery(packet) => {
                         ctx.events_sender
-                            .send(ServerCoreEvent::Battery(BatteryInfo {
-                                device_id: packet.device_id,
-                                gauge_value: packet.gauge_value,
-                                is_plugged: packet.is_plugged,
-                            }))
+                            .send(ServerCoreEvent::Battery(packet.clone()))
                             .ok();
 
                         if let Some(stats) = &mut *ctx.statistics_manager.write() {

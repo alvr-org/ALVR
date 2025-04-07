@@ -44,7 +44,7 @@ pub fn steamvr_settings_file_path() -> Result<PathBuf> {
     }
 }
 
-pub(crate) fn load_openvr_paths_json() -> Result<json::Value> {
+pub fn load_openvr_paths_json() -> Result<json::Value> {
     let file = File::open(openvr_source_file_path()?)?;
 
     let mut file_content_decoded = String::new();
@@ -55,7 +55,7 @@ pub(crate) fn load_openvr_paths_json() -> Result<json::Value> {
     Ok(value)
 }
 
-pub(crate) fn save_openvr_paths_json(openvr_paths: &json::Value) -> Result<()> {
+pub fn save_openvr_paths_json(openvr_paths: &json::Value) -> Result<()> {
     let file_content = json::to_string_pretty(openvr_paths)?;
 
     fs::write(openvr_source_file_path()?, file_content)?;
@@ -63,7 +63,7 @@ pub(crate) fn save_openvr_paths_json(openvr_paths: &json::Value) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn from_openvr_paths(paths: &json::Value) -> Vec<std::path::PathBuf> {
+pub fn from_openvr_paths(paths: &json::Value) -> Vec<std::path::PathBuf> {
     let Some(paths_vec) = paths.as_array() else {
         return vec![];
     };
@@ -75,7 +75,7 @@ pub(crate) fn from_openvr_paths(paths: &json::Value) -> Vec<std::path::PathBuf> 
         .collect()
 }
 
-pub(crate) fn to_openvr_paths(paths: &[PathBuf]) -> json::Value {
+pub fn to_openvr_paths(paths: &[PathBuf]) -> json::Value {
     let paths_vec = paths
         .iter()
         .map(|p| p.to_string_lossy().into())

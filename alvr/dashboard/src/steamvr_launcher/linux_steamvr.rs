@@ -290,12 +290,15 @@ fn probe_nvenc_encoder_profile(
         Ok(_) => {
             info!("GPU supports {} profile.", profile_name);
         }
-        Err(e) => match e {
-            nvml_wrapper::error::NvmlError::NotSupported => alvr_common::show_e(format!(
-                "Your NVIDIA gpu doesn't support {profile_name}. Please make sure CUDA is installed properly. Error: {e}"
-            )),
-            _ => error!("{}", e),
-        },
+        Err(e) => {
+            if matches!(e, nvml_wrapper::error::NvmlError::NotSupported) {
+                alvr_common::show_e(format!(
+            "Your NVIDIA gpu doesn't support {profile_name}. Please make sure CUDA is installed properly. Error: {e}"
+        ))
+            } else {
+                error!("{}", e)
+            }
+        }
     }
 }
 

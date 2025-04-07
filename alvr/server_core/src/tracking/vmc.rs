@@ -109,7 +109,7 @@ impl VMCSink {
     }
 
     pub fn send_hand_tracking(
-        &mut self,
+        &self,
         hand_type: HandType,
         skeleton: [Pose; 26],
         orientation_correction: bool,
@@ -145,7 +145,7 @@ impl VMCSink {
     }
 
     pub fn send_tracking(
-        &mut self,
+        &self,
         device_motions: &[(u64, DeviceMotion)],
         orientation_correction: bool,
     ) {

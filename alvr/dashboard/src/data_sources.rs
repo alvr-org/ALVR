@@ -48,7 +48,7 @@ fn report_event_local(
 fn report_session_local(
     context: &egui::Context,
     sender: &mpsc::Sender<PolledEvent>,
-    session_manager: &mut ServerSessionManager,
+    session_manager: &ServerSessionManager,
 ) {
     report_event_local(
         context,

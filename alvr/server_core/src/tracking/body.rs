@@ -59,7 +59,7 @@ impl BodyTrackingSink {
         }
     }
 
-    pub fn send_tracking(&mut self, device_motions: &[(u64, DeviceMotion)]) {
+    pub fn send_tracking(&self, device_motions: &[(u64, DeviceMotion)]) {
         match self.config {
             BodyTrackingSinkConfig::VrchatBodyOsc { .. } => {
                 for (id, motion) in device_motions {

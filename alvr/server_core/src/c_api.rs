@@ -308,7 +308,6 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
     if let Some(receiver) = &*EVENTS_RECEIVER.lock() {
         if let Ok(event) = receiver.recv_timeout(Duration::from_nanos(timeout_ns)) {
             match event {
-                ServerCoreEvent::SetOpenvrProperty { .. } => {} // implementation not needed
                 ServerCoreEvent::ClientConnected => {
                     *out_event = AlvrEvent::ClientConnected;
                 }
@@ -345,7 +344,8 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
                 }
                 ServerCoreEvent::RequestIDR => *out_event = AlvrEvent::RequestIDR,
                 ServerCoreEvent::CaptureFrame => *out_event = AlvrEvent::CaptureFrame,
-                ServerCoreEvent::GameRenderLatencyFeedback(_) => {} // implementation not needed
+                ServerCoreEvent::GameRenderLatencyFeedback(_)
+                | ServerCoreEvent::SetOpenvrProperty { .. } => {} // implementation not needed
                 ServerCoreEvent::RestartPending => {
                     *out_event = AlvrEvent::RestartPending;
                 }

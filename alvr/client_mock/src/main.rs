@@ -267,13 +267,12 @@ fn client_thread(
                     window_output.resolution = UVec2::ZERO;
                     window_output.decoder_codec = None;
                 }
-                ClientCoreEvent::Haptics { .. } => (),
+                ClientCoreEvent::Haptics { .. } | ClientCoreEvent::RealTimeConfig(_) => (),
                 ClientCoreEvent::DecoderConfig { codec, .. } => {
                     got_decoder_config.set(true);
 
                     window_output.decoder_codec = Some(codec);
                 }
-                ClientCoreEvent::RealTimeConfig(_) => (),
             }
 
             output_sender.send(window_output.clone()).ok();

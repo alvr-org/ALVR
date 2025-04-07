@@ -57,16 +57,16 @@ impl FaceTracker2FB {
         let weights_count = xr::FaceExpression2FB::COUNT.into_raw() as usize;
         let confidence_count = xr::FaceConfidence2FB::COUNT.into_raw() as usize;
 
-        let mut weights = Vec::with_capacity(weights_count);
-        let mut confidences = vec![0.0; confidence_count];
+        let mut weights: Vec<f32> = Vec::with_capacity(weights_count);
+        let mut confidences: Vec<f32> = vec![0.0; confidence_count];
 
         let mut expression_weights = sys::FaceExpressionWeights2FB {
             ty: sys::FaceExpressionWeights2FB::TYPE,
             next: ptr::null_mut(),
             weight_count: weights_count as u32,
-            weights: weights.as_mut_ptr() as _,
+            weights: weights.as_mut_ptr(),
             confidence_count: confidence_count as u32,
-            confidences: confidences.as_mut_ptr() as _,
+            confidences: confidences.as_mut_ptr(),
             is_valid: sys::FALSE,
             is_eye_following_blendshapes_valid: sys::FALSE,
             data_source: sys::FaceTrackingDataSource2FB::from_raw(0),

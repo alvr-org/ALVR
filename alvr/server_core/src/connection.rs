@@ -69,7 +69,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
     let settings = session.to_settings();
 
     let mut controller_is_tracker = false;
-    let mut _controller_profile = 0;
+    let mut controller_profile = 0;
     let mut use_separate_hand_trackers = false;
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
         controller_is_tracker =
@@ -77,7 +77,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         // These numbers don't mean anything, they're just for triggering SteamVR resets.
         // Gaps are included in the numbering to make adding other controllers
         // a bit easier though.
-        _controller_profile = match config.emulation_mode {
+        controller_profile = match config.emulation_mode {
             ControllersEmulationMode::RiftSTouch => 0,
             ControllersEmulationMode::Quest2Touch => 1,
             ControllersEmulationMode::Quest3Plus => 2,
@@ -226,7 +226,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         capture_frame_dir: settings.extra.capture.capture_frame_dir,
         amd_bitrate_corruption_fix: settings.video.bitrate.image_corruption_fix,
         use_separate_hand_trackers,
-        _controller_profile,
+        _controller_profile: controller_profile,
         _server_impl_debug: settings.extra.logging.debug_groups.server_impl,
         _client_impl_debug: settings.extra.logging.debug_groups.client_impl,
         _server_core_debug: settings.extra.logging.debug_groups.server_core,

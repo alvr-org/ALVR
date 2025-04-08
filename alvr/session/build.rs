@@ -52,7 +52,7 @@ pub enum OpenvrPropKey {",
         r"
 }
 
-#[allow(clippy::match_same_arms)]
+#[expect(clippy::match_same_arms)]
 pub fn openvr_prop_key_to_type(key: OpenvrPropKey) -> OpenvrPropType {
     match key {",
     );

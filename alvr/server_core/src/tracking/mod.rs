@@ -464,7 +464,7 @@ pub fn tracking_loop(
                                 gestures_button_mapping_manager,
                                 *HAND_LEFT_ID,
                                 &hand_gesture_manager_lock.get_active_gestures(
-                                    hand_skeleton,
+                                    &hand_skeleton,
                                     gestures_config,
                                     *HAND_LEFT_ID,
                                 ),
@@ -482,7 +482,7 @@ pub fn tracking_loop(
                                 gestures_button_mapping_manager,
                                 *HAND_RIGHT_ID,
                                 &hand_gesture_manager_lock.get_active_gestures(
-                                    hand_skeleton,
+                                    &hand_skeleton,
                                     gestures_config,
                                     *HAND_RIGHT_ID,
                                 ),
@@ -528,10 +528,10 @@ pub fn tracking_loop(
                     .collect::<Vec<(u64, DeviceMotion)>>();
 
                 if let Some(skeleton) = tracking.hand_skeletons[0] {
-                    sink.send_hand_tracking(HandType::Left, skeleton, orientation_correction);
+                    sink.send_hand_tracking(HandType::Left, &skeleton, orientation_correction);
                 }
                 if let Some(skeleton) = tracking.hand_skeletons[1] {
-                    sink.send_hand_tracking(HandType::Right, skeleton, orientation_correction);
+                    sink.send_hand_tracking(HandType::Right, &skeleton, orientation_correction);
                 }
                 sink.send_tracking(&device_motions, orientation_correction);
             }

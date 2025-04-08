@@ -106,7 +106,7 @@ impl HandGestureManager {
 
     pub fn get_active_gestures(
         &mut self,
-        hand_skeleton: [Pose; 26],
+        hand_skeleton: &[Pose; 26],
         config: &HandTrackingInteractionConfig,
         device_id: u64,
     ) -> Vec<HandGesture> {

@@ -130,7 +130,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                     tracking::to_openvr_ffi_hand_skeleton(
                                         headset_config,
                                         *HAND_LEFT_ID,
-                                        s,
+                                        &s,
                                     )
                                 });
                             let right_hand_skeleton = context
@@ -139,7 +139,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                     tracking::to_openvr_ffi_hand_skeleton(
                                         headset_config,
                                         *HAND_RIGHT_ID,
-                                        s,
+                                        &s,
                                     )
                                 });
 

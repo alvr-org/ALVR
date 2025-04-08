@@ -46,6 +46,7 @@ impl FaceTrackingSink {
             .ok();
     }
 
+    #[expect(clippy::trivially_copy_pass_by_ref)]
     fn append_packet_vrcft(&mut self, prefix: &[u8; 8], data: &[f32]) {
         self.packet_buffer.extend(prefix);
 

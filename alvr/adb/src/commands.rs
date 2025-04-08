@@ -54,7 +54,7 @@ pub fn download(url: &str, progress_callback: impl Fn(usize, Option<usize>)) -> 
         .map(Vec::with_capacity)
         .unwrap_or_default();
     let mut reader = response.into_body().into_reader();
-    let mut buffer = [0; 65535];
+    let mut buffer = vec![0; 65535];
     loop {
         let read_count: usize = reader.read(&mut buffer)?;
         if read_count == 0 {

@@ -28,7 +28,7 @@ pub type SessionSettings = settings::SettingsDefault;
 // dynamically.
 // todo: properties that can be set after the OpenVR initialization should be removed and set with
 // UpdateForStream.
-#[allow(clippy::pub_underscore_fields)]
+#[expect(clippy::pub_underscore_fields)]
 #[derive(Serialize, Deserialize, PartialEq, Default, Clone, Debug)]
 pub struct OpenvrConfig {
     pub eye_resolution_width: u32,

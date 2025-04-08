@@ -344,14 +344,14 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
                 }
                 ServerCoreEvent::RequestIDR => *out_event = AlvrEvent::RequestIDR,
                 ServerCoreEvent::CaptureFrame => *out_event = AlvrEvent::CaptureFrame,
-                ServerCoreEvent::GameRenderLatencyFeedback(_)
-                | ServerCoreEvent::SetOpenvrProperty { .. } => {} // implementation not needed
                 ServerCoreEvent::RestartPending => {
                     *out_event = AlvrEvent::RestartPending;
                 }
                 ServerCoreEvent::ShutdownPending => {
                     *out_event = AlvrEvent::ShutdownPending;
                 }
+                ServerCoreEvent::GameRenderLatencyFeedback(_)
+                | ServerCoreEvent::SetOpenvrProperty { .. } => {} // implementation not needed
             }
 
             true

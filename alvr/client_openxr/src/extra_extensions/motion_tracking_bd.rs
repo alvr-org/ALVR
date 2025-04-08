@@ -90,10 +90,7 @@ impl MotionTrackerBD {
         time: xr::Time,
     ) -> xr::Result<Option<Vec<MotionTrackerLocationsBD>>> {
         let mut locations = Vec::with_capacity(3);
-
-        let mut connect_state = MotionTrackerConnectStateBD {
-            ..Default::default()
-        };
+        let mut connect_state = MotionTrackerConnectStateBD::default();
 
         unsafe {
             super::xr_res((self.get_motion_tracker_connect_state)(

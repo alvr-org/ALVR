@@ -71,7 +71,6 @@ pub fn build_server_lib(profile: Profile, root: Option<String>, reproducible: bo
     cmd!(sh, "cbindgen --output {out}").run().unwrap();
 }
 
-#[expect(clippy::fn_params_excessive_bools)]
 pub fn build_streamer(
     profile: Profile,
     gpl: bool,

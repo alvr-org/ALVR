@@ -525,8 +525,8 @@ pub fn receive_samples_loop(
                 let volume = f as f32 / batch_frames_count as f32;
                 for c in 0..channels_count {
                     let index = f * channels_count + c;
-                    sample_buffer_ref[index] =
-                        sample_buffer_ref[index] * volume + drained_samples[index] * (1. - volume);
+                    sample_buffer_ref[index] = sample_buffer_ref[index]
+                        .mul_add(volume, drained_samples[index] * (1. - volume));
                 }
             }
         }

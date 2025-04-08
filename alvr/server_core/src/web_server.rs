@@ -38,7 +38,7 @@ async fn from_request_body<T: DeserializeOwned>(request: Request<Body>) -> Resul
     )?)
 }
 
-async fn websocket<T: Clone + Send + 'static>(
+fn websocket<T: Clone + Send + 'static>(
     request: Request<Body>,
     sender: broadcast::Sender<T>,
     message_builder: impl Fn(T) -> protocol::Message + Send + Sync + 'static,
@@ -301,12 +301,9 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
-        "/api/events" => {
-            websocket(request, LOGGING_EVENTS_SENDER.clone(), |e| {
-                protocol::Message::Text(json::to_string(&e).unwrap())
-            })
-            .await?
-        }
+        "/api/events" => websocket(request, LOGGING_EVENTS_SENDER.clone(), |e| {
+            protocol::Message::Text(json::to_string(&e).unwrap())
+        })?,
         "/api/video-mirror" => {
             let sender = {
                 let mut sender_lock = connection_context.video_mirror_sender.lock();
@@ -324,7 +321,7 @@ async fn http_api(
                 sender.send(config.config_buffer.clone()).ok();
             }
 
-            let res = websocket(request, sender, protocol::Message::Binary).await?;
+            let res = websocket(request, sender, protocol::Message::Binary)?;
 
             connection_context
                 .events_sender

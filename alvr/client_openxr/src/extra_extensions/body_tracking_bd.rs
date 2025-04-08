@@ -237,14 +237,14 @@ impl BodyTrackerBD {
         };
 
         let joint_count = BODY_JOINT_COUNT_BD;
-        let mut locations = Vec::with_capacity(joint_count);
+        let mut locations: Vec<BodyJointLocationBD> = Vec::with_capacity(joint_count);
 
         let mut location_info = BodyJointLocationsBD {
             ty: *TYPE_BODY_JOINT_LOCATIONS_BD,
             next: ptr::null(),
             all_joint_poses_tracked: sys::FALSE,
             joint_count: joint_count as u32,
-            joint_locations: locations.as_mut_ptr() as _,
+            joint_locations: locations.as_mut_ptr(),
         };
 
         unsafe {

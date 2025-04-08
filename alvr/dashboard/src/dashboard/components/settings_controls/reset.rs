@@ -8,7 +8,7 @@ pub fn reset_button(ui: &mut Ui, enabled: bool, default_str: &str) -> Response {
         ui.add_space(5.0);
 
         ui.add_enabled(enabled, Button::new("⟲"))
-            .on_hover_text(format!("Reset to {}", default_str))
+            .on_hover_text(format!("Reset to {default_str}"))
     })
     .inner
 }

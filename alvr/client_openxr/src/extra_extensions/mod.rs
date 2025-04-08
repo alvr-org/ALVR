@@ -42,7 +42,7 @@ fn get_props<G, T>(
     let instance = session.instance();
 
     let mut props = default_struct;
-    let mut system_properties = sys::SystemProperties::out((&mut props as *mut T).cast());
+    let mut system_properties = sys::SystemProperties::out((&raw mut props).cast());
     let result = unsafe {
         (instance.fp().get_system_properties)(
             instance.as_raw(),

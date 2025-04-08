@@ -24,7 +24,7 @@ use std::{
 pub fn set_openvr_prop(instance_ptr: Option<*mut c_void>, device_id: u64, prop: OpenvrProperty) {
     let key = prop.key as u32;
     let ty = alvr_session::openvr_prop_key_to_type(prop.key);
-    let value = prop.value.clone();
+    let value = prop.value;
 
     let device_name = DEVICE_ID_TO_PATH.get(&device_id).unwrap_or(&"Unknown");
 
@@ -190,6 +190,7 @@ pub extern "C" fn get_serial_number(device_id: u64, out_str: *mut c_char) -> u64
 
 #[no_mangle]
 pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: u64) {
+    #[expect(clippy::enum_glob_use)]
     use OpenvrPropKey::*;
 
     let settings = alvr_server_core::settings();

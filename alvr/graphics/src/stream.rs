@@ -498,7 +498,7 @@ pub fn foveated_encoding_shader_constants(
         ("C_RIGHT_Y", c_right.y),
     ]
     .iter()
-    .map(|(k, v)| (k.to_string(), *v as f64))
+    .map(|(k, v)| ((*k).to_string(), *v as f64))
     .collect();
 
     (optimized_view_resolution_aligned.as_uvec2(), constants)

@@ -179,7 +179,6 @@ impl TrackingManager {
             );
         }
 
-        let mut transformed_motions = vec![];
         for &(device_id, mut motion) in device_motions {
             if device_id == *HEAD_ID {
                 self.last_head_pose = motion.pose;
@@ -211,8 +210,6 @@ impl TrackingManager {
                     cutoff(motion.linear_velocity, config.linear_velocity_cutoff);
                 motion.angular_velocity =
                     cutoff(motion.angular_velocity, config.angular_velocity_cutoff);
-
-                transformed_motions.push((device_id, motion));
             }
 
             if let Some(motions) = self.device_motions_history.get_mut(&device_id) {
@@ -467,7 +464,7 @@ pub fn tracking_loop(
                                 gestures_button_mapping_manager,
                                 *HAND_LEFT_ID,
                                 &hand_gesture_manager_lock.get_active_gestures(
-                                    hand_skeleton,
+                                    &hand_skeleton,
                                     gestures_config,
                                     *HAND_LEFT_ID,
                                 ),
@@ -485,7 +482,7 @@ pub fn tracking_loop(
                                 gestures_button_mapping_manager,
                                 *HAND_RIGHT_ID,
                                 &hand_gesture_manager_lock.get_active_gestures(
-                                    hand_skeleton,
+                                    &hand_skeleton,
                                     gestures_config,
                                     *HAND_RIGHT_ID,
                                 ),
@@ -531,10 +528,10 @@ pub fn tracking_loop(
                     .collect::<Vec<(u64, DeviceMotion)>>();
 
                 if let Some(skeleton) = tracking.hand_skeletons[0] {
-                    sink.send_hand_tracking(HandType::Left, skeleton, orientation_correction);
+                    sink.send_hand_tracking(HandType::Left, &skeleton, orientation_correction);
                 }
                 if let Some(skeleton) = tracking.hand_skeletons[1] {
-                    sink.send_hand_tracking(HandType::Right, skeleton, orientation_correction);
+                    sink.send_hand_tracking(HandType::Right, &skeleton, orientation_correction);
                 }
                 sink.send_tracking(&device_motions, orientation_correction);
             }

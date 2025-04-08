@@ -84,7 +84,7 @@ impl Lobby {
             interaction::get_reference_space(&self.xr_session, self.reference_space_type);
     }
 
-    pub fn update_hud_message(&mut self, message: &str) {
+    pub fn update_hud_message(&self, message: &str) {
         self.renderer.update_hud_message(message);
     }
 

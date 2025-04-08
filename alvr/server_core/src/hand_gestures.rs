@@ -106,7 +106,7 @@ impl HandGestureManager {
 
     pub fn get_active_gestures(
         &mut self,
-        hand_skeleton: [Pose; 26],
+        hand_skeleton: &[Pose; 26],
         config: &HandTrackingInteractionConfig,
         device_id: u64,
     ) -> Vec<HandGesture> {
@@ -532,8 +532,7 @@ fn get_touch_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opti
             HandGestureId::ThumbIndexPinch => Some(*LEFT_TRIGGER_TOUCH_ID),
             HandGestureId::ThumbMiddlePinch => Some(*LEFT_Y_TOUCH_ID),
             HandGestureId::ThumbRingPinch => Some(*LEFT_X_TOUCH_ID),
-            HandGestureId::JoystickX => Some(*LEFT_THUMBSTICK_TOUCH_ID),
-            HandGestureId::JoystickY => Some(*LEFT_THUMBSTICK_TOUCH_ID),
+            HandGestureId::JoystickX | HandGestureId::JoystickY => Some(*LEFT_THUMBSTICK_TOUCH_ID),
             _ => None,
         }
     } else {
@@ -541,8 +540,7 @@ fn get_touch_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opti
             HandGestureId::ThumbIndexPinch => Some(*RIGHT_TRIGGER_TOUCH_ID),
             HandGestureId::ThumbMiddlePinch => Some(*RIGHT_B_TOUCH_ID),
             HandGestureId::ThumbRingPinch => Some(*RIGHT_A_TOUCH_ID),
-            HandGestureId::JoystickX => Some(*RIGHT_THUMBSTICK_TOUCH_ID),
-            HandGestureId::JoystickY => Some(*RIGHT_THUMBSTICK_TOUCH_ID),
+            HandGestureId::JoystickX | HandGestureId::JoystickY => Some(*RIGHT_THUMBSTICK_TOUCH_ID),
             _ => None,
         }
     }

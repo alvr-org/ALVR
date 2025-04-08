@@ -28,6 +28,7 @@ pub type SessionSettings = settings::SettingsDefault;
 // dynamically.
 // todo: properties that can be set after the OpenVR initialization should be removed and set with
 // UpdateForStream.
+#[expect(clippy::pub_underscore_fields)]
 #[derive(Serialize, Deserialize, PartialEq, Default, Clone, Debug)]
 pub struct OpenvrConfig {
     pub eye_resolution_width: u32,
@@ -107,7 +108,7 @@ pub struct OpenvrConfig {
     pub _client_impl_debug: bool,
     pub _server_core_debug: bool,
     pub _client_core_debug: bool,
-    pub _conncection_debug: bool,
+    pub _connection_debug: bool,
     pub _sockets_debug: bool,
     pub _server_gfx_debug: bool,
     pub _client_gfx_debug: bool,
@@ -283,8 +284,10 @@ fn extrapolate_session_settings_from_session_settings(
                         .iter()
                         .any(|named_entry| *variant_str == named_entry.name)
                 })
-                .map(json::Value::String)
-                .unwrap_or_else(|| old_session_settings["variant"].clone());
+                .map_or_else(
+                    || old_session_settings["variant"].clone(),
+                    json::Value::String,
+                );
 
             let mut fields: json::Map<_, _> = variants
                 .iter()
@@ -420,8 +423,10 @@ fn extrapolate_session_settings_from_session_settings(
                             })
                             .collect()
                     })
-                    .map(json::Value::Array)
-                    .unwrap_or_else(|| old_session_settings["content"].clone());
+                    .map_or_else(
+                        || old_session_settings["content"].clone(),
+                        json::Value::Array,
+                    );
 
             json::json!({
                 "gui_collapsed": gui_collapsed,
@@ -467,8 +472,10 @@ fn extrapolate_session_settings_from_session_settings(
                     })
                     .collect()
             })
-            .map(json::Value::Array)
-            .unwrap_or_else(|| old_session_settings["content"].clone());
+            .map_or_else(
+                || old_session_settings["content"].clone(),
+                json::Value::Array,
+            );
 
             json::json!({
                 "gui_collapsed": gui_collapsed,

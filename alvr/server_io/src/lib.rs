@@ -83,7 +83,7 @@ impl ServerSessionManager {
         Self {
             session_config: session_config.clone(),
             settings: session_config.to_settings(),
-            session_path: session_path.to_owned(),
+            session_path,
         }
     }
 

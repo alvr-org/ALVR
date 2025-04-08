@@ -54,7 +54,7 @@ pub fn download(url: &str, progress_callback: impl Fn(usize, Option<usize>)) -> 
         .map(Vec::with_capacity)
         .unwrap_or_default();
     let mut reader = response.into_body().into_reader();
-    let mut buffer = [0; 65535];
+    let mut buffer = vec![0; 65535];
     loop {
         let read_count: usize = reader.read(&mut buffer)?;
         if read_count == 0 {
@@ -140,13 +140,11 @@ pub fn require_adb(
     layout: &Layout,
     progress_callback: impl Fn(usize, Option<usize>),
 ) -> Result<String> {
-    match get_adb_path(layout) {
-        Some(path) => Ok(path),
-        None => {
-            install_adb(layout, progress_callback).context("Failed to install ADB")?;
-            let path = get_adb_path(layout).context("Failed to get ADB path after installation")?;
-            Ok(path)
-        }
+    if let Some(path) = get_adb_path(layout) {
+        Ok(path)
+    } else {
+        install_adb(layout, progress_callback).context("Failed to install ADB")?;
+        Ok(get_adb_path(layout).context("Failed to get ADB path after installation")?)
     }
 }
 
@@ -266,7 +264,7 @@ fn get_adb_path(layout: &Layout) -> Option<String> {
 }
 
 fn get_os_adb_path() -> Option<String> {
-    let name = get_executable_name().to_owned();
+    let name = get_executable_name();
 
     get_command(&name, &[]).output().is_ok().then_some(name)
 }
@@ -316,8 +314,8 @@ pub fn forward_port(adb_path: &str, device_serial: &str, port: u16) -> Result<()
             "-s",
             device_serial,
             "forward",
-            &format!("tcp:{}", port),
-            &format!("tcp:{}", port),
+            &format!("tcp:{port}"),
+            &format!("tcp:{port}"),
         ],
     )
     .output()

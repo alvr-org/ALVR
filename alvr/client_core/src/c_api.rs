@@ -431,7 +431,7 @@ pub extern "C" fn alvr_get_decoder_config(out_buffer: *mut c_char) -> u64 {
     let size = buffer.len();
 
     if !out_buffer.is_null() {
-        unsafe { ptr::copy_nonoverlapping(buffer.as_ptr(), out_buffer as _, size) }
+        unsafe { ptr::copy_nonoverlapping(buffer.as_ptr(), out_buffer.cast(), size) }
     }
 
     size as u64

@@ -108,62 +108,29 @@ impl Layout {
     pub fn new(root: &Path) -> Self {
         #[cfg(target_os = "linux")]
         {
+            let or_path =
+                |opt: Option<&'static str>, path| opt.map_or(root.join(path), PathBuf::from);
+
             // Get paths from environment or use FHS compliant paths
-            let executables_dir = if !env!("executables_dir").is_empty() {
-                PathBuf::from(env!("executables_dir"))
-            } else {
-                root.join("bin")
-            };
-            let libraries_dir = if !env!("libraries_dir").is_empty() {
-                PathBuf::from(env!("libraries_dir"))
-            } else {
-                root.join("lib64")
-            };
-            let static_resources_dir = if !env!("static_resources_dir").is_empty() {
-                PathBuf::from(env!("static_resources_dir"))
-            } else {
-                root.join("share/alvr")
-            };
-            let config_dir = if !env!("config_dir").is_empty() {
-                PathBuf::from(env!("config_dir"))
-            } else {
-                dirs::config_dir().unwrap().join("alvr")
-            };
-            let log_dir = if !env!("log_dir").is_empty() {
-                PathBuf::from(env!("log_dir"))
-            } else {
-                dirs::home_dir().unwrap()
-            };
-            let openvr_driver_root_dir = if !env!("openvr_driver_root_dir").is_empty() {
-                PathBuf::from(env!("openvr_driver_root_dir"))
-            } else {
-                root.join("lib64/alvr")
-            };
-            let vrcompositor_wrapper_dir = if !env!("vrcompositor_wrapper_dir").is_empty() {
-                PathBuf::from(env!("vrcompositor_wrapper_dir"))
-            } else {
-                root.join("libexec/alvr")
-            };
-            let firewall_script_dir = if !env!("firewall_script_dir").is_empty() {
-                PathBuf::from(env!("firewall_script_dir"))
-            } else {
-                root.join("libexec/alvr")
-            };
-            let firewalld_config_dir = if !env!("firewalld_config_dir").is_empty() {
-                PathBuf::from(env!("firewalld_config_dir"))
-            } else {
-                root.join("libexec/alvr")
-            };
-            let ufw_config_dir = if !env!("ufw_config_dir").is_empty() {
-                PathBuf::from(env!("ufw_config_dir"))
-            } else {
-                root.join("libexec/alvr")
-            };
-            let vulkan_layer_manifest_dir = if !env!("vulkan_layer_manifest_dir").is_empty() {
-                PathBuf::from(env!("vulkan_layer_manifest_dir"))
-            } else {
-                root.join("share/vulkan/explicit_layer.d")
-            };
+            let executables_dir = or_path(option_env!("executables_dir"), "bin");
+            let libraries_dir = or_path(option_env!("libraries_dir"), "lib64");
+            let static_resources_dir = or_path(option_env!("static_resources_dir"), "share/alvr");
+            let openvr_driver_root_dir =
+                or_path(option_env!("openvr_driver_root_dir"), "lib64/alvr");
+            let vrcompositor_wrapper_dir =
+                or_path(option_env!("vrcompositor_wrapper_dir"), "libexec/alvr");
+            let firewall_script_dir = or_path(option_env!("firewall_script_dir"), "libexec/alvr");
+            let firewalld_config_dir = or_path(option_env!("firewalld_config_dir"), "libexec/alvr");
+            let ufw_config_dir = or_path(option_env!("ufw_config_dir"), "libexec/alvr");
+            let vulkan_layer_manifest_dir = or_path(
+                option_env!("vulkan_layer_manifest_dir"),
+                "share/vulkan/explicit_layer.d",
+            );
+
+            let config_dir = option_env!("config_dir")
+                .map_or_else(|| dirs::config_dir().unwrap().join("alvr"), PathBuf::from);
+            let log_dir =
+                option_env!("log_dir").map_or_else(|| dirs::home_dir().unwrap(), PathBuf::from);
 
             Self {
                 executables_dir,
@@ -298,14 +265,8 @@ impl Layout {
 }
 
 // Use static var to prevent issues if the "root" env is changed at runtime
-static LAYOUT_FROM_ENV: Lazy<Option<Layout>> = Lazy::new(|| {
-    let root_dir_str = env!("root");
-    if !root_dir_str.is_empty() {
-        Some(Layout::new(Path::new(root_dir_str)))
-    } else {
-        None
-    }
-});
+static LAYOUT_FROM_ENV: Lazy<Option<Layout>> =
+    Lazy::new(|| option_env!("root").map(|path| Layout::new(Path::new(path))));
 
 // The path should include the executable file name
 // The path argument is used only if ALVR is built as portable

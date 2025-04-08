@@ -19,7 +19,7 @@ use alvr_common::{
 };
 use alvr_events::{AdbEvent, ButtonEvent, EventType};
 use alvr_packets::{
-    BatteryInfo, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
+    ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
     NegotiatedStreamingConfig, RealTimeConfig, ReservedClientControlPacket, ServerControlPacket,
     Tracking, VideoPacketHeader, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
@@ -61,8 +61,7 @@ fn is_streaming(client_hostname: &str) -> bool {
         .read()
         .client_list()
         .get(client_hostname)
-        .map(|c| c.connection_state == ConnectionState::Streaming)
-        .unwrap_or(false)
+        .is_some_and(|c| c.connection_state == ConnectionState::Streaming)
 }
 
 pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
@@ -70,7 +69,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
     let settings = session.to_settings();
 
     let mut controller_is_tracker = false;
-    let mut _controller_profile = 0;
+    let mut controller_profile = 0;
     let mut use_separate_hand_trackers = false;
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
         controller_is_tracker =
@@ -78,7 +77,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         // These numbers don't mean anything, they're just for triggering SteamVR resets.
         // Gaps are included in the numbering to make adding other controllers
         // a bit easier though.
-        _controller_profile = match config.emulation_mode {
+        controller_profile = match config.emulation_mode {
             ControllersEmulationMode::RiftSTouch => 0,
             ControllersEmulationMode::Quest2Touch => 1,
             ControllersEmulationMode::Quest3Plus => 2,
@@ -92,8 +91,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         use_separate_hand_trackers = config
             .hand_skeleton
             .as_option()
-            .map(|c| c.steamvr_input_2_0)
-            .unwrap_or(false);
+            .is_some_and(|c| c.steamvr_input_2_0);
 
         true
     } else {
@@ -228,12 +226,12 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         capture_frame_dir: settings.extra.capture.capture_frame_dir,
         amd_bitrate_corruption_fix: settings.video.bitrate.image_corruption_fix,
         use_separate_hand_trackers,
-        _controller_profile,
+        _controller_profile: controller_profile,
         _server_impl_debug: settings.extra.logging.debug_groups.server_impl,
         _client_impl_debug: settings.extra.logging.debug_groups.client_impl,
         _server_core_debug: settings.extra.logging.debug_groups.server_core,
         _client_core_debug: settings.extra.logging.debug_groups.client_core,
-        _conncection_debug: settings.extra.logging.debug_groups.connection,
+        _connection_debug: settings.extra.logging.debug_groups.connection,
         _sockets_debug: settings.extra.logging.debug_groups.sockets,
         _server_gfx_debug: settings.extra.logging.debug_groups.server_gfx,
         _client_gfx_debug: settings.extra.logging.debug_groups.client_gfx,
@@ -247,7 +245,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
 pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<LifecycleState>>) {
     dbg_connection!("handshake_loop: Begin");
 
-    let mut welcome_socket = match WelcomeSocket::new() {
+    let welcome_socket = match WelcomeSocket::new() {
         Ok(socket) => socket,
         Err(e) => {
             error!("Failed to create discovery socket: {e:?}");
@@ -422,8 +420,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                     session_manager
                         .client_list()
                         .get(&client_hostname)
-                        .map(|c| c.trusted)
-                        .unwrap_or(false)
+                        .is_some_and(|c| c.trusted)
                 };
 
                 // do not attempt connection if the client is already connected
@@ -432,8 +429,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                         .read()
                         .client_list()
                         .get(&client_hostname)
-                        .map(|c| c.connection_state == ConnectionState::Disconnected)
-                        .unwrap_or(false)
+                        .is_some_and(|c| c.connection_state == ConnectionState::Disconnected)
                 {
                     if let Err(e) = try_connect(
                         Arc::clone(&ctx),
@@ -592,10 +588,13 @@ fn connection_pipeline(
                 let width = width as f32;
                 Vec2::new(
                     width,
-                    height.map(|h| h as f32).unwrap_or_else(|| {
-                        let default_res = default_res.as_vec2();
-                        width * default_res.y / default_res.x
-                    }),
+                    height.map_or_else(
+                        || {
+                            let default_res = default_res.as_vec2();
+                            width * default_res.y / default_res.x
+                        },
+                        |h| h as f32,
+                    ),
                 )
             }
         };
@@ -1230,11 +1229,7 @@ fn connection_pipeline(
                     }
                     ClientControlPacket::Battery(packet) => {
                         ctx.events_sender
-                            .send(ServerCoreEvent::Battery(BatteryInfo {
-                                device_id: packet.device_id,
-                                gauge_value: packet.gauge_value,
-                                is_plugged: packet.is_plugged,
-                            }))
+                            .send(ServerCoreEvent::Battery(packet.clone()))
                             .ok();
 
                         if let Some(stats) = &mut *ctx.statistics_manager.write() {
@@ -1258,12 +1253,10 @@ fn connection_pipeline(
                                     entries
                                         .iter()
                                         .map(|e| ButtonEvent {
-                                            path: BUTTON_INFO
-                                                .get(&e.path_id)
-                                                .map(|info| info.path.to_owned())
-                                                .unwrap_or_else(|| {
-                                                    format!("Unknown (ID: {:#16x})", e.path_id)
-                                                }),
+                                            path: BUTTON_INFO.get(&e.path_id).map_or_else(
+                                                || format!("Unknown (ID: {:#16x})", e.path_id),
+                                                |info| info.path.to_owned(),
+                                            ),
                                             value: e.value,
                                         })
                                         .collect(),
@@ -1384,8 +1377,7 @@ fn connection_pipeline(
                 .read()
                 .client_list()
                 .get(&client_hostname)
-                .map(|c| c.connection_state == ConnectionState::Streaming)
-                .unwrap_or(false)
+                .is_some_and(|c| c.connection_state == ConnectionState::Streaming)
                 && *lifecycle_state.read() == LifecycleState::Resumed
             {
                 thread::sleep(STREAMING_RECV_TIMEOUT);
@@ -1436,7 +1428,7 @@ fn connection_pipeline(
     *ctx.video_recording_file.lock() = None;
 
     session_manager_lock.update_client_list(
-        client_hostname.clone(),
+        client_hostname,
         ClientListAction::SetConnectionState(ConnectionState::Disconnecting),
     );
 

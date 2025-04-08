@@ -76,14 +76,14 @@ impl BodyTrackerFB {
             base_space: reference_space.as_raw(),
             time,
         };
-        let mut locations = Vec::with_capacity(joint_count);
+        let mut locations: Vec<sys::BodyJointLocationFB> = Vec::with_capacity(joint_count);
         let mut location_info = sys::BodyJointLocationsFB {
             ty: sys::BodyJointLocationsFB::TYPE,
             next: ptr::null_mut(),
             is_active: sys::FALSE,
             confidence: 0.0,
             joint_count: joint_count as u32,
-            joint_locations: locations.as_mut_ptr() as _,
+            joint_locations: locations.as_mut_ptr(),
             skeleton_changed_count: 0,
             time: xr::Time::from_nanos(0),
         };

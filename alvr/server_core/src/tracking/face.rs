@@ -46,7 +46,7 @@ impl FaceTrackingSink {
             .ok();
     }
 
-    fn append_packet_vrcft(&mut self, prefix: &[u8; 8], data: &[f32]) {
+    fn append_packet_vrcft(&mut self, prefix: [u8; 8], data: &[f32]) {
         self.packet_buffer.extend(prefix);
 
         for val in data {
@@ -118,19 +118,19 @@ impl FaceTrackingSink {
                     );
                 }
             }
-            FaceTrackingSinkConfig::VrcFaceTracking { .. } => {
+            FaceTrackingSinkConfig::VrcFaceTracking => {
                 self.packet_buffer.clear();
 
                 match face_data.eye_gazes {
                     [Some(left_quat), Some(right_quat)] => {
                         let mut vec = left_quat.orientation.to_array().to_vec();
                         vec.extend_from_slice(&right_quat.orientation.to_array());
-                        self.append_packet_vrcft(b"EyesQuat", &vec);
+                        self.append_packet_vrcft(*b"EyesQuat", &vec);
                     }
                     // todo: use separate field for combined eye data
                     [Some(combined_quat), None] => {
                         self.append_packet_vrcft(
-                            b"CombQuat",
+                            *b"CombQuat",
                             &combined_quat.orientation.to_array(),
                         );
                     }
@@ -138,19 +138,19 @@ impl FaceTrackingSink {
                 }
 
                 if let Some(arr) = fb_face_expression {
-                    self.append_packet_vrcft(b"Face2Fb\0", arr);
+                    self.append_packet_vrcft(*b"Face2Fb\0", arr);
                 }
 
                 if let Some(arr) = pico_face_expression {
-                    self.append_packet_vrcft(b"FacePico", arr);
+                    self.append_packet_vrcft(*b"FacePico", arr);
                 }
 
                 if let Some(arr) = face_data.htc_eye_expression {
-                    self.append_packet_vrcft(b"EyesHtc\0", &arr);
+                    self.append_packet_vrcft(*b"EyesHtc\0", &arr);
                 }
 
                 if let Some(arr) = face_data.htc_lip_expression {
-                    self.append_packet_vrcft(b"LipHtc\0\0", &arr);
+                    self.append_packet_vrcft(*b"LipHtc\0\0", &arr);
                 }
 
                 self.socket.send(&self.packet_buffer).ok();

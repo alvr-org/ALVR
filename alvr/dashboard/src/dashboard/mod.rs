@@ -301,16 +301,12 @@ impl eframe::App for Dashboard {
         }
 
         if context.input(|state| state.viewport().close_requested())
-            && self
-                .session
-                .as_ref()
-                .map(|s| {
-                    s.to_settings()
-                        .extra
-                        .steamvr_launcher
-                        .open_close_steamvr_with_dashboard
-                })
-                .unwrap_or(false)
+            && self.session.as_ref().is_some_and(|s| {
+                s.to_settings()
+                    .extra
+                    .steamvr_launcher
+                    .open_close_steamvr_with_dashboard
+            })
         {
             self.data_sources.request(ServerRequest::ShutdownSteamvr);
 

@@ -443,7 +443,7 @@ impl LobbyRenderer {
             };
 
             let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                label: Some(&format!("lobby_view_{}", view_idx)),
+                label: Some(&format!("lobby_view_{view_idx}")),
                 color_attachments: &[Some(RenderPassColorAttachment {
                     view: &self.render_targets[view_idx][view_input.swapchain_index as usize],
                     resolve_target: None,

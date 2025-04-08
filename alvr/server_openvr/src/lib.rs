@@ -95,18 +95,16 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                     let controllers_config = headset_config.controllers.clone().into_option();
                     let track_body = headset_config.body_tracking.enabled();
 
-                    let tracked = controllers_config
-                        .as_ref()
-                        .map(|c| c.tracked)
-                        .unwrap_or(false);
+                    let tracked = controllers_config.as_ref().is_some_and(|c| c.tracked);
 
                     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
                         let controllers_pose_time_offset = context.get_tracker_pose_time_offset();
 
                         let ffi_head_motion = context
                             .get_device_motion(*HEAD_ID, sample_timestamp)
-                            .map(|m| tracking::to_ffi_motion(*HEAD_ID, m))
-                            .unwrap_or_else(FfiDeviceMotion::default);
+                            .map_or_else(FfiDeviceMotion::default, |m| {
+                                tracking::to_ffi_motion(*HEAD_ID, m)
+                            });
                         let ffi_left_controller_motion = context
                             .get_device_motion(*HAND_LEFT_ID, sample_timestamp)
                             .map(|m| tracking::to_ffi_motion(*HAND_LEFT_ID, m))
@@ -132,7 +130,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                     tracking::to_openvr_ffi_hand_skeleton(
                                         headset_config,
                                         *HAND_LEFT_ID,
-                                        s,
+                                        &s,
                                     )
                                 });
                             let right_hand_skeleton = context
@@ -141,7 +139,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                     tracking::to_openvr_ffi_hand_skeleton(
                                         headset_config,
                                         *HAND_RIGHT_ID,
-                                        s,
+                                        &s,
                                     )
                                 });
 
@@ -416,8 +414,7 @@ pub fn should_initialize_driver(driver_layout: &afs::Layout) -> bool {
         .processes_by_name(OsStr::new(&afs::dashboard_fname()))
         .all(|proc| {
             proc.exe()
-                .map(|path| path == driver_layout.dashboard_exe())
-                .unwrap_or(true) // if path is unreadable then don't care
+                .is_none_or(|path| path == driver_layout.dashboard_exe()) // if path is unreadable then don't care
         })
 }
 

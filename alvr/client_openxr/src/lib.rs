@@ -341,8 +341,9 @@ pub fn entry_point() {
 
                             xr_session.end().unwrap();
                         }
-                        xr::SessionState::EXITING => break 'render_loop,
-                        xr::SessionState::LOSS_PENDING => break 'render_loop,
+                        xr::SessionState::EXITING | xr::SessionState::LOSS_PENDING => {
+                            break 'render_loop
+                        }
                         _ => (),
                     },
                     xr::Event::ReferenceSpaceChangePending(event) => {
@@ -366,10 +367,8 @@ pub fn entry_point() {
                             event.sub_domain(),
                         );
                     }
-                    xr::Event::InteractionProfileChanged(_) => {
-                        // todo
-                    }
-                    xr::Event::PassthroughStateChangedFB(_) => {
+                    xr::Event::InteractionProfileChanged(_)
+                    | xr::Event::PassthroughStateChangedFB(_) => {
                         // todo
                     }
                     _ => (),

@@ -6,20 +6,16 @@ pub const BD_MOTION_TRACKING_EXTENSION_NAME: &str = "XR_BD_motion_tracking";
 pub const PICO_CONFIGURATION_EXTENSION_NAME: &str = "XR_PICO_configuration";
 
 #[repr(C)]
+#[derive(Default)]
 struct MotionTrackerConnectStateBD {
     tracker_count: i32,
     serials: [MotionTrackerSerialBD; 6],
 }
 
 #[repr(C)]
-#[derive(Copy, Ord, Eq, PartialEq, PartialOrd)]
+#[derive(Ord, Eq, PartialEq, PartialOrd, Default)]
 pub struct MotionTrackerSerialBD {
     pub serial: [u8; 24],
-}
-impl Clone for MotionTrackerSerialBD {
-    fn clone(&self) -> Self {
-        *self
-    }
 }
 
 #[repr(transparent)]
@@ -94,11 +90,7 @@ impl MotionTrackerBD {
         time: xr::Time,
     ) -> xr::Result<Option<Vec<MotionTrackerLocationsBD>>> {
         let mut locations = Vec::with_capacity(3);
-
-        let mut connect_state = MotionTrackerConnectStateBD {
-            tracker_count: 0,
-            serials: [MotionTrackerSerialBD { serial: [0; 24] }; 6],
-        };
+        let mut connect_state = MotionTrackerConnectStateBD::default();
 
         unsafe {
             super::xr_res((self.get_motion_tracker_connect_state)(

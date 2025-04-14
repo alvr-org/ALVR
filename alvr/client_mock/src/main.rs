@@ -171,7 +171,7 @@ fn tracking_thread(
         let position = Vec3::new(0.0, input_lock.height, 0.0);
 
         context.send_tracking(
-            Instant::now() - timestamp_origin,
+            timestamp_origin.elapsed(),
             vec![(
                 *HEAD_ID,
                 DeviceMotion {
@@ -267,13 +267,12 @@ fn client_thread(
                     window_output.resolution = UVec2::ZERO;
                     window_output.decoder_codec = None;
                 }
-                ClientCoreEvent::Haptics { .. } => (),
                 ClientCoreEvent::DecoderConfig { codec, .. } => {
                     got_decoder_config.set(true);
 
                     window_output.decoder_codec = Some(codec);
                 }
-                ClientCoreEvent::RealTimeConfig(_) => (),
+                ClientCoreEvent::Haptics { .. } | ClientCoreEvent::RealTimeConfig(_) => (),
             }
 
             output_sender.send(window_output.clone()).ok();

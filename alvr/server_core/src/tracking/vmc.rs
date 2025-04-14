@@ -109,9 +109,9 @@ impl VMCSink {
     }
 
     pub fn send_hand_tracking(
-        &mut self,
+        &self,
         hand_type: HandType,
-        skeleton: [Pose; 26],
+        skeleton: &[Pose; 26],
         orientation_correction: bool,
     ) {
         let hand_id = hand_type as usize;
@@ -145,7 +145,7 @@ impl VMCSink {
     }
 
     pub fn send_tracking(
-        &mut self,
+        &self,
         device_motions: &[(u64, DeviceMotion)],
         orientation_correction: bool,
     ) {
@@ -166,7 +166,7 @@ impl VMCSink {
                 self.send_osc_message(
                     "/VMC/Ext/Bone/Pos",
                     vec![
-                        OscType::String(DEVICE_MOTIONS_VMC_MAP.get(id).unwrap().to_string()),
+                        OscType::String((*DEVICE_MOTIONS_VMC_MAP.get(id).unwrap()).to_string()),
                         OscType::Float(motion.pose.position.x),
                         OscType::Float(motion.pose.position.y),
                         OscType::Float(motion.pose.position.z),

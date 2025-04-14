@@ -32,7 +32,7 @@ impl WelcomeSocket {
     }
 
     // Returns: client IP, client hostname
-    pub fn recv_all(&mut self) -> Result<HashMap<String, IpAddr>> {
+    pub fn recv_all(&self) -> Result<HashMap<String, IpAddr>> {
         let mut clients = HashMap::new();
 
         loop {

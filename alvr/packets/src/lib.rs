@@ -317,8 +317,8 @@ pub enum PathSegment {
 impl Debug for PathSegment {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PathSegment::Name(name) => write!(f, "{}", name),
-            PathSegment::Index(index) => write!(f, "[{}]", index),
+            PathSegment::Name(name) => write!(f, "{name}"),
+            PathSegment::Index(index) => write!(f, "[{index}]"),
         }
     }
 }

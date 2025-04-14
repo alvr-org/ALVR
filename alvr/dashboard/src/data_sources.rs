@@ -48,7 +48,7 @@ fn report_event_local(
 fn report_session_local(
     context: &egui::Context,
     sender: &mpsc::Sender<PolledEvent>,
-    session_manager: &mut ServerSessionManager,
+    session_manager: &ServerSessionManager,
 ) {
     report_event_local(
         context,
@@ -225,9 +225,7 @@ impl DataSources {
                         &SocketAddr::from_str(&format!("127.0.0.1:{port}")).unwrap(),
                         Duration::from_millis(500),
                     );
-                    let socket = if let Ok(socket) = maybe_socket {
-                        socket
-                    } else {
+                    let Ok(socket) = maybe_socket else {
                         thread::sleep(Duration::from_millis(500));
 
                         continue;
@@ -237,9 +235,7 @@ impl DataSources {
                     req.headers_mut()
                         .insert("X-ALVR", HeaderValue::from_str("true").unwrap());
 
-                    let mut ws = if let Ok((ws, _)) = tungstenite::client(req, socket) {
-                        ws
-                    } else {
+                    let Ok((mut ws, _)) = tungstenite::client(req, socket) else {
                         thread::sleep(Duration::from_millis(500));
 
                         continue;

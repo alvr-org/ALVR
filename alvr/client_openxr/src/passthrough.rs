@@ -1,11 +1,8 @@
 use crate::extra_extensions::{PassthroughFB, PassthroughHTC};
 use alvr_common::anyhow::{bail, Result};
 use alvr_system_info::Platform;
-use openxr::{
-    self as xr,
-    sys::{CompositionLayerPassthroughFB, CompositionLayerPassthroughHTC},
-};
-use std::{marker::PhantomData, mem, ops::Deref};
+use openxr::{self as xr};
+use std::{marker::PhantomData, ops::Deref, ptr};
 
 pub struct PassthroughLayer<'a> {
     handle_fb: Option<PassthroughFB>,
@@ -40,13 +37,9 @@ impl<'a> Deref for PassthroughLayer<'a> {
 
     fn deref(&self) -> &Self::Target {
         if let Some(handle) = &self.handle_fb {
-            unsafe {
-                mem::transmute::<&CompositionLayerPassthroughFB, &Self::Target>(handle.layer())
-            }
+            unsafe { &*ptr::from_ref(handle.layer()).cast() }
         } else if let Some(handle) = &self.handle_htc {
-            unsafe {
-                mem::transmute::<&CompositionLayerPassthroughHTC, &Self::Target>(handle.layer())
-            }
+            unsafe { &*ptr::from_ref(handle.layer()).cast() }
         } else {
             panic!("No passthrough extension available");
         }

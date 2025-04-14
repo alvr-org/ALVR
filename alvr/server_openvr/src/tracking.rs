@@ -78,7 +78,7 @@ fn get_hand_skeleton_offsets(config: &HeadsetConfig) -> (Pose, Pose) {
     (left_offset, right_offset)
 }
 
-fn to_ffi_skeleton(skeleton: [Pose; 31]) -> FfiHandSkeleton {
+fn to_ffi_skeleton(skeleton: &[Pose; 31]) -> FfiHandSkeleton {
     FfiHandSkeleton {
         jointRotations: skeleton
             .iter()
@@ -98,7 +98,7 @@ fn to_ffi_skeleton(skeleton: [Pose; 31]) -> FfiHandSkeleton {
 pub fn to_openvr_ffi_hand_skeleton(
     config: &HeadsetConfig,
     device_id: u64,
-    hand_skeleton: [Pose; 26],
+    hand_skeleton: &[Pose; 26],
 ) -> FfiHandSkeleton {
     let (left_hand_skeleton_offset, right_hand_skeleton_offset) = get_hand_skeleton_offsets(config);
     let id = device_id;
@@ -235,5 +235,5 @@ pub fn to_openvr_ffi_hand_skeleton(
         aux_orientation(id, root_parented_pose(gj[24])),
     ];
 
-    to_ffi_skeleton(skeleton)
+    to_ffi_skeleton(&skeleton)
 }

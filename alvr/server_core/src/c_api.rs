@@ -308,7 +308,6 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
     if let Some(receiver) = &*EVENTS_RECEIVER.lock() {
         if let Ok(event) = receiver.recv_timeout(Duration::from_nanos(timeout_ns)) {
             match event {
-                ServerCoreEvent::SetOpenvrProperty { .. } => {} // implementation not needed
                 ServerCoreEvent::ClientConnected => {
                     *out_event = AlvrEvent::ClientConnected;
                 }
@@ -345,13 +344,14 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
                 }
                 ServerCoreEvent::RequestIDR => *out_event = AlvrEvent::RequestIDR,
                 ServerCoreEvent::CaptureFrame => *out_event = AlvrEvent::CaptureFrame,
-                ServerCoreEvent::GameRenderLatencyFeedback(_) => {} // implementation not needed
                 ServerCoreEvent::RestartPending => {
                     *out_event = AlvrEvent::RestartPending;
                 }
                 ServerCoreEvent::ShutdownPending => {
                     *out_event = AlvrEvent::ShutdownPending;
                 }
+                ServerCoreEvent::GameRenderLatencyFeedback(_)
+                | ServerCoreEvent::SetOpenvrProperty { .. } => {} // implementation not needed
             }
 
             true
@@ -422,7 +422,7 @@ pub unsafe extern "C" fn alvr_get_hand_skeleton(
 /// call with non-null out_entries to get the buttons and advanced the internal queue
 #[no_mangle]
 pub unsafe extern "C" fn alvr_get_buttons(out_entries: *mut AlvrButtonEntry) -> u64 {
-    let entries_count = BUTTONS_QUEUE.lock().front().map(|e| e.len()).unwrap_or(0) as u64;
+    let entries_count = BUTTONS_QUEUE.lock().front().map_or(0, |e| e.len()) as u64;
 
     if out_entries.is_null() {
         return entries_count;

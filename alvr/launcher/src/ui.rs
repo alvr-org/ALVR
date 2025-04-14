@@ -67,7 +67,7 @@ impl Launcher {
         }
     }
 
-    fn version_popup(&mut self, ctx: &Context, mut version: Version) -> PopupType {
+    fn version_popup(&self, ctx: &Context, mut version: Version) -> PopupType {
         let response = alvr_gui_common::modal(
             ctx,
             "Add version",
@@ -210,7 +210,7 @@ impl Launcher {
                 let version = version.clone();
                 move |ui: &mut Ui| {
                     ui.with_layout(Layout::top_down(Align::Center), |ui| {
-                        ui.label(format!("This will permanently delete version {}", version));
+                        ui.label(format!("This will permanently delete version {version}"));
                     });
                 }
             }),

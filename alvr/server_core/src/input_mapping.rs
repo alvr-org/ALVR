@@ -655,8 +655,7 @@ impl ButtonMappingManager {
         } else {
             let button_name = BUTTON_INFO
                 .get(&source_button.path_id)
-                .map(|info| info.path)
-                .unwrap_or("Unknown");
+                .map_or("Unknown", |info| info.path);
             info!("Received button not mapped: {button_name}");
         }
 

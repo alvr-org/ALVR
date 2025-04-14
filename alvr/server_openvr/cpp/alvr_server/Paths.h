@@ -13,6 +13,8 @@ extern uint64_t HAND_RIGHT_ID;
 extern uint64_t HAND_TRACKER_LEFT_ID;
 extern uint64_t HAND_TRACKER_RIGHT_ID;
 extern uint64_t BODY_CHEST_ID;
+extern uint64_t FAKE_LEFT_TRACKER_ID;
+extern uint64_t FAKE_RIGHT_TRACKER_ID;
 extern uint64_t BODY_HIPS_ID;
 extern uint64_t BODY_LEFT_ELBOW_ID;
 extern uint64_t BODY_RIGHT_ELBOW_ID;

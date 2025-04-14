@@ -11,7 +11,8 @@ use alvr_common::{
     error,
     glam::{Quat, UVec2, Vec2},
     parking_lot::RwLock,
-    Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
+    Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID, 
+    FAKE_TRACKER_LEFT_ID, FAKE_TRACKER_RIGHT_ID,
 };
 use alvr_graphics::{
     compute_target_view_resolution, GraphicsContext, StreamRenderer, StreamViewParams,
@@ -531,15 +532,40 @@ fn stream_input_loop(
 
         // Note: When multimodal input is enabled, we are sure that when free hands are used
         // (not holding controllers) the controller data is None.
-        if int_ctx.multimodal_hands_enabled || left_hand_skeleton.is_none() {
+        if (int_ctx.multimodal_hands_enabled || left_hand_skeleton.is_none()) && !int_ctx.use_left_controller_as_fake_tracker {
             if let Some(motion) = left_hand_motion {
                 device_motions.push((*HAND_LEFT_ID, motion));
             }
         }
-        if int_ctx.multimodal_hands_enabled || right_hand_skeleton.is_none() {
+        if (int_ctx.multimodal_hands_enabled || right_hand_skeleton.is_none()) && !int_ctx.use_right_controller_as_fake_tracker {
             if let Some(motion) = right_hand_motion {
                 device_motions.push((*HAND_RIGHT_ID, motion));
             }
+        }
+
+        if int_ctx.use_left_controller_as_fake_tracker {
+            let left_detached_motion = crate::interaction::get_controller_motion_data(
+                &xr_session,
+                stage_reference_space,
+                now,
+                &int_ctx.hands_interaction[0],
+                &mut last_controller_poses[0]
+            );
+            if let Some(motion) = left_detached_motion {
+                device_motions.push((*FAKE_TRACKER_LEFT_ID, motion));
+            };
+        }
+        if int_ctx.use_right_controller_as_fake_tracker {
+            let right_detached_motion = crate::interaction::get_controller_motion_data(
+                &xr_session,
+                stage_reference_space,
+                now,
+                &int_ctx.hands_interaction[1],
+                &mut last_controller_poses[1]
+            );
+            if let Some(motion) = right_detached_motion {
+                device_motions.push((*FAKE_TRACKER_RIGHT_ID, motion));
+            };
         }
 
         let face_data = FaceData {

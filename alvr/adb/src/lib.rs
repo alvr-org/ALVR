@@ -130,5 +130,5 @@ pub fn get_process_name(
             commands::is_package_installed(adb_path, device_serial, name)
                 .is_ok_and(|installed| installed)
         })
-        .map(|name| name.to_string())
+        .map(|name| (*name).to_string())
 }

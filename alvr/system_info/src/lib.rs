@@ -111,7 +111,7 @@ impl Display for Platform {
             Platform::Macos => "macOS",
             Platform::Unknown => "Unknown",
         };
-        write!(f, "{}", name)
+        write!(f, "{name}")
     }
 }
 

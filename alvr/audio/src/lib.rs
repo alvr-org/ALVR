@@ -475,7 +475,7 @@ pub fn receive_samples_loop(
             recovery_sample_buffer.extend(sample_buffer_ref.drain(..));
         }
 
-        if sample_buffer_ref.len() == 0 || data.had_packet_loss() {
+        if sample_buffer_ref.is_empty() || data.had_packet_loss() {
             recovery_sample_buffer.extend(&new_samples);
 
             if recovery_sample_buffer.len() / channels_count
@@ -525,8 +525,8 @@ pub fn receive_samples_loop(
                 let volume = f as f32 / batch_frames_count as f32;
                 for c in 0..channels_count {
                     let index = f * channels_count + c;
-                    sample_buffer_ref[index] =
-                        sample_buffer_ref[index] * volume + drained_samples[index] * (1. - volume);
+                    sample_buffer_ref[index] = sample_buffer_ref[index]
+                        .mul_add(volume, drained_samples[index] * (1. - volume));
                 }
             }
         }

@@ -102,7 +102,7 @@ pub fn gl_format_to_wgpu(format: u32) -> TextureFormat {
         gl::SRGB8_ALPHA8 => TextureFormat::Rgba8UnormSrgb,
         gl::RGBA8 => TextureFormat::Rgba8Unorm,
         gl::RGBA16F => TextureFormat::Rgba16Float,
-        _ => panic!("Unsupported GL format: {}", format),
+        _ => panic!("Unsupported GL format: {format}"),
     }
 }
 
@@ -286,15 +286,13 @@ impl GraphicsContext {
                 let gl_context = gl::Context::from_loader_function(|fn_name| {
                     egl_instance
                         .get_proc_address(fn_name)
-                        .map(|f| f as *const c_void)
-                        .unwrap_or(ptr::null())
+                        .map_or(ptr::null(), |f| f as *const c_void)
                 });
 
                 let get_fn_ptr = |fn_name| {
                     egl_instance
                         .get_proc_address(fn_name)
-                        .map(|f| f as *const c_void)
-                        .unwrap_or(ptr::null())
+                        .map_or(ptr::null(), |f| f as *const c_void)
                 };
 
                 let create_image: CreateImageFn = mem::transmute(get_fn_ptr(CREATE_IMAGE_FN_STR));

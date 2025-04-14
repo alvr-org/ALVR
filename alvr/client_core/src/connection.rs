@@ -345,8 +345,7 @@ fn connection_pipeline(
                         .decoder_callback
                         .lock()
                         .as_mut()
-                        .map(|callback| callback(header.timestamp, nal))
-                        .unwrap_or(false);
+                        .is_some_and(|callback| callback(header.timestamp, nal));
 
                     if !submitted {
                         stream_corrupted = true;

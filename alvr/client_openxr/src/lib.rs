@@ -303,6 +303,8 @@ pub fn entry_point() {
             face_tracking: None,
             body_tracking: Some(lobby_body_tracking_config),
             prefers_multimodal_input: true,
+            use_left_controller_as_fake_tracker: false,
+            use_right_controller_as_fake_tracker: false
         };
         interaction_context
             .write()

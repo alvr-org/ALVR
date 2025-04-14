@@ -112,7 +112,11 @@ bool FakeViveTracker::activate() {
     vr_properties->SetStringProperty(this->prop_container, vr::Prop_ResourceRoot_String, "htc");
 
     const char* name;
-    if (this->device_id == BODY_CHEST_ID) {
+    if (this->device_id == FAKE_LEFT_TRACKER_ID) {
+        name = "ALVR/tracker/fake_left_tracker";
+    } else if (this->device_id == FAKE_RIGHT_TRACKER_ID) {
+        name = "ALVR/tracker/fake_right_tracker";
+    } else if (this->device_id == BODY_CHEST_ID) {
         name = "ALVR/tracker/chest";
     } else if (this->device_id == BODY_HIPS_ID) {
         name = "ALVR/tracker/waist";

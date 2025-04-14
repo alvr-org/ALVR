@@ -145,6 +145,8 @@ extern "C" void SetTracking(
     FfiDeviceMotion headMotion,
     FfiHandData leftHandData,
     FfiHandData rightHandData,
+    FfiDeviceMotion fakeLeftTrackerMotion,
+    FfiDeviceMotion fakeRightTrackerMotion,
     const FfiDeviceMotion* bodyTrackerMotions,
     int bodyTrackerMotionCount
 );

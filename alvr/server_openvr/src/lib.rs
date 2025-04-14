@@ -15,8 +15,9 @@ mod bindings {
 use bindings::*;
 
 use alvr_common::{
-    error, once_cell::sync::Lazy, parking_lot::RwLock, settings_schema::Switch, warn, BUTTON_INFO,
+    error, once_cell::sync::Lazy, parking_lot::RwLock, settings_schema::Switch, warn, BUTTON_INFO, 
     HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
+    FAKE_TRACKER_LEFT_ID, FAKE_TRACKER_RIGHT_ID, 
 };
 use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};
@@ -113,7 +114,15 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                             .get_device_motion(*HAND_RIGHT_ID, sample_timestamp)
                             .map(|m| tracking::to_ffi_motion(*HAND_RIGHT_ID, m))
                             .filter(|_| tracked);
-
+                        let ffi_left_fake_tracker = context
+                            .get_device_motion(*FAKE_TRACKER_LEFT_ID, sample_timestamp)
+                            .map(|m| tracking::to_ffi_motion(*FAKE_TRACKER_LEFT_ID, m))
+                            .filter(|_| tracked);
+                        let ffi_right_fake_tracker = context
+                            .get_device_motion(*FAKE_TRACKER_RIGHT_ID, sample_timestamp)
+                            .map(|m| tracking::to_ffi_motion(*FAKE_TRACKER_RIGHT_ID, m))
+                            .filter(|_| tracked);
+                        
                         let (
                             ffi_left_hand_skeleton,
                             ffi_right_hand_skeleton,
@@ -211,6 +220,8 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                 ffi_head_motion,
                                 ffi_left_hand_data,
                                 ffi_right_hand_data,
+                                ffi_left_fake_tracker.unwrap_or_default(),
+                                ffi_right_fake_tracker.unwrap_or_default(),
                                 ffi_body_tracker_motions.as_ptr(),
                                 ffi_body_tracker_motions.len() as i32,
                             )

@@ -71,6 +71,9 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
     let mut controller_is_tracker = false;
     let mut controller_profile = 0;
     let mut use_separate_hand_trackers = false;
+    let mut use_left_controller_as_fake_tracker = false;
+    let mut use_right_controller_as_fake_tracker = false;
+
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
         controller_is_tracker =
             matches!(config.emulation_mode, ControllersEmulationMode::ViveTracker);
@@ -92,6 +95,10 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
             .hand_skeleton
             .as_option()
             .is_some_and(|c| c.steamvr_input_2_0);
+
+        use_left_controller_as_fake_tracker = config.use_left_as_tracker;
+        use_right_controller_as_fake_tracker = config.use_right_as_tracker;
+
 
         true
     } else {
@@ -227,6 +234,8 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         amd_bitrate_corruption_fix: settings.video.bitrate.image_corruption_fix,
         use_separate_hand_trackers,
         _controller_profile: controller_profile,
+        use_left_controller_as_fake_tracker,
+        use_right_controller_as_fake_tracker,
         _server_impl_debug: settings.extra.logging.debug_groups.server_impl,
         _client_impl_debug: settings.extra.logging.debug_groups.client_impl,
         _server_core_debug: settings.extra.logging.debug_groups.server_core,

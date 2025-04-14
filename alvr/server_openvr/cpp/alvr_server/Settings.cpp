@@ -120,6 +120,9 @@ void Settings::Load() {
 
         m_useSeparateHandTrackers = config.get("use_separate_hand_trackers").get<bool>();
 
+        m_useLeftControllerAsFakeTracker = config.get("use_left_controller_as_fake_tracker").get<bool>();
+        m_useRightControllerAsFakeTracker = config.get("use_right_controller_as_fake_tracker").get<bool>();
+
         Info("Render Target: %d %d\n", m_renderWidth, m_renderHeight);
         Info("Refresh Rate: %d\n", m_refreshRate);
         m_loaded = true;

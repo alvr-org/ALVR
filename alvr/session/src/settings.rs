@@ -1137,6 +1137,14 @@ Because of runtime limitations, this option is ignored when body tracking is act
     ))]
     pub multimodal_tracking: bool,
 
+    #[schema(flag = "steamvr-restart")]
+    #[schema(strings(help = r"If it is activated left controller will be used as fake tracker in steamVR"))]
+    pub use_left_as_tracker: bool,
+
+    #[schema(flag = "steamvr-restart")]
+    #[schema(strings(help = r"If it is activated right controller will be used as fake tracker in steamVR"))]
+    pub use_right_as_tracker: bool,
+
     #[schema(flag = "real-time")]
     #[schema(strings(
         help = "Enabling this allows using hand gestures to emulate controller inputs."
@@ -1894,6 +1902,8 @@ pub fn session_settings_default() -> SettingsDefault {
                         },
                     },
                     multimodal_tracking: false,
+                    use_left_as_tracker: false,
+                    use_right_as_tracker: false,
                     emulation_mode: ControllersEmulationModeDefault {
                         Custom: ControllersEmulationModeCustomDefault {
                             serial_number: "ALVR Controller".into(),

@@ -87,6 +87,13 @@ Put `DRI_PRIME=1 ~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh 
 
 Put `__NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only __GLX_VENDOR_LIBRARY_NAME=nvidia ~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%` (adjust vrmonitor path to your distro) into SteamVR's commandline options and in those of all VR games you intend to play with ALVR.
 
+If this results in errors such as `error in encoder thread: Failed to initialize vulkan frame context: Invalid argument`, then try this instead:
+
+`__NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only __GLX_VENDOR_LIBRARY_NAME=nvidia VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json  ~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%`
+
+- Again, adjust vrmonitor path to your distro
+- Go to `/usr/share/vulkan/icd.d` and make sure `nvidia_icd.json` exists. It may also be under the name `nvidia_icd.x86_64.json`, in which case you should adjust `VK_ICD_FILENAMES` accordingly.
+
 ### SteamVR Dashboard not rendering in VR on Nvidia discrete GPU
 If you encounter issues with the SteamVR dashboard not rendering in VR you may need to run the entire steam client itself via PRIME render offload. First close the steam client completey if you have it open already, you can do so by clicking the Steam dropdown in the top left and choosing exit. Then from a terminal run: `__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia steam-runtime`
 

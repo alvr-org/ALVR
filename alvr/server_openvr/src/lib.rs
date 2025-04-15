@@ -15,8 +15,8 @@ mod bindings {
 use bindings::*;
 
 use alvr_common::{
-    error, once_cell::sync::Lazy, parking_lot::RwLock, settings_schema::Switch, warn, BUTTON_INFO,
-    HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
+    catch_panic, error, once_cell::sync::Lazy, parking_lot::RwLock, settings_schema::Switch, warn,
+    BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
 };
 use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};
@@ -269,142 +269,162 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
 }
 
 extern "C" fn driver_ready_idle(set_default_chap: bool) {
-    thread::spawn(move || {
-        unsafe { InitOpenvrClient() };
+    catch_panic(|| {
+        thread::spawn(move || {
+            unsafe { InitOpenvrClient() };
 
-        if set_default_chap {
-            // call this when inside a new thread. Calling this on the parent thread will crash SteamVR
-            unsafe {
-                SetChaperoneArea(2.0, 2.0);
+            if set_default_chap {
+                // call this when inside a new thread. Calling this on the parent thread will crash SteamVR
+                unsafe {
+                    SetChaperoneArea(2.0, 2.0);
+                }
             }
-        }
+        });
     });
 }
 
 /// # Safety
 /// `instance_ptr` is a valid pointer to a `TrackedDevice` instance
 pub unsafe extern "C" fn register_buttons(instance_ptr: *mut c_void, device_id: u64) {
-    let mapped_device_id = if device_id == *HAND_TRACKER_LEFT_ID {
-        *HAND_LEFT_ID
-    } else if device_id == *HAND_TRACKER_RIGHT_ID {
-        *HAND_RIGHT_ID
-    } else {
-        device_id
-    };
-
-    for button_id in alvr_server_core::registered_button_set() {
-        if let Some(info) = BUTTON_INFO.get(&button_id) {
-            if info.device_id == mapped_device_id {
-                unsafe { RegisterButton(instance_ptr, button_id) };
-            }
+    catch_panic(|| {
+        let mapped_device_id = if device_id == *HAND_TRACKER_LEFT_ID {
+            *HAND_LEFT_ID
+        } else if device_id == *HAND_TRACKER_RIGHT_ID {
+            *HAND_RIGHT_ID
         } else {
-            error!("Cannot register unrecognized button ID {button_id}");
+            device_id
+        };
+
+        for button_id in alvr_server_core::registered_button_set() {
+            if let Some(info) = BUTTON_INFO.get(&button_id) {
+                if info.device_id == mapped_device_id {
+                    unsafe { RegisterButton(instance_ptr, button_id) };
+                }
+            } else {
+                error!("Cannot register unrecognized button ID {button_id}");
+            }
         }
-    }
+    });
 }
 
 extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
-    if let Ok(duration) = Duration::try_from_secs_f32(duration_s) {
-        if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-            context.send_haptics(Haptics {
-                device_id,
-                duration,
-                frequency,
-                amplitude,
-            });
+    catch_panic(|| {
+        if let Ok(duration) = Duration::try_from_secs_f32(duration_s) {
+            if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+                context.send_haptics(Haptics {
+                    device_id,
+                    duration,
+                    frequency,
+                    amplitude,
+                });
+            }
         }
-    }
+    });
 }
 
 extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32) {
-    let codec = if codec == 0 {
-        CodecType::H264
-    } else if codec == 1 {
-        CodecType::Hevc
-    } else {
-        CodecType::AV1
-    };
+    catch_panic(|| {
+        let codec = if codec == 0 {
+            CodecType::H264
+        } else if codec == 1 {
+            CodecType::Hevc
+        } else {
+            CodecType::AV1
+        };
 
-    let mut config_buffer = vec![0; len as usize];
+        let mut config_buffer = vec![0; len as usize];
 
-    unsafe { ptr::copy_nonoverlapping(buffer_ptr, config_buffer.as_mut_ptr(), len as usize) };
+        unsafe { ptr::copy_nonoverlapping(buffer_ptr, config_buffer.as_mut_ptr(), len as usize) };
 
-    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-        context.set_video_config_nals(config_buffer, codec);
-    }
+        if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+            context.set_video_config_nals(config_buffer, codec);
+        }
+    });
 }
 
 extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_idr: bool) {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-        let buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
-        context.send_video_nal(Duration::from_nanos(timestamp_ns), buffer.to_vec(), is_idr);
-    }
+    catch_panic(|| {
+        if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+            let buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
+            context.send_video_nal(Duration::from_nanos(timestamp_ns), buffer.to_vec(), is_idr);
+        }
+    });
 }
 
 extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-        if let Some(params) = context.get_dynamic_encoder_params() {
-            FfiDynamicEncoderParams {
-                updated: 1,
-                bitrate_bps: params.bitrate_bps as u64,
-                framerate: params.framerate,
+    catch_panic(|| {
+        if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+            if let Some(params) = context.get_dynamic_encoder_params() {
+                FfiDynamicEncoderParams {
+                    updated: 1,
+                    bitrate_bps: params.bitrate_bps as u64,
+                    framerate: params.framerate,
+                }
+            } else {
+                FfiDynamicEncoderParams::default()
             }
         } else {
             FfiDynamicEncoderParams::default()
         }
-    } else {
-        FfiDynamicEncoderParams::default()
-    }
+    })
 }
 
 extern "C" fn report_composed(timestamp_ns: u64, offset_ns: u64) {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-        context.report_composed(
-            Duration::from_nanos(timestamp_ns),
-            Duration::from_nanos(offset_ns),
-        );
-    }
+    catch_panic(|| {
+        if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+            context.report_composed(
+                Duration::from_nanos(timestamp_ns),
+                Duration::from_nanos(offset_ns),
+            );
+        }
+    });
 }
 
 extern "C" fn report_present(timestamp_ns: u64, offset_ns: u64) {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-        context.report_present(
-            Duration::from_nanos(timestamp_ns),
-            Duration::from_nanos(offset_ns),
-        );
-    }
+    catch_panic(|| {
+        if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+            context.report_present(
+                Duration::from_nanos(timestamp_ns),
+                Duration::from_nanos(offset_ns),
+            );
+        }
+    })
 }
 
 extern "C" fn wait_for_vsync() {
-    // Default 120Hz-ish wait if StatisticsManager isn't up.
-    // We use 120Hz-ish so that SteamVR doesn't accidentally get
-    // any weird ideas about our display Hz with its frame pacing.
-    static PRE_HEADSET_STATS_WAIT_INTERVAL: Duration = Duration::from_millis(8);
+    catch_panic(|| {
+        // Default 120Hz-ish wait if StatisticsManager isn't up.
+        // We use 120Hz-ish so that SteamVR doesn't accidentally get
+        // any weird ideas about our display Hz with its frame pacing.
+        static PRE_HEADSET_STATS_WAIT_INTERVAL: Duration = Duration::from_millis(8);
 
-    // NB: don't sleep while locking SERVER_DATA_MANAGER or SERVER_CORE_CONTEXT
-    let sleep_duration = SERVER_CORE_CONTEXT
-        .read()
-        .as_ref()
-        .and_then(|ctx| ctx.duration_until_next_vsync());
+        // NB: don't sleep while locking SERVER_DATA_MANAGER or SERVER_CORE_CONTEXT
+        let sleep_duration = SERVER_CORE_CONTEXT
+            .read()
+            .as_ref()
+            .and_then(|ctx| ctx.duration_until_next_vsync());
 
-    if let Some(duration) = sleep_duration {
-        if alvr_server_core::settings()
-            .video
-            .enforce_server_frame_pacing
-        {
-            thread::sleep(duration);
+        if let Some(duration) = sleep_duration {
+            if alvr_server_core::settings()
+                .video
+                .enforce_server_frame_pacing
+            {
+                thread::sleep(duration);
+            } else {
+                thread::yield_now();
+            }
         } else {
-            thread::yield_now();
+            // StatsManager isn't up because the headset hasn't connected,
+            // safety fallback to prevent deadlocking.
+            thread::sleep(PRE_HEADSET_STATS_WAIT_INTERVAL);
         }
-    } else {
-        // StatsManager isn't up because the headset hasn't connected,
-        // safety fallback to prevent deadlocking.
-        thread::sleep(PRE_HEADSET_STATS_WAIT_INTERVAL);
-    }
+    });
 }
 
 pub extern "C" fn shutdown_driver() {
-    SERVER_CORE_CONTEXT.write().take();
+    catch_panic(|| {
+        SERVER_CORE_CONTEXT.write().take();
+    });
 }
 
 // Check that there is no active dashboard instance not part of this driver installation
@@ -425,76 +445,79 @@ pub unsafe extern "C" fn HmdDriverFactory(
     interface_name: *const c_char,
     return_code: *mut i32,
 ) -> *mut c_void {
-    let Ok(driver_dir) = alvr_server_io::get_driver_dir_from_registered() else {
-        return ptr::null_mut();
-    };
-    let Some(filesystem_layout) =
-        alvr_filesystem::filesystem_layout_from_openvr_driver_root_dir(&driver_dir)
-    else {
-        return ptr::null_mut();
-    };
-
-    if !should_initialize_driver(&filesystem_layout) {
-        return ptr::null_mut();
-    }
-
-    static ONCE: Once = Once::new();
-    ONCE.call_once(move || {
-        alvr_server_core::initialize_environment(filesystem_layout.clone());
-
-        let log_to_disk = alvr_server_core::settings().extra.logging.log_to_disk;
-
-        alvr_server_core::init_logging(
-            log_to_disk.then(|| filesystem_layout.session_log()),
-            Some(filesystem_layout.crash_log()),
-        );
-
-        unsafe {
-            g_sessionPath = CString::new(filesystem_layout.session().to_string_lossy().to_string())
-                .unwrap()
-                .into_raw();
-            g_driverRootDir = CString::new(
-                filesystem_layout
-                    .openvr_driver_root_dir
-                    .to_string_lossy()
-                    .to_string(),
-            )
-            .unwrap()
-            .into_raw();
+    catch_panic(|| {
+        let Ok(driver_dir) = alvr_server_io::get_driver_dir_from_registered() else {
+            return ptr::null_mut();
+        };
+        let Some(filesystem_layout) =
+            alvr_filesystem::filesystem_layout_from_openvr_driver_root_dir(&driver_dir)
+        else {
+            return ptr::null_mut();
         };
 
-        graphics::initialize_shaders();
-
-        unsafe {
-            LogError = Some(alvr_server_core::alvr_error);
-            LogWarn = Some(alvr_server_core::alvr_warn);
-            LogInfo = Some(alvr_server_core::alvr_info);
-            LogDebug = Some(alvr_server_core::alvr_dbg_server_impl);
-            LogEncoder = Some(alvr_server_core::alvr_dbg_encoder);
-            LogPeriodically = Some(alvr_server_core::alvr_log_periodically);
-            PathStringToHash = Some(alvr_server_core::alvr_path_to_id);
-            GetSerialNumber = Some(props::get_serial_number);
-            SetOpenvrProps = Some(props::set_device_openvr_props);
-            RegisterButtons = Some(register_buttons);
-            DriverReadyIdle = Some(driver_ready_idle);
-            HapticsSend = Some(send_haptics);
-            SetVideoConfigNals = Some(set_video_config_nals);
-            VideoSend = Some(send_video);
-            GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
-            ReportComposed = Some(report_composed);
-            ReportPresent = Some(report_present);
-            WaitForVSync = Some(wait_for_vsync);
-            ShutdownRuntime = Some(shutdown_driver);
-
-            CppInit();
+        if !should_initialize_driver(&filesystem_layout) {
+            return ptr::null_mut();
         }
 
-        let (context, events_receiver) = ServerCoreContext::new();
+        static ONCE: Once = Once::new();
+        ONCE.call_once(move || {
+            alvr_server_core::initialize_environment(filesystem_layout.clone());
 
-        *SERVER_CORE_CONTEXT.write() = Some(context);
+            let log_to_disk = alvr_server_core::settings().extra.logging.log_to_disk;
 
-        event_loop(events_receiver);
-    });
+            alvr_server_core::init_logging(
+                log_to_disk.then(|| filesystem_layout.session_log()),
+                Some(filesystem_layout.crash_log()),
+            );
 
-    CppOpenvrEntryPoint(interface_name, return_code)
+            unsafe {
+                g_sessionPath =
+                    CString::new(filesystem_layout.session().to_string_lossy().to_string())
+                        .unwrap()
+                        .into_raw();
+                g_driverRootDir = CString::new(
+                    filesystem_layout
+                        .openvr_driver_root_dir
+                        .to_string_lossy()
+                        .to_string(),
+                )
+                .unwrap()
+                .into_raw();
+            };
+
+            graphics::initialize_shaders();
+
+            unsafe {
+                LogError = Some(alvr_server_core::alvr_error);
+                LogWarn = Some(alvr_server_core::alvr_warn);
+                LogInfo = Some(alvr_server_core::alvr_info);
+                LogDebug = Some(alvr_server_core::alvr_dbg_server_impl);
+                LogEncoder = Some(alvr_server_core::alvr_dbg_encoder);
+                LogPeriodically = Some(alvr_server_core::alvr_log_periodically);
+                PathStringToHash = Some(alvr_server_core::alvr_path_to_id);
+                GetSerialNumber = Some(props::get_serial_number);
+                SetOpenvrProps = Some(props::set_device_openvr_props);
+                RegisterButtons = Some(register_buttons);
+                DriverReadyIdle = Some(driver_ready_idle);
+                HapticsSend = Some(send_haptics);
+                SetVideoConfigNals = Some(set_video_config_nals);
+                VideoSend = Some(send_video);
+                GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
+                ReportComposed = Some(report_composed);
+                ReportPresent = Some(report_present);
+                WaitForVSync = Some(wait_for_vsync);
+                ShutdownRuntime = Some(shutdown_driver);
+
+                CppInit();
+            }
+
+            let (context, events_receiver) = ServerCoreContext::new();
+
+            *SERVER_CORE_CONTEXT.write() = Some(context);
+
+            event_loop(events_receiver);
+        });
+
+        CppOpenvrEntryPoint(interface_name, return_code)
+    })
 }

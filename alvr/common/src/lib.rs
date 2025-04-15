@@ -8,7 +8,10 @@ mod version;
 use once_cell::sync::Lazy;
 use parking_lot::{Condvar, Mutex, RwLockWriteGuard};
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::{
+    panic::UnwindSafe,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 pub use anyhow;
 pub use glam;
@@ -77,4 +80,10 @@ pub fn wait_rwlock<T>(condvar: &Condvar, guard: &mut RwLockWriteGuard<'_, T>) {
     RwLockWriteGuard::unlocked(guard, move || {
         condvar.wait(&mut inner_guard);
     });
+}
+
+// The main purpose of this function is to hide the unwrap(), which is intended when aborting in a
+// extern "C" function.
+pub fn catch_panic<R, F: FnOnce() -> R + UnwindSafe>(f: F) -> R {
+    std::panic::catch_unwind(f).unwrap()
 }

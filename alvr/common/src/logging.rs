@@ -17,82 +17,82 @@ pub const DECODER_DBG_LABEL: &str = "DECODER";
 
 #[macro_export]
 macro_rules! dbg_server_impl {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         #[cfg(debug_assertions)]
         $crate::log::debug!(target: $crate::SERVER_IMPL_DBG_LABEL, $($args)*);
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! dbg_client_impl {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         #[cfg(debug_assertions)]
         $crate::log::debug!(target: $crate::CLIENT_IMPL_DBG_LABEL, $($args)*);
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! dbg_server_core {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         #[cfg(debug_assertions)]
         $crate::log::debug!(target: $crate::SERVER_CORE_DBG_LABEL, $($args)*);
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! dbg_client_core {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         #[cfg(debug_assertions)]
         $crate::log::debug!(target: $crate::CLIENT_CORE_DBG_LABEL, $($args)*);
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! dbg_connection {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         #[cfg(debug_assertions)]
         $crate::log::debug!(target: $crate::CONNECTION_DBG_LABEL, $($args)*);
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! dbg_sockets {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         #[cfg(debug_assertions)]
         $crate::log::debug!(target: $crate::SOCKETS_DBG_LABEL, $($args)*);
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! dbg_server_gfx {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         #[cfg(debug_assertions)]
         $crate::log::debug!(target: $crate::SERVER_GFX_DBG_LABEL, $($args)*);
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! dbg_client_gfx {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         #[cfg(debug_assertions)]
         $crate::log::debug!(target: $crate::CLIENT_GFX_DBG_LABEL, $($args)*);
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! dbg_encoder {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         #[cfg(debug_assertions)]
         $crate::log::debug!(target: $crate::ENCODER_DBG_LABEL, $($args)*);
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! dbg_decoder {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         #[cfg(debug_assertions)]
         $crate::log::debug!(target: $crate::DECODER_DBG_LABEL, $($args)*);
-    };
+    }};
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]

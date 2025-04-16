@@ -22,14 +22,16 @@ use bindings::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn ALVR_Negotiate(nli: *mut VkNegotiateLayerInterface) -> VkResult {
-    g_sessionPath = CString::new(
-        alvr_filesystem::filesystem_layout_invalid()
-            .session()
-            .to_string_lossy()
-            .to_string(),
-    )
-    .unwrap()
-    .into_raw();
+    alvr_common::catch_panic(|| {
+        g_sessionPath = CString::new(
+            alvr_filesystem::filesystem_layout_invalid()
+                .session()
+                .to_string_lossy()
+                .to_string(),
+        )
+        .unwrap()
+        .into_raw();
 
-    bindings::wsi_layer_Negotiate(nli)
+        bindings::wsi_layer_Negotiate(nli)
+    })
 }

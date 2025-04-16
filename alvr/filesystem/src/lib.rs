@@ -1,4 +1,3 @@
-use once_cell::sync::Lazy;
 use std::{
     env::{
         self,
@@ -112,25 +111,26 @@ impl Layout {
                 |opt: Option<&'static str>, path| opt.map_or(root.join(path), PathBuf::from);
 
             // Get paths from environment or use FHS compliant paths
-            let executables_dir = or_path(option_env!("executables_dir"), "bin");
-            let libraries_dir = or_path(option_env!("libraries_dir"), "lib64");
-            let static_resources_dir = or_path(option_env!("static_resources_dir"), "share/alvr");
+            let executables_dir = or_path(option_env!("ALVR_EXECUTABLES_DIR"), "bin");
+            let libraries_dir = or_path(option_env!("ALVR_LIBRARIES_DIR"), "lib64");
+            let static_resources_dir =
+                or_path(option_env!("ALVR_STATIC_RESOURCES_DIR"), "share/alvr");
             let openvr_driver_root_dir =
-                or_path(option_env!("openvr_driver_root_dir"), "lib64/alvr");
+                or_path(option_env!("ALVR_OPENVR_DRIVER_ROOT_DIR"), "lib64/alvr");
             let vrcompositor_wrapper_dir =
-                or_path(option_env!("vrcompositor_wrapper_dir"), "libexec/alvr");
-            let firewall_script_dir = or_path(option_env!("firewall_script_dir"), "libexec/alvr");
-            let firewalld_config_dir = or_path(option_env!("firewalld_config_dir"), "libexec/alvr");
-            let ufw_config_dir = or_path(option_env!("ufw_config_dir"), "libexec/alvr");
+                or_path(option_env!("ALVR_VRCOMPOSITOR_WRAPPER_DIR"), "libexec/alvr");
+            let firewall_script_dir = or_path(option_env!("FIREWALL_SCRIPT_DIR"), "libexec/alvr");
+            let firewalld_config_dir = or_path(option_env!("FIREWALLD_CONFIG_DIR"), "libexec/alvr");
+            let ufw_config_dir = or_path(option_env!("UFW_CONFIG_DIR"), "libexec/alvr");
             let vulkan_layer_manifest_dir = or_path(
-                option_env!("vulkan_layer_manifest_dir"),
+                option_env!("ALVR_VULKAN_LAYER_MANIFEST_DIR"),
                 "share/vulkan/explicit_layer.d",
             );
 
-            let config_dir = option_env!("config_dir")
+            let config_dir = option_env!("ALVR_CONFIG_DIR")
                 .map_or_else(|| dirs::config_dir().unwrap().join("alvr"), PathBuf::from);
-            let log_dir =
-                option_env!("log_dir").map_or_else(|| dirs::home_dir().unwrap(), PathBuf::from);
+            let log_dir = option_env!("ALVR_LOG_DIR")
+                .map_or_else(|| dirs::home_dir().unwrap(), PathBuf::from);
 
             Self {
                 executables_dir,
@@ -264,14 +264,14 @@ impl Layout {
     }
 }
 
-// Use static var to prevent issues if the "root" env is changed at runtime
-static LAYOUT_FROM_ENV: Lazy<Option<Layout>> =
-    Lazy::new(|| option_env!("root").map(|path| Layout::new(Path::new(path))));
+fn layout_from_env() -> Option<Layout> {
+    option_env!("ALVR_ROOT_DIR").map(|path| Layout::new(Path::new(path)))
+}
 
 // The path should include the executable file name
 // The path argument is used only if ALVR is built as portable
 pub fn filesystem_layout_from_dashboard_exe(path: &Path) -> Option<Layout> {
-    LAYOUT_FROM_ENV.clone().or_else(|| {
+    layout_from_env().or_else(|| {
         let root = if cfg!(target_os = "linux") {
             // FHS path is expected
             path.parent()?.parent()?.to_owned()
@@ -285,7 +285,7 @@ pub fn filesystem_layout_from_dashboard_exe(path: &Path) -> Option<Layout> {
 
 // The dir argument is used only if ALVR is built as portable
 pub fn filesystem_layout_from_openvr_driver_root_dir(dir: &Path) -> Option<Layout> {
-    LAYOUT_FROM_ENV.clone().or_else(|| {
+    layout_from_env().or_else(|| {
         let root = if cfg!(target_os = "linux") {
             // FHS path is expected
             dir.parent()?.parent()?.to_owned()
@@ -301,7 +301,5 @@ pub fn filesystem_layout_from_openvr_driver_root_dir(dir: &Path) -> Option<Layou
 // be invalid, except for the ones that disregard the relative path (for example the config dir) and
 // the ones that have been overridden.
 pub fn filesystem_layout_invalid() -> Layout {
-    LAYOUT_FROM_ENV
-        .clone()
-        .unwrap_or_else(|| Layout::new(Path::new("./")))
+    layout_from_env().unwrap_or_else(|| Layout::new(Path::new("./")))
 }

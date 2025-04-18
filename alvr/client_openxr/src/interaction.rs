@@ -167,11 +167,14 @@ pub struct InteractionContext {
     xr_session: xr::Session<xr::OpenGlEs>,
     xr_system: xr::SystemId,
     extra_extensions: Vec<String>,
-    platform: Platform,
+    pub platform: Platform,
     pub action_set: xr::ActionSet,
     pub button_actions: HashMap<u64, ButtonAction>,
     pub hands_interaction: [HandInteraction; 2],
     multimodal_handle: Option<MultimodalMeta>,
+    // Stores head orientation relative to the first created reference space.
+    // Used by head rotation correction for eye gazes on Pico.
+    pub relative_head_orientation: Quat,
     pub multimodal_hands_enabled: bool,
     pub face_sources: FaceSources,
     pub body_sources: BodySources,
@@ -468,6 +471,7 @@ impl InteractionContext {
                 body_tracker_bd: None,
                 motion_tracker_bd: None,
             },
+            relative_head_orientation: Quat::IDENTITY,
         }
     }
 

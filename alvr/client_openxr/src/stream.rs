@@ -548,7 +548,19 @@ fn stream_input_loop(
                 &int_ctx.face_sources,
                 stage_reference_space,
                 now,
-            ),
+            )
+            .map(|option| {
+                option.map(|pose| {
+                    if int_ctx.platform.is_pico() {
+                        Pose {
+                            orientation: int_ctx.relative_head_orientation * pose.orientation,
+                            position: int_ctx.relative_head_orientation * pose.position,
+                        }
+                    } else {
+                        pose
+                    }
+                })
+            }),
             fb_face_expression: interaction::get_fb_face_expression(&int_ctx.face_sources, now).or(
                 interaction::get_pico_face_expression(&int_ctx.face_sources, now),
             ),

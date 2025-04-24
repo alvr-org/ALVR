@@ -485,7 +485,7 @@ pub fn entry_point() {
             let layer_settings = xr_instance
                 .exts()
                 .fb_composition_layer_settings
-                .and_then(|_| stream_context.as_ref())
+                .and(stream_context.as_ref())
                 .map(|context| context.composition_layer_flags())
                 .filter(|&flags| flags > 0)
                 .map(|flags| xr::sys::CompositionLayerSettingsFB {

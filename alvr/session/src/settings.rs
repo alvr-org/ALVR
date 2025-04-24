@@ -658,6 +658,36 @@ This is a similar effect to AR glasses."
     HsvChromaKey(#[schema(flag = "real-time")] HsvChromaKeyConfig),
 }
 
+#[repr(u8)]
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
+#[schema(gui = "button_group")]
+pub enum PostProcessingSuperSamplingMode {
+    Disabled = 0,
+    Normal = 1 << 0,
+    Quality = 1 << 1,
+}
+
+#[repr(u8)]
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
+#[schema(gui = "button_group")]
+pub enum PostProcessingSharpeningMode {
+    Disabled = 0,
+    Normal = 1 << 2,
+    Quality = 1 << 3,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct PostProcessingConfig {
+    #[schema(strings(
+        help = "Reduce flicker for high contrast edges.\nUseful when the input resolution is high compared to the headset display"
+    ))]
+    pub super_sampling: PostProcessingSuperSamplingMode,
+    #[schema(strings(
+        help = "Improve clarity of high contrast edges and counteract blur.\nUseful when the input resolution is low compared to the headset display"
+    ))]
+    pub sharpening: PostProcessingSharpeningMode,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct UpscalingConfig {
     #[schema(strings(
@@ -749,6 +779,9 @@ If you want to reduce the amount of pixelation on the edges, increase the center
     pub adapter_index: u32,
 
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,
+
+    #[schema(strings(display_name = "OpenXR client-side post-processing"))]
+    pub clientside_post_processing: PostProcessingConfig,
 
     #[schema(strings(help = "Snapdragon Game Super Resolution client-side upscaling"))]
     pub upscaling: Switch<UpscalingConfig>,
@@ -1577,6 +1610,14 @@ pub fn session_settings_default() -> SettingsDefault {
                         value_end_min: 1.0,
                         value_end_max: 1.1,
                     },
+                },
+            },
+            clientside_post_processing: PostProcessingConfigDefault {
+                super_sampling: PostProcessingSuperSamplingModeDefault {
+                    variant: PostProcessingSuperSamplingModeDefaultVariant::Disabled,
+                },
+                sharpening: PostProcessingSharpeningModeDefault {
+                    variant: PostProcessingSharpeningModeDefaultVariant::Disabled,
                 },
             },
             upscaling: SwitchDefault {

@@ -169,6 +169,7 @@ pub fn entry_point() {
     exts.ext_local_floor = available_extensions.ext_local_floor;
     exts.fb_body_tracking = available_extensions.fb_body_tracking;
     exts.fb_color_space = available_extensions.fb_color_space;
+    exts.fb_composition_layer_settings = available_extensions.fb_composition_layer_settings;
     exts.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
     exts.fb_eye_tracking_social = available_extensions.fb_eye_tracking_social;
     exts.fb_face_tracking2 = available_extensions.fb_face_tracking2;
@@ -481,18 +482,36 @@ pub fn entry_point() {
                 continue;
             }
 
+            let layer_settings = xr_instance
+                .exts()
+                .fb_composition_layer_settings
+                .and_then(|_| stream_context.as_ref())
+                .map(|context| context.composition_layer_flags())
+                .filter(|&flags| flags > 0)
+                .map(|flags| xr::sys::CompositionLayerSettingsFB {
+                    ty: xr::StructureType::COMPOSITION_LAYER_SETTINGS_FB,
+                    next: std::ptr::null(),
+                    layer_flags: xr::CompositionLayerSettingsFlagsFB::from_raw(flags),
+                });
+
             // todo: allow rendering lobby and stream layers at the same time and add cross fade
-            let (layer, display_time) = if let Some(stream) = &mut stream_context {
+            let (layer_builder, display_time) = if let Some(stream) = &mut stream_context {
                 stream.render(frame_interval, vsync_time)
             } else {
                 (lobby.render(vsync_time), vsync_time)
             };
 
+            let layer = if let Some(layer_settings) = &layer_settings {
+                layer_builder.build_chain(std::ptr::from_ref(layer_settings).cast())
+            } else {
+                layer_builder.build()
+            };
+
             let layers: &[&xr::CompositionLayerBase<_>] =
                 if let Some(passthrough_layer) = &passthrough_layer {
-                    &[passthrough_layer, &layer.build()]
+                    &[passthrough_layer, &layer]
                 } else {
-                    &[&layer.build()]
+                    &[&layer]
                 };
 
             graphics_context.make_current();

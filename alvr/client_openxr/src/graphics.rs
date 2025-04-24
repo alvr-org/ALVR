@@ -1,6 +1,7 @@
 use alvr_common::glam::UVec2;
 use alvr_graphics::GraphicsContext;
 use openxr as xr;
+use std::ffi::c_void;
 
 #[allow(unused)]
 pub fn session_create_info(ctx: &GraphicsContext) -> xr::opengles::SessionCreateInfo {
@@ -79,6 +80,13 @@ impl<'a> ProjectionLayerBuilder<'a> {
     }
 
     pub fn build(&self) -> xr::CompositionLayerProjection<xr::OpenGlEs> {
+        xr::CompositionLayerProjection::new()
+            .layer_flags(self.flags())
+            .space(self.reference_space)
+            .views(&self.layers)
+    }
+
+    fn flags(&self) -> xr::CompositionLayerFlags {
         let mut flags = xr::CompositionLayerFlags::EMPTY;
 
         if let Some(alpha) = &self.alpha {
@@ -89,9 +97,24 @@ impl<'a> ProjectionLayerBuilder<'a> {
             }
         }
 
-        xr::CompositionLayerProjection::new()
-            .layer_flags(flags)
-            .space(self.reference_space)
-            .views(&self.layers)
+        flags
+    }
+
+    /// The `next` pointer necessary to specify layer settings is not available from the builder,
+    /// and it is not accessible to mutate once built either.
+    /// The only way to set it is by creating the layer with `from_raw`.
+    ///
+    /// To make things easier on us, we build the layer with the tried and tested `build`,
+    /// before immediately dismantling its raw content and re-assembling it with the added `next` field.  
+    pub fn build_chain(&self, next: *const c_void) -> xr::CompositionLayerProjection<xr::OpenGlEs> {
+        unsafe {
+            // The entire result of the default build() is moved into this one, so this should be safe as long as:
+            // - the layer would have been correctly built without the `next` pointer
+            // - the data referred to by the `next` pointer outlives the built layer
+            xr::CompositionLayerProjection::from_raw(xr::sys::CompositionLayerProjection {
+                next,
+                ..self.build().into_raw()
+            })
+        }
     }
 }

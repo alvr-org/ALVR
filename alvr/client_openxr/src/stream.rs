@@ -19,7 +19,7 @@ use alvr_graphics::{
 use alvr_packets::{FaceData, RealTimeConfig, StreamConfig, ViewParams};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, CodecType, FoveatedEncodingConfig,
-    MediacodecProperty, PassthroughMode, UpscalingConfig,
+    MediacodecProperty, PassthroughMode, PostProcessingConfig, UpscalingConfig,
 };
 use alvr_system_info::Platform;
 use openxr as xr;
@@ -42,6 +42,7 @@ pub struct ParsedStreamConfig {
     pub passthrough: Option<PassthroughMode>,
     pub foveated_encoding_config: Option<FoveatedEncodingConfig>,
     pub clientside_foveation_config: Option<ClientsideFoveationConfig>,
+    pub clientside_post_processing: PostProcessingConfig,
     pub upscaling: Option<UpscalingConfig>,
     pub force_software_decoder: bool,
     pub max_buffering_frames: f32,
@@ -64,6 +65,7 @@ impl ParsedStreamConfig {
                 .enable_foveated_encoding
                 .then(|| config.settings.video.foveated_encoding.as_option().cloned())
                 .flatten(),
+            clientside_post_processing: config.settings.video.clientside_post_processing.clone(),
             clientside_foveation_config: config
                 .settings
                 .video
@@ -239,6 +241,11 @@ impl StreamContext {
 
     pub fn uses_passthrough(&self) -> bool {
         self.config.passthrough.is_some()
+    }
+
+    pub fn composition_layer_flags(&self) -> u64 {
+        (self.config.clientside_post_processing.sharpening as u64)
+            | (self.config.clientside_post_processing.super_sampling as u64)
     }
 
     pub fn update_reference_space(&mut self) {

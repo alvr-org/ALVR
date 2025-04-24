@@ -18,8 +18,8 @@ use alvr_graphics::{
 };
 use alvr_packets::{FaceData, RealTimeConfig, StreamConfig, ViewParams};
 use alvr_session::{
-    ClientsideFoveationConfig, ClientsideFoveationMode, CodecType, FoveatedEncodingConfig,
-    MediacodecProperty, PassthroughMode, PostProcessingConfig, UpscalingConfig,
+    ClientsideFoveationConfig, ClientsideFoveationMode, ClientsidePostProcessingConfig, CodecType,
+    FoveatedEncodingConfig, MediacodecProperty, PassthroughMode, UpscalingConfig,
 };
 use alvr_system_info::Platform;
 use openxr as xr;
@@ -42,7 +42,7 @@ pub struct ParsedStreamConfig {
     pub passthrough: Option<PassthroughMode>,
     pub foveated_encoding_config: Option<FoveatedEncodingConfig>,
     pub clientside_foveation_config: Option<ClientsideFoveationConfig>,
-    pub clientside_post_processing: PostProcessingConfig,
+    pub clientside_post_processing: Option<ClientsidePostProcessingConfig>,
     pub upscaling: Option<UpscalingConfig>,
     pub force_software_decoder: bool,
     pub max_buffering_frames: f32,
@@ -65,11 +65,16 @@ impl ParsedStreamConfig {
                 .enable_foveated_encoding
                 .then(|| config.settings.video.foveated_encoding.as_option().cloned())
                 .flatten(),
-            clientside_post_processing: config.settings.video.clientside_post_processing.clone(),
             clientside_foveation_config: config
                 .settings
                 .video
                 .clientside_foveation
+                .as_option()
+                .cloned(),
+            clientside_post_processing: config
+                .settings
+                .video
+                .clientside_post_processing
                 .as_option()
                 .cloned(),
             upscaling: config.settings.video.upscaling.as_option().cloned(),
@@ -96,6 +101,7 @@ pub struct StreamContext {
     target_view_resolution: UVec2,
     renderer: StreamRenderer,
     decoder: Option<(VideoDecoderConfig, VideoDecoderSource)>,
+    composition_layer_settings: Option<xr::sys::CompositionLayerSettingsFB>,
 }
 
 impl StreamContext {
@@ -218,6 +224,19 @@ impl StreamContext {
             xr::ReferenceSpaceType::VIEW,
         ));
 
+        let composition_layer_settings = xr_exts
+            .fb_composition_layer_settings
+            .and(config.clientside_post_processing.as_ref())
+            .map(|post_processing| {
+                (post_processing.sharpening as u64) | (post_processing.super_sampling as u64)
+            })
+            .filter(|&flags| flags > 0)
+            .map(|flags| xr::sys::CompositionLayerSettingsFB {
+                ty: xr::StructureType::COMPOSITION_LAYER_SETTINGS_FB,
+                next: ptr::null(),
+                layer_flags: xr::CompositionLayerSettingsFlagsFB::from_raw(flags),
+            });
+
         let mut this = StreamContext {
             core_context: core_ctx,
             xr_session,
@@ -232,6 +251,7 @@ impl StreamContext {
             target_view_resolution,
             renderer,
             decoder: None,
+            composition_layer_settings,
         };
 
         this.update_reference_space();
@@ -241,11 +261,6 @@ impl StreamContext {
 
     pub fn uses_passthrough(&self) -> bool {
         self.config.passthrough.is_some()
-    }
-
-    pub fn composition_layer_flags(&self) -> u64 {
-        (self.config.clientside_post_processing.sharpening as u64)
-            | (self.config.clientside_post_processing.super_sampling as u64)
     }
 
     pub fn update_reference_space(&mut self) {
@@ -447,6 +462,7 @@ impl StreamContext {
                             | PassthroughMode::HsvChromaKey(_)
                     ),
                 }),
+            self.composition_layer_settings.as_ref(),
         );
 
         (layer, timestamp)

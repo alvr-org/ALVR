@@ -661,7 +661,7 @@ This is a similar effect to AR glasses."
 #[repr(u8)]
 #[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
 #[schema(gui = "button_group")]
-pub enum PostProcessingSuperSamplingMode {
+pub enum ClientsidePostProcessingSuperSamplingMode {
     Disabled = 0,
     Normal = 1 << 0,
     Quality = 1 << 1,
@@ -670,22 +670,22 @@ pub enum PostProcessingSuperSamplingMode {
 #[repr(u8)]
 #[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
 #[schema(gui = "button_group")]
-pub enum PostProcessingSharpeningMode {
+pub enum ClientsidePostProcessingSharpeningMode {
     Disabled = 0,
     Normal = 1 << 2,
     Quality = 1 << 3,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub struct PostProcessingConfig {
+pub struct ClientsidePostProcessingConfig {
     #[schema(strings(
         help = "Reduce flicker for high contrast edges.\nUseful when the input resolution is high compared to the headset display"
     ))]
-    pub super_sampling: PostProcessingSuperSamplingMode,
+    pub super_sampling: ClientsidePostProcessingSuperSamplingMode,
     #[schema(strings(
         help = "Improve clarity of high contrast edges and counteract blur.\nUseful when the input resolution is low compared to the headset display"
     ))]
-    pub sharpening: PostProcessingSharpeningMode,
+    pub sharpening: ClientsidePostProcessingSharpeningMode,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
@@ -780,8 +780,11 @@ If you want to reduce the amount of pixelation on the edges, increase the center
 
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,
 
-    #[schema(strings(display_name = "OpenXR client-side post-processing"))]
-    pub clientside_post_processing: PostProcessingConfig,
+    #[schema(strings(
+        display_name = "Client-side post-processing",
+        help = "Hardware optimized algorithms, available on Quest and Pico headsets"
+    ))]
+    pub clientside_post_processing: Switch<ClientsidePostProcessingConfig>,
 
     #[schema(strings(help = "Snapdragon Game Super Resolution client-side upscaling"))]
     pub upscaling: Switch<UpscalingConfig>,
@@ -1612,12 +1615,15 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                 },
             },
-            clientside_post_processing: PostProcessingConfigDefault {
-                super_sampling: PostProcessingSuperSamplingModeDefault {
-                    variant: PostProcessingSuperSamplingModeDefaultVariant::Disabled,
-                },
-                sharpening: PostProcessingSharpeningModeDefault {
-                    variant: PostProcessingSharpeningModeDefaultVariant::Disabled,
+            clientside_post_processing: SwitchDefault {
+                enabled: false,
+                content: ClientsidePostProcessingConfigDefault {
+                    super_sampling: ClientsidePostProcessingSuperSamplingModeDefault {
+                        variant: ClientsidePostProcessingSuperSamplingModeDefaultVariant::Disabled,
+                    },
+                    sharpening: ClientsidePostProcessingSharpeningModeDefault {
+                        variant: ClientsidePostProcessingSharpeningModeDefaultVariant::Disabled,
+                    },
                 },
             },
             upscaling: SwitchDefault {

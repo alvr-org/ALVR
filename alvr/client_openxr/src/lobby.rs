@@ -246,6 +246,7 @@ impl Lobby {
             Some(ProjectionLayerAlphaConfig {
                 premultiplied: true,
             }),
+            None,
         )
     }
 }

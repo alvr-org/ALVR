@@ -1,5 +1,6 @@
 use alvr_common::glam::UVec2;
 use alvr_graphics::GraphicsContext;
+use alvr_session::ClientsidePostProcessingConfig;
 use openxr as xr;
 
 #[allow(unused)]
@@ -63,7 +64,7 @@ pub struct ProjectionLayerBuilder<'a> {
     reference_space: &'a xr::Space,
     layers: [xr::CompositionLayerProjectionView<'a, xr::OpenGlEs>; 2],
     alpha: Option<ProjectionLayerAlphaConfig>,
-    composition_layer_settings: Option<&'a xr::sys::CompositionLayerSettingsFB>,
+    composition_layer_settings: Option<xr::sys::CompositionLayerSettingsFB>,
 }
 
 impl<'a> ProjectionLayerBuilder<'a> {
@@ -71,8 +72,20 @@ impl<'a> ProjectionLayerBuilder<'a> {
         reference_space: &'a xr::Space,
         layers: [xr::CompositionLayerProjectionView<'a, xr::OpenGlEs>; 2],
         alpha: Option<ProjectionLayerAlphaConfig>,
-        composition_layer_settings: Option<&'a xr::sys::CompositionLayerSettingsFB>,
+        clientside_post_processing_config: Option<ClientsidePostProcessingConfig>,
     ) -> Self {
+        let composition_layer_settings = clientside_post_processing_config
+            .map(|post_processing| {
+                xr::CompositionLayerSettingsFlagsFB::from_raw(
+                    (post_processing.sharpening as u64) | (post_processing.super_sampling as u64),
+                )
+            })
+            .filter(|&flags| flags != xr::CompositionLayerSettingsFlagsFB::EMPTY)
+            .map(|flags| xr::sys::CompositionLayerSettingsFB {
+                ty: xr::StructureType::COMPOSITION_LAYER_SETTINGS_FB,
+                next: std::ptr::null(),
+                layer_flags: flags,
+            });
         Self {
             reference_space,
             layers,
@@ -97,11 +110,8 @@ impl<'a> ProjectionLayerBuilder<'a> {
             .space(self.reference_space)
             .views(&self.layers);
 
-        if let Some(composition_layer_settings) = self.composition_layer_settings {
+        if let Some(composition_layer_settings) = self.composition_layer_settings.as_ref() {
             unsafe {
-                // The entire result of the default build() is moved into this one, so this should be safe as long as:
-                // - the layer would have been correctly built without the `next` pointer
-                // - the data referred to by the `next` pointer outlives the built layer
                 xr::CompositionLayerProjection::from_raw(xr::sys::CompositionLayerProjection {
                     next: std::ptr::from_ref(composition_layer_settings).cast(),
                     ..layer.into_raw()

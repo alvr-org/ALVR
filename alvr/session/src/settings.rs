@@ -688,12 +688,6 @@ pub struct ClientsidePostProcessingConfig {
     pub sharpening: ClientsidePostProcessingSharpeningMode,
 }
 
-impl ClientsidePostProcessingConfig {
-    pub fn flags(&self) -> u64 {
-        (self.sharpening as u64) | (self.super_sampling as u64)
-    }
-}
-
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct UpscalingConfig {
     #[schema(strings(

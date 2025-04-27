@@ -224,18 +224,8 @@ impl StreamContext {
             xr::ReferenceSpaceType::VIEW,
         ));
 
-        let composition_layer_settings = xr_exts
-            .fb_composition_layer_settings
-            .and(config.clientside_post_processing.as_ref())
-            .map(|post_processing| {
-                (post_processing.sharpening as u64) | (post_processing.super_sampling as u64)
-            })
-            .filter(|&flags| flags > 0)
-            .map(|flags| xr::sys::CompositionLayerSettingsFB {
-                ty: xr::StructureType::COMPOSITION_LAYER_SETTINGS_FB,
-                next: ptr::null(),
-                layer_flags: xr::CompositionLayerSettingsFlagsFB::from_raw(flags),
-            });
+        let composition_layer_settings =
+            build_composition_layer_settings(xr_exts, config.clientside_post_processing.as_ref());
 
         let mut this = StreamContext {
             core_context: core_ctx,
@@ -344,6 +334,11 @@ impl StreamContext {
 
     pub fn update_real_time_config(&mut self, config: &RealTimeConfig) {
         self.config.passthrough = config.passthrough.clone();
+        self.config.clientside_post_processing = config.clientside_post_processing.clone();
+        self.composition_layer_settings = build_composition_layer_settings(
+            self.xr_session.instance().exts(),
+            config.clientside_post_processing.as_ref(),
+        );
     }
 
     pub fn render(
@@ -615,4 +610,21 @@ fn stream_input_loop(
         deadline += frame_interval / 3;
         thread::sleep(deadline.saturating_duration_since(Instant::now()));
     }
+}
+
+#[inline]
+fn build_composition_layer_settings(
+    xr_exts: &xr::InstanceExtensions,
+    config: Option<&ClientsidePostProcessingConfig>,
+) -> Option<xr::sys::CompositionLayerSettingsFB> {
+    xr_exts
+        .fb_composition_layer_settings
+        .and(config)
+        .map(|post_processing| post_processing.flags())
+        .filter(|&flags| flags > 0)
+        .map(|flags| xr::sys::CompositionLayerSettingsFB {
+            ty: xr::StructureType::COMPOSITION_LAYER_SETTINGS_FB,
+            next: ptr::null(),
+            layer_flags: xr::CompositionLayerSettingsFlagsFB::from_raw(flags),
+        })
 }

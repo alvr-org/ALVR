@@ -688,6 +688,12 @@ pub struct ClientsidePostProcessingConfig {
     pub sharpening: ClientsidePostProcessingSharpeningMode,
 }
 
+impl ClientsidePostProcessingConfig {
+    pub fn flags(&self) -> u64 {
+        (self.sharpening as u64) | (self.super_sampling as u64)
+    }
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct UpscalingConfig {
     #[schema(strings(
@@ -784,6 +790,7 @@ If you want to reduce the amount of pixelation on the edges, increase the center
         display_name = "Client-side post-processing",
         help = "Hardware optimized algorithms, available on Quest and Pico headsets"
     ))]
+    #[schema(flag = "real-time")]
     pub clientside_post_processing: Switch<ClientsidePostProcessingConfig>,
 
     #[schema(strings(help = "Snapdragon Game Super Resolution client-side upscaling"))]
@@ -1619,10 +1626,10 @@ pub fn session_settings_default() -> SettingsDefault {
                 enabled: false,
                 content: ClientsidePostProcessingConfigDefault {
                     super_sampling: ClientsidePostProcessingSuperSamplingModeDefault {
-                        variant: ClientsidePostProcessingSuperSamplingModeDefaultVariant::Disabled,
+                        variant: ClientsidePostProcessingSuperSamplingModeDefaultVariant::Quality,
                     },
                     sharpening: ClientsidePostProcessingSharpeningModeDefault {
-                        variant: ClientsidePostProcessingSharpeningModeDefaultVariant::Disabled,
+                        variant: ClientsidePostProcessingSharpeningModeDefaultVariant::Quality,
                     },
                 },
             },

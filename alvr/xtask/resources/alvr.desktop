@@ -8,6 +8,4 @@ Exec=alvr_dashboard
 Icon=alvr
 Categories=Game;
 StartupNotify=true
-PrefersNonDefaultGPU=true
-X-KDE-RunOnDiscreteGpu=true
 StartupWMClass=alvr.dashboard

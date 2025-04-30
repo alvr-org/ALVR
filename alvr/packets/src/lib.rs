@@ -495,9 +495,9 @@ impl ViewParams {
             down: self.fov.down * fov_inscribe_scale * fov_post_scale,
         };
 
-        return ViewParams {
+        ViewParams {
             pose: viewpose_orth,
             fov: fov_orth_corrected,
-        };
+        }
     }
 }

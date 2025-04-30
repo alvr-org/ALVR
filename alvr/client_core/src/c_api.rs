@@ -866,12 +866,30 @@ pub unsafe extern "C" fn alvr_render_stream_opengl(
                     StreamViewParams {
                         swapchain_index: left_params.swapchain_index,
                         reprojection_rotation: from_capi_quat(left_params.reprojection_rotation),
-                        fov: from_capi_fov(left_params.fov),
+                        current_headset_pose: Pose {
+                            orientation: Quat::IDENTITY,
+                            position: Vec3::ZERO,
+                        },
+                        frame_headset_pose: Pose {
+                            orientation: Quat::IDENTITY,
+                            position: Vec3::ZERO,
+                        },
+                        render_fov: from_capi_fov(left_params.fov),
+                        frame_fov: from_capi_fov(left_params.fov),
                     },
                     StreamViewParams {
                         swapchain_index: right_params.swapchain_index,
                         reprojection_rotation: from_capi_quat(right_params.reprojection_rotation),
-                        fov: from_capi_fov(right_params.fov),
+                        current_headset_pose: Pose {
+                            orientation: Quat::IDENTITY,
+                            position: Vec3::ZERO,
+                        },
+                        frame_headset_pose: Pose {
+                            orientation: Quat::IDENTITY,
+                            position: Vec3::ZERO,
+                        },
+                        render_fov: from_capi_fov(right_params.fov),
+                        frame_fov: from_capi_fov(right_params.fov),
                     },
                 ],
                 None,

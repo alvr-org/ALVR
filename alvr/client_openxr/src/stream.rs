@@ -22,6 +22,7 @@ use alvr_session::{
     MediacodecProperty, PassthroughMode, UpscalingConfig,
 };
 use alvr_system_info::Platform;
+use core::ffi::c_void;
 use openxr as xr;
 use std::{
     ptr,
@@ -94,6 +95,8 @@ pub struct StreamContext {
     target_view_resolution: UVec2,
     renderer: StreamRenderer,
     decoder: Option<(VideoDecoderConfig, VideoDecoderSource)>,
+    defer_reprojection_to_runtime: bool,
+    last_buffer: *mut c_void,
 }
 
 impl StreamContext {
@@ -230,6 +233,8 @@ impl StreamContext {
             target_view_resolution,
             renderer,
             decoder: None,
+            defer_reprojection_to_runtime: platform.is_quest(),
+            last_buffer: ptr::null_mut(),
         };
 
         this.update_reference_space();
@@ -329,6 +334,7 @@ impl StreamContext {
         frame_interval: Duration,
         vsync_time: Duration,
     ) -> (ProjectionLayerBuilder, Duration) {
+        let xr_vsync_time = xr::Time::from_nanos(vsync_time.as_nanos() as _);
         let frame_poll_deadline = Instant::now()
             + Duration::from_secs_f32(
                 frame_interval.as_secs_f32() * DECODER_MAX_TIMEOUT_MULTIPLIER,
@@ -351,9 +357,15 @@ impl StreamContext {
 
                 self.last_good_view_params = view_params;
 
+                // If we are handling reprojection ourselves, we want the last buffer so we can
+                // re-render it at headset Hz ourselves instead of the compositor doing it.
+                if !self.defer_reprojection_to_runtime {
+                    self.last_buffer = buffer_ptr;
+                }
+
                 (timestamp, view_params, buffer_ptr)
             } else {
-                (vsync_time, self.last_good_view_params, ptr::null_mut())
+                (vsync_time, self.last_good_view_params, self.last_buffer)
             };
 
         let left_swapchain_idx = self.swapchains[0].acquire_image().unwrap();
@@ -366,6 +378,53 @@ impl StreamContext {
             .wait_image(xr::Duration::INFINITE)
             .unwrap();
 
+        let (flags, maybe_views) = self
+            .xr_session
+            .locate_views(
+                xr::ViewConfigurationType::PRIMARY_STEREO,
+                xr_vsync_time,
+                &self.stage_reference_space,
+            )
+            .unwrap();
+
+        let current_headset_views = if flags.contains(xr::ViewStateFlags::ORIENTATION_VALID) {
+            maybe_views
+        } else {
+            vec![crate::default_view(), crate::default_view()]
+        };
+
+        // The poses and FoVs we are submitting to OpenXR
+        let mut render_pose_l = current_headset_views[0].pose;
+        let mut render_pose_r = current_headset_views[1].pose;
+        let mut render_fov_l = current_headset_views[0].fov;
+        let mut render_fov_r = current_headset_views[1].fov;
+        let mut current_headset_pose_l = crate::from_xr_pose(current_headset_views[0].pose);
+        let mut current_headset_pose_r = crate::from_xr_pose(current_headset_views[1].pose);
+
+        // The poses and FoVs we received from the PC runtime, which may differ and/or include
+        // altered FoVs based on settings and view conversions done for canting.
+        let mut frame_fov_l = crate::to_xr_fov(view_params[0].fov);
+        let mut frame_fov_r = crate::to_xr_fov(view_params[1].fov);
+        let mut frame_headset_pose_l = view_params[0].pose;
+        let mut frame_headset_pose_r = view_params[1].pose;
+
+        // (shinyquagsire23) I don't entirely trust runtimes to implement CompositionLayerProjectionView
+        // correctly, but if we do trust them, avoid doing rotation ourselves.
+        // Ex: YVR/PFDMR has issues with aspect ratio mismatches and passthrough compositing.
+        if self.defer_reprojection_to_runtime {
+            render_pose_l = crate::to_xr_pose(view_params[0].pose);
+            render_pose_r = crate::to_xr_pose(view_params[1].pose);
+            render_fov_l = crate::to_xr_fov(view_params[0].fov);
+            render_fov_r = crate::to_xr_fov(view_params[1].fov);
+            current_headset_pose_l = view_params[0].pose;
+            current_headset_pose_r = view_params[1].pose;
+
+            frame_fov_l = crate::to_xr_fov(view_params[0].fov);
+            frame_fov_r = crate::to_xr_fov(view_params[1].fov);
+            frame_headset_pose_l = view_params[0].pose;
+            frame_headset_pose_r = view_params[1].pose;
+        }
+
         unsafe {
             self.renderer.render(
                 buffer_ptr,
@@ -373,12 +432,18 @@ impl StreamContext {
                     StreamViewParams {
                         swapchain_index: left_swapchain_idx,
                         reprojection_rotation: Quat::IDENTITY,
-                        fov: view_params[0].fov,
+                        current_headset_pose: current_headset_pose_l,
+                        frame_headset_pose: frame_headset_pose_l,
+                        render_fov: crate::from_xr_fov(render_fov_l),
+                        frame_fov: crate::from_xr_fov(frame_fov_l),
                     },
                     StreamViewParams {
                         swapchain_index: right_swapchain_idx,
                         reprojection_rotation: Quat::IDENTITY,
-                        fov: view_params[1].fov,
+                        current_headset_pose: current_headset_pose_r,
+                        frame_headset_pose: frame_headset_pose_r,
+                        render_fov: crate::from_xr_fov(render_fov_r),
+                        frame_fov: crate::from_xr_fov(frame_fov_r),
                     },
                 ],
                 self.config.passthrough.as_ref(),
@@ -409,8 +474,8 @@ impl StreamContext {
             &self.stage_reference_space,
             [
                 xr::CompositionLayerProjectionView::new()
-                    .pose(crate::to_xr_pose(view_params[0].pose))
-                    .fov(crate::to_xr_fov(view_params[0].fov))
+                    .pose(render_pose_l)
+                    .fov(render_fov_l)
                     .sub_image(
                         xr::SwapchainSubImage::new()
                             .swapchain(&self.swapchains[0])
@@ -418,8 +483,8 @@ impl StreamContext {
                             .image_rect(rect),
                     ),
                 xr::CompositionLayerProjectionView::new()
-                    .pose(crate::to_xr_pose(view_params[1].pose))
-                    .fov(crate::to_xr_fov(view_params[1].fov))
+                    .pose(render_pose_r)
+                    .fov(render_fov_r)
                     .sub_image(
                         xr::SwapchainSubImage::new()
                             .swapchain(&self.swapchains[1])

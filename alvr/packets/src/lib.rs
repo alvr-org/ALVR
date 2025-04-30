@@ -1,6 +1,6 @@
 use alvr_common::{
     anyhow::Result,
-    glam::{UVec2, Vec2},
+    glam::{Quat, UVec2, Vec2, Vec3},
     semver::Version,
     ConnectionState, DeviceMotion, Fov, LogEntry, LogSeverity, Pose, ToAny,
 };
@@ -429,4 +429,75 @@ pub fn decode_real_time_config(buffer: &[u8]) -> Result<RealTimeConfig> {
 pub struct ViewParams {
     pub pose: Pose,
     pub fov: Fov,
+}
+
+impl ViewParams {
+    // Calculates a view transform which is orthogonal (with no rotational component)
+    // and can inscribe the rotated view transform inside itself.
+    // Useful for converting canted transforms to ones compatible with SteamVR and legacy runtimes.
+    pub fn to_orthogonal(&self, fov_post_scale: f32) -> ViewParams {
+        let viewpose_orth = Pose {
+            orientation: Quat::IDENTITY,
+            position: self.pose.position,
+        };
+
+        // Calculate unit vectors for the corner of the view space
+        let v0 = Vec3::new(self.fov.left, self.fov.down, -1.0);
+        let v1 = Vec3::new(self.fov.right, self.fov.down, -1.0);
+        let v2 = Vec3::new(self.fov.right, self.fov.up, -1.0);
+        let v3 = Vec3::new(self.fov.left, self.fov.up, -1.0);
+
+        // Our four corners in world space
+        let w0 = self.pose.orientation * v0;
+        let w1 = self.pose.orientation * v1;
+        let w2 = self.pose.orientation * v2;
+        let w3 = self.pose.orientation * v3;
+
+        // Project into 2D space
+        let pt0 = Vec2::new(w0.x * (-1.0 / w0.z), w0.y * (-1.0 / w0.z));
+        let pt1 = Vec2::new(w1.x * (-1.0 / w1.z), w1.y * (-1.0 / w1.z));
+        let pt2 = Vec2::new(w2.x * (-1.0 / w2.z), w2.y * (-1.0 / w2.z));
+        let pt3 = Vec2::new(w3.x * (-1.0 / w3.z), w3.y * (-1.0 / w3.z));
+
+        // Find the minimum/maximum point values for our new frustum
+        let pts_x = [pt0.x, pt1.x, pt2.x, pt3.x];
+        let pts_y = [pt0.y, pt1.y, pt2.y, pt3.y];
+        let inscribed_left = pts_x.iter().fold(f32::INFINITY, |a, &b| a.min(b));
+        let inscribed_right = pts_x.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+        let inscribed_up = pts_y.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+        let inscribed_down = pts_y.iter().fold(f32::INFINITY, |a, &b| a.min(b));
+
+        let fov_orth = Fov {
+            left: inscribed_left,
+            right: inscribed_right,
+            up: inscribed_up,
+            down: inscribed_down,
+        };
+
+        // Last step: Preserve the aspect ratio, so that we don't have to deal with non-square pixel issues.
+        let fov_orth_width = fov_orth.right.abs() + fov_orth.left.abs();
+        let fov_orth_height = fov_orth.up.abs() + fov_orth.down.abs();
+        let fov_orig_width = self.fov.right.abs() + self.fov.left.abs();
+        let fov_orig_height = self.fov.up.abs() + self.fov.down.abs();
+        let scales = [
+            fov_orth_width / fov_orig_width,
+            fov_orth_height / fov_orig_height,
+        ];
+
+        let fov_inscribe_scale = scales
+            .iter()
+            .fold(f32::NEG_INFINITY, |a, &b| a.max(b))
+            .max(1.0);
+        let fov_orth_corrected = Fov {
+            left: self.fov.left * fov_inscribe_scale * fov_post_scale,
+            right: self.fov.right * fov_inscribe_scale * fov_post_scale,
+            up: self.fov.up * fov_inscribe_scale * fov_post_scale,
+            down: self.fov.down * fov_inscribe_scale * fov_post_scale,
+        };
+
+        return ViewParams {
+            pose: viewpose_orth,
+            fov: fov_orth_corrected,
+        };
+    }
 }

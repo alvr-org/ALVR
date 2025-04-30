@@ -212,13 +212,23 @@ impl ClientCoreContext {
     pub fn send_view_params(&self, views: [ViewParams; 2]) {
         dbg_client_core!("send_view_params");
 
-        *self.connection_context.view_params.write() = views;
+        // TODO(shinyquagsire23): Make this a configurable slider.
+        let comfort = 1.0;
+
+        // HACK: OpenVR for various reasons expects orthogonal view transforms, so we
+        // toss out the orientation and fix the FoVs if applicable.
+        let views_openvr = [
+            views[0].to_orthogonal(comfort),
+            views[1].to_orthogonal(comfort),
+        ];
+
+        *self.connection_context.view_params.write() = views_openvr;
 
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender
                 .send(&ClientControlPacket::ViewsConfig(ViewsConfig {
-                    fov: [views[0].fov, views[1].fov],
-                    ipd_m: (views[0].pose.position - views[1].pose.position).length(),
+                    fov: [views_openvr[0].fov, views_openvr[1].fov],
+                    ipd_m: (views_openvr[0].pose.position - views_openvr[1].pose.position).length(),
                 }))
                 .ok();
         }

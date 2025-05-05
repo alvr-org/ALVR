@@ -95,4 +95,7 @@ public:
 
     bool m_useLeftControllerAsFakeTracker = false;
     bool m_useRightControllerAsFakeTracker = false;
+
+    int m_leftControllerAsFakeTrackerBinding = -1;
+    int m_rightControllerAsFakeTrackerBinding = -1;
 };

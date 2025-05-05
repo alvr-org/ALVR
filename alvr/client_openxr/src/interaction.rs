@@ -138,8 +138,6 @@ pub struct InteractionSourcesConfig {
     pub face_tracking: Option<FaceTrackingSourcesConfig>,
     pub body_tracking: Option<BodyTrackingSourcesConfig>,
     pub prefers_multimodal_input: bool,
-    pub use_left_controller_as_fake_tracker: bool,
-    pub use_right_controller_as_fake_tracker: bool,
 }
 
 impl InteractionSourcesConfig {
@@ -162,23 +160,7 @@ impl InteractionSourcesConfig {
                 .headset
                 .controllers
                 .as_option()
-                .map(|c| c.multimodal_tracking)
-                .unwrap_or(false),
-            use_left_controller_as_fake_tracker: config
-                .settings
-                .headset
-                .controllers
-                .as_option()
-                .map(|c| c.use_left_as_tracker)
-                .unwrap_or(false),
-            use_right_controller_as_fake_tracker: config
-                .settings
-                .headset
-                .controllers
-                .as_option()
-                .map(|c| c.use_right_as_tracker)
-                .unwrap_or(false),
-                
+                .is_some_and(|c| c.multimodal_tracking)
         }
     }
 }
@@ -193,8 +175,6 @@ pub struct InteractionContext {
     pub hands_interaction: [HandInteraction; 2],
     multimodal_handle: Option<MultimodalMeta>,
     pub multimodal_hands_enabled: bool,
-    pub use_left_controller_as_fake_tracker: bool,
-    pub use_right_controller_as_fake_tracker: bool,
     pub face_sources: FaceSources,
     pub body_sources: BodySources,
 }
@@ -488,8 +468,6 @@ impl InteractionContext {
             ],
             multimodal_handle,
             multimodal_hands_enabled: false,
-            use_left_controller_as_fake_tracker: false,
-            use_right_controller_as_fake_tracker: false,
             face_sources: FaceSources {
                 combined_eyes_source,
                 eye_tracker_fb: None,
@@ -563,9 +541,7 @@ impl InteractionContext {
                 }
             }
         }
-        self.use_left_controller_as_fake_tracker = config.use_left_controller_as_fake_tracker;
-        self.use_right_controller_as_fake_tracker = config.use_right_controller_as_fake_tracker;
-
+        
         self.face_sources.eye_tracker_fb = create_ext_object(
             "EyeTrackerSocial",
             config.face_tracking.as_ref().map(|s| s.eye_tracking_fb),
@@ -769,7 +745,7 @@ pub fn get_head_data(
     Some((motion, view_params))
 }
 
-pub fn get_controller_motion_data(
+pub fn get_detached_controller_motion_data(
     xr_session: &xr::Session<xr::OpenGlEs>,
     reference_space: &xr::Space,
     time: Duration,
@@ -778,44 +754,28 @@ pub fn get_controller_motion_data(
 ) -> Option<DeviceMotion> {
     let xr_time = crate::to_xr_time(time);
 
-    let is_grip_active = hand_source.grip_action.is_active(xr_session, xr::Path::NULL).unwrap_or(false);
+    if hand_source.grip_action.is_active(xr_session, xr::Path::NULL).unwrap_or(false) {
+        return None;
+    }
 
-    let location_result = if is_grip_active {
-        hand_source.grip_space.relate(reference_space, xr_time)
-    } else if let Some(space) = &hand_source.detached_controller_space {
-        space.relate(reference_space, xr_time)
-    } else {
-        Err(xr::sys::Result::ERROR_SPACE_NOT_LOCATABLE_EXT.into())
-    };
-
-    match location_result {
-        Ok((location, velocity)) => {
-            let orientation_valid = location.location_flags.contains(xr::SpaceLocationFlags::ORIENTATION_VALID);
-            let position_valid = location.location_flags.contains(xr::SpaceLocationFlags::POSITION_VALID);
-
-            if orientation_valid {
+    if let Some(space) = &hand_source.detached_controller_space {
+        if let Ok((location, velocity)) = space.relate(reference_space, xr_time) {
+            if location.location_flags.contains(xr::SpaceLocationFlags::ORIENTATION_VALID) {
                 last_controller_pose.orientation = crate::from_xr_quat(location.pose.orientation);
             }
-
-            if position_valid {
+            if location.location_flags.contains(xr::SpaceLocationFlags::POSITION_VALID) {
                 last_controller_pose.position = crate::from_xr_vec3(location.pose.position);
             }
 
-            let pose = *last_controller_pose * hand_source.pose_offset;
-
-            let linear_velocity = crate::from_xr_vec3(velocity.linear_velocity);
-            let angular_velocity = crate::from_xr_vec3(velocity.angular_velocity);
-
-            Some(DeviceMotion {
-                pose,
-                linear_velocity,
-                angular_velocity,
-            })
-        }
-        Err(e) => {
-            None
+            return Some(DeviceMotion {
+                pose: *last_controller_pose * hand_source.pose_offset,
+                linear_velocity: crate::from_xr_vec3(velocity.linear_velocity),
+                angular_velocity: crate::from_xr_vec3(velocity.angular_velocity),
+            });
         }
     }
+
+    None
 }
 
 #[expect(clippy::too_many_arguments)]

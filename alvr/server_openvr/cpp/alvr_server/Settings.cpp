@@ -122,6 +122,9 @@ void Settings::Load() {
 
         m_useLeftControllerAsFakeTracker = config.get("use_left_controller_as_fake_tracker").get<bool>();
         m_useRightControllerAsFakeTracker = config.get("use_right_controller_as_fake_tracker").get<bool>();
+        
+        m_leftControllerAsFakeTrackerBinding = config.get("left_controller_as_fake_tracker_binding").get<int64_t>();
+        m_rightControllerAsFakeTrackerBinding = config.get("right_controller_as_fake_tracker_binding").get<int64_t>();
 
         Info("Render Target: %d %d\n", m_renderWidth, m_renderHeight);
         Info("Refresh Rate: %d\n", m_refreshRate);

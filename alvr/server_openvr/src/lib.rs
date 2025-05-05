@@ -15,9 +15,7 @@ mod bindings {
 use bindings::*;
 
 use alvr_common::{
-    error, once_cell::sync::Lazy, parking_lot::RwLock, settings_schema::Switch, warn, BUTTON_INFO, 
-    HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
-    FAKE_TRACKER_LEFT_ID, FAKE_TRACKER_RIGHT_ID, 
+    error, info, once_cell::sync::Lazy, parking_lot::RwLock, settings_schema::Switch, warn, BUTTON_INFO, DETACHED_CONTROLLER_LEFT_ID, DETACHED_CONTROLLER_RIGHT_ID, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID
 };
 use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};
@@ -114,13 +112,13 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                             .get_device_motion(*HAND_RIGHT_ID, sample_timestamp)
                             .map(|m| tracking::to_ffi_motion(*HAND_RIGHT_ID, m))
                             .filter(|_| tracked);
-                        let ffi_left_fake_tracker = context
-                            .get_device_motion(*FAKE_TRACKER_LEFT_ID, sample_timestamp)
-                            .map(|m| tracking::to_ffi_motion(*FAKE_TRACKER_LEFT_ID, m))
+                        let ffi_left_detached_controller_motion = context
+                            .get_device_motion(*DETACHED_CONTROLLER_LEFT_ID, sample_timestamp)
+                            .map(|m| tracking::to_ffi_motion(*DETACHED_CONTROLLER_LEFT_ID, m))
                             .filter(|_| tracked);
-                        let ffi_right_fake_tracker = context
-                            .get_device_motion(*FAKE_TRACKER_RIGHT_ID, sample_timestamp)
-                            .map(|m| tracking::to_ffi_motion(*FAKE_TRACKER_RIGHT_ID, m))
+                        let ffi_right_detached_controller_motion = context
+                            .get_device_motion(*DETACHED_CONTROLLER_RIGHT_ID, sample_timestamp)
+                            .map(|m| tracking::to_ffi_motion(*DETACHED_CONTROLLER_RIGHT_ID, m))
                             .filter(|_| tracked);
                         
                         let (
@@ -213,6 +211,8 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                         // OpenVR, two lefts and two rights. If enabled with use_separate_hand_trackers,
                         // we select at runtime which device to use (selected for left and right hand
                         // independently. Selection is done by setting deviceIsConnected.
+                        //let mut l_pointer = ptr::null();
+                        
                         unsafe {
                             SetTracking(
                                 sample_timestamp.as_nanos() as _,
@@ -220,8 +220,16 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                 ffi_head_motion,
                                 ffi_left_hand_data,
                                 ffi_right_hand_data,
-                                ffi_left_fake_tracker.unwrap_or_default(),
-                                ffi_right_fake_tracker.unwrap_or_default(),
+                                if let Some(motion) = &ffi_left_detached_controller_motion {
+                                    motion
+                                } else {
+                                    ptr::null()
+                                },
+                                if let Some(motion) = &ffi_right_detached_controller_motion {
+                                    motion
+                                } else {
+                                    ptr::null()
+                                },
                                 ffi_body_tracker_motions.as_ptr(),
                                 ffi_body_tracker_motions.len() as i32,
                             )

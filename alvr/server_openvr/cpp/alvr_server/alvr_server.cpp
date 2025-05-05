@@ -234,7 +234,7 @@ void* CppOpenvrEntryPoint(const char* interface_name, int* return_code) {
 
 bool InitializeStreaming() {
     Settings::Instance().Load();
-
+                
     if (!g_driver_provider.devices_initialized) {
         auto hmd = new Hmd();
         if (!hmd->register_device()) {
@@ -289,17 +289,19 @@ bool InitializeStreaming() {
             }
 
             if (Settings::Instance().m_useLeftControllerAsFakeTracker) {
-                auto fakeltracker = new FakeViveTracker(FAKE_LEFT_TRACKER_ID);
+                uint64_t trackerId = GetFakeTrackerBindingID(Settings::Instance().m_leftControllerAsFakeTrackerBinding);
+                auto fakeltracker = new FakeViveTracker(trackerId);
                 if (fakeltracker->register_device()) {
                     g_driver_provider.fake_left_tracker = std::unique_ptr<FakeViveTracker>(fakeltracker);
-                    g_driver_provider.tracked_devices.insert({ FAKE_LEFT_TRACKER_ID, g_driver_provider.fake_left_tracker.get() });
+                    g_driver_provider.tracked_devices.insert({ trackerId, g_driver_provider.fake_left_tracker.get() });
                 }
             }
             if (Settings::Instance().m_useRightControllerAsFakeTracker) {
-                auto fakertracker = new FakeViveTracker(FAKE_RIGHT_TRACKER_ID);
+                uint64_t trackerId = GetFakeTrackerBindingID(Settings::Instance().m_rightControllerAsFakeTrackerBinding);
+                auto fakertracker = new FakeViveTracker(trackerId);
                 if (fakertracker->register_device()) {
                     g_driver_provider.fake_right_tracker = std::unique_ptr<FakeViveTracker>(fakertracker);
-                    g_driver_provider.tracked_devices.insert({ FAKE_RIGHT_TRACKER_ID, g_driver_provider.fake_right_tracker.get() });
+                    g_driver_provider.tracked_devices.insert({ trackerId, g_driver_provider.fake_right_tracker.get() });
                 }
             }
         }
@@ -392,8 +394,8 @@ void SetTracking(
     FfiDeviceMotion headMotion,
     FfiHandData leftHandData,
     FfiHandData rightHandData,
-    FfiDeviceMotion fakeLeftTrackerMotion,
-    FfiDeviceMotion fakeRightTrackerMotion,
+    const FfiDeviceMotion* leftDetachedControllerMotion,
+    const FfiDeviceMotion* rightDetachedControllerMotion,
     const FfiDeviceMotion* bodyTrackerMotions,
     int bodyTrackerMotionCount
 ) {
@@ -408,9 +410,14 @@ void SetTracking(
     }
     
     if (g_driver_provider.fake_left_tracker) {
-        auto* maybeTracker = (FakeViveTracker*)g_driver_provider.fake_left_tracker.get();
-        if(maybeTracker) {
-            maybeTracker->OnPoseUpdated(targetTimestampNs, &fakeLeftTrackerMotion);
+        if (leftDetachedControllerMotion) {
+            g_driver_provider.fake_left_tracker->OnPoseUpdated(
+                targetTimestampNs, leftDetachedControllerMotion
+            );
+        } else {
+            g_driver_provider.fake_left_tracker->OnPoseUpdated(
+                targetTimestampNs, leftHandData.controllerMotion
+            );
         }
     }    
     else if (g_driver_provider.left_controller) {
@@ -425,10 +432,15 @@ void SetTracking(
         );
     }
 
-if (g_driver_provider.fake_right_tracker) {
-        auto* maybeTracker = (FakeViveTracker*)g_driver_provider.fake_right_tracker.get();
-        if(maybeTracker) {
-            maybeTracker->OnPoseUpdated(targetTimestampNs, &fakeRightTrackerMotion);
+    if (g_driver_provider.fake_right_tracker) {
+        if (rightDetachedControllerMotion) {
+            g_driver_provider.fake_right_tracker->OnPoseUpdated(
+                targetTimestampNs, rightDetachedControllerMotion
+            );
+        } else {
+            g_driver_provider.fake_right_tracker->OnPoseUpdated(
+                targetTimestampNs, rightHandData.controllerMotion
+            );
         }
     }
     else if (g_driver_provider.right_controller) {

@@ -25,7 +25,7 @@ use alvr_packets::{
 };
 use alvr_session::{
     BodyTrackingBDConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize,
-    H264Profile, OpenvrConfig, SessionConfig, SocketProtocol,
+    H264Profile, OpenvrConfig, SessionConfig, SocketProtocol, ControllersFakeTrackingBinding
 };
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSocketBuilder, CONTROL_PORT, KEEPALIVE_INTERVAL,
@@ -72,7 +72,10 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
     let mut controller_profile = 0;
     let mut use_separate_hand_trackers = false;
     let mut use_left_controller_as_fake_tracker = false;
+    let mut left_controller_as_fake_tracker_binding = -1;
     let mut use_right_controller_as_fake_tracker = false;
+    let mut right_controller_as_fake_tracker_binding = -1;
+
 
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
         controller_is_tracker =
@@ -96,9 +99,11 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
             .as_option()
             .is_some_and(|c| c.steamvr_input_2_0);
 
-        use_left_controller_as_fake_tracker = config.use_left_as_tracker;
-        use_right_controller_as_fake_tracker = config.use_right_as_tracker;
-
+        use_left_controller_as_fake_tracker = config.use_left_as_tracker.enabled();
+        left_controller_as_fake_tracker_binding = get_fake_tracker_binding_id(config.use_left_as_tracker);
+        
+        use_right_controller_as_fake_tracker = config.use_right_as_tracker.enabled();
+        right_controller_as_fake_tracker_binding = get_fake_tracker_binding_id(config.use_right_as_tracker);
 
         true
     } else {
@@ -233,9 +238,11 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         capture_frame_dir: settings.extra.capture.capture_frame_dir,
         amd_bitrate_corruption_fix: settings.video.bitrate.image_corruption_fix,
         use_separate_hand_trackers,
-        _controller_profile: controller_profile,
         use_left_controller_as_fake_tracker,
         use_right_controller_as_fake_tracker,
+        left_controller_as_fake_tracker_binding,
+        right_controller_as_fake_tracker_binding,
+        _controller_profile: controller_profile,
         _server_impl_debug: settings.extra.logging.debug_groups.server_impl,
         _client_impl_debug: settings.extra.logging.debug_groups.client_impl,
         _server_core_debug: settings.extra.logging.debug_groups.server_core,
@@ -247,6 +254,22 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         _encoder_debug: settings.extra.logging.debug_groups.encoder,
         _decoder_debug: settings.extra.logging.debug_groups.decoder,
         ..old_config
+    }
+}
+
+fn get_fake_tracker_binding_id(binding: Switch<ControllersFakeTrackingBinding>) -> i32 {
+    match binding {
+        Switch::Enabled(binding) => match binding {
+            ControllersFakeTrackingBinding::Chest => 0,
+            ControllersFakeTrackingBinding::Waist => 1,
+            ControllersFakeTrackingBinding::LeftElbow => 2,
+            ControllersFakeTrackingBinding::RightElbow => 3,
+            ControllersFakeTrackingBinding::LeftKnee => 4,
+            ControllersFakeTrackingBinding::LeftFoot => 5,
+            ControllersFakeTrackingBinding::RightKnee => 6,
+            ControllersFakeTrackingBinding::RightFoot => 7,
+        },
+        _ => -1,
     }
 }
 

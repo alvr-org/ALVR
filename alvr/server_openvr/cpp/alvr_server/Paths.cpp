@@ -7,8 +7,6 @@ uint64_t HAND_RIGHT_ID;
 uint64_t HAND_TRACKER_LEFT_ID;
 uint64_t HAND_TRACKER_RIGHT_ID;
 uint64_t BODY_CHEST_ID;
-uint64_t FAKE_LEFT_TRACKER_ID;
-uint64_t FAKE_RIGHT_TRACKER_ID;
 uint64_t BODY_HIPS_ID;
 uint64_t BODY_LEFT_ELBOW_ID;
 uint64_t BODY_RIGHT_ELBOW_ID;
@@ -48,8 +46,6 @@ void init_paths() {
     HAND_TRACKER_LEFT_ID = PathStringToHash("/user/hand_tracker/left");
     HAND_TRACKER_RIGHT_ID = PathStringToHash("/user/hand_tracker/right");
     BODY_CHEST_ID = PathStringToHash("/user/body/chest");
-    FAKE_LEFT_TRACKER_ID = PathStringToHash("/user/body/left_elbow");
-    FAKE_RIGHT_TRACKER_ID = PathStringToHash("/user/body/right_elbow");
     BODY_HIPS_ID = PathStringToHash("/user/body/waist");
     BODY_LEFT_ELBOW_ID = PathStringToHash("/user/body/left_elbow");
     BODY_RIGHT_ELBOW_ID = PathStringToHash("/user/body/right_elbow");
@@ -250,5 +246,31 @@ void init_paths() {
             }
             ALVR_TO_STEAMVR_PATH_IDS.insert({ info.first, ids });
         }
+    }
+}
+
+uint64_t GetFakeTrackerBindingID(int settingsBinding)
+{
+    switch (settingsBinding)
+    {
+    case 0:
+        return BODY_CHEST_ID;
+    case 1:
+        return BODY_HIPS_ID;
+    case 2:
+        return BODY_LEFT_ELBOW_ID;
+    case 3:
+        return BODY_RIGHT_ELBOW_ID;
+    case 4:
+        return BODY_LEFT_KNEE_ID;
+    case 5:
+        return BODY_LEFT_FOOT_ID;
+    case 6:
+        return BODY_RIGHT_KNEE_ID;
+    case 7:
+        return BODY_RIGHT_FOOT_ID;
+    
+    default:
+        return (uint64_t)0;
     }
 }

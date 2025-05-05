@@ -58,8 +58,6 @@ devices! {
     (BODY_RIGHT_FOOT, "/user/body/right_foot"),
     (DETACHED_CONTROLLER_LEFT, "/user/detached_controller_meta/left"),
     (DETACHED_CONTROLLER_RIGHT, "/user/detached_controller_meta/right"),
-    (FAKE_TRACKER_LEFT, "/user/fake_tracker/left"),
-    (FAKE_TRACKER_RIGHT, "/user/fake_tracker/right"),
 }
 
 pub enum ButtonType {

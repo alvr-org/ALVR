@@ -422,11 +422,3 @@ pub fn encode_real_time_config(config: &RealTimeConfig) -> Result<ServerControlP
 pub fn decode_real_time_config(buffer: &[u8]) -> Result<RealTimeConfig> {
     Ok(bincode::deserialize(buffer)?)
 }
-
-// Per eye view parameters
-// todo: send together with video frame
-#[derive(Serialize, Deserialize, Clone, Copy, Default)]
-pub struct ViewParams {
-    pub pose: Pose,
-    pub fov: Fov,
-}

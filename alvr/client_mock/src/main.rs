@@ -2,9 +2,9 @@ use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
     glam::{Quat, UVec2, Vec3},
     parking_lot::RwLock,
-    DeviceMotion, Fov, Pose, RelaxedAtomic, HEAD_ID,
+    DeviceMotion, Fov, Pose, RelaxedAtomic, ViewParams, HEAD_ID,
 };
-use alvr_packets::{FaceData, ViewParams};
+use alvr_packets::FaceData;
 use alvr_session::CodecType;
 use eframe::{
     egui::{CentralPanel, Context, RichText, Slider, ViewportBuilder},

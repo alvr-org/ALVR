@@ -18,15 +18,15 @@ mod audio;
 pub mod video_decoder;
 
 use alvr_common::{
-    dbg_client_core, error,
+    canted_view_to_proportional_circumscribed_orthogonal, dbg_client_core, error,
     glam::{UVec2, Vec2, Vec3},
     parking_lot::{Mutex, RwLock},
-    warn, ConnectionState, DeviceMotion, LifecycleState, Pose, HAND_LEFT_ID, HAND_RIGHT_ID,
-    HEAD_ID,
+    warn, ConnectionState, DeviceMotion, LifecycleState, Pose, ViewParams, HAND_LEFT_ID,
+    HAND_RIGHT_ID, HEAD_ID,
 };
 use alvr_packets::{
     BatteryInfo, ButtonEntry, ClientControlPacket, FaceData, RealTimeConfig,
-    ReservedClientControlPacket, StreamConfig, Tracking, ViewParams, ViewsConfig,
+    ReservedClientControlPacket, StreamConfig, Tracking, ViewsConfig,
 };
 use alvr_session::CodecType;
 use connection::{ConnectionContext, DecoderCallback};
@@ -218,8 +218,8 @@ impl ClientCoreContext {
         // HACK: OpenVR for various reasons expects orthogonal view transforms, so we
         // toss out the orientation and fix the FoVs if applicable.
         let views_openvr = [
-            views[0].to_orthogonal(comfort),
-            views[1].to_orthogonal(comfort),
+            canted_view_to_proportional_circumscribed_orthogonal(views[0], comfort),
+            canted_view_to_proportional_circumscribed_orthogonal(views[1], comfort),
         ];
 
         *self.connection_context.view_params.write() = views_openvr;

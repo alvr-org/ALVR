@@ -15,7 +15,7 @@ use alvr_common::{
     glam::{Quat, Vec3},
     *,
 };
-use alvr_packets::{ButtonEntry, ButtonValue, StreamConfig, ViewParams};
+use alvr_packets::{ButtonEntry, ButtonValue, StreamConfig};
 use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
 use std::{collections::HashMap, time::Duration};

@@ -11,12 +11,12 @@ use alvr_common::{
     error,
     glam::{Quat, UVec2, Vec2},
     parking_lot::RwLock,
-    Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
+    Pose, RelaxedAtomic, ViewParams, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
 use alvr_graphics::{
     compute_target_view_resolution, GraphicsContext, StreamRenderer, StreamViewParams,
 };
-use alvr_packets::{FaceData, RealTimeConfig, StreamConfig, ViewParams};
+use alvr_packets::{FaceData, RealTimeConfig, StreamConfig};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, CodecType, FoveatedEncodingConfig,
     MediacodecProperty, PassthroughMode, UpscalingConfig,

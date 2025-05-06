@@ -1,6 +1,8 @@
 use super::{staging::StagingRenderer, GraphicsContext, MAX_PUSH_CONSTANTS_SIZE};
-use alvr_common::glam::{self, Mat4, Quat, UVec2, Vec3, Vec4};
-use alvr_packets::ViewParams;
+use alvr_common::{
+    glam::{self, Mat4, Quat, UVec2, Vec3, Vec4},
+    ViewParams,
+};
 use alvr_session::{FoveatedEncodingConfig, PassthroughMode, UpscalingConfig};
 use std::{collections::HashMap, ffi::c_void, iter, mem, rc::Rc};
 use wgpu::{

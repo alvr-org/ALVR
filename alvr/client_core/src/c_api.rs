@@ -12,13 +12,13 @@ use alvr_common::{
     info,
     once_cell::sync::Lazy,
     parking_lot::Mutex,
-    warn, DeviceMotion, Fov, OptLazy, Pose,
+    warn, DeviceMotion, Fov, OptLazy, Pose, ViewParams,
 };
 use alvr_graphics::{
     compute_target_view_resolution, GraphicsContext, LobbyRenderer, LobbyViewParams,
     StreamRenderer, StreamViewParams,
 };
-use alvr_packets::{ButtonEntry, ButtonValue, FaceData, ViewParams};
+use alvr_packets::{ButtonEntry, ButtonValue, FaceData};
 use alvr_session::{
     CodecType, FoveatedEncodingConfig, MediacodecPropType, MediacodecProperty, UpscalingConfig,
 };

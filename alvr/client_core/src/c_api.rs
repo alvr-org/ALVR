@@ -866,30 +866,38 @@ pub unsafe extern "C" fn alvr_render_stream_opengl(
                     StreamViewParams {
                         swapchain_index: left_params.swapchain_index,
                         reprojection_rotation: from_capi_quat(left_params.reprojection_rotation),
-                        current_headset_pose: Pose {
-                            orientation: Quat::IDENTITY,
-                            position: Vec3::ZERO,
+                        input_view_params: ViewParams {
+                            pose: Pose {
+                                orientation: Quat::IDENTITY,
+                                position: Vec3::ZERO,
+                            },
+                            fov: from_capi_fov(left_params.fov),
                         },
-                        frame_headset_pose: Pose {
-                            orientation: Quat::IDENTITY,
-                            position: Vec3::ZERO,
+                        output_view_params: ViewParams {
+                            pose: Pose {
+                                orientation: Quat::IDENTITY,
+                                position: Vec3::ZERO,
+                            },
+                            fov: from_capi_fov(left_params.fov),
                         },
-                        render_fov: from_capi_fov(left_params.fov),
-                        frame_fov: from_capi_fov(left_params.fov),
                     },
                     StreamViewParams {
                         swapchain_index: right_params.swapchain_index,
                         reprojection_rotation: from_capi_quat(right_params.reprojection_rotation),
-                        current_headset_pose: Pose {
-                            orientation: Quat::IDENTITY,
-                            position: Vec3::ZERO,
+                        input_view_params: ViewParams {
+                            pose: Pose {
+                                orientation: Quat::IDENTITY,
+                                position: Vec3::ZERO,
+                            },
+                            fov: from_capi_fov(right_params.fov),
                         },
-                        frame_headset_pose: Pose {
-                            orientation: Quat::IDENTITY,
-                            position: Vec3::ZERO,
+                        output_view_params: ViewParams {
+                            pose: Pose {
+                                orientation: Quat::IDENTITY,
+                                position: Vec3::ZERO,
+                            },
+                            fov: from_capi_fov(right_params.fov),
                         },
-                        render_fov: from_capi_fov(right_params.fov),
-                        frame_fov: from_capi_fov(right_params.fov),
                     },
                 ],
                 None,

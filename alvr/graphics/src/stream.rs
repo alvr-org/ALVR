@@ -1,8 +1,6 @@
 use super::{staging::StagingRenderer, GraphicsContext, MAX_PUSH_CONSTANTS_SIZE};
-use alvr_common::{
-    glam::{self, Mat4, Quat, UVec2, Vec3, Vec4},
-    Fov, Pose,
-};
+use alvr_common::glam::{self, Mat4, Quat, UVec2, Vec3, Vec4};
+use alvr_packets::ViewParams;
 use alvr_session::{FoveatedEncodingConfig, PassthroughMode, UpscalingConfig};
 use std::{collections::HashMap, ffi::c_void, iter, mem, rc::Rc};
 use wgpu::{
@@ -38,10 +36,8 @@ const _: () = assert!(
 pub struct StreamViewParams {
     pub swapchain_index: u32,
     pub reprojection_rotation: Quat,
-    pub current_headset_pose: Pose,
-    pub frame_headset_pose: Pose,
-    pub render_fov: Fov,
-    pub frame_fov: Fov,
+    pub input_view_params: ViewParams,
+    pub output_view_params: ViewParams,
 }
 
 #[derive(Debug)]
@@ -279,23 +275,21 @@ impl StreamRenderer {
                 ..Default::default()
             });
 
-            let frame_fov = view_params.frame_fov;
+            let input_fov = view_params.input_view_params.fov;
 
-            let tanl = f32::tan(frame_fov.left);
-            let tanr = f32::tan(frame_fov.right);
-            let tanu = f32::tan(frame_fov.up);
-            let tand = f32::tan(frame_fov.down);
+            let tanl = f32::tan(input_fov.left);
+            let tanr = f32::tan(input_fov.right);
+            let tanu = f32::tan(input_fov.up);
+            let tand = f32::tan(input_fov.down);
 
             let width = tanr - tanl;
             let height = tanu - tand;
             let quad_depth = 100.0;
 
-            let current_headset_mat4 =
-                Mat4::from_translation(view_params.current_headset_pose.position)
-                    * Mat4::from_quat(view_params.current_headset_pose.orientation);
-            let frame_headset_mat4 =
-                Mat4::from_translation(view_params.frame_headset_pose.position)
-                    * Mat4::from_quat(view_params.frame_headset_pose.orientation);
+            let output_mat4 = Mat4::from_translation(view_params.output_view_params.pose.position)
+                * Mat4::from_quat(view_params.output_view_params.pose.orientation);
+            let input_mat4 = Mat4::from_translation(view_params.input_view_params.pose.position)
+                * Mat4::from_quat(view_params.input_view_params.pose.orientation);
 
             // The image is at z = -1.0, so we use tangents for the size
             let model_mat =
@@ -311,9 +305,9 @@ impl StreamRenderer {
                     ))
                     * Mat4::from_scale(Vec3::new(width, height, 1.));
             let view_mat = Mat4::from_quat(view_params.reprojection_rotation).inverse()
-                * current_headset_mat4.inverse()
-                * frame_headset_mat4;
-            let proj_mat = super::projection_from_fov(view_params.render_fov);
+                * output_mat4.inverse()
+                * input_mat4;
+            let proj_mat = super::projection_from_fov(view_params.output_view_params.fov);
 
             let transform = proj_mat * view_mat * model_mat;
 

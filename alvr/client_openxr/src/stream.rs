@@ -94,7 +94,7 @@ pub struct StreamContext {
     target_view_resolution: UVec2,
     renderer: StreamRenderer,
     decoder: Option<(VideoDecoderConfig, VideoDecoderSource)>,
-    defer_reprojection_to_runtime: bool,
+    use_custom_reprojection: bool,
 }
 
 impl StreamContext {
@@ -231,7 +231,7 @@ impl StreamContext {
             target_view_resolution,
             renderer,
             decoder: None,
-            defer_reprojection_to_runtime: !platform.is_yvr(),
+            use_custom_reprojection: platform.is_yvr(),
         };
 
         this.update_reference_space();
@@ -398,7 +398,7 @@ impl StreamContext {
         // (shinyquagsire23) I don't entirely trust runtimes to implement CompositionLayerProjectionView
         // correctly, but if we do trust them, avoid doing rotation ourselves.
         // Ex: YVR/PFDMR has issues with aspect ratio mismatches and passthrough compositing.
-        if self.defer_reprojection_to_runtime {
+        if !self.use_custom_reprojection {
             output_view_params = input_view_params;
 
             // Avoid passing invalid timestamp to runtime

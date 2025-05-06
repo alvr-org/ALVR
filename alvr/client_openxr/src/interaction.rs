@@ -679,7 +679,7 @@ pub fn get_head_data(
     };
 
     // Some headsets use wrong frame of reference for linear and angular velocities.
-    if platform.is_pico() || platform.is_vive() {
+    if platform.is_pico() || platform.is_vive() || platform.is_yvr() {
         let xr_future_time = crate::to_xr_time(future_time);
 
         let predicted_location = view_reference_space

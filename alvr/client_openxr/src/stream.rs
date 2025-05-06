@@ -231,7 +231,7 @@ impl StreamContext {
             target_view_resolution,
             renderer,
             decoder: None,
-            defer_reprojection_to_runtime: platform.is_quest(),
+            defer_reprojection_to_runtime: !platform.is_yvr(),
         };
 
         this.update_reference_space();

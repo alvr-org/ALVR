@@ -297,8 +297,8 @@ impl StreamRenderer {
                 Mat4::from_translation(Vec3 {
                     x: 0.0,
                     y: 0.0,
-                    z: -quad_depth,
-                }) * Mat4::from_scale(Vec3::new(quad_depth * 2.0, quad_depth * 2.0, quad_depth))
+                    z: -quad_depth * 0.5,
+                }) * Mat4::from_scale(Vec3::new(quad_depth, quad_depth, quad_depth * 0.5))
                     * Mat4::from_translation(Vec3::new(
                         width / 2.0 + tanl,
                         height / 2.0 + tand,

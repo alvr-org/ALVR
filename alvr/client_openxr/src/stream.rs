@@ -7,7 +7,12 @@ use alvr_client_core::{
     ClientCoreContext,
 };
 use alvr_common::{
-    anyhow::Result, error, glam::{Quat, UVec2, Vec2}, parking_lot::RwLock, Pose, RelaxedAtomic, DETACHED_CONTROLLER_LEFT_ID, DETACHED_CONTROLLER_RIGHT_ID, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID
+    anyhow::Result,
+    error,
+    glam::{Quat, UVec2, Vec2},
+    parking_lot::RwLock,
+    Pose, RelaxedAtomic, DETACHED_CONTROLLER_LEFT_ID, DETACHED_CONTROLLER_RIGHT_ID, HAND_LEFT_ID,
+    HAND_RIGHT_ID, HEAD_ID,
 };
 use alvr_graphics::{
     compute_target_view_resolution, GraphicsContext, StreamRenderer, StreamViewParams,
@@ -543,7 +548,7 @@ fn stream_input_loop(
             stage_reference_space,
             now,
             &int_ctx.hands_interaction[0],
-            &mut last_controller_poses[0]
+            &mut last_controller_poses[0],
         );
         if let Some(motion) = left_detached_motion {
             device_motions.push((*DETACHED_CONTROLLER_LEFT_ID, motion));
@@ -553,7 +558,7 @@ fn stream_input_loop(
             stage_reference_space,
             now,
             &int_ctx.hands_interaction[1],
-            &mut last_controller_poses[1]
+            &mut last_controller_poses[1],
         );
         if let Some(motion) = right_detached_motion {
             device_motions.push((*DETACHED_CONTROLLER_RIGHT_ID, motion));

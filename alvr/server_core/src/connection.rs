@@ -24,8 +24,9 @@ use alvr_packets::{
     Tracking, VideoPacketHeader, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{
-    BodyTrackingBDConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize,
-    H264Profile, OpenvrConfig, SessionConfig, SocketProtocol, ControllersFakeTrackingBinding
+    BodyTrackingBDConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode,
+    ControllersFakeTrackingBinding, FrameSize, H264Profile, OpenvrConfig, SessionConfig,
+    SocketProtocol,
 };
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSocketBuilder, CONTROL_PORT, KEEPALIVE_INTERVAL,
@@ -76,7 +77,6 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
     let mut use_right_controller_as_fake_tracker = false;
     let mut right_controller_as_fake_tracker_binding = -1;
 
-
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
         controller_is_tracker =
             matches!(config.emulation_mode, ControllersEmulationMode::ViveTracker);
@@ -100,10 +100,11 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
             .is_some_and(|c| c.steamvr_input_2_0);
 
         use_left_controller_as_fake_tracker = config.use_left_as_tracker.enabled();
-        left_controller_as_fake_tracker_binding = get_fake_tracker_binding_id(config.use_left_as_tracker);
-        
+        left_controller_as_fake_tracker_binding =
+            get_fake_tracker_binding_id(config.use_left_as_tracker);
         use_right_controller_as_fake_tracker = config.use_right_as_tracker.enabled();
-        right_controller_as_fake_tracker_binding = get_fake_tracker_binding_id(config.use_right_as_tracker);
+        right_controller_as_fake_tracker_binding =
+            get_fake_tracker_binding_id(config.use_right_as_tracker);
 
         true
     } else {

@@ -284,7 +284,7 @@ impl StreamRenderer {
 
             let width = tanr - tanl;
             let height = tanu - tand;
-            let quad_depth = 100.0;
+            let quad_depth = 1000.0;
 
             let output_mat4 = Mat4::from_translation(view_params.output_view_params.pose.position)
                 * Mat4::from_quat(view_params.output_view_params.pose.orientation);

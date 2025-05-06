@@ -1,6 +1,6 @@
 use super::{staging::StagingRenderer, GraphicsContext, MAX_PUSH_CONSTANTS_SIZE};
 use alvr_common::{
-    glam::{self, Mat4, Quat, UVec2, Vec3, Vec4},
+    glam::{self, Mat4, UVec2, Vec3, Vec4},
     ViewParams,
 };
 use alvr_session::{FoveatedEncodingConfig, PassthroughMode, UpscalingConfig};
@@ -37,7 +37,6 @@ const _: () = assert!(
 
 pub struct StreamViewParams {
     pub swapchain_index: u32,
-    pub reprojection_rotation: Quat,
     pub input_view_params: ViewParams,
     pub output_view_params: ViewParams,
 }
@@ -306,9 +305,7 @@ impl StreamRenderer {
                         -1.0,
                     ))
                     * Mat4::from_scale(Vec3::new(width, height, 1.));
-            let view_mat = Mat4::from_quat(view_params.reprojection_rotation).inverse()
-                * output_mat4.inverse()
-                * input_mat4;
+            let view_mat = output_mat4.inverse() * input_mat4;
             let proj_mat = super::projection_from_fov(view_params.output_view_params.fov);
 
             let transform = proj_mat * view_mat * model_mat;

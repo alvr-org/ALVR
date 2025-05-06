@@ -9,7 +9,7 @@ use alvr_client_core::{
 use alvr_common::{
     anyhow::Result,
     error,
-    glam::{Quat, UVec2, Vec2},
+    glam::{UVec2, Vec2},
     parking_lot::RwLock,
     Pose, RelaxedAtomic, ViewParams, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
@@ -413,13 +413,11 @@ impl StreamContext {
                 [
                     StreamViewParams {
                         swapchain_index: left_swapchain_idx,
-                        reprojection_rotation: Quat::IDENTITY,
                         input_view_params: input_view_params[0],
                         output_view_params: output_view_params[0],
                     },
                     StreamViewParams {
                         swapchain_index: right_swapchain_idx,
-                        reprojection_rotation: Quat::IDENTITY,
                         input_view_params: input_view_params[1],
                         output_view_params: output_view_params[1],
                     },

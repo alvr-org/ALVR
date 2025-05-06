@@ -15,9 +15,9 @@ mod bindings {
 use bindings::*;
 
 use alvr_common::{
-    error, once_cell::sync::Lazy, parking_lot::RwLock, settings_schema::Switch, warn,
-    BUTTON_INFO, DETACHED_CONTROLLER_LEFT_ID, DETACHED_CONTROLLER_RIGHT_ID, HAND_LEFT_ID,
-    HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
+    error, once_cell::sync::Lazy, parking_lot::RwLock, settings_schema::Switch, warn, BUTTON_INFO,
+    DETACHED_CONTROLLER_LEFT_ID, DETACHED_CONTROLLER_RIGHT_ID, HAND_LEFT_ID, HAND_RIGHT_ID,
+    HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
 };
 use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};

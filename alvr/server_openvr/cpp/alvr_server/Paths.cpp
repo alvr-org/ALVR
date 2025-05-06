@@ -249,10 +249,8 @@ void init_paths() {
     }
 }
 
-uint64_t GetFakeTrackerBindingID(int settingsBinding)
-{
-    switch (settingsBinding)
-    {
+uint64_t GetFakeTrackerBindingID(int settingsBinding) {
+    switch (settingsBinding) {
     case 0:
         return BODY_CHEST_ID;
     case 1:
@@ -269,7 +267,7 @@ uint64_t GetFakeTrackerBindingID(int settingsBinding)
         return BODY_RIGHT_KNEE_ID;
     case 7:
         return BODY_RIGHT_FOOT_ID;
-    
+
     default:
         return (uint64_t)0;
     }

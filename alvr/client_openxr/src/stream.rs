@@ -22,7 +22,6 @@ use alvr_session::{
     MediacodecProperty, PassthroughMode, UpscalingConfig,
 };
 use alvr_system_info::Platform;
-use core::ffi::c_void;
 use openxr as xr;
 use std::{
     ptr,
@@ -96,7 +95,6 @@ pub struct StreamContext {
     renderer: StreamRenderer,
     decoder: Option<(VideoDecoderConfig, VideoDecoderSource)>,
     defer_reprojection_to_runtime: bool,
-    last_buffer: *mut c_void,
 }
 
 impl StreamContext {
@@ -234,7 +232,6 @@ impl StreamContext {
             renderer,
             decoder: None,
             defer_reprojection_to_runtime: platform.is_quest(),
-            last_buffer: ptr::null_mut(),
         };
 
         this.update_reference_space();
@@ -351,21 +348,11 @@ impl StreamContext {
             if let Some((timestamp, buffer_ptr)) = frame_result {
                 let view_params = self.core_context.report_compositor_start(timestamp);
 
-                // Avoid passing invalid timestamp to runtime
-                let timestamp =
-                    Duration::max(timestamp, vsync_time.saturating_sub(Duration::from_secs(1)));
-
                 self.last_good_view_params = view_params;
-
-                // If we are handling reprojection ourselves, we want the last buffer so we can
-                // re-render it at headset Hz ourselves instead of the compositor doing it.
-                if !self.defer_reprojection_to_runtime {
-                    self.last_buffer = buffer_ptr;
-                }
 
                 (timestamp, view_params, buffer_ptr)
             } else {
-                (vsync_time, self.last_good_view_params, self.last_buffer)
+                (vsync_time, self.last_good_view_params, ptr::null_mut())
             };
 
         let left_swapchain_idx = self.swapchains[0].acquire_image().unwrap();
@@ -406,12 +393,18 @@ impl StreamContext {
                 fov: crate::from_xr_fov(current_headset_views[1].fov),
             },
         ];
+        let mut openxr_display_time = vsync_time;
 
         // (shinyquagsire23) I don't entirely trust runtimes to implement CompositionLayerProjectionView
         // correctly, but if we do trust them, avoid doing rotation ourselves.
         // Ex: YVR/PFDMR has issues with aspect ratio mismatches and passthrough compositing.
         if self.defer_reprojection_to_runtime {
             output_view_params = input_view_params;
+
+            // Avoid passing invalid timestamp to runtime
+            // TODO(shinyquagsire23): Is there a technical reason to do it this way? Why not just vsync?
+            openxr_display_time =
+                Duration::max(timestamp, vsync_time.saturating_sub(Duration::from_secs(1)))
         }
 
         unsafe {
@@ -492,7 +485,7 @@ impl StreamContext {
                 }),
         );
 
-        (layer, timestamp)
+        (layer, openxr_display_time)
     }
 }
 

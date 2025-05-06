@@ -15,7 +15,7 @@ mod bindings {
 use bindings::*;
 
 use alvr_common::{
-    error, info, once_cell::sync::Lazy, parking_lot::RwLock, settings_schema::Switch, warn,
+    error, once_cell::sync::Lazy, parking_lot::RwLock, settings_schema::Switch, warn,
     BUTTON_INFO, DETACHED_CONTROLLER_LEFT_ID, DETACHED_CONTROLLER_RIGHT_ID, HAND_LEFT_ID,
     HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
 };

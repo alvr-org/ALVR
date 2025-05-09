@@ -8,6 +8,4 @@ Exec=/usr/bin/flatpak run --command=/app/utils/alvr/bin/alvr_launcher com.valves
 Icon=application-alvr-launcher
 Categories=Game;
 StartupNotify=true
-PrefersNonDefaultGPU=true
-X-KDE-RunOnDiscreteGpu=true
 StartupWMClass=ALVR

@@ -658,6 +658,36 @@ This is a similar effect to AR glasses."
     HsvChromaKey(#[schema(flag = "real-time")] HsvChromaKeyConfig),
 }
 
+#[repr(u8)]
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
+#[schema(gui = "button_group")]
+pub enum ClientsidePostProcessingSuperSamplingMode {
+    Disabled = 0,
+    Normal = 1 << 0,
+    Quality = 1 << 1,
+}
+
+#[repr(u8)]
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
+#[schema(gui = "button_group")]
+pub enum ClientsidePostProcessingSharpeningMode {
+    Disabled = 0,
+    Normal = 1 << 2,
+    Quality = 1 << 3,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct ClientsidePostProcessingConfig {
+    #[schema(strings(
+        help = "Reduce flicker for high contrast edges.\nUseful when the input resolution is high compared to the headset display"
+    ))]
+    pub super_sampling: ClientsidePostProcessingSuperSamplingMode,
+    #[schema(strings(
+        help = "Improve clarity of high contrast edges and counteract blur.\nUseful when the input resolution is low compared to the headset display"
+    ))]
+    pub sharpening: ClientsidePostProcessingSharpeningMode,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct UpscalingConfig {
     #[schema(strings(
@@ -749,6 +779,13 @@ If you want to reduce the amount of pixelation on the edges, increase the center
     pub adapter_index: u32,
 
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,
+
+    #[schema(strings(
+        display_name = "Client-side post-processing",
+        help = "Hardware optimized algorithms, available on Quest and Pico headsets"
+    ))]
+    #[schema(flag = "real-time")]
+    pub clientside_post_processing: Switch<ClientsidePostProcessingConfig>,
 
     #[schema(strings(help = "Snapdragon Game Super Resolution client-side upscaling"))]
     pub upscaling: Switch<UpscalingConfig>,
@@ -1576,6 +1613,17 @@ pub fn session_settings_default() -> SettingsDefault {
                         value_start_min: 0.1,
                         value_end_min: 1.0,
                         value_end_max: 1.1,
+                    },
+                },
+            },
+            clientside_post_processing: SwitchDefault {
+                enabled: false,
+                content: ClientsidePostProcessingConfigDefault {
+                    super_sampling: ClientsidePostProcessingSuperSamplingModeDefault {
+                        variant: ClientsidePostProcessingSuperSamplingModeDefaultVariant::Quality,
+                    },
+                    sharpening: ClientsidePostProcessingSharpeningModeDefault {
+                        variant: ClientsidePostProcessingSharpeningModeDefaultVariant::Quality,
                     },
                 },
             },

@@ -15,7 +15,7 @@ use alvr_common::{
     warn, DeviceMotion, Fov, OptLazy, Pose,
 };
 use alvr_graphics::{
-    compute_target_view_resolution, GraphicsContext, LobbyRenderer, LobbyViewParams,
+    compute_target_view_resolution, GraphicsContext, HandData, LobbyRenderer, LobbyViewParams,
     StreamRenderer, StreamViewParams,
 };
 use alvr_packets::{ButtonEntry, ButtonValue, FaceData, ViewParams};
@@ -839,7 +839,18 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(
         if let Some(renderer) = renderer {
             renderer.render(
                 view_inputs,
-                [(None, None), (None, None)],
+                [
+                    HandData {
+                        grip_motion: None,
+                        detached_grip_motion: None,
+                        skeleton_joints: None,
+                    },
+                    HandData {
+                        grip_motion: None,
+                        detached_grip_motion: None,
+                        skeleton_joints: None,
+                    },
+                ],
                 None,
                 None,
                 None,

@@ -16,7 +16,8 @@ use bindings::*;
 
 use alvr_common::{
     error, once_cell::sync::Lazy, parking_lot::RwLock, settings_schema::Switch, warn, BUTTON_INFO,
-    HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
+    DETACHED_CONTROLLER_LEFT_ID, DETACHED_CONTROLLER_RIGHT_ID, HAND_LEFT_ID, HAND_RIGHT_ID,
+    HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
 };
 use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};
@@ -113,7 +114,14 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                             .get_device_motion(*HAND_RIGHT_ID, sample_timestamp)
                             .map(|m| tracking::to_ffi_motion(*HAND_RIGHT_ID, m))
                             .filter(|_| tracked);
-
+                        let ffi_left_detached_controller_motion = context
+                            .get_device_motion(*DETACHED_CONTROLLER_LEFT_ID, sample_timestamp)
+                            .map(|m| tracking::to_ffi_motion(*DETACHED_CONTROLLER_LEFT_ID, m))
+                            .filter(|_| tracked);
+                        let ffi_right_detached_controller_motion = context
+                            .get_device_motion(*DETACHED_CONTROLLER_RIGHT_ID, sample_timestamp)
+                            .map(|m| tracking::to_ffi_motion(*DETACHED_CONTROLLER_RIGHT_ID, m))
+                            .filter(|_| tracked);
                         let (
                             ffi_left_hand_skeleton,
                             ffi_right_hand_skeleton,
@@ -211,6 +219,16 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                 ffi_head_motion,
                                 ffi_left_hand_data,
                                 ffi_right_hand_data,
+                                if let Some(motion) = &ffi_left_detached_controller_motion {
+                                    motion
+                                } else {
+                                    ptr::null()
+                                },
+                                if let Some(motion) = &ffi_right_detached_controller_motion {
+                                    motion
+                                } else {
+                                    ptr::null()
+                                },
                                 ffi_body_tracker_motions.as_ptr(),
                                 ffi_body_tracker_motions.len() as i32,
                             )

@@ -911,6 +911,12 @@ pub struct FaceTrackingConfig {
     pub sink: FaceTrackingSinkConfig,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[schema(collapsible)]
+pub struct FakeControllerAsTrackerConfig {
+    pub steamm_vr_binding: ControllersFakeTrackingBinding,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BodyTrackingSourcesConfig {
     pub body_tracking_fb: Switch<BodyTrackingFBConfig>,
@@ -999,6 +1005,25 @@ pub enum ControllersEmulationMode {
         serial_number: String,
         button_set: Vec<String>,
     },
+}
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub enum ControllersFakeTrackingBinding {
+    #[schema(strings(display_name = "Chest"))]
+    Chest,
+    #[schema(strings(display_name = "Hips"))]
+    Waist,
+    #[schema(strings(display_name = "LeftElbow"))]
+    LeftElbow,
+    #[schema(strings(display_name = "RightElbow"))]
+    RightElbow,
+    #[schema(strings(display_name = "LeftKnee"))]
+    LeftKnee,
+    #[schema(strings(display_name = "LeftFoot"))]
+    LeftFoot,
+    #[schema(strings(display_name = "RightKnee"))]
+    RightKnee,
+    #[schema(strings(display_name = "RightFoot"))]
+    RightFoot,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -1173,6 +1198,14 @@ pub struct ControllersConfig {
 Because of runtime limitations, this option is ignored when body tracking is active."
     ))]
     pub multimodal_tracking: bool,
+
+    #[schema(flag = "steamvr-restart")]
+    #[schema(strings(help = r"Use left controller as fake tracker"))]
+    pub use_left_as_tracker: Switch<ControllersFakeTrackingBinding>,
+
+    #[schema(flag = "steamvr-restart")]
+    #[schema(strings(help = r"Use right controller as fake tracker"))]
+    pub use_right_as_tracker: Switch<ControllersFakeTrackingBinding>,
 
     #[schema(flag = "real-time")]
     #[schema(strings(
@@ -1942,6 +1975,18 @@ pub fn session_settings_default() -> SettingsDefault {
                         },
                     },
                     multimodal_tracking: false,
+                    use_left_as_tracker: SwitchDefault {
+                        enabled: false,
+                        content: ControllersFakeTrackingBindingDefault {
+                            variant: (ControllersFakeTrackingBindingDefaultVariant::LeftElbow),
+                        },
+                    },
+                    use_right_as_tracker: SwitchDefault {
+                        enabled: false,
+                        content: ControllersFakeTrackingBindingDefault {
+                            variant: (ControllersFakeTrackingBindingDefaultVariant::RightElbow),
+                        },
+                    },
                     emulation_mode: ControllersEmulationModeDefault {
                         Custom: ControllersEmulationModeCustomDefault {
                             serial_number: "ALVR Controller".into(),

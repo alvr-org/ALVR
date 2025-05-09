@@ -15,9 +15,9 @@ use alvr_common::{
     Pose, RelaxedAtomic, ALVR_VERSION,
 };
 use alvr_packets::{
-    ClientConnectionResult, ClientControlPacket, ClientStatistics, Haptics, ServerControlPacket,
-    StreamConfigPacket, Tracking, VideoPacketHeader, VideoStreamingCapabilities, ViewParams, AUDIO,
-    HAPTICS, STATISTICS, TRACKING, VIDEO,
+    ClientConnectionResult, ClientControlPacket, ClientStatistics, Haptics, RealTimeConfig,
+    ServerControlPacket, StreamConfigPacket, Tracking, VideoPacketHeader,
+    VideoStreamingCapabilities, ViewParams, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{settings_schema::Switch, SocketProtocol};
 use alvr_sockets::{
@@ -520,7 +520,7 @@ fn connection_pipeline(
                     Ok(ServerControlPacket::ReservedBuffer(buffer)) => {
                         // NB: it's normal for deserialization to fail if server has different
                         // version
-                        if let Ok(config) = alvr_packets::decode_real_time_config(&buffer) {
+                        if let Ok(config) = RealTimeConfig::decode(&buffer) {
                             event_queue
                                 .lock()
                                 .push_back(ClientCoreEvent::RealTimeConfig(config));

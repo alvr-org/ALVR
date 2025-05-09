@@ -100,8 +100,6 @@ pub struct OpenvrConfig {
     pub capture_frame_dir: String,
     pub amd_bitrate_corruption_fix: bool,
     pub use_separate_hand_trackers: bool,
-    pub use_left_controller_as_fake_tracker: bool,
-    pub use_right_controller_as_fake_tracker: bool,
     pub left_controller_as_fake_tracker_binding: i32,
     pub right_controller_as_fake_tracker_binding: i32,
     // these settings are not used on the C++ side, but we need them to correctly trigger a SteamVR

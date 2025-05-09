@@ -72,9 +72,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
     let mut controller_is_tracker = false;
     let mut controller_profile = 0;
     let mut use_separate_hand_trackers = false;
-    let mut use_left_controller_as_fake_tracker = false;
     let mut left_controller_as_fake_tracker_binding = -1;
-    let mut use_right_controller_as_fake_tracker = false;
     let mut right_controller_as_fake_tracker_binding = -1;
 
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
@@ -99,13 +97,14 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
             .as_option()
             .is_some_and(|c| c.steamvr_input_2_0);
 
-        use_left_controller_as_fake_tracker = config.use_left_as_tracker.enabled();
-        left_controller_as_fake_tracker_binding =
-            get_fake_tracker_binding_id(config.use_left_as_tracker);
-        use_right_controller_as_fake_tracker = config.use_right_as_tracker.enabled();
-        right_controller_as_fake_tracker_binding =
-            get_fake_tracker_binding_id(config.use_right_as_tracker);
-
+        if config.use_left_as_tracker.enabled() {
+            left_controller_as_fake_tracker_binding =
+                get_fake_tracker_binding_id(config.use_left_as_tracker);
+        }
+        if config.use_right_as_tracker.enabled() {
+            right_controller_as_fake_tracker_binding =
+                get_fake_tracker_binding_id(config.use_right_as_tracker);
+        }
         true
     } else {
         false
@@ -239,8 +238,6 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         capture_frame_dir: settings.extra.capture.capture_frame_dir,
         amd_bitrate_corruption_fix: settings.video.bitrate.image_corruption_fix,
         use_separate_hand_trackers,
-        use_left_controller_as_fake_tracker,
-        use_right_controller_as_fake_tracker,
         left_controller_as_fake_tracker_binding,
         right_controller_as_fake_tracker_binding,
         _controller_profile: controller_profile,

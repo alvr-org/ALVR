@@ -971,21 +971,21 @@ pub enum ControllersEmulationMode {
 }
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum ControllersFakeTrackingBinding {
-    #[schema(strings(display_name = "chest"))]
+    #[schema(strings(display_name = "Chest"))]
     Chest,
-    #[schema(strings(display_name = "hips"))]
+    #[schema(strings(display_name = "Hips"))]
     Waist,
-    #[schema(strings(display_name = "left_elbow"))]
+    #[schema(strings(display_name = "LeftElbow"))]
     LeftElbow,
-    #[schema(strings(display_name = "right_elbow"))]
+    #[schema(strings(display_name = "RightElbow"))]
     RightElbow,
-    #[schema(strings(display_name = "left_knee"))]
+    #[schema(strings(display_name = "LeftKnee"))]
     LeftKnee,
-    #[schema(strings(display_name = "left_foot"))]
+    #[schema(strings(display_name = "LeftFoot"))]
     LeftFoot,
-    #[schema(strings(display_name = "right_knee"))]
+    #[schema(strings(display_name = "RightKnee"))]
     RightKnee,
-    #[schema(strings(display_name = "right_foot"))]
+    #[schema(strings(display_name = "RightFoot"))]
     RightFoot,
 }
 
@@ -1163,15 +1163,11 @@ Because of runtime limitations, this option is ignored when body tracking is act
     pub multimodal_tracking: bool,
 
     #[schema(flag = "steamvr-restart")]
-    #[schema(strings(
-        help = r"If it is activated left controller will be used as fake tracker in steamVR"
-    ))]
+    #[schema(strings(help = r"Use left controller as fake tracker"))]
     pub use_left_as_tracker: Switch<ControllersFakeTrackingBinding>,
 
     #[schema(flag = "steamvr-restart")]
-    #[schema(strings(
-        help = r"If it is activated right controller will be used as fake tracker in steamVR"
-    ))]
+    #[schema(strings(help = r"Use right controller as fake tracker"))]
     pub use_right_as_tracker: Switch<ControllersFakeTrackingBinding>,
 
     #[schema(flag = "real-time")]

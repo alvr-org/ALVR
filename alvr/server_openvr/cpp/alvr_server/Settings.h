@@ -93,9 +93,6 @@ public:
     int m_bodyTrackingHasLegs = false;
     bool m_useSeparateHandTrackers = false;
 
-    bool m_useLeftControllerAsFakeTracker = false;
-    bool m_useRightControllerAsFakeTracker = false;
-
     int m_leftControllerAsFakeTrackerBinding = -1;
     int m_rightControllerAsFakeTrackerBinding = -1;
 };

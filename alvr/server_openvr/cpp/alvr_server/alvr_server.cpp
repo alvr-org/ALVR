@@ -288,7 +288,7 @@ bool InitializeStreaming() {
                 }
             }
 
-            if (Settings::Instance().m_useLeftControllerAsFakeTracker) {
+            if (Settings::Instance().m_leftControllerAsFakeTrackerBinding != -1) {
                 uint64_t trackerId = GetFakeTrackerBindingID(
                     Settings::Instance().m_leftControllerAsFakeTrackerBinding
                 );
@@ -301,7 +301,7 @@ bool InitializeStreaming() {
                     );
                 }
             }
-            if (Settings::Instance().m_useRightControllerAsFakeTracker) {
+            if (Settings::Instance().m_rightControllerAsFakeTrackerBinding != -1) {
                 uint64_t trackerId = GetFakeTrackerBindingID(
                     Settings::Instance().m_rightControllerAsFakeTrackerBinding
                 );

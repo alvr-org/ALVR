@@ -353,7 +353,7 @@ pub fn entry_point() {
 
                         lobby.update_reference_space();
 
-                        interaction_context.write().relative_head_orientation *=
+                        interaction_context.write().pico_relative_head_orientation *=
                             from_xr_quat(event.pose_in_previous_space().orientation);
 
                         if let Some(stream) = &mut stream_context {

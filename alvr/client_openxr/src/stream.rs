@@ -553,8 +553,8 @@ fn stream_input_loop(
                 option.map(|pose| {
                     if int_ctx.platform.is_pico() {
                         Pose {
-                            orientation: int_ctx.relative_head_orientation * pose.orientation,
-                            position: int_ctx.relative_head_orientation * pose.position,
+                            orientation: int_ctx.pico_relative_head_orientation * pose.orientation,
+                            position: int_ctx.pico_relative_head_orientation * pose.position,
                         }
                     } else {
                         pose

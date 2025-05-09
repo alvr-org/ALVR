@@ -175,7 +175,7 @@ pub struct InteractionContext {
     multimodal_handle: Option<MultimodalMeta>,
     // Stores head orientation relative to the first created reference space.
     // Used by head rotation correction for eye gazes on Pico.
-    pub relative_head_orientation: Quat,
+    pub pico_relative_head_orientation: Quat,
     pub multimodal_hands_enabled: bool,
     pub face_sources: FaceSources,
     pub body_sources: BodySources,
@@ -472,7 +472,7 @@ impl InteractionContext {
                 body_tracker_bd: None,
                 motion_tracker_bd: None,
             },
-            relative_head_orientation: Quat::IDENTITY,
+            pico_relative_head_orientation: Quat::IDENTITY,
         }
     }
 

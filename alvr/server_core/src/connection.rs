@@ -1089,12 +1089,10 @@ fn connection_pipeline(
                     let session_manager_lock = SESSION_MANAGER.read();
                     let settings = session_manager_lock.settings();
 
-                    RealTimeConfig {
-                        passthrough: settings.video.passthrough.clone().into_option(),
-                    }
+                    RealTimeConfig::from_settings(settings)
                 };
 
-                if let Ok(config) = alvr_packets::encode_real_time_config(&config) {
+                if let Ok(config) = config.encode() {
                     control_sender.lock().send(&config).ok();
                 }
 

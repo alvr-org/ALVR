@@ -12,7 +12,7 @@ use alvr_filesystem as afs;
 use dependencies::OpenXRLoadersSelection;
 use packaging::ReleaseFlavor;
 use pico_args::Arguments;
-use std::{fs, time::Instant};
+use std::{fs, process, time::Instant};
 use xshell::{cmd, Shell};
 
 const HELP_STR: &str = r#"
@@ -185,7 +185,10 @@ fn main() {
             "linux" => BuildPlatform::Linux,
             "macos" => BuildPlatform::Macos,
             "android" => BuildPlatform::Android,
-            _ => panic!("Unrecognized platform."),
+            _ => {
+                eprintln!("\nUnrecognized platform.");
+                process::exit(1);
+            }
         });
 
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
@@ -266,20 +269,20 @@ fn main() {
                 "check-msrv" => version::check_msrv(),
                 "kill-oculus" => kill_oculus_processes(),
                 _ => {
-                    println!("\nUnrecognized subcommand.");
+                    eprintln!("\nUnrecognized subcommand.");
                     println!("{HELP_STR}");
-                    return;
+                    process::exit(1);
                 }
             }
         } else {
-            println!("\nWrong arguments.");
+            eprintln!("\nWrong arguments.");
             println!("{HELP_STR}");
-            return;
+            process::exit(1);
         }
     } else {
-        println!("\nMissing subcommand.");
+        eprintln!("\nMissing subcommand.");
         println!("{HELP_STR}");
-        return;
+        process::exit(1);
     }
 
     let elapsed_time = begin_time.elapsed();

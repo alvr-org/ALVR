@@ -84,9 +84,20 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                 down: config.fov[1].down,
                             },
                         ],
-                        // todo: send full matrix to steamvr
-                        ipd_m: config.local_view_transforms[1].position.x
-                            - config.local_view_transforms[0].position.x,
+                        pose: [
+                            FfiPose {
+                                orientation: tracking::to_ffi_quat(
+                                    config.local_view_transforms[0].orientation,
+                                ),
+                                position: config.local_view_transforms[0].position.to_array(),
+                            },
+                            FfiPose {
+                                orientation: tracking::to_ffi_quat(
+                                    config.local_view_transforms[1].orientation,
+                                ),
+                                position: config.local_view_transforms[1].position.to_array(),
+                            },
+                        ],
                     });
                 },
                 ServerCoreEvent::Tracking { sample_timestamp } => {

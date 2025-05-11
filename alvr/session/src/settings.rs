@@ -877,7 +877,7 @@ pub struct FaceTrackingConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct FakeControllerAsTrackerConfig {
-    pub steamm_vr_binding: ControllersFakeTrackingBinding,
+    pub steam_vr_binding: ControllersFakeTrackingBinding,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
@@ -975,17 +975,17 @@ pub enum ControllersFakeTrackingBinding {
     Chest,
     #[schema(strings(display_name = "Hips"))]
     Waist,
-    #[schema(strings(display_name = "LeftElbow"))]
+    #[schema(strings(display_name = "Left Elbow"))]
     LeftElbow,
-    #[schema(strings(display_name = "RightElbow"))]
+    #[schema(strings(display_name = "Right Elbow"))]
     RightElbow,
-    #[schema(strings(display_name = "LeftKnee"))]
+    #[schema(strings(display_name = "Left Knee"))]
     LeftKnee,
-    #[schema(strings(display_name = "LeftFoot"))]
+    #[schema(strings(display_name = "Left Foot"))]
     LeftFoot,
-    #[schema(strings(display_name = "RightKnee"))]
+    #[schema(strings(display_name = "Right Knee"))]
     RightKnee,
-    #[schema(strings(display_name = "RightFoot"))]
+    #[schema(strings(display_name = "Right Foot"))]
     RightFoot,
 }
 

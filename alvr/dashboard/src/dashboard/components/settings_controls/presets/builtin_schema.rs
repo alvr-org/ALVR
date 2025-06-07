@@ -162,7 +162,7 @@ pub fn encoder_preset_schema() -> PresetSchemaNode {
                     val_nv,
                 ),
                 string_modifier(
-                    "session_settings.video.encoder_config.amf.quality_preset.variant",
+                    "session_settings.video.encoder_config.quality_preset.variant",
                     val_amd,
                 ),
             ]

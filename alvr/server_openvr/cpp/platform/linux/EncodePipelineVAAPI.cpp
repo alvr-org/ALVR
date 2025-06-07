@@ -240,7 +240,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
         = Settings::Instance()
               .m_enableVbaq; // No noticable performance difference and should improve subjective
                              // quality by allocating more bits to smooth areas
-    switch (settings.m_amdEncoderQualityPreset) {
+    switch (settings.m_encoderQualityPreset) {
     case ALVR_QUALITY:
         if (vk_ctx.amd) {
             quality.preset_mode = PRESET_MODE_QUALITY;

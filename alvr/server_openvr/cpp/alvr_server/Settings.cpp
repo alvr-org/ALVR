@@ -72,14 +72,13 @@ void Settings::Load() {
         m_enableHdr = config.get("enable_hdr").get<bool>();
         m_forceHdrSrgbCorrection = config.get("force_hdr_srgb_correction").get<bool>();
         m_clampHdrExtendedRange = config.get("clamp_hdr_extended_range").get<bool>();
-        m_enablePreAnalysis = config.get("enable_pre_analysis").get<bool>();
+        m_enableAmfPreAnalysis = config.get("enable_amf_pre_analysis").get<bool>();
         m_enableVbaq = config.get("enable_vbaq").get<bool>();
-        m_enableHmqb = config.get("enable_hmqb").get<bool>();
-        m_usePreproc = config.get("use_preproc").get<bool>();
-        m_preProcSigma = (uint32_t)config.get("preproc_sigma").get<int64_t>();
-        m_preProcTor = (uint32_t)config.get("preproc_tor").get<int64_t>();
-        m_amdEncoderQualityPreset
-            = (uint32_t)config.get("amd_encoder_quality_preset").get<int64_t>();
+        m_enableAmfHmqb = config.get("enable_amf_hmqb").get<bool>();
+        m_useAmfPreproc = config.get("use_amf_preproc").get<bool>();
+        m_amfPreProcSigma = (uint32_t)config.get("amf_preproc_sigma").get<int64_t>();
+        m_amfPreProcTor = (uint32_t)config.get("amf_preproc_tor").get<int64_t>();
+        m_encoderQualityPreset = (uint32_t)config.get("encoder_quality_preset").get<int64_t>();
         m_amdBitrateCorruptionFix = (bool)config.get("amd_bitrate_corruption_fix").get<bool>();
         m_nvencQualityPreset = (uint32_t)config.get("nvenc_quality_preset").get<int64_t>();
         m_force_sw_encoding = config.get("force_sw_encoding").get<bool>();

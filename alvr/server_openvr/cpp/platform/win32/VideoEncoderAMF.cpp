@@ -197,7 +197,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_B_PIC_PATTERN, 0);
 
-        switch (Settings::Instance().m_amdEncoderQualityPreset) {
+        switch (Settings::Instance().m_encoderQualityPreset) {
         case ALVR_QUALITY:
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_QUALITY
@@ -222,15 +222,16 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
         }
 
-        if (Settings::Instance().m_enablePreAnalysis) {
-            if (!Settings::Instance().m_usePreproc || Settings::Instance().m_use10bitEncoder) {
+        if (Settings::Instance().m_enableAmfPreAnalysis) {
+            if (!Settings::Instance().m_useAmfPreproc || Settings::Instance().m_use10bitEncoder) {
                 Warn("Pre-analysis could not be enabled because \"Use preproc\" is not enabled or "
                      "\"Reduce color banding\" is enabled.");
             } else if (m_hasPreAnalysis) {
                 Warn("Enabling h264 pre-analysis. You may experience higher latency when this is "
                      "enabled.");
                 amfEncoder->SetProperty(
-                    AMF_VIDEO_ENCODER_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis
+                    AMF_VIDEO_ENCODER_PRE_ANALYSIS_ENABLE,
+                    Settings::Instance().m_enableAmfPreAnalysis
                 );
             } else {
                 Warn("Pre-analysis could not be enabled because your GPU does not support it for "
@@ -295,7 +296,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 
         // May impact performance but improves quality in high-motion areas
         amfEncoder->SetProperty(
-            AMF_VIDEO_ENCODER_HIGH_MOTION_QUALITY_BOOST_ENABLE, Settings::Instance().m_enableHmqb
+            AMF_VIDEO_ENCODER_HIGH_MOTION_QUALITY_BOOST_ENABLE, Settings::Instance().m_enableAmfHmqb
         );
 
         // Turns Off IDR/I Frames
@@ -344,7 +345,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             AMF_VIDEO_ENCODER_HEVC_FRAMERATE, ::AMFConstructRate(frameRateIn, 1)
         );
 
-        switch (Settings::Instance().m_amdEncoderQualityPreset) {
+        switch (Settings::Instance().m_encoderQualityPreset) {
         case ALVR_QUALITY:
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_QUALITY
@@ -384,8 +385,8 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             );
         }
 
-        if (Settings::Instance().m_enablePreAnalysis) {
-            if (!Settings::Instance().m_usePreproc || Settings::Instance().m_use10bitEncoder) {
+        if (Settings::Instance().m_enableAmfPreAnalysis) {
+            if (!Settings::Instance().m_useAmfPreproc || Settings::Instance().m_use10bitEncoder) {
                 Warn("Pre-analysis could not be enabled because \"Use preproc\" is not enabled or "
                      "\"Reduce color banding\" is enabled.");
             } else if (m_hasPreAnalysis) {
@@ -393,7 +394,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
                      "enabled.");
                 amfEncoder->SetProperty(
                     AMF_VIDEO_ENCODER_HEVC_PRE_ANALYSIS_ENABLE,
-                    Settings::Instance().m_enablePreAnalysis
+                    Settings::Instance().m_enableAmfPreAnalysis
                 );
             } else {
                 Warn("Pre-analysis could not be enabled because your GPU does not support it for "
@@ -464,7 +465,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
         // May impact performance but improves quality in high-motion areas
         amfEncoder->SetProperty(
             AMF_VIDEO_ENCODER_HEVC_HIGH_MOTION_QUALITY_BOOST_ENABLE,
-            Settings::Instance().m_enableHmqb
+            Settings::Instance().m_enableAmfHmqb
         );
 
         // Turns Off IDR/I Frames
@@ -515,7 +516,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             AMF_VIDEO_ENCODER_AV1_FRAMERATE, ::AMFConstructRate(frameRateIn, 1)
         );
 
-        switch (Settings::Instance().m_amdEncoderQualityPreset) {
+        switch (Settings::Instance().m_encoderQualityPreset) {
         case ALVR_QUALITY:
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_AV1_QUALITY_PRESET, AMF_VIDEO_ENCODER_AV1_QUALITY_PRESET_QUALITY
@@ -564,8 +565,8 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             caps->GetProperty(AMF_VIDEO_ENCODER_AV1_CAP_PRE_ANALYSIS, &m_hasPreAnalysis);
         }
 
-        if (Settings::Instance().m_enablePreAnalysis) {
-            if (!Settings::Instance().m_usePreproc || Settings::Instance().m_use10bitEncoder) {
+        if (Settings::Instance().m_enableAmfPreAnalysis) {
+            if (!Settings::Instance().m_useAmfPreproc || Settings::Instance().m_use10bitEncoder) {
                 Warn("Pre-analysis could not be enabled because \"Use preproc\" is not enabled or "
                      "\"Reduce color banding\" is enabled.");
             } else if (m_hasPreAnalysis) {
@@ -573,7 +574,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
                      "enabled.");
                 amfEncoder->SetProperty(
                     AMF_VIDEO_ENCODER_AV1_PRE_ANALYSIS_ENABLE,
-                    Settings::Instance().m_enablePreAnalysis
+                    Settings::Instance().m_enableAmfPreAnalysis
                 );
             } else {
                 Warn("Pre-analysis could not be enabled because your GPU does not support it for "
@@ -590,7 +591,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 
         // May impact performance but improves quality in high-motion areas
         amfEncoder->SetProperty(
-            AMF_VIDEO_ENCODER_AV1_HIGH_MOTION_QUALITY_BOOST, Settings::Instance().m_enableHmqb
+            AMF_VIDEO_ENCODER_AV1_HIGH_MOTION_QUALITY_BOOST, Settings::Instance().m_enableAmfHmqb
         );
 
         // Set infinite GOP length
@@ -648,10 +649,10 @@ VideoEncoderAMF::MakePreprocessor(amf::AMF_SURFACE_FORMAT inputFormat, int width
 
     AMF_THROW_IF(amfPreprocessor->SetProperty(AMF_PP_ENGINE_TYPE, amf::AMF_MEMORY_DX11));
     AMF_THROW_IF(amfPreprocessor->SetProperty(
-        AMF_PP_ADAPTIVE_FILTER_STRENGTH, Settings::Instance().m_preProcSigma
+        AMF_PP_ADAPTIVE_FILTER_STRENGTH, Settings::Instance().m_amfPreProcSigma
     ));
     AMF_THROW_IF(amfPreprocessor->SetProperty(
-        AMF_PP_ADAPTIVE_FILTER_SENSITIVITY, Settings::Instance().m_preProcTor
+        AMF_PP_ADAPTIVE_FILTER_SENSITIVITY, Settings::Instance().m_amfPreProcTor
     ));
 
     AMF_THROW_IF(amfPreprocessor->Init(inputFormat, width, height));
@@ -677,7 +678,7 @@ void VideoEncoderAMF::Initialize() {
             MakeConverter(m_surfaceFormat, m_renderWidth, m_renderHeight, inFormat)
         );
     } else {
-        if (Settings::Instance().m_usePreproc) {
+        if (Settings::Instance().m_useAmfPreproc) {
             inFormat = amf::AMF_SURFACE_NV12;
             m_amfComponents.emplace_back(
                 MakeConverter(m_surfaceFormat, m_renderWidth, m_renderHeight, inFormat)

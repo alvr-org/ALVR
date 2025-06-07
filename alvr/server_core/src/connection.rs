@@ -159,7 +159,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
     };
 
     let nvenc_overrides = settings.video.encoder_config.nvenc;
-    let amf_controls = settings.video.encoder_config.amf;
+    let amd_controls = settings.video.encoder_config.amd;
 
     OpenvrConfig {
         tracking_ref_only: settings.headset.tracking_ref_only,
@@ -173,14 +173,14 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         entropy_coding: settings.video.encoder_config.entropy_coding as u32,
         force_hdr_srgb_correction: settings.video.encoder_config.force_hdr_srgb_correction,
         clamp_hdr_extended_range: settings.video.encoder_config.clamp_hdr_extended_range,
-        enable_pre_analysis: amf_controls.enable_pre_analysis,
-        enable_vbaq: amf_controls.enable_vbaq,
-        enable_hmqb: amf_controls.enable_hmqb,
-        use_preproc: amf_controls.use_preproc,
-        preproc_sigma: amf_controls.preproc_sigma,
-        preproc_tor: amf_controls.preproc_tor,
+        enable_amf_pre_analysis: amd_controls.amf.enable_pre_analysis,
+        enable_amd_vbaq: amd_controls.enable_vbaq,
+        enable_amf_hmqb: amd_controls.amf.enable_hmqb,
+        use_amf_preproc: amd_controls.amf.use_preproc,
+        amf_preproc_sigma: amd_controls.amf.preproc_sigma,
+        amf_preproc_tor: amd_controls.amf.preproc_tor,
         nvenc_quality_preset: nvenc_overrides.quality_preset as u32,
-        amd_encoder_quality_preset: amf_controls.quality_preset as u32,
+        amd_encoder_quality_preset: amd_controls.quality_preset as u32,
         force_sw_encoding: settings
             .video
             .encoder_config

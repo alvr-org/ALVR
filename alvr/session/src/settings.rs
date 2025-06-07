@@ -161,7 +161,7 @@ Temporal: Helps improve overall encoding quality, very small trade-off in speed.
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(collapsible)]
-pub struct AmfConfig {
+pub struct AmdConfig {
     #[schema(flag = "steamvr-restart")]
     pub quality_preset: EncoderQualityPresetAmd,
     #[schema(
@@ -172,14 +172,15 @@ pub struct AmfConfig {
         flag = "steamvr-restart"
     )]
     pub enable_vbaq: bool,
-    #[schema(
-        strings(
-            display_name = "Enable High-Motion Quality Boost",
-            help = r#"Enables high motion quality boost mode.
-Allows the encoder to perform pre-analysis the motion of the video and use the information for better encoding"#
-        ),
-        flag = "steamvr-restart"
-    )]
+    #[schema(strings(display_name = "AMF"))]
+    #[schema(flag = "steamvr-restart")]
+    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
+    pub amf: AmfConfig,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[schema(collapsible)]
+pub struct AmfConfig {
     pub enable_hmqb: bool,
     #[schema(flag = "steamvr-restart")]
     pub use_preproc: bool,
@@ -315,9 +316,9 @@ CABAC produces better compression but it's significantly slower and may lead to 
     #[schema(flag = "steamvr-restart")]
     pub nvenc: NvencConfig,
 
-    #[schema(strings(display_name = "AMF"))]
+    #[schema(strings(display_name = "AMD"))]
     #[schema(flag = "steamvr-restart")]
-    pub amf: AmfConfig,
+    pub amd: AmdConfig,
 
     pub software: SoftwareEncodingConfig,
 }
@@ -1748,17 +1749,20 @@ pub fn session_settings_default() -> SettingsDefault {
                     rc_average_bitrate: -1,
                     enable_weighted_prediction: false,
                 },
-                amf: AmfConfigDefault {
+                amd: AmdConfigDefault {
                     gui_collapsed: true,
                     quality_preset: EncoderQualityPresetAmdDefault {
                         variant: EncoderQualityPresetAmdDefaultVariant::Speed,
                     },
-                    enable_pre_analysis: false,
                     enable_vbaq: false,
-                    enable_hmqb: false,
-                    use_preproc: false,
-                    preproc_sigma: 4,
-                    preproc_tor: 7,
+                    amf: AmfConfigDefault {
+                        gui_collapsed: true,
+                        enable_pre_analysis: false,
+                        enable_hmqb: false,
+                        use_preproc: false,
+                        preproc_sigma: 4,
+                        preproc_tor: 7,
+                    },
                 },
                 software: SoftwareEncodingConfigDefault {
                     force_software_encoding: false,

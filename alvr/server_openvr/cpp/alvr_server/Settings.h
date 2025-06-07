@@ -47,12 +47,12 @@ public:
     bool m_enableHdr;
     bool m_forceHdrSrgbCorrection;
     bool m_clampHdrExtendedRange;
-    bool m_enablePreAnalysis;
-    bool m_enableVbaq;
-    bool m_enableHmqb;
-    bool m_usePreproc;
-    uint32_t m_preProcSigma;
-    uint32_t m_preProcTor;
+    bool m_enableAmfPreAnalysis;
+    bool m_enableAmdVbaq;
+    bool m_enableAmfHmqb;
+    bool m_useAmfPreproc;
+    uint32_t m_amfPreProcSigma;
+    uint32_t m_amfPreProcTor;
     uint32_t m_amdEncoderQualityPreset;
     bool m_amdBitrateCorruptionFix;
     uint32_t m_nvencQualityPreset;

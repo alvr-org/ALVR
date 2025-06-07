@@ -788,7 +788,9 @@ If you want to reduce the amount of pixelation on the edges, increase the center
     #[schema(flag = "steamvr-restart")]
     pub preferred_fps: f32,
 
-    #[schema(strings(help = "You probably don't want to change this. Allows for changing adapter for ALVR compositor."))]
+    #[schema(strings(
+        help = "You probably don't want to change this. Allows for changing adapter for ALVR compositor."
+    ))]
     #[schema(flag = "steamvr-restart")]
     #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
     pub adapter_index: u32,

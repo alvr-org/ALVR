@@ -78,8 +78,7 @@ void Settings::Load() {
         m_useAmfPreproc = config.get("use_amf_preproc").get<bool>();
         m_amfPreProcSigma = (uint32_t)config.get("amf_preproc_sigma").get<int64_t>();
         m_amfPreProcTor = (uint32_t)config.get("amf_preproc_tor").get<int64_t>();
-        m_encoderQualityPreset
-            = (uint32_t)config.get("encoder_quality_preset").get<int64_t>();
+        m_encoderQualityPreset = (uint32_t)config.get("encoder_quality_preset").get<int64_t>();
         m_amdBitrateCorruptionFix = (bool)config.get("amd_bitrate_corruption_fix").get<bool>();
         m_nvencQualityPreset = (uint32_t)config.get("nvenc_quality_preset").get<int64_t>();
         m_force_sw_encoding = config.get("force_sw_encoding").get<bool>();

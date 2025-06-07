@@ -230,7 +230,8 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
                 Warn("Enabling h264 pre-analysis. You may experience higher latency when this is "
                      "enabled.");
                 amfEncoder->SetProperty(
-                    AMF_VIDEO_ENCODER_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enableAmfPreAnalysis
+                    AMF_VIDEO_ENCODER_PRE_ANALYSIS_ENABLE,
+                    Settings::Instance().m_enableAmfPreAnalysis
                 );
             } else {
                 Warn("Pre-analysis could not be enabled because your GPU does not support it for "

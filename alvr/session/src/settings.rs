@@ -220,6 +220,7 @@ pub struct EncoderConfig {
     #[schema(strings(help = r#"CBR: Constant BitRate mode. This is recommended.
 VBR: Variable BitRate mode. Not commended because it may throw off the adaptive bitrate algorithm. This is only supported on Windows and only with AMD/Nvidia GPUs"#))]
     #[schema(flag = "steamvr-restart")]
+    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
     pub rate_control_mode: RateControlMode,
 
     #[schema(strings(
@@ -745,6 +746,7 @@ If you want to reduce the amount of pixelation on the edges, increase the center
         help = r"This works only on Windows. It shouldn't be disabled except in certain circumstances when you know the VR game will not meet the target framerate."
     ))]
     #[schema(flag = "real-time")]
+    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
     pub enforce_server_frame_pacing: bool,
 
     #[schema(flag = "steamvr-restart")]
@@ -1386,6 +1388,7 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
         help = r#"If the client, server or the network discarded one packet, discard packets until a IDR packet is found.
 For now works only on Windows+Nvidia"#
     ))]
+    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
     pub avoid_video_glitching: bool,
 
     #[schema(gui(slider(min = 1024, max = 65507, logarithmic)), suffix = "B")]
@@ -1518,11 +1521,13 @@ pub struct Patches {
         help = "Async Compute is currently broken in SteamVR, keep disabled. ONLY FOR TESTING."
     ))]
     #[schema(flag = "steamvr-restart")]
+    #[cfg_attr(not(target_os = "linux"), schema(flag = "hidden"))]
     pub linux_async_compute: bool,
     #[schema(strings(
         help = "Async reprojection only works if you can always hit at least half of your refresh rate.",
     ))]
     #[schema(flag = "steamvr-restart")]
+    #[cfg_attr(not(target_os = "linux"), schema(flag = "hidden"))]
     pub linux_async_reprojection: bool,
 }
 

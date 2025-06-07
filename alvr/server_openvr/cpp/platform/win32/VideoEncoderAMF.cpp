@@ -197,7 +197,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_B_PIC_PATTERN, 0);
 
-        switch (Settings::Instance().m_amdEncoderQualityPreset) {
+        switch (Settings::Instance().m_encoderQualityPreset) {
         case ALVR_QUALITY:
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_QUALITY
@@ -291,7 +291,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 
         // No noticable performance difference and should improve subjective quality by allocating
         // more bits to smooth areas
-        amfEncoder->SetProperty(AMF_VIDEO_ENCODER_ENABLE_VBAQ, Settings::Instance().m_enableAmdVbaq);
+        amfEncoder->SetProperty(AMF_VIDEO_ENCODER_ENABLE_VBAQ, Settings::Instance().m_enableVbaq);
 
         // May impact performance but improves quality in high-motion areas
         amfEncoder->SetProperty(
@@ -344,7 +344,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             AMF_VIDEO_ENCODER_HEVC_FRAMERATE, ::AMFConstructRate(frameRateIn, 1)
         );
 
-        switch (Settings::Instance().m_amdEncoderQualityPreset) {
+        switch (Settings::Instance().m_encoderQualityPreset) {
         case ALVR_QUALITY:
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_QUALITY
@@ -458,7 +458,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
         // No noticable performance difference and should improve subjective quality by allocating
         // more bits to smooth areas
         amfEncoder->SetProperty(
-            AMF_VIDEO_ENCODER_HEVC_ENABLE_VBAQ, Settings::Instance().m_enableAmdVbaq
+            AMF_VIDEO_ENCODER_HEVC_ENABLE_VBAQ, Settings::Instance().m_enableVbaq
         );
 
         // May impact performance but improves quality in high-motion areas
@@ -515,7 +515,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             AMF_VIDEO_ENCODER_AV1_FRAMERATE, ::AMFConstructRate(frameRateIn, 1)
         );
 
-        switch (Settings::Instance().m_amdEncoderQualityPreset) {
+        switch (Settings::Instance().m_encoderQualityPreset) {
         case ALVR_QUALITY:
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_AV1_QUALITY_PRESET, AMF_VIDEO_ENCODER_AV1_QUALITY_PRESET_QUALITY
@@ -549,7 +549,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
         }
 
         // There is no VBAQ option for AV1. Instead it has CAQ (Content adaptive quantization)
-        if (Settings::Instance().m_enableAmdVbaq) {
+        if (Settings::Instance().m_enableVbaq) {
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_AV1_AQ_MODE, AMF_VIDEO_ENCODER_AV1_AQ_MODE_CAQ
             );

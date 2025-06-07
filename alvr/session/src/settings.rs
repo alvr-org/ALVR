@@ -43,7 +43,7 @@ pub enum FrameSize {
 
 #[repr(u32)]
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-pub enum EncoderQualityPresetAmd {
+pub enum EncoderQualityPreset {
     Quality = 0,
     Balanced = 1,
     Speed = 2,
@@ -161,22 +161,7 @@ Temporal: Helps improve overall encoding quality, very small trade-off in speed.
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(collapsible)]
-pub struct AmdConfig {
-    #[schema(flag = "steamvr-restart")]
-    pub quality_preset: EncoderQualityPresetAmd,
-    #[schema(
-        strings(
-            display_name = "Enable VBAQ/CAQ",
-            help = "Enables Variance Based Adaptive Quantization on h264 and HEVC, and Content Adaptive Quantization on AV1"
-        ),
-        flag = "steamvr-restart"
-    )]
-    pub enable_vbaq: bool,
-    #[schema(strings(display_name = "AMF"))]
-    #[schema(flag = "steamvr-restart")]
-    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
-    pub amf: AmfConfig,
-}
+pub struct AmdConfig {}
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(collapsible)]
@@ -202,6 +187,7 @@ Does not work with the "Reduce color banding" option, requires enabling "Use pre
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[schema(collapsible)]
 pub struct SoftwareEncodingConfig {
     #[schema(strings(
         display_name = "Force software encoding",
@@ -217,18 +203,60 @@ pub struct SoftwareEncodingConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(collapsible)]
+pub struct HDRConfig {
+    #[schema(strings(
+        display_name = "Enable HDR",
+        help = "If the client has no preference, enables compositing VR layers to an RGBA float16 framebuffer, and doing sRGB/YUV conversions in shader code."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub enable_hdr: bool,
+
+    #[schema(strings(
+        display_name = "Override for HDR",
+        help = "The server will override the headset client's preference for HDR."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub server_overrides_enable_hdr: bool,
+
+    #[schema(strings(
+        display_name = "Force HDR sRGB Correction",
+        help = "Forces sRGB correction on all composited SteamVR layers. Useful if an HDR-injected game is too dark."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub force_hdr_srgb_correction: bool,
+
+    #[schema(strings(
+        display_name = "Clamp HDR extended range",
+        help = "Clamps HDR extended range to 0.0~1.0, useful if you only want HDR to reduce banding."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub clamp_hdr_extended_range: bool,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[schema(collapsible)]
 pub struct EncoderConfig {
+    #[schema(flag = "steamvr-restart")]
+    #[schema(strings(
+        display_name = "Quality preset",
+        help = "Controls overall quality preset of the encoder. Works only on Windows AMD AMF, Linux VAAPI (AMD/Intel)."
+    ))]
+    pub quality_preset: EncoderQualityPreset,
+
+    #[schema(
+        strings(
+            display_name = "Enable VBAQ/CAQ",
+            help = "Enables Variance Based Adaptive Quantization on h264 and HEVC, and Content Adaptive Quantization on AV1"
+        ),
+        flag = "steamvr-restart"
+    )]
+    pub enable_vbaq: bool,
+
     #[schema(strings(help = r#"CBR: Constant BitRate mode. This is recommended.
 VBR: Variable BitRate mode. Not commended because it may throw off the adaptive bitrate algorithm. This is only supported on Windows and only with AMD/Nvidia GPUs"#))]
     #[schema(flag = "steamvr-restart")]
     #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
     pub rate_control_mode: RateControlMode,
-
-    #[schema(strings(
-        help = r#"In CBR mode, this makes sure the bitrate does not fall below the assigned value. This is mostly useful for debugging."#
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub filler_data: bool,
 
     #[schema(strings(
         display_name = "h264: Profile",
@@ -241,6 +269,12 @@ VBR: Variable BitRate mode. Not commended because it may throw off the adaptive 
 CABAC produces better compression but it's significantly slower and may lead to runaway latency"#))]
     #[schema(flag = "steamvr-restart")]
     pub entropy_coding: EntropyCoding,
+
+    #[schema(strings(
+        help = r#"In CBR mode, this makes sure the bitrate does not fall below the assigned value. This is mostly useful for debugging."#
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub filler_data: bool,
 
     #[schema(strings(
         display_name = "10-bit encoding",
@@ -283,42 +317,18 @@ CABAC produces better compression but it's significantly slower and may lead to 
     ))]
     #[schema(flag = "steamvr-restart")]
     pub server_overrides_encoding_gamma: bool,
-
-    #[schema(strings(
-        display_name = "Enable HDR",
-        help = "If the client has no preference, enables compositing VR layers to an RGBA float16 framebuffer, and doing sRGB/YUV conversions in shader code."
-    ))]
+    #[schema(strings(display_name = "HDR"))]
     #[schema(flag = "steamvr-restart")]
-    pub enable_hdr: bool,
-
-    #[schema(strings(
-        display_name = "Override for HDR",
-        help = "The server will override the headset client's preference for HDR."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub server_overrides_enable_hdr: bool,
-
-    #[schema(strings(
-        display_name = "Force HDR sRGB Correction",
-        help = "Forces sRGB correction on all composited SteamVR layers. Useful if an HDR-injected game is too dark."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub force_hdr_srgb_correction: bool,
-
-    #[schema(strings(
-        display_name = "Clamp HDR extended range",
-        help = "Clamps HDR extended range to 0.0~1.0, useful if you only want HDR to reduce banding."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub clamp_hdr_extended_range: bool,
+    pub hdr: HDRConfig,
 
     #[schema(strings(display_name = "NVENC"))]
     #[schema(flag = "steamvr-restart")]
     pub nvenc: NvencConfig,
 
-    #[schema(strings(display_name = "AMD"))]
+    #[schema(strings(display_name = "AMF"))]
     #[schema(flag = "steamvr-restart")]
-    pub amd: AmdConfig,
+    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
+    pub amf: AmfConfig,
 
     pub software: SoftwareEncodingConfig,
 }
@@ -474,6 +484,7 @@ pub struct ClientsideFoveationConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[schema(collapsible)]
 pub struct FoveatedEncodingConfig {
     #[schema(strings(help = "Force enable on smartphone clients"))]
     pub force_enable: bool,
@@ -1716,10 +1727,13 @@ pub fn session_settings_default() -> SettingsDefault {
                 server_overrides_use_full_range: false,
                 encoding_gamma: 1.0,
                 server_overrides_encoding_gamma: false,
-                enable_hdr: false,
-                server_overrides_enable_hdr: false,
-                force_hdr_srgb_correction: false,
-                clamp_hdr_extended_range: false,
+                hdr: HDRConfigDefault {
+                    gui_collapsed: true,
+                    enable_hdr: false,
+                    server_overrides_enable_hdr: false,
+                    force_hdr_srgb_correction: false,
+                    clamp_hdr_extended_range: false,
+                },
                 nvenc: NvencConfigDefault {
                     gui_collapsed: true,
                     quality_preset: EncoderQualityPresetNvidiaDefault {
@@ -1749,22 +1763,20 @@ pub fn session_settings_default() -> SettingsDefault {
                     rc_average_bitrate: -1,
                     enable_weighted_prediction: false,
                 },
-                amd: AmdConfigDefault {
+                quality_preset: EncoderQualityPresetDefault {
+                    variant: EncoderQualityPresetDefaultVariant::Speed,
+                },
+                enable_vbaq: false,
+                amf: AmfConfigDefault {
                     gui_collapsed: true,
-                    quality_preset: EncoderQualityPresetAmdDefault {
-                        variant: EncoderQualityPresetAmdDefaultVariant::Speed,
-                    },
-                    enable_vbaq: false,
-                    amf: AmfConfigDefault {
-                        gui_collapsed: true,
-                        enable_pre_analysis: false,
-                        enable_hmqb: false,
-                        use_preproc: false,
-                        preproc_sigma: 4,
-                        preproc_tor: 7,
-                    },
+                    enable_pre_analysis: false,
+                    enable_hmqb: false,
+                    use_preproc: false,
+                    preproc_sigma: 4,
+                    preproc_tor: 7,
                 },
                 software: SoftwareEncodingConfigDefault {
+                    gui_collapsed: true,
                     force_software_encoding: false,
                     thread_count: 0,
                 },
@@ -1798,6 +1810,7 @@ pub fn session_settings_default() -> SettingsDefault {
             foveated_encoding: SwitchDefault {
                 enabled: true,
                 content: FoveatedEncodingConfigDefault {
+                    gui_collapsed: true,
                     force_enable: false,
                     center_size_x: 0.45,
                     center_size_y: 0.4,

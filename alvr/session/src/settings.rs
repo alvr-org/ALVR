@@ -191,12 +191,12 @@ Does not work with the "Reduce color banding" option, requires enabling "Use pre
 pub struct SoftwareEncodingConfig {
     #[schema(strings(
         display_name = "Force software encoding",
-        help = "Forces the encoder to use CPU instead of GPU"
+        help = "Forces the server encoder to use CPU instead of GPU"
     ))]
     #[schema(flag = "steamvr-restart")]
     pub force_software_encoding: bool,
 
-    #[schema(strings(display_name = "Encoder thread count"))]
+    #[schema(strings(display_name = "CPU encoder thread count"))]
     #[schema(flag = "steamvr-restart")]
     pub thread_count: u32,
 }
@@ -788,8 +788,9 @@ If you want to reduce the amount of pixelation on the edges, increase the center
     #[schema(flag = "steamvr-restart")]
     pub preferred_fps: f32,
 
-    #[schema(strings(help = "You probably don't want to change this"))]
+    #[schema(strings(help = "You probably don't want to change this. Allows for changing adapter for ALVR compositor."))]
     #[schema(flag = "steamvr-restart")]
+    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
     pub adapter_index: u32,
 
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,

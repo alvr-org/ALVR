@@ -28,6 +28,12 @@ fn openvr_source_file_path() -> Result<PathBuf> {
 }
 
 pub fn steamvr_settings_file_path() -> Result<PathBuf> {
+    if cfg!(windows) {
+        // N.B. if ever implementing this: given Steam can be installed on another
+        // drive, etc., this should probably start by looking at Windows registry keys.
+        bail!("Not implemented for Windows.") // Original motive for implementation had little reason for Windows.
+    }
+
     let steam_dir = steamlocate::SteamDir::locate()?;
     let steamvr_vrsettings_path = steam_dir.path().join("config/steamvr.vrsettings");
     debug!(
@@ -39,8 +45,7 @@ pub fn steamvr_settings_file_path() -> Result<PathBuf> {
         Ok(steamvr_vrsettings_path)
     } else {
         bail!(
-            "Couldn't find SteamVR config file (steamvr.vrsettings). 
-        Please make sure SteamVR is launched at least once."
+            "Couldn't find SteamVR config file (steamvr.vrsettings). Please make sure SteamVR is launched at least once."
         )
     }
 }

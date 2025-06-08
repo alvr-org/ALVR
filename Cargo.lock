@@ -431,7 +431,6 @@ dependencies = [
  "cpal",
  "dirs",
  "encoding_rs_io",
- "injectorpp",
  "runas",
  "serde_json",
  "steamlocate",
@@ -3007,15 +3006,6 @@ checksum = "8c9c992b02b5b4c94ea26e32fe5bccb7aa7d9f390ab5c1221ff895bc7ea8b652"
 dependencies = [
  "equivalent",
  "hashbrown",
-]
-
-[[package]]
-name = "injectorpp"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33df6d572ef2523db0ba0e71414ae9e32e3c4d922872a517d527f6995349d7a2"
-dependencies = [
- "libc",
 ]
 
 [[package]]

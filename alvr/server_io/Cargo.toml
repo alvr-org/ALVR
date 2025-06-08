@@ -15,7 +15,7 @@ alvr_session.workspace = true
 
 encoding_rs_io = "0.1"
 dirs = "6"
-runas = "^1.2"                                                                                                                  # version 1.1 is broken
+runas = "^1.2" # version 1.1 is broken
 serde_json = "1"
 steamlocate = { git = "https://github.com/WilliamVenner/steamlocate-rs.git", rev = "6fc7aeef928a5b9cc40823a02de61ed0cc38a759" }
 tempfile = "3.20.0"

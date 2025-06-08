@@ -1,13 +1,14 @@
 use alvr_common::{
     anyhow::{bail, Result},
-    ToAny,
+    debug, ToAny,
 };
 use encoding_rs_io::DecodeReaderBytes;
 use serde_json as json;
 use std::{
+    fmt::format,
     fs::{self, File},
     io::Read,
-    path::PathBuf,
+    path::{self, Path, PathBuf},
 };
 
 fn openvr_source_file_path() -> Result<PathBuf> {
@@ -27,20 +28,20 @@ fn openvr_source_file_path() -> Result<PathBuf> {
 }
 
 pub fn steamvr_settings_file_path() -> Result<PathBuf> {
-    let path = if cfg!(windows) {
-        // N.B. if ever implementing this: given Steam can be installed on another
-        // drive, etc., this should probably start by looking at Windows registry keys.
-        bail!("Not implemented for Windows.") // Original motive for implementation had little reason for Windows.
-    } else {
-        dirs::data_dir()
-    }
-    .to_any()?
-    .join("Steam/config/steamvr.vrsettings");
+    let steam_dir = steamlocate::SteamDir::locate()?;
+    let steamvr_vrsettings_path = steam_dir.path().join("config/steamvr.vrsettings");
+    debug!(
+        "steamvr_vrsettings_path: {}",
+        steamvr_vrsettings_path.display()
+    );
 
-    if path.exists() {
-        Ok(path)
+    if steamvr_vrsettings_path.exists() {
+        Ok(steamvr_vrsettings_path)
     } else {
-        bail!("{} does not exist", path.to_string_lossy())
+        bail!(
+            "Couldn't find SteamVR config file (steamvr.vrsettings). 
+        Please make sure SteamVR is launched at least once."
+        )
     }
 }
 

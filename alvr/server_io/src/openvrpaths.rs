@@ -5,10 +5,9 @@ use alvr_common::{
 use encoding_rs_io::DecodeReaderBytes;
 use serde_json as json;
 use std::{
-    fmt::format,
     fs::{self, File},
     io::Read,
-    path::{self, Path, PathBuf},
+    path::PathBuf,
 };
 
 fn openvr_source_file_path() -> Result<PathBuf> {

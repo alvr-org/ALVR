@@ -59,8 +59,8 @@ public:
     uint32_t m_rateControlMode;
     bool m_fillerData;
     uint32_t m_entropyCoding;
-    bool m_force_cpu_encoding;
-    uint32_t m_cpuThreadCount;
+    bool m_force_sw_encoding;
+    uint32_t m_swThreadCount;
 
     uint32_t m_nvencTuningPreset;
     uint32_t m_nvencMultiPass;

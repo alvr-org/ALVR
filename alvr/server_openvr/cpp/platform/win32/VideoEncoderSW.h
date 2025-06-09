@@ -18,10 +18,10 @@ extern "C" {
 using Microsoft::WRL::ComPtr;
 
 // Software video encoder using FFMPEG
-class VideoEncoderCPU : public VideoEncoder {
+class VideoEncoderSW : public VideoEncoder {
 public:
-    VideoEncoderCPU(std::shared_ptr<CD3DRender> pD3DRender, int width, int height);
-    ~VideoEncoderCPU();
+    VideoEncoderSW(std::shared_ptr<CD3DRender> pD3DRender, int width, int height);
+    ~VideoEncoderSW();
 
     void Initialize();
     void Shutdown();

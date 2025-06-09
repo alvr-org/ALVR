@@ -334,7 +334,7 @@ CABAC produces better compression but it's significantly slower and may lead to 
     #[schema(flag = "steamvr-restart")]
     pub amf: AmfConfig,
 
-    #[schema(strings(display_name = "CPU"))]
+    #[schema(strings(display_name = "Software (CPU) encoding"))]
     pub software: SoftwareEncodingConfig,
 }
 

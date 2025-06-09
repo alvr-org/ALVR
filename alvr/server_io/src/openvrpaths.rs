@@ -1,5 +1,5 @@
 use alvr_common::{
-    anyhow::{bail, Result},
+    anyhow::{bail, Error, Result},
     debug, ToAny,
 };
 use encoding_rs_io::DecodeReaderBytes;
@@ -90,14 +90,16 @@ pub fn to_openvr_paths(paths: &[PathBuf]) -> json::Value {
     json::Value::Array(paths_vec)
 }
 
-fn get_single_openvr_path(path_type: &str) -> Result<PathBuf> {
-    let openvr_paths_json = load_openvr_paths_json()?;
-    let paths_json = openvr_paths_json.get(path_type).to_any()?;
-    from_openvr_paths(paths_json).first().cloned().to_any()
-}
-
 pub fn steamvr_root_dir() -> Result<PathBuf> {
-    get_single_openvr_path("runtime")
+    let steam_dir = steamlocate::SteamDir::locate()?;
+    const STEAMVR_APPID: u32 = 250_820;
+    match steam_dir.find_app(STEAMVR_APPID)? {
+        // 250820 - SteamVR appid
+        Some((app, library)) => Ok(library.resolve_app_dir(&app)),
+        None => Err(Error::msg(
+            "Couldn't locate SteamVR, please make sure you have installed it.",
+        )),
+    }
 }
 
 mod tests {

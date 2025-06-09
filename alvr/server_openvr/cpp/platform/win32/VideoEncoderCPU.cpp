@@ -1,6 +1,6 @@
 #ifdef ALVR_GPL
 
-#include "VideoEncoderSW.h"
+#include "VideoEncoderCPU.h"
 
 #include "alvr_server/Logger.h"
 #include "alvr_server/Settings.h"
@@ -11,7 +11,7 @@
 #include <iostream>
 #include <string>
 
-VideoEncoderSW::VideoEncoderSW(std::shared_ptr<CD3DRender> d3dRender, int width, int height)
+VideoEncoderCPU::VideoEncoderCPU(std::shared_ptr<CD3DRender> d3dRender, int width, int height)
     : m_d3dRender(d3dRender)
     , m_codec(ALVR_CODEC_H264)
     , m_refreshRate(Settings::Instance().m_refreshRate)
@@ -25,18 +25,18 @@ VideoEncoderSW::VideoEncoderSW(std::shared_ptr<CD3DRender> d3dRender, int width,
     // #endif
 }
 
-VideoEncoderSW::~VideoEncoderSW() { }
+VideoEncoderCPU::~VideoEncoderCPU() { }
 
-void VideoEncoderSW::LibVALog(void* v, int level, const char* data, va_list va) {
+void VideoEncoderCPU::LibVALog(void* v, int level, const char* data, va_list va) {
     const char* prefix = "[libav]: ";
     std::stringstream sstream;
     sstream << prefix << data;
     vprintf(sstream.str().c_str(), va);
 }
 
-void VideoEncoderSW::Initialize() {
+void VideoEncoderCPU::Initialize() {
     int err;
-    Debug("Initializing VideoEncoderSW.\n");
+    Debug("Initializing VideoEncoderCPU.\n");
 
     const auto& settings = Settings::Instance();
 
@@ -113,7 +113,7 @@ void VideoEncoderSW::Initialize() {
         break;
     }
     m_codecContext->rc_max_rate = m_codecContext->bit_rate;
-    m_codecContext->thread_count = settings.m_swThreadCount;
+    m_codecContext->thread_count = settings.m_cpuThreadCount;
 
     if ((err = avcodec_open2(m_codecContext, codec, &opt)))
         throw MakeException("Cannot open video encoder codec: %d", err);
@@ -128,11 +128,11 @@ void VideoEncoderSW::Initialize() {
     if ((err = av_frame_get_buffer(m_encoderFrame, 0)))
         throw MakeException("Error when allocating encoder frame: %d", err);
 
-    Debug("Successfully initialized VideoEncoderSW");
+    Debug("Successfully initialized VideoEncoderCPU");
 }
 
-void VideoEncoderSW::Shutdown() {
-    Debug("Shutting down VideoEncoderSW.\n");
+void VideoEncoderCPU::Shutdown() {
+    Debug("Shutting down VideoEncoderCPU.\n");
 
     av_frame_free(&m_transferredFrame);
     av_frame_free(&m_encoderFrame);
@@ -141,10 +141,10 @@ void VideoEncoderSW::Shutdown() {
     sws_freeContext(m_scalerContext);
     m_scalerContext = nullptr;
 
-    Debug("Successfully shutdown VideoEncoderSW.\n");
+    Debug("Successfully shutdown VideoEncoderCPU.\n");
 }
 
-void VideoEncoderSW::Transmit(
+void VideoEncoderCPU::Transmit(
     ID3D11Texture2D* pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR
 ) {
     // Handle bitrate changes
@@ -266,7 +266,7 @@ void VideoEncoderSW::Transmit(
     m_d3dRender->GetContext()->Unmap(m_stagingTex.Get(), 0);
 }
 
-HRESULT VideoEncoderSW::SetupStagingTexture(ID3D11Texture2D* pTexture) {
+HRESULT VideoEncoderCPU::SetupStagingTexture(ID3D11Texture2D* pTexture) {
     D3D11_TEXTURE2D_DESC desc;
     pTexture->GetDesc(&desc);
     m_stagingTexDesc.Width = desc.Width;
@@ -283,14 +283,14 @@ HRESULT VideoEncoderSW::SetupStagingTexture(ID3D11Texture2D* pTexture) {
     return m_d3dRender->GetDevice()->CreateTexture2D(&m_stagingTexDesc, nullptr, &m_stagingTex);
 }
 
-HRESULT VideoEncoderSW::CopyTexture(ID3D11Texture2D* pTexture) {
+HRESULT VideoEncoderCPU::CopyTexture(ID3D11Texture2D* pTexture) {
     m_d3dRender->GetContext()->CopyResource(m_stagingTex.Get(), pTexture);
     return m_d3dRender->GetContext()->Map(
         m_stagingTex.Get(), 0, D3D11_MAP_READ, 0, &m_stagingTexMap
     );
 }
 
-AVCodecID VideoEncoderSW::ToFFMPEGCodec(ALVR_CODEC codec) {
+AVCodecID VideoEncoderCPU::ToFFMPEGCodec(ALVR_CODEC codec) {
     switch (codec) {
     case ALVR_CODEC_H264:
         return AV_CODEC_ID_H264;

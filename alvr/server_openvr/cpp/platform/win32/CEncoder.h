@@ -15,7 +15,7 @@
 #include <wincodecsdk.h>
 #include <wrl.h>
 #ifdef ALVR_GPL
-#include "VideoEncoderSW.h"
+#include "VideoEncoderCPU.h"
 #endif
 #include "alvr_server/IDRScheduler.h"
 

@@ -23,11 +23,11 @@ void CEncoder::Initialize(std::shared_ptr<CD3DRender> d3dRender) {
     Exception nvencException;
 #ifdef ALVR_GPL
     Exception swException;
-    if (Settings::Instance().m_force_sw_encoding) {
+    if (Settings::Instance().m_force_cpu_encoding) {
         try {
-            Debug("Try to use VideoEncoderSW.\n");
+            Debug("Try to use VideoEncoderCPU.\n");
             m_videoEncoder
-                = std::make_shared<VideoEncoderSW>(d3dRender, encoderWidth, encoderHeight);
+                = std::make_shared<VideoEncoderCPU>(d3dRender, encoderWidth, encoderHeight);
             m_videoEncoder->Initialize();
             return;
         } catch (Exception e) {
@@ -55,8 +55,8 @@ void CEncoder::Initialize(std::shared_ptr<CD3DRender> d3dRender) {
     }
 #ifdef ALVR_GPL
     try {
-        Debug("Try to use VideoEncoderSW.\n");
-        m_videoEncoder = std::make_shared<VideoEncoderSW>(d3dRender, encoderWidth, encoderHeight);
+        Debug("Try to use VideoEncoderCPU.\n");
+        m_videoEncoder = std::make_shared<VideoEncoderCPU>(d3dRender, encoderWidth, encoderHeight);
         m_videoEncoder->Initialize();
         return;
     } catch (Exception e) {

@@ -29,7 +29,7 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(
     uint32_t width,
     uint32_t height
 ) {
-    if (Settings::Instance().m_force_sw_encoding == false) {
+    if (Settings::Instance().m_force_cpu_encoding == false) {
         if (vk_ctx.nvidia) {
             try {
                 auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(

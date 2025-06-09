@@ -81,8 +81,8 @@ void Settings::Load() {
         m_encoderQualityPreset = (uint32_t)config.get("encoder_quality_preset").get<int64_t>();
         m_amdBitrateCorruptionFix = (bool)config.get("amd_bitrate_corruption_fix").get<bool>();
         m_nvencQualityPreset = (uint32_t)config.get("nvenc_quality_preset").get<int64_t>();
-        m_force_sw_encoding = config.get("force_sw_encoding").get<bool>();
-        m_swThreadCount = (int32_t)config.get("sw_thread_count").get<int64_t>();
+        m_force_cpu_encoding = config.get("force_cpu_encoding").get<bool>();
+        m_cpuThreadCount = (int32_t)config.get("cpu_thread_count").get<int64_t>();
 
         m_nvencTuningPreset = (uint32_t)config.get("nvenc_tuning_preset").get<int64_t>();
         m_nvencMultiPass = (uint32_t)config.get("nvenc_multi_pass").get<int64_t>();

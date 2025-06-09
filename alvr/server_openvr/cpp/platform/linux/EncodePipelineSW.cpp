@@ -42,7 +42,7 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer* render, uint32_t width, uint3
     param.b_aud = 0;
     param.b_cabac = settings.m_entropyCoding == ALVR_CABAC;
     param.b_sliced_threads = true;
-    param.i_threads = settings.m_swThreadCount;
+    param.i_threads = settings.m_cpuThreadCount;
     param.i_width = width;
     param.i_height = height;
     param.rc.i_rc_method = X264_RC_ABR;

@@ -192,15 +192,15 @@ Does not work with the "Reduce color banding" option, requires enabling "Use pre
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(collapsible)]
-pub struct SoftwareEncodingConfig {
+pub struct CpuEncodingConfig {
     #[schema(strings(
-        display_name = "Force software encoding",
+        display_name = "Force CPU encoding",
         help = "Forces the encoder to use CPU instead of GPU"
     ))]
     #[schema(flag = "steamvr-restart")]
-    pub force_software_encoding: bool,
+    pub force_cpu_encoding: bool,
 
-    #[schema(strings(display_name = "Encoder thread count"))]
+    #[schema(strings(display_name = "Encoder thread count (0 = all CPU cores)"))]
     #[schema(flag = "steamvr-restart")]
     pub thread_count: u32,
 }
@@ -335,7 +335,7 @@ CABAC produces better compression but it's significantly slower and may lead to 
     pub amf: AmfConfig,
 
     #[schema(strings(display_name = "CPU"))]
-    pub software: SoftwareEncodingConfig,
+    pub cpu: CpuEncodingConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -1782,9 +1782,9 @@ pub fn session_settings_default() -> SettingsDefault {
                     preproc_sigma: 4,
                     preproc_tor: 7,
                 },
-                software: SoftwareEncodingConfigDefault {
+                cpu: CpuEncodingConfigDefault {
                     gui_collapsed: true,
-                    force_software_encoding: false,
+                    force_cpu_encoding: false,
                     thread_count: 0,
                 },
             },

@@ -275,7 +275,7 @@ fn linux_encoder_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
             }
             _ => alvr_common::show_e(
                 "Couldn't determine gpu for hardware encoding. \
-            You will likely fallback to software encoding.",
+            You will likely fallback to cpu encoding.",
             ),
         }
     }

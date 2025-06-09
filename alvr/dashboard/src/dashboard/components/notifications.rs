@@ -22,7 +22,7 @@ const NOTIFICATION_TIPS: &[&str] = &[
     r#"Some settings are hidden by default. Click the "Expand" button next to some settings to expand the submenus."#,
     r#"It's highly advisable to keep audio settings as default in ALVR and modify the default audio device in the taskbar tray."#,
     r#"Increasing "Maximum buffering" may reduce stutters at the cost of more latency."#,
-    r#"Sometimes switching between h264 and HEVC codecs is necessary on certain GPUs to fix crashing or fallback to software encoding."#,
+    r#"Sometimes switching between h264 and HEVC codecs is necessary on certain GPUs to fix crashing or fallback to CPU encoding."#,
     r#"If you're using an NVIDIA GPU, it's best to use high-bitrate H264; if you're using an AMD GPU, HEVC might look better."#,
     r#"If you experience "white snow" flickering, reduce the resolution to "Low" and disable "Foveated encoding"."#,
     r#"Increasing "Color correction"->"Sharpness" may improve the perceived image quality."#,

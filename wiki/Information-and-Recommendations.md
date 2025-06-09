@@ -119,7 +119,7 @@ ffmpeg -f lavfi -i testsrc -t 30 -vf 'format=nv12,hwupload' -c:v h264_nvenc nven
 ffmpeg -f lavfi -i testsrc -t 30 -vf 'format=nv12,hwupload' -c:v hevc_nvenc nvenc-hevc.mp4
 ```
 
-### Software (any GPUs)
+### CPU
 
-Software encoder is mainly used as a fallback and as such should work on all GPUs without any requirements.
-Only H264 encoding is currently supported.
+CPU encoder is mainly used as a fallback and as such should work regardless of used GPU.
+Only X264 encoding is currently supported.

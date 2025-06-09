@@ -195,7 +195,7 @@ Does not work with the "Reduce color banding" option, requires enabling "Use pre
 pub struct SoftwareEncodingConfig {
     #[schema(strings(
         display_name = "Force software encoding",
-        help = "Forces the server encoder to use CPU instead of GPU"
+        help = "Forces the encoder to use CPU instead of GPU"
     ))]
     #[schema(flag = "steamvr-restart")]
     pub force_software_encoding: bool,

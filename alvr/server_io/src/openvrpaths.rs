@@ -94,7 +94,6 @@ pub fn steamvr_root_dir() -> Result<PathBuf> {
     let steam_dir = steamlocate::SteamDir::locate()?;
     const STEAMVR_APPID: u32 = 250_820;
     match steam_dir.find_app(STEAMVR_APPID)? {
-        // 250820 - SteamVR appid
         Some((app, library)) => Ok(library.resolve_app_dir(&app)),
         None => Err(Error::msg(
             "Couldn't locate SteamVR, please make sure you have installed it.",

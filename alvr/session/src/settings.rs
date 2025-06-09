@@ -161,11 +161,15 @@ Temporal: Helps improve overall encoding quality, very small trade-off in speed.
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(collapsible)]
-pub struct AmdConfig {}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-#[schema(collapsible)]
 pub struct AmfConfig {
+    #[schema(
+        strings(
+            display_name = "Enable High-Motion Quality Boost",
+            help = r#"Enables high motion quality boost mode.
+Allows the encoder to perform pre-analysis the motion of the video and use the information for better encoding"#
+        ),
+        flag = "steamvr-restart"
+    )]
     pub enable_hmqb: bool,
     #[schema(flag = "steamvr-restart")]
     pub use_preproc: bool,
@@ -196,7 +200,7 @@ pub struct SoftwareEncodingConfig {
     #[schema(flag = "steamvr-restart")]
     pub force_software_encoding: bool,
 
-    #[schema(strings(display_name = "CPU encoder thread count"))]
+    #[schema(strings(display_name = "Encoder thread count"))]
     #[schema(flag = "steamvr-restart")]
     pub thread_count: u32,
 }
@@ -330,6 +334,7 @@ CABAC produces better compression but it's significantly slower and may lead to 
     #[schema(flag = "steamvr-restart")]
     pub amf: AmfConfig,
 
+    #[schema(strings(display_name = "CPU"))]
     pub software: SoftwareEncodingConfig,
 }
 

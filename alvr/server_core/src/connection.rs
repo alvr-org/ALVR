@@ -182,11 +182,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         amf_preproc_tor: amf_controls.preproc_tor,
         nvenc_quality_preset: nvenc_overrides.quality_preset as u32,
         encoder_quality_preset: settings.video.encoder_config.quality_preset as u32,
-        force_cpu_encoding: settings
-            .video
-            .encoder_config
-            .cpu
-            .force_cpu_encoding,
+        force_cpu_encoding: settings.video.encoder_config.cpu.force_cpu_encoding,
         cpu_thread_count: settings.video.encoder_config.cpu.thread_count,
         controllers_enabled,
         controller_is_tracker,

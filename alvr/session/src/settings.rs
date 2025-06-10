@@ -1404,10 +1404,8 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     #[schema(flag = "real-time")]
     pub allow_untrusted_http: bool,
 
-    #[cfg_attr(not(target_os = "windows"), schema(flag = "hidden"))]
     #[schema(strings(
-        help = r#"If the client, server or the network discarded one packet, discard packets until a IDR packet is found.
-For now works only on Windows+Nvidia"#
+        help = r#"If the client, server or the network discarded one packet, discard packets until a IDR packet is found."#
     ))]
     pub avoid_video_glitching: bool,
 

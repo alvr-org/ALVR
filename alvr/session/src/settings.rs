@@ -256,7 +256,7 @@ pub struct EncoderConfig {
     )]
     pub enable_vbaq: bool,
 
-    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
+    #[cfg_attr(not(target_os = "windows"), schema(flag = "hidden"))]
     #[schema(strings(help = r#"CBR: Constant BitRate mode. This is recommended.
 VBR: Variable BitRate mode. Not commended because it may throw off the adaptive bitrate algorithm. This is only supported on Windows and only with AMD/Nvidia GPUs"#))]
     #[schema(flag = "steamvr-restart")]
@@ -329,7 +329,7 @@ CABAC produces better compression but it's significantly slower and may lead to 
     #[schema(flag = "steamvr-restart")]
     pub nvenc: NvencConfig,
 
-    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
+    #[cfg_attr(not(target_os = "windows"), schema(flag = "hidden"))]
     #[schema(strings(display_name = "AMF"))]
     #[schema(flag = "steamvr-restart")]
     pub amf: AmfConfig,
@@ -759,7 +759,7 @@ If you want to reduce the amount of pixelation on the edges, increase the center
     #[schema(gui(slider(min = 0.50, max = 0.99, step = 0.01)))]
     pub buffering_history_weight: f32,
 
-    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
+    #[cfg_attr(not(target_os = "windows"), schema(flag = "hidden"))]
     #[schema(strings(
         help = r"This works only on Windows. It shouldn't be disabled except in certain circumstances when you know the VR game will not meet the target framerate."
     ))]
@@ -793,7 +793,7 @@ If you want to reduce the amount of pixelation on the edges, increase the center
     #[schema(flag = "steamvr-restart")]
     pub preferred_fps: f32,
 
-    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
+    #[cfg_attr(not(target_os = "windows"), schema(flag = "hidden"))]
     #[schema(strings(
         help = "You probably don't want to change this. Allows for changing adapter for ALVR compositor."
     ))]
@@ -1404,7 +1404,7 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     #[schema(flag = "real-time")]
     pub allow_untrusted_http: bool,
 
-    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
+    #[cfg_attr(not(target_os = "windows"), schema(flag = "hidden"))]
     #[schema(strings(
         help = r#"If the client, server or the network discarded one packet, discard packets until a IDR packet is found.
 For now works only on Windows+Nvidia"#

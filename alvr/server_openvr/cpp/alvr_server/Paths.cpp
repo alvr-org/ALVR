@@ -248,3 +248,29 @@ void init_paths() {
         }
     }
 }
+
+uint64_t GetFakeTrackerBindingID(int settingsBinding)
+{
+    switch (settingsBinding)
+    {
+    case 0:
+        return BODY_CHEST_ID;
+    case 1:
+        return BODY_HIPS_ID;
+    case 2:
+        return BODY_LEFT_ELBOW_ID;
+    case 3:
+        return BODY_RIGHT_ELBOW_ID;
+    case 4:
+        return BODY_LEFT_KNEE_ID;
+    case 5:
+        return BODY_LEFT_FOOT_ID;
+    case 6:
+        return BODY_RIGHT_KNEE_ID;
+    case 7:
+        return BODY_RIGHT_FOOT_ID;
+    
+    default:
+        return (uint64_t)0;
+    }
+}

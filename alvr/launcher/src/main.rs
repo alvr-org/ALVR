@@ -30,14 +30,18 @@ pub struct ReleaseInfo {
 }
 
 pub enum UiMessage {
-    InstallServer(ReleaseInfo),
+    InstallServer {
+        release_info: ReleaseInfo,
+        session_version: Option<String>,
+    },
     InstallClient(ReleaseInfo),
     Quit,
 }
 
 pub struct InstallationInfo {
-    pub version: String,
+    version: String,
     is_apk_downloaded: bool,
+    has_session_json: bool, // Only relevent on Windows
 }
 
 fn main() {

@@ -33,10 +33,10 @@ vr::HmdRect2_t fov_to_projection(FfiFov fov) {
 
 Hmd::Hmd()
     : TrackedDevice(
-          HEAD_ID,
-          Settings::Instance().m_TrackingRefOnly ? vr::TrackedDeviceClass_TrackingReference
-                                                 : vr::TrackedDeviceClass_HMD
-      )
+        HEAD_ID,
+        Settings::Instance().m_TrackingRefOnly ? vr::TrackedDeviceClass_TrackingReference
+                                               : vr::TrackedDeviceClass_HMD
+    )
     , m_baseComponentsInitialized(false)
     , m_streamComponentsInitialized(false) {
     Debug("Hmd::constructor");
@@ -366,4 +366,12 @@ void Hmd::GetProjectionRaw(vr::EVREye eye, float* left, float* right, float* top
 
 vr::DistortionCoordinates_t Hmd::ComputeDistortion(vr::EVREye, float u, float v) {
     return { { u, v }, { u, v }, { u, v } };
+}
+
+bool Hmd::ComputeInverseDistortion(
+    vr::HmdVector2_t* pResult, vr::EVREye eEye, uint32_t unChannel, float fU, float fV
+) {
+    // Fail and hope everything is fine, this assumes false == fail the documentation doesn't
+    // specify
+    return false;
 }

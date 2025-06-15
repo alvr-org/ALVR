@@ -6,10 +6,12 @@ use self::components::{
 use crate::{dashboard::components::StatisticsTab, DataSources};
 use alvr_common::parking_lot::{Condvar, Mutex};
 use alvr_events::EventType;
-use alvr_gui_common::theme;
+use alvr_gui_common::{theme, ModalButton};
 use alvr_packets::{PathValuePair, ServerRequest};
 use alvr_session::SessionConfig;
-use eframe::egui::{self, Align, CentralPanel, Frame, Layout, Margin, RichText, SidePanel, Stroke};
+use eframe::egui::{
+    self, Align, CentralPanel, Frame, Layout, Margin, RichText, SidePanel, Stroke, Ui,
+};
 use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -41,6 +43,10 @@ pub struct Dashboard {
     setup_wizard: SetupWizard,
     setup_wizard_open: bool,
     session: Option<SessionConfig>,
+    version_modal_data: Option<(
+        String, // version
+        String, // message
+    )>,
 }
 
 impl Dashboard {
@@ -79,6 +85,7 @@ impl Dashboard {
             setup_wizard: SetupWizard::new(),
             setup_wizard_open: false,
             session: None,
+            version_modal_data: None,
         }
     }
 
@@ -153,7 +160,13 @@ impl eframe::App for Dashboard {
                 EventType::Adb(adb_event) => self
                     .connections_tab
                     .update_adb_download_progress(adb_event.download_progress),
-                _ => (),
+                EventType::NewVersionFound { version, message } => {
+                    self.version_modal_data = Some((version, message))
+                }
+                EventType::DebugGroup { .. }
+                | EventType::Tracking(_)
+                | EventType::Buttons(_)
+                | EventType::Haptics(_) => (),
             }
         }
 
@@ -294,6 +307,46 @@ impl eframe::App for Dashboard {
                         }
                     })
                 });
+        }
+
+        if let Some((version, message)) = &self.version_modal_data {
+            let no_remind_button =
+                ModalButton::Custom("Don't remind me again for this version".to_string());
+
+            let result = alvr_gui_common::modal(
+                context,
+                &format!("ALVR v{version} available"),
+                Some(|ui: &mut Ui| {
+                    ui.horizontal(|ui| {
+                        ui.add_space(10.0);
+                        ui.label(message);
+                        ui.add_space(10.0);
+                    });
+                }),
+                &[no_remind_button.clone(), ModalButton::Close],
+                Some(490.0),
+            );
+
+            if let Some(button) = result {
+                if button == no_remind_button {
+                    requests.push(ServerRequest::SetValues(vec![
+                        PathValuePair {
+                            path: alvr_packets::parse_path(
+                                "session_settings.extra.new_version_popup.HideWhileVersion",
+                            ),
+                            value: serde_json::Value::String(version.clone()),
+                        },
+                        PathValuePair {
+                            path: alvr_packets::parse_path(
+                                "session_settings.extra.new_version_popup.variant",
+                            ),
+                            value: serde_json::Value::String("HideWhileVersion".to_string()),
+                        },
+                    ]));
+                }
+
+                self.version_modal_data = None;
+            }
         }
 
         for request in requests {

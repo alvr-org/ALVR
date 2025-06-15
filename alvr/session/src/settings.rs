@@ -1548,6 +1548,13 @@ pub struct Patches {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum NewVersionPopupConfig {
+    Show,
+    HideWhileVersion(String),
+    AlwaysHide,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ExtraConfig {
     pub steamvr_launcher: SteamvrLauncher,
     pub capture: CaptureConfig,
@@ -1562,6 +1569,7 @@ It does not update in real time.")
     pub velocities_multiplier: f32,
 
     pub open_setup_wizard: bool,
+    pub new_version_popup: NewVersionPopupConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -2190,6 +2198,14 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             velocities_multiplier: 1.0,
             open_setup_wizard: alvr_common::is_stable() || alvr_common::is_nightly(),
+            new_version_popup: NewVersionPopupConfigDefault {
+                variant: if alvr_common::is_stable() {
+                    NewVersionPopupConfigDefaultVariant::Show
+                } else {
+                    NewVersionPopupConfigDefaultVariant::AlwaysHide
+                },
+                HideWhileVersion: "0.0.0".into(),
+            },
         },
     }
 }

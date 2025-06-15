@@ -146,6 +146,7 @@ impl Launcher {
                 })
             },
             &[ModalButton::Cancel, ModalButton::Custom("Install".into())],
+            None,
         );
 
         match response {
@@ -191,6 +192,7 @@ impl Launcher {
                 });
             }),
             &[ModalButton::Close],
+            None,
         );
 
         if delete_version {
@@ -218,6 +220,7 @@ impl Launcher {
                 ModalButton::Cancel,
                 ModalButton::Custom("Delete version".into()),
             ],
+            None,
         );
 
         match response {

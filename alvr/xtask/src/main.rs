@@ -59,10 +59,10 @@ FLAGS:
     --pico-store        For package-client subcommand, build for Pico Store
 
 ARGS:
-    --platform <NAME>   Name of the platform (operative system name)
+    --platform <NAME>   Can be one of: windows, linux, macos, android. Can be omitted
     --version <VERSION> Specify version to set with the bump-versions subcommand
     --root <PATH>       Installation root. By default no root is set and paths are calculated using
-                        relative paths, which requires conforming to FHS on Linux.
+                        relative paths, which requires conforming to FHS on Linux
 "#;
 
 enum BuildPlatform {
@@ -70,6 +70,12 @@ enum BuildPlatform {
     Linux,
     Macos,
     Android,
+}
+
+pub fn print_help_and_exit(message: &str) -> ! {
+    eprintln!("\n{message}");
+    eprintln!("{HELP_STR}");
+    process::exit(1);
 }
 
 pub fn run_streamer() {
@@ -185,10 +191,7 @@ fn main() {
             "linux" => BuildPlatform::Linux,
             "macos" => BuildPlatform::Macos,
             "android" => BuildPlatform::Android,
-            _ => {
-                eprintln!("\nUnrecognized platform.");
-                process::exit(1);
-            }
+            _ => print_help_and_exit("Unrecognized platform"),
         });
 
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
@@ -268,21 +271,13 @@ fn main() {
                 }
                 "check-msrv" => version::check_msrv(),
                 "kill-oculus" => kill_oculus_processes(),
-                _ => {
-                    eprintln!("\nUnrecognized subcommand.");
-                    println!("{HELP_STR}");
-                    process::exit(1);
-                }
+                _ => print_help_and_exit("Unrecognized subcommand."),
             }
         } else {
-            eprintln!("\nWrong arguments.");
-            println!("{HELP_STR}");
-            process::exit(1);
+            print_help_and_exit("Wrong arguments.");
         }
     } else {
-        eprintln!("\nMissing subcommand.");
-        println!("{HELP_STR}");
-        process::exit(1);
+        print_help_and_exit("Missing subcommand.");
     }
 
     let elapsed_time = begin_time.elapsed();

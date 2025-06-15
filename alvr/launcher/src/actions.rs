@@ -27,11 +27,11 @@ pub fn worker(
     tokio::runtime::Runtime::new()
         .expect("Failed to create tokio runtime")
         .block_on(async {
-            let client = reqwest::Client::builder()
+            let req_client = reqwest::Client::builder()
                 .user_agent("ALVR-Launcher")
                 .build()
                 .unwrap();
-            let version_data = match fetch_all_releases(&client).await {
+            let version_data = match fetch_all_releases(&req_client).await {
                 Ok(data) => data,
                 Err(e) => {
                     eprintln!("Error fetching version data: {e}");
@@ -49,8 +49,17 @@ pub fn worker(
                 };
                 let res = match message {
                     UiMessage::Quit => return,
-                    UiMessage::InstallServer(release) => {
-                        install_server(&worker_message_sender, release, &client).await
+                    UiMessage::InstallServer {
+                        release_info,
+                        session_version,
+                    } => {
+                        install_server(
+                            &worker_message_sender,
+                            release_info,
+                            session_version,
+                            &req_client,
+                        )
+                        .await
                     }
                     UiMessage::InstallClient(release_info) => {
                         install_and_launch_apk(&worker_message_sender, release_info)
@@ -125,7 +134,7 @@ pub fn get_release(
 fn install_and_launch_apk(
     worker_message_sender: &Sender<WorkerMessage>,
     release: ReleaseInfo,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
         message: "Starting install".into(),
         progress: 0.0,
@@ -205,7 +214,7 @@ async fn download(
     message: &str,
     url: &str,
     client: &reqwest::Client,
-) -> anyhow::Result<Vec<u8>> {
+) -> Result<Vec<u8>> {
     let res = client.get(url).send().await?;
     let total_size = res.content_length();
     let mut stream = res.bytes_stream();
@@ -232,9 +241,10 @@ async fn download(
 
 async fn install_server(
     worker_message_sender: &Sender<WorkerMessage>,
-    release: ReleaseInfo,
-    client: &reqwest::Client,
-) -> anyhow::Result<()> {
+    release_info: ReleaseInfo,
+    session_version: Option<String>,
+    req_client: &reqwest::Client,
+) -> Result<()> {
     worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
         message: "Starting install".into(),
         progress: 0.0,
@@ -246,14 +256,20 @@ async fn install_server(
         "alvr_streamer_linux.tar.gz"
     };
 
-    let url = release
+    let url = release_info
         .assets
         .get(file_name)
         .ok_or(anyhow::anyhow!("Unable to determine download link"))?;
 
-    let buffer = download(worker_message_sender, "Downloading Streamer", url, client).await?;
+    let buffer = download(
+        worker_message_sender,
+        "Downloading Streamer",
+        url,
+        req_client,
+    )
+    .await?;
 
-    let installation_dir = installations_dir().join(&release.version);
+    let installation_dir = installations_dir().join(&release_info.version);
 
     fs::create_dir_all(&installation_dir)?;
 
@@ -262,6 +278,31 @@ async fn install_server(
         zip::ZipArchive::new(&mut buffer)?.extract(&installation_dir)?;
     } else {
         tar::Archive::new(&mut GzDecoder::new(&mut buffer)).unpack(&installation_dir)?;
+    }
+
+    if let Some(session_version) = session_version {
+        // This code is tailored for Windows and is only hit on Windows
+        assert!(cfg!(windows));
+
+        for inst in get_installations() {
+            if inst.version == session_version {
+                let source = alvr_filesystem::filesystem_layout_from_openvr_driver_root_dir(
+                    &installations_dir().join(session_version),
+                )
+                .unwrap()
+                .session();
+
+                let destination = alvr_filesystem::filesystem_layout_from_openvr_driver_root_dir(
+                    &installation_dir,
+                )
+                .unwrap()
+                .session();
+
+                fs::copy(source, destination)?;
+
+                break;
+            }
+        }
     }
 
     Ok(())
@@ -295,11 +336,21 @@ pub fn get_installations() -> Vec<InstallationInfo> {
                         }
                     })
                     .map(|entry| {
-                        let mut apk_path = entry.path();
-                        apk_path.push(APK_NAME);
+                        let has_session_json = if cfg!(windows) {
+                            alvr_filesystem::filesystem_layout_from_openvr_driver_root_dir(
+                                &entry.path(),
+                            )
+                            .map(|layout| layout.session().exists())
+                            .unwrap_or(false)
+                        } else {
+                            // On linux, the launcher does not need to manage the session files
+                            false
+                        };
+
                         InstallationInfo {
                             version: entry.file_name().to_string_lossy().into(),
-                            is_apk_downloaded: apk_path.exists(),
+                            is_apk_downloaded: entry.path().join(APK_NAME).exists(),
+                            has_session_json,
                         }
                     })
             })

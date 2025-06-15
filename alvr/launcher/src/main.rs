@@ -41,7 +41,7 @@ pub enum UiMessage {
 pub struct InstallationInfo {
     version: String,
     is_apk_downloaded: bool,
-    has_session_json: bool, // Only relevent on Windows
+    has_session_json: bool, // Only relevant on Windows
 }
 
 fn main() {

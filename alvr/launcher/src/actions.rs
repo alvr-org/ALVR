@@ -281,10 +281,10 @@ async fn install_server(
     }
 
     if let Some(session_version) = session_version {
+        // This code is tailored for Windows and is only hit on Windows
         assert!(cfg!(windows));
 
-        let installations = get_installations();
-        for inst in installations {
+        for inst in get_installations() {
             if inst.version == session_version {
                 let source = alvr_filesystem::filesystem_layout_from_openvr_driver_root_dir(
                     &installations_dir().join(session_version),

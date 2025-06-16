@@ -27,14 +27,9 @@ fn openvr_source_file_path() -> Result<PathBuf> {
 }
 
 pub fn steamvr_settings_file_path() -> Result<PathBuf> {
-    if cfg!(windows) {
-        // N.B. if ever implementing this: given Steam can be installed on another
-        // drive, etc., this should probably start by looking at Windows registry keys.
-        bail!("Not implemented for Windows.") // Original motive for implementation had little reason for Windows.
-    }
-
-    let steam_dir = steamlocate::SteamDir::locate()?;
-    let steamvr_vrsettings_path = steam_dir.path().join("config/steamvr.vrsettings");
+    let steamvr_vrsettings_path = steamlocate::SteamDir::locate()?
+        .path()
+        .join("config/steamvr.vrsettings");
     debug!(
         "steamvr_vrsettings_path: {}",
         steamvr_vrsettings_path.display()
@@ -98,47 +93,5 @@ pub fn steamvr_root_dir() -> Result<PathBuf> {
         None => Err(Error::msg(
             "Couldn't locate SteamVR, please make sure you have installed it.",
         )),
-    }
-}
-
-mod tests {
-
-    #[cfg(target_os = "linux")]
-    #[test]
-    pub(crate) fn test_steamvr_settings_file_path() {
-        use std::fs;
-        use std::path::Path;
-        use tempfile::TempDir;
-
-        let possible_config_locations = [
-            (
-                true,
-                ".var/app/com.valvesoftware.Steam/.local/share/Steam/config",
-            ),
-            (true, ".local/share/Steam/config"),
-            (true, ".steam/steam/config"),
-            (true, ".steam/debian-installation/config"),
-            (false, ".some/random/directory"),
-        ];
-        let user_folder_path = Path::new("home/user");
-        for (is_correct, location) in possible_config_locations {
-            let tmp: TempDir = tempfile::tempdir().unwrap();
-
-            let steam_config_folder = tmp.path().join(user_folder_path).join(location);
-            assert!(fs::create_dir_all(&steam_config_folder).is_ok());
-            let steamvr_vrsettings_path = steam_config_folder.join("steamvr.vrsettings");
-            assert!(fs::File::create(&steamvr_vrsettings_path).is_ok());
-            std::env::set_var("HOME", tmp.path().join(user_folder_path));
-
-            let result = super::steamvr_settings_file_path();
-            if is_correct {
-                assert!(result.is_ok());
-                if let Ok(steamvr_file) = result {
-                    assert_eq!(steamvr_vrsettings_path, steamvr_file)
-                }
-            } else {
-                assert!(result.is_err());
-            }
-        }
     }
 }

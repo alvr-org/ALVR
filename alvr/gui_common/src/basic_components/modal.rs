@@ -35,7 +35,7 @@ pub fn modal(
         .resizable(false);
 
     if let Some(w) = width {
-        window = window.min_width(w);
+        window = window.min_width(w).max_width(w);
     }
 
     window.show(context, |ui| {

@@ -56,12 +56,16 @@ pub fn streamer_build_dir() -> PathBuf {
     build_dir().join(format!("alvr_streamer_{OS}"))
 }
 
+pub fn launcher_fname() -> String {
+    exec_fname("ALVR Launcher")
+}
+
 pub fn launcher_build_dir() -> PathBuf {
     build_dir().join(format!("alvr_launcher_{OS}"))
 }
 
 pub fn launcher_build_exe_path() -> PathBuf {
-    launcher_build_dir().join(exec_fname("ALVR Launcher"))
+    launcher_build_dir().join(launcher_fname())
 }
 
 pub fn installer_path() -> PathBuf {
@@ -101,6 +105,7 @@ pub struct Layout {
     pub ufw_config_dir: PathBuf,
     // (linux only) directory where the vulkan layer manifest is saved
     pub vulkan_layer_manifest_dir: PathBuf,
+    pub launcher_root: Option<PathBuf>,
 }
 
 impl Layout {
@@ -144,6 +149,11 @@ impl Layout {
                 firewalld_config_dir,
                 ufw_config_dir,
                 vulkan_layer_manifest_dir,
+                launcher_root: root
+                    .parent()
+                    .and_then(|p| p.parent())
+                    .and_then(|p| p.parent())
+                    .map(|p| p.to_owned()),
             }
         }
         #[cfg(not(target_os = "linux"))]
@@ -159,6 +169,7 @@ impl Layout {
             firewalld_config_dir: root.to_owned(),
             ufw_config_dir: root.to_owned(),
             vulkan_layer_manifest_dir: root.to_owned(),
+            launcher_root: root.parent().and_then(|p| p.parent()).map(|p| p.to_owned()),
         }
     }
 
@@ -267,6 +278,12 @@ impl Layout {
 
     pub fn vulkan_layer_manifest(&self) -> PathBuf {
         self.vulkan_layer_manifest_dir.join("alvr_x86_64.json")
+    }
+
+    pub fn launcher_exe(&self) -> Option<PathBuf> {
+        self.launcher_root
+            .as_ref()
+            .map(|root| root.join(launcher_fname()))
     }
 }
 

@@ -10,9 +10,10 @@ use alvr_gui_common::{theme, ModalButton};
 use alvr_packets::{PathValuePair, ServerRequest};
 use alvr_session::SessionConfig;
 use eframe::egui::{
-    self, Align, CentralPanel, Frame, Layout, Margin, RichText, SidePanel, Stroke, Ui,
+    self, Align, CentralPanel, Frame, Layout, Margin, OpenUrl, OutputCommand, RichText, SidePanel,
+    Stroke, Ui,
 };
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, process::Command, sync::Arc};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 enum Tab {
@@ -309,17 +310,66 @@ impl eframe::App for Dashboard {
                 });
         }
 
+        let shutdown_alvr = || {
+            self.data_sources.request(ServerRequest::ShutdownSteamvr);
+
+            crate::steamvr_launcher::LAUNCHER
+                .lock()
+                .ensure_steamvr_shutdown();
+        };
+
         if let Some((version, message)) = &self.version_modal_data {
             let no_remind_button =
                 ModalButton::Custom("Don't remind me again for this version".to_string());
 
             let result = alvr_gui_common::modal(
                 context,
-                &format!("ALVR v{version} available"),
+                "New ALVR version available",
                 Some(|ui: &mut Ui| {
                     ui.horizontal(|ui| {
                         ui.add_space(10.0);
-                        ui.label(message);
+
+                        ui.vertical(|ui| {
+                            ui.heading(format!("ALVR v{version}"));
+
+                            ui.horizontal(|ui| {
+                                ui.spacing_mut().item_spacing.x = 5.0;
+                                ui.style_mut().spacing.button_padding = egui::vec2(10.0, 4.0);
+
+                                ui.heading("You can download this version using the launcher:");
+
+                                if ui.button("Open Launcher").clicked() {
+                                    let layout = crate::get_filesystem_layout();
+                                    let mut success = false;
+                                    if let Some(path) = layout.launcher_exe() {
+                                        if Command::new(path).spawn().is_ok() {
+                                            shutdown_alvr();
+
+                                            success = true;
+                                        }
+                                    }
+
+                                    if !success {
+                                        ui.output_mut(|out| {
+                                            out.commands.push(OutputCommand::OpenUrl(
+                                                OpenUrl::same_tab(
+                                                    "https://github.com/alvr-org/ALVR/releases",
+                                                ),
+                                            ));
+                                        });
+                                    }
+                                }
+                            });
+
+                            ui.add_space(10.0);
+
+                            ui.label(message);
+                            ui.hyperlink_to(
+                                "Releases page",
+                                "https://github.com/alvr-org/ALVR/releases",
+                            );
+                        });
+
                         ui.add_space(10.0);
                     });
                 }),
@@ -361,11 +411,7 @@ impl eframe::App for Dashboard {
                     .open_close_steamvr_with_dashboard
             })
         {
-            self.data_sources.request(ServerRequest::ShutdownSteamvr);
-
-            crate::steamvr_launcher::LAUNCHER
-                .lock()
-                .ensure_steamvr_shutdown()
+            shutdown_alvr();
         }
     }
 }

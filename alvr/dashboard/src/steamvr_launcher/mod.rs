@@ -3,6 +3,7 @@ mod linux_steamvr;
 #[cfg(windows)]
 mod windows_steamvr;
 
+use crate::data_sources;
 use alvr_adb::commands as adb;
 use alvr_common::{
     anyhow::{Context, Result},
@@ -115,8 +116,14 @@ impl Launcher {
     pub fn launch_steamvr(&self) {
         // The ADB server might be left running because of a unclean termination of SteamVR
         // Note that this will also kill a system wide ADB server not started by ALVR
-        if let Some(path) = adb::get_adb_path(&crate::get_filesystem_layout()) {
-            adb::kill_server(&path).ok();
+        let wired_enabled = data_sources::get_read_only_local_session()
+            .session()
+            .client_connections
+            .contains_key(alvr_sockets::WIRED_CLIENT_HOSTNAME);
+        if wired_enabled {
+            if let Some(path) = adb::get_adb_path(&crate::get_filesystem_layout()) {
+                adb::kill_server(&path).ok();
+            }
         }
 
         #[cfg(target_os = "linux")]

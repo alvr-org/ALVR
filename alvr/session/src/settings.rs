@@ -790,7 +790,7 @@ If you want to reduce the amount of pixelation on the edges, increase the center
 
     #[schema(strings(display_name = "Preferred Server FPS"))]
     #[schema(gui(slider(min = 60.0, max = 120.0)), suffix = "Hz")]
-    #[schema(flag = "steamvr-restart")]
+    #[schema(flag = "real-time")]
     pub preferred_fps: f32,
     #[schema(strings(display_name = "Use server's refresh rate"))]
     #[schema(flag = "steamvr-restart")]

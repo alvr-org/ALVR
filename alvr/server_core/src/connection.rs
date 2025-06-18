@@ -1090,11 +1090,17 @@ fn connection_pipeline(
     let real_time_update_thread = thread::spawn({
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
+        let ctx = Arc::clone(&ctx);
         move || {
             while is_streaming(&client_hostname) {
                 let config = {
                     let session_manager_lock = SESSION_MANAGER.read();
                     let settings = session_manager_lock.settings();
+                    let server_fps=ctx.statistics_manager.read().as_ref().unwrap().get_refresh_rate();
+                    let settings_fps=round_fps(&streaming_caps, settings.video.preferred_fps);
+                    if server_fps!=settings_fps{
+                        ctx.statistics_manager.write().as_mut().unwrap().new_server_refresh_rate(settings_fps);   
+                    }
                     RealTimeConfig::from_settings(settings,&streaming_caps) //todo: prob don't store 60..120 range using a float and don't allow settings inncorect values
                 };
                     if let Ok(config) = config.encode(){

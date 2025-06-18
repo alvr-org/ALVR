@@ -418,6 +418,7 @@ pub struct RealTimeConfig {
     pub passthrough: Option<PassthroughMode>,
     pub clientside_post_processing: Option<ClientsidePostProcessingConfig>,
     pub client_fps: f32,
+    pub server_fps: f32,
 }
 
 impl RealTimeConfig {
@@ -458,7 +459,8 @@ impl RealTimeConfig {
                     }else{
                         settings.video.preferred_fps
                     },
-                })
+                }),
+            server_fps: round_fps(streaming_caps, settings.video.preferred_fps),
         }
     }
 }

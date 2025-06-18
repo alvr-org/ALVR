@@ -1,4 +1,6 @@
-use alvr_common::{debug, error, info, parking_lot::Mutex, semver::Version, warn, RelaxedAtomic};
+use alvr_common::{
+    debug, error, info, parking_lot::Mutex, semver::Version, warn, RelaxedAtomic, ALVR_VERSION,
+};
 use alvr_events::{Event, EventType};
 use alvr_packets::ServerRequest;
 use alvr_server_io::ServerSessionManager;
@@ -23,9 +25,47 @@ enum SessionSource {
     Remote, // Note: the remote (server) is probably living as a separate process in the same PC
 }
 
-pub fn get_local_session_source() -> ServerSessionManager {
+fn get_local_session_source() -> ServerSessionManager {
     let session_file_path = crate::get_filesystem_layout().session();
     ServerSessionManager::new(Some(session_file_path))
+}
+
+pub fn clean_session() {
+    let mut session_manager = get_local_session_source();
+
+    session_manager.clean_client_list();
+
+    #[cfg(target_os = "linux")]
+    {
+        let has_nvidia = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::VULKAN,
+            ..Default::default()
+        })
+        .enumerate_adapters(wgpu::Backends::VULKAN)
+        .iter()
+        .any(|adapter| adapter.get_info().vendor == 0x10de);
+
+        if has_nvidia {
+            session_manager
+                .session_mut()
+                .session_settings
+                .extra
+                .patches
+                .linux_async_reprojection = false;
+        }
+    }
+
+    if session_manager.session().server_version != *ALVR_VERSION {
+        let mut session_ref = session_manager.session_mut();
+        session_ref.server_version = ALVR_VERSION.clone();
+        session_ref.client_connections.clear();
+        session_ref.session_settings.extra.open_setup_wizard = true;
+    }
+}
+
+// Disallows all methods for mutating (and overwriting to disk) the session
+pub fn get_read_only_local_session() -> Arc<ServerSessionManager> {
+    Arc::new(get_local_session_source())
 }
 
 fn report_event_local(

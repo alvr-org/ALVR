@@ -64,9 +64,10 @@ impl DevicesTab {
                         ui.horizontal(|ui| {
                             ui.add_space(10.0);
                             ui.heading(
-                                RichText::new(
-                                    "ALVR requires running SteamVR! Devices will not be discovered or connected",
-                                )
+                                RichText::new(format!(
+                                    "ALVR requires running SteamVR! {}",
+                                    "Devices will not be discovered or connected"
+                                ))
                                 .color(Color32::BLACK)
                                 .size(16.0),
                             );

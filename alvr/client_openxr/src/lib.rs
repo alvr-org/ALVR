@@ -448,6 +448,10 @@ pub fn entry_point() {
                         } else if config.passthrough.is_none() && passthrough_layer.is_some() {
                             passthrough_layer = None;
                         }
+                        let xr_exts = xr_session.instance().exts();
+                        if xr_exts.fb_display_refresh_rate.is_some() {
+                            xr_session.request_display_refresh_rate(config.client_fps).unwrap();
+                        }
 
                         if let Some(stream) = &mut stream_context {
                             stream.update_real_time_config(&config);

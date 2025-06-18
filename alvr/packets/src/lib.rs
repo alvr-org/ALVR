@@ -126,6 +126,7 @@ pub enum ClientConnectionResult {
 pub struct NegotiatedStreamingConfig {
     pub view_resolution: UVec2,
     pub refresh_rate_hint: f32,
+    pub client_refresh_rate: f32,
     pub game_audio_sample_rate: u32,
     pub enable_foveated_encoding: bool,
     // This is needed to detect when to use SteamVR hand trackers. This does NOT imply if multimodal
@@ -181,6 +182,7 @@ pub fn decode_stream_config(packet: &StreamConfigPacket) -> Result<StreamConfig>
     let encoding_gamma = json::from_value(negotiated_json["encoding_gamma"].clone()).unwrap_or(1.0);
     let enable_hdr = json::from_value(negotiated_json["enable_hdr"].clone()).unwrap_or(false);
     let wired = json::from_value(negotiated_json["wired"].clone()).unwrap_or(false);
+    let client_refresh_rate = json::from_value(negotiated_json["client_refresh_rate"].clone()).unwrap_or(refresh_rate_hint);
 
     Ok(StreamConfig {
         server_version: session_config.server_version,
@@ -195,6 +197,7 @@ pub fn decode_stream_config(packet: &StreamConfigPacket) -> Result<StreamConfig>
             encoding_gamma,
             enable_hdr,
             wired,
+            client_refresh_rate:client_refresh_rate,
         },
     })
 }
@@ -414,6 +417,7 @@ pub enum ServerRequest {
 pub struct RealTimeConfig {
     pub passthrough: Option<PassthroughMode>,
     pub clientside_post_processing: Option<ClientsidePostProcessingConfig>,
+    pub client_fps: f32,
 }
 
 impl RealTimeConfig {
@@ -427,7 +431,19 @@ impl RealTimeConfig {
         Ok(bincode::deserialize(buffer)?)
     }
 
-    pub fn from_settings(settings: &Settings) -> Self {
+    pub fn from_settings(settings: &Settings,streaming_caps:&VideoStreamingCapabilities) -> Self {
+        fn round_fps(streaming_caps:&VideoStreamingCapabilities,preffered:f32)->f32{ 
+            let mut best_match = 0_f32;
+            let mut min_diff = f32::MAX;
+            for rate in &streaming_caps.supported_refresh_rates {
+                let diff = (*rate - (  preffered)).abs();
+                if diff < min_diff {
+                    best_match = *rate;
+                    min_diff = diff;
+                }
+            }
+            best_match
+        }
         Self {
             passthrough: settings.video.passthrough.clone().into_option(),
             clientside_post_processing: settings
@@ -435,6 +451,14 @@ impl RealTimeConfig {
                 .clientside_post_processing
                 .clone()
                 .into_option(),
+                client_fps:round_fps(streaming_caps, match settings.video.use_server_refresh_rate {
+                    true => settings.video.preferred_fps,
+                    false => if settings.video.preferred_client_fps>=settings.video.preferred_fps{ //todo:try to actually fix jittering when client refresh rate is lower then server's
+                        settings.video.preferred_client_fps
+                    }else{
+                        settings.video.preferred_fps
+                    },
+                })
         }
     }
 }

@@ -36,6 +36,7 @@ const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 pub struct ParsedStreamConfig {
     pub view_resolution: UVec2,
     pub refresh_rate_hint: f32,
+    pub client_refresh_rate: f32,
     pub use_full_range: bool,
     pub encoding_gamma: f32,
     pub enable_hdr: bool,
@@ -83,6 +84,7 @@ impl ParsedStreamConfig {
             buffering_history_weight: config.settings.video.buffering_history_weight,
             decoder_options: config.settings.video.mediacodec_extra_options.clone(),
             interaction_sources: InteractionSourcesConfig::new(config),
+            client_refresh_rate: config.negotiated_config.client_refresh_rate,
         }
     }
 }
@@ -119,8 +121,15 @@ impl StreamContext {
         let xr_exts = xr_session.instance().exts();
 
         if xr_exts.fb_display_refresh_rate.is_some() {
+            let refresh_rate={
+                if config.client_refresh_rate>=config.refresh_rate_hint{ //todo:try to actually fix jittering when client refresh rate is lower then server's
+                    config.client_refresh_rate
+                }else{
+                    config.refresh_rate_hint
+                }
+            };
             xr_session
-                .request_display_refresh_rate(config.refresh_rate_hint)
+                .request_display_refresh_rate(refresh_rate)
                 .unwrap();
         }
 

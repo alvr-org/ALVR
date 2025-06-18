@@ -19,13 +19,10 @@ use alvr_common::{
 };
 use alvr_events::{AdbEvent, ButtonEvent, EventType};
 use alvr_packets::{
-    ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
-    NegotiatedStreamingConfig, RealTimeConfig, ReservedClientControlPacket, ServerControlPacket,
-    Tracking, VideoPacketHeader, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
+    ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics, NegotiatedStreamingConfig, RealTimeConfig, ReservedClientControlPacket, ServerControlPacket, Tracking, VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO
 };
 use alvr_session::{
-    BodyTrackingBDConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize,
-    H264Profile, OpenvrConfig, SessionConfig, SocketProtocol,
+    BodyTrackingBDConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile, OpenvrConfig, SessionConfig, SocketProtocol
 };
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSocketBuilder, CONTROL_PORT, KEEPALIVE_INTERVAL,
@@ -615,25 +612,32 @@ fn connection_pipeline(
             .clone(),
         streaming_caps.default_view_resolution,
     );
-
-    let fps = {
+    fn round_fps(streaming_caps:&VideoStreamingCapabilities,preffered:f32)->f32{
         let mut best_match = 0_f32;
         let mut min_diff = f32::MAX;
         for rate in &streaming_caps.supported_refresh_rates {
-            let diff = (*rate - initial_settings.video.preferred_fps).abs();
+            let diff = (*rate - (  preffered)).abs();
             if diff < min_diff {
                 best_match = *rate;
                 min_diff = diff;
             }
         }
         best_match
+    }
+    // let server_fps =get_fps(&streaming_caps, initial_settings.video.preferred_fps);
+    let server_fps =initial_settings.video.preferred_fps;
+    let client_fps=match initial_settings.video.use_server_refresh_rate{
+        true => server_fps,
+        false => round_fps(&streaming_caps, initial_settings.video.preferred_client_fps),
     };
 
-    if !streaming_caps
-        .supported_refresh_rates
-        .contains(&initial_settings.video.preferred_fps)
+    if initial_settings.video.preferred_fps!=server_fps
     {
-        warn!("Chosen refresh rate not supported. Using {fps}Hz");
+        warn!("Chosen server refresh rate not supported. Using {server_fps}Hz");
+    }
+    if initial_settings.video.preferred_client_fps!=client_fps
+    {
+        warn!("Chosen server refresh rate not supported. Using {client_fps}Hz");
     }
 
     let enable_foveated_encoding =
@@ -773,7 +777,8 @@ fn connection_pipeline(
         session_manager_lock.session(),
         &NegotiatedStreamingConfig {
             view_resolution: stream_view_resolution,
-            refresh_rate_hint: fps,
+            refresh_rate_hint: server_fps,
+            client_refresh_rate: client_fps,
             game_audio_sample_rate,
             enable_foveated_encoding,
             use_multimodal_protocol: streaming_caps.multimodal_protocol,
@@ -794,7 +799,7 @@ fn connection_pipeline(
     new_openvr_config.eye_resolution_height = stream_view_resolution.y;
     new_openvr_config.target_eye_resolution_width = target_view_resolution.x;
     new_openvr_config.target_eye_resolution_height = target_view_resolution.y;
-    new_openvr_config.refresh_rate = fps as _;
+    new_openvr_config.refresh_rate = server_fps as _;
     new_openvr_config.enable_foveated_encoding = enable_foveated_encoding;
     new_openvr_config.h264_profile = encoder_profile as _;
     new_openvr_config.use_10bit_encoder = enable_10_bits_encoding;
@@ -824,7 +829,7 @@ fn connection_pipeline(
 
     *ctx.statistics_manager.write() = Some(StatisticsManager::new(
         initial_settings.connection.statistics_history_size,
-        Duration::from_secs_f32(1.0 / fps),
+        Duration::from_secs_f32(1.0 / server_fps),
         if let Switch::Enabled(config) = &initial_settings.headset.controllers {
             config.steamvr_pipeline_frames
         } else {
@@ -833,7 +838,7 @@ fn connection_pipeline(
     ));
 
     *ctx.bitrate_manager.lock() =
-        BitrateManager::new(initial_settings.video.bitrate.history_size, fps);
+        BitrateManager::new(initial_settings.video.bitrate.history_size, server_fps);
 
     let stream_protocol = if wired {
         SocketProtocol::Tcp
@@ -1090,14 +1095,11 @@ fn connection_pipeline(
                 let config = {
                     let session_manager_lock = SESSION_MANAGER.read();
                     let settings = session_manager_lock.settings();
-
-                    RealTimeConfig::from_settings(settings)
+                    RealTimeConfig::from_settings(settings,&streaming_caps) //todo: prob don't store 60..120 range using a float and don't allow settings inncorect values
                 };
-
-                if let Ok(config) = config.encode() {
-                    control_sender.lock().send(&config).ok();
-                }
-
+                    if let Ok(config) = config.encode(){
+                            control_sender.lock().send(&config).ok();
+                    }
                 thread::sleep(REAL_TIME_UPDATE_INTERVAL);
             }
         }

@@ -501,6 +501,16 @@ impl ServerCoreContext {
 
         self.connection_context
             .statistics_manager
+            .try_write()?
+            .as_mut()
+            .map(|stats| stats.duration_until_next_vsync())
+    }
+    //used in wait_for_vsync to check if if StatsManager is up otherwise non blocking is called
+    pub fn duration_until_next_vsync_blocking(&self) -> Option<Duration> {
+        dbg_server_core!("duration_until_next_vsync_blocking");
+
+        self.connection_context
+            .statistics_manager
             .write()
             .as_mut()
             .map(|stats| stats.duration_until_next_vsync())

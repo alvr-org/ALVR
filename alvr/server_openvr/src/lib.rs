@@ -33,6 +33,7 @@ use std::{
 static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> =
     Lazy::new(|| RwLock::new(None));
 
+
 fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
     thread::spawn(move || {
         if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
@@ -374,32 +375,46 @@ extern "C" fn report_present(timestamp_ns: u64, offset_ns: u64) {
         );
     }
 }
-
+///# Safety assumes no race condiotions since we have only one encoder
 extern "C" fn wait_for_vsync() {
     // Default 120Hz-ish wait if StatisticsManager isn't up.
     // We use 120Hz-ish so that SteamVR doesn't accidentally get
     // any weird ideas about our display Hz with its frame pacing.
     static PRE_HEADSET_STATS_WAIT_INTERVAL: Duration = Duration::from_millis(8);
-
-    // NB: don't sleep while locking SERVER_DATA_MANAGER or SERVER_CORE_CONTEXT
-    let sleep_duration = SERVER_CORE_CONTEXT
-        .read()
-        .as_ref()
-        .and_then(|ctx| ctx.duration_until_next_vsync());
-
-    if let Some(duration) = sleep_duration {
-        if alvr_server_core::settings()
+    static mut LAST_SLEEP:Duration=Duration::from_millis(17);
+    static mut CONNECTED:bool=false;
+    if alvr_server_core::settings()
             .video
             .enforce_server_frame_pacing
-        {
-            thread::sleep(duration);
-        } else {
-            thread::yield_now();
+    {   
+        let sleep_duration =
+        {   
+        if !unsafe { CONNECTED }{
+            //check if StatsManager is up
+            unsafe { CONNECTED = SERVER_CORE_CONTEXT.read().as_ref().and_then(|ctx|ctx.duration_until_next_vsync_blocking()).is_some() };
+            // StatsManager isn't up because the headset hasn't connected,
+            // safety fallback to prevent deadlocking.
+            PRE_HEADSET_STATS_WAIT_INTERVAL
+        }else {
+            match SERVER_CORE_CONTEXT.try_read() {
+                Some(lock) => {
+                    let sleep_duration=lock.as_ref().and_then(|ctx| ctx.duration_until_next_vsync());
+                    if let Some(sleep_duration)=sleep_duration{
+                        unsafe {LAST_SLEEP=sleep_duration};
+                        sleep_duration
+                    }else {
+                            // ctx.duration_until_next_vsync() can return non if failed to lock or when headset is not connected
+                            unsafe { LAST_SLEEP }
+                        
+                    }
+                },
+                None => unsafe { LAST_SLEEP },
+            }
         }
-    } else {
-        // StatsManager isn't up because the headset hasn't connected,
-        // safety fallback to prevent deadlocking.
-        thread::sleep(PRE_HEADSET_STATS_WAIT_INTERVAL);
+        };
+        thread::sleep(sleep_duration);
+    }else {
+        thread::yield_now();
     }
 }
 

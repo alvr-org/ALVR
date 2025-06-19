@@ -61,3 +61,4 @@ extern std::map<uint64_t, ButtonInfo> RIGHT_CONTROLLER_BUTTON_MAPPING;
 extern std::map<uint64_t, std::vector<uint64_t>> ALVR_TO_STEAMVR_PATH_IDS;
 
 void init_paths();
+uint64_t GetFakeTrackerBindingID(int settingsBinding);

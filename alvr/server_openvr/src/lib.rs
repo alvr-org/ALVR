@@ -348,6 +348,7 @@ extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
                 updated: 1,
                 bitrate_bps: params.bitrate_bps as u64,
                 framerate: params.framerate,
+                target_framerate: params.target_framerate,
             }
         } else {
             FfiDynamicEncoderParams::default()

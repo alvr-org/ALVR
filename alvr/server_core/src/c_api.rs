@@ -145,6 +145,7 @@ pub struct AlvrDeviceConfig {
 pub struct AlvrDynamicEncoderParams {
     bitrate_bps: f32,
     framerate: f32,
+    target_framerate: f32,
 }
 
 fn pose_to_capi(pose: &Pose) -> AlvrPose {
@@ -506,6 +507,7 @@ pub unsafe extern "C" fn alvr_get_dynamic_encoder_params(
         if let Some(params) = context.get_dynamic_encoder_params() {
             (*out_params).bitrate_bps = params.bitrate_bps;
             (*out_params).framerate = params.framerate;
+            (*out_params).target_framerate = params.target_framerate;
 
             true
         } else {

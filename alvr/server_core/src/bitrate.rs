@@ -13,6 +13,7 @@ const UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 pub struct DynamicEncoderParams {
     pub bitrate_bps: f32,
     pub framerate: f32,
+    pub target_framerate: f32,
 }
 
 pub struct BitrateManager {
@@ -58,7 +59,10 @@ impl BitrateManager {
             update_needed: true,
         }
     }
-
+    pub fn update_framerate(&mut self, framerate: f32) {
+        self.nominal_frame_interval = Duration::from_secs_f32(1. / framerate);
+        self.update_needed = true;
+    }
     // Note: This is used to calculate the framerate/frame interval. The frame present is the most
     // accurate event for this use.
     pub fn report_frame_present(&mut self, config: &Switch<BitrateAdaptiveFramerateConfig>) {
@@ -245,6 +249,7 @@ impl BitrateManager {
             DynamicEncoderParams {
                 bitrate_bps,
                 framerate: 1.0 / f32::min(frame_interval.as_secs_f32(), 1.0),
+                target_framerate: 1. / self.nominal_frame_interval.as_secs_f32(),
             },
             bitrate_directives,
         ))

@@ -1107,6 +1107,7 @@ fn connection_pipeline(
                             .as_mut()
                             .unwrap()
                             .new_server_refresh_rate(settings_fps);
+                        ctx.bitrate_manager.lock().update_framerate(settings_fps);
                     }
                     RealTimeConfig::from_settings(settings, &streaming_caps) //todo: prob don't store 60..120 range using a float and don't allow settings inncorect values
                 };

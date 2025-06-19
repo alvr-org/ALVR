@@ -731,14 +731,17 @@ void VideoEncoderAMF::Transmit(
 
     auto params = GetDynamicEncoderParams();
     if (params.updated) {
+        m_refreshRate=params.target_framerate;
         amf_int64 bitRateIn = params.bitrate_bps / params.framerate * m_refreshRate; // in bits
         if (m_codec == ALVR_CODEC_H264) {
+            m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_FRAMERATE, m_refreshRate);
             m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
             m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_PEAK_BITRATE, bitRateIn);
             m_amfComponents.back()->SetProperty(
                 AMF_VIDEO_ENCODER_VBV_BUFFER_SIZE, bitRateIn / m_refreshRate * 1.1
             );
         } else {
+            m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMERATE, m_refreshRate);
             m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
             m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_PEAK_BITRATE, bitRateIn);
             m_amfComponents.back()->SetProperty(

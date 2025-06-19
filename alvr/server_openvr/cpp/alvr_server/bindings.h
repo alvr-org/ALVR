@@ -82,6 +82,7 @@ struct FfiDynamicEncoderParams {
     unsigned int updated;
     unsigned long long bitrate_bps;
     float framerate;
+    float target_framerate;
 };
 
 extern "C" const unsigned char* FRAME_RENDER_VS_CSO_PTR;

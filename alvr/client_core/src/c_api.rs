@@ -802,7 +802,6 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
         upscale_factor: config.upscale_factor,
     });
     STREAM_RENDERER.set(Some(StreamRenderer::new(
-        
         GRAPHICS_CONTEXT.with_borrow(|c| c.as_ref().unwrap().clone()),
         view_resolution,
         compute_target_view_resolution(view_resolution, &upscaling),

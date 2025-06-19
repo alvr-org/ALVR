@@ -198,7 +198,7 @@ pub fn decode_stream_config(packet: &StreamConfigPacket) -> Result<StreamConfig>
             encoding_gamma,
             enable_hdr,
             wired,
-            client_refresh_rate: client_refresh_rate,
+            client_refresh_rate,
         },
     })
 }

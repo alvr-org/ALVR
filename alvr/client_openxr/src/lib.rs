@@ -450,7 +450,9 @@ pub fn entry_point() {
                         }
                         let xr_exts = xr_session.instance().exts();
                         if xr_exts.fb_display_refresh_rate.is_some() {
-                            xr_session.request_display_refresh_rate(config.client_fps).unwrap();
+                            xr_session
+                                .request_display_refresh_rate(config.client_fps)
+                                .unwrap();
                         }
 
                         if let Some(stream) = &mut stream_context {

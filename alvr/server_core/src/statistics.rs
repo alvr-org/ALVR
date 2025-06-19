@@ -92,11 +92,11 @@ impl StatisticsManager {
             last_throughput_directives: BitrateDirectives::default(),
         }
     }
-    pub fn new_server_refresh_rate(&mut self,refresh_rate:f32){
-        self.frame_interval=Duration::from_secs_f32(1.0/refresh_rate);
+    pub fn new_server_refresh_rate(&mut self, refresh_rate: f32) {
+        self.frame_interval = Duration::from_secs_f32(1.0 / refresh_rate);
     }
-    pub fn get_refresh_rate(&self)->f32{
-        1.0/self.frame_interval.as_secs_f32()
+    pub fn get_refresh_rate(&self) -> f32 {
+        1.0 / self.frame_interval.as_secs_f32()
     }
     pub fn report_tracking_received(&mut self, target_timestamp: Duration) {
         if !self

@@ -794,7 +794,7 @@ If you want to reduce the amount of pixelation on the edges, increase the center
     pub preferred_fps: f32,
     #[schema(strings(
         display_name = "Preferred Client FPS",
-        help="if the value is lower then Preferred Server FPS it will be used instead"
+        help = "if the value is lower then Preferred Server FPS it will be used instead"
     ))]
     #[schema(gui(slider(min = 60.0, max = 120.0)), suffix = "Hz")]
     #[schema(flag = "real-time")]

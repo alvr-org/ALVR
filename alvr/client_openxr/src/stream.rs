@@ -121,10 +121,11 @@ impl StreamContext {
         let xr_exts = xr_session.instance().exts();
 
         if xr_exts.fb_display_refresh_rate.is_some() {
-            let refresh_rate={
-                if config.client_refresh_rate>=config.refresh_rate_hint{ //todo:try to fix jittering when client refresh rate is lower then server's
+            let refresh_rate = {
+                if config.client_refresh_rate >= config.refresh_rate_hint {
+                    //todo:try to fix jittering when client refresh rate is lower then server's
                     config.client_refresh_rate
-                }else{
+                } else {
                     config.refresh_rate_hint
                 }
             };
@@ -339,7 +340,7 @@ impl StreamContext {
     pub fn update_real_time_config(&mut self, config: &RealTimeConfig) {
         self.config.passthrough = config.passthrough.clone();
         self.config.clientside_post_processing = config.clientside_post_processing.clone();
-        self.config.refresh_rate_hint=config.server_fps;
+        self.config.refresh_rate_hint = config.server_fps;
     }
 
     pub fn render(

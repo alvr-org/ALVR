@@ -19,10 +19,14 @@ use alvr_common::{
 };
 use alvr_events::{AdbEvent, ButtonEvent, EventType};
 use alvr_packets::{
-    ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics, NegotiatedStreamingConfig, RealTimeConfig, ReservedClientControlPacket, ServerControlPacket, Tracking, VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO
+    ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
+    NegotiatedStreamingConfig, RealTimeConfig, ReservedClientControlPacket, ServerControlPacket,
+    Tracking, VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING,
+    VIDEO,
 };
 use alvr_session::{
-    BodyTrackingBDConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile, OpenvrConfig, SessionConfig, SocketProtocol
+    BodyTrackingBDConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize,
+    H264Profile, OpenvrConfig, SessionConfig, SocketProtocol,
 };
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSocketBuilder, CONTROL_PORT, KEEPALIVE_INTERVAL,
@@ -612,11 +616,11 @@ fn connection_pipeline(
             .clone(),
         streaming_caps.default_view_resolution,
     );
-    fn round_fps(streaming_caps:&VideoStreamingCapabilities,preffered:f32)->f32{
+    fn round_fps(streaming_caps: &VideoStreamingCapabilities, preffered: f32) -> f32 {
         let mut best_match = 0_f32;
         let mut min_diff = f32::MAX;
         for rate in &streaming_caps.supported_refresh_rates {
-            let diff = (*rate - (  preffered)).abs();
+            let diff = (*rate - (preffered)).abs();
             if diff < min_diff {
                 best_match = *rate;
                 min_diff = diff;
@@ -624,19 +628,13 @@ fn connection_pipeline(
         }
         best_match
     }
-    // let server_fps =get_fps(&streaming_caps, initial_settings.video.preferred_fps);
-    let server_fps =initial_settings.video.preferred_fps;
-    let client_fps=match initial_settings.video.use_server_refresh_rate{
-        true => server_fps,
-        false => round_fps(&streaming_caps, initial_settings.video.preferred_client_fps),
-    };
+    let server_fps = round_fps(&streaming_caps, initial_settings.video.preferred_fps);
+    let client_fps = round_fps(&streaming_caps, initial_settings.video.preferred_client_fps);
 
-    if initial_settings.video.preferred_fps!=server_fps
-    {
+    if initial_settings.video.preferred_fps != server_fps {
         warn!("Chosen server refresh rate not supported. Using {server_fps}Hz");
     }
-    if initial_settings.video.preferred_client_fps!=client_fps
-    {
+    if initial_settings.video.preferred_client_fps != client_fps {
         warn!("Chosen server refresh rate not supported. Using {client_fps}Hz");
     }
 
@@ -1096,16 +1094,25 @@ fn connection_pipeline(
                 let config = {
                     let session_manager_lock = SESSION_MANAGER.read();
                     let settings = session_manager_lock.settings();
-                    let server_fps=ctx.statistics_manager.read().as_ref().unwrap().get_refresh_rate();
-                    let settings_fps=round_fps(&streaming_caps, settings.video.preferred_fps);
-                    if server_fps!=settings_fps{
-                        ctx.statistics_manager.write().as_mut().unwrap().new_server_refresh_rate(settings_fps);   
+                    let server_fps = ctx
+                        .statistics_manager
+                        .read()
+                        .as_ref()
+                        .unwrap()
+                        .get_refresh_rate();
+                    let settings_fps = round_fps(&streaming_caps, settings.video.preferred_fps);
+                    if server_fps != settings_fps {
+                        ctx.statistics_manager
+                            .write()
+                            .as_mut()
+                            .unwrap()
+                            .new_server_refresh_rate(settings_fps);
                     }
-                    RealTimeConfig::from_settings(settings,&streaming_caps) //todo: prob don't store 60..120 range using a float and don't allow settings inncorect values
+                    RealTimeConfig::from_settings(settings, &streaming_caps) //todo: prob don't store 60..120 range using a float and don't allow settings inncorect values
                 };
-                    if let Ok(config) = config.encode(){
-                            control_sender.lock().send(&config).ok();
-                    }
+                if let Ok(config) = config.encode() {
+                    control_sender.lock().send(&config).ok();
+                }
                 thread::sleep(REAL_TIME_UPDATE_INTERVAL);
             }
         }

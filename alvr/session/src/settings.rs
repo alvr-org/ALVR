@@ -792,9 +792,6 @@ If you want to reduce the amount of pixelation on the edges, increase the center
     #[schema(gui(slider(min = 60.0, max = 120.0)), suffix = "Hz")]
     #[schema(flag = "real-time")]
     pub preferred_fps: f32,
-    #[schema(strings(display_name = "Use server's refresh rate"))]
-    #[schema(flag = "steamvr-restart")]
-    pub use_server_refresh_rate: bool,
     #[schema(strings(
         display_name = "Preferred Client FPS",
         help="if the value is lower then Preferred Server FPS it will be used instead"
@@ -1672,7 +1669,6 @@ pub fn session_settings_default() -> SettingsDefault {
             transcoding_view_resolution: view_resolution.clone(),
             emulated_headset_view_resolution: view_resolution,
             preferred_fps: 72.,
-            use_server_refresh_rate:true,
             preferred_client_fps: 72.,
             max_buffering_frames: 2.0,
             buffering_history_weight: 0.90,

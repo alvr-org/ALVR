@@ -42,7 +42,7 @@ keystore_password = "alvrclient"
 
 [package.metadata.android.sdk]
 min_sdk_version = 26
-target_sdk_version = 29
+target_sdk_version = 32
 
 [[package.metadata.android.uses_feature]]
 name = "android.hardware.microphone"

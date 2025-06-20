@@ -3,7 +3,10 @@ mod components;
 use self::components::{
     DevicesTab, LogsTab, NotificationBar, SettingsTab, SetupWizard, SetupWizardRequest,
 };
-use crate::{dashboard::components::StatisticsTab, DataSources};
+use crate::{
+    dashboard::components::{NewVersionPopup, StatisticsTab},
+    DataSources,
+};
 use alvr_common::parking_lot::{Condvar, Mutex};
 use alvr_events::EventType;
 use alvr_gui_common::theme;
@@ -39,6 +42,7 @@ pub struct Dashboard {
     logs_tab: LogsTab,
     notification_bar: NotificationBar,
     setup_wizard: SetupWizard,
+    new_version_popup: Option<components::NewVersionPopup>,
     setup_wizard_open: bool,
     session: Option<SessionConfig>,
 }
@@ -79,6 +83,7 @@ impl Dashboard {
             setup_wizard: SetupWizard::new(),
             setup_wizard_open: false,
             session: None,
+            new_version_popup: None,
         }
     }
 
@@ -153,7 +158,13 @@ impl eframe::App for Dashboard {
                 EventType::Adb(adb_event) => self
                     .connections_tab
                     .update_adb_download_progress(adb_event.download_progress),
-                _ => (),
+                EventType::NewVersionFound { version, message } => {
+                    self.new_version_popup = Some(NewVersionPopup::new(version, message));
+                }
+                EventType::DebugGroup { .. }
+                | EventType::Tracking(_)
+                | EventType::Buttons(_)
+                | EventType::Haptics(_) => (),
             }
         }
 
@@ -296,6 +307,22 @@ impl eframe::App for Dashboard {
                 });
         }
 
+        let shutdown_alvr = || {
+            self.data_sources.request(ServerRequest::ShutdownSteamvr);
+
+            crate::steamvr_launcher::LAUNCHER
+                .lock()
+                .ensure_steamvr_shutdown();
+        };
+
+        if let Some(popup) = &self.new_version_popup {
+            if let Some(request) = popup.ui(context, shutdown_alvr) {
+                requests.push(request);
+
+                self.new_version_popup = None;
+            }
+        }
+
         for request in requests {
             self.data_sources.request(request);
         }
@@ -308,11 +335,7 @@ impl eframe::App for Dashboard {
                     .open_close_steamvr_with_dashboard
             })
         {
-            self.data_sources.request(ServerRequest::ShutdownSteamvr);
-
-            crate::steamvr_launcher::LAUNCHER
-                .lock()
-                .ensure_steamvr_shutdown()
+            shutdown_alvr();
         }
     }
 }

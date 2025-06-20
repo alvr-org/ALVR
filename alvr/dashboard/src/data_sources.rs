@@ -1,9 +1,13 @@
 use alvr_common::{
-    debug, error, info, parking_lot::Mutex, semver::Version, warn, RelaxedAtomic, ALVR_VERSION,
+    debug, error, info,
+    parking_lot::Mutex,
+    semver::{Version, VersionReq},
+    warn, RelaxedAtomic, ALVR_VERSION,
 };
 use alvr_events::{Event, EventType};
 use alvr_packets::ServerRequest;
 use alvr_server_io::ServerSessionManager;
+use alvr_session::NewVersionPopupConfig;
 use eframe::egui;
 use std::{
     io::ErrorKind,
@@ -18,7 +22,8 @@ use tungstenite::{
     http::{HeaderValue, Uri},
 };
 
-const REQUEST_TIMEOUT: Duration = Duration::from_millis(200);
+const LOCAL_REQUEST_TIMEOUT: Duration = Duration::from_millis(200);
+const REMOTE_REQUEST_TIMEOUT: Duration = Duration::from_secs(2);
 
 enum SessionSource {
     Local(Box<ServerSessionManager>),
@@ -107,6 +112,7 @@ pub struct DataSources {
     requests_sender: mpsc::Sender<ServerRequest>,
     events_receiver: mpsc::Receiver<PolledEvent>,
     server_connected: Arc<RelaxedAtomic>,
+    version_check_thread: Option<JoinHandle<Option<()>>>,
     requests_thread: Option<JoinHandle<()>>,
     events_thread: Option<JoinHandle<()>>,
     ping_thread: Option<JoinHandle<()>>,
@@ -128,6 +134,69 @@ impl DataSources {
         let port = session_manager.settings().connection.web_server_port;
         let session_source = Arc::new(Mutex::new(SessionSource::Local(Box::new(session_manager))));
 
+        let version_check_thread = thread::spawn({
+            let context = context.clone();
+            let session_source = Arc::clone(&session_source);
+            let events_sender = events_sender.clone();
+            move || {
+                let version_requirement = {
+                    // Best-effort: the check will succeed only when the server is not already running,
+                    // no retries
+                    let SessionSource::Local(session_manager_lock) = &mut *session_source.lock()
+                    else {
+                        return None;
+                    };
+
+                    match &session_manager_lock.settings().extra.new_version_popup {
+                        NewVersionPopupConfig::Show => VersionReq::STAR,
+                        NewVersionPopupConfig::HideWhileVersion(version) => {
+                            VersionReq::parse(&format!(">{version}")).unwrap()
+                        }
+                        NewVersionPopupConfig::AlwaysHide => return None,
+                    }
+                };
+
+                let request_agent: ureq::Agent = ureq::Agent::config_builder()
+                    .timeout_global(Some(REMOTE_REQUEST_TIMEOUT))
+                    .build()
+                    .into();
+                if let Ok(response) = request_agent
+                    .get("https://api.github.com/repos/alvr-org/ALVR/releases/latest")
+                    .call()
+                {
+                    let version_data =
+                        response.into_body().read_json::<serde_json::Value>().ok()?;
+
+                    let version_str = version_data
+                        .get("tag_name")
+                        .and_then(|v| Some(v.as_str()?.trim_start_matches("v")))?;
+
+                    let version = version_str.parse::<Version>().ok();
+
+                    if version
+                        .map(|v| version_requirement.matches(&v))
+                        .unwrap_or(false)
+                    {
+                        let message = version_data
+                            .get("body")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("Error parsing release body");
+
+                        report_event_local(
+                            &context,
+                            &events_sender,
+                            EventType::NewVersionFound {
+                                version: version_str.to_string(),
+                                message: message.to_string(),
+                            },
+                        );
+                    }
+                }
+
+                None
+            }
+        });
+
         let requests_thread = thread::spawn({
             let running = Arc::clone(&running);
             let context = context.clone();
@@ -136,7 +205,7 @@ impl DataSources {
             move || {
                 let uri = format!("http://127.0.0.1:{port}/api/dashboard-request");
                 let request_agent: ureq::Agent = ureq::Agent::config_builder()
-                    .timeout_global(Some(REQUEST_TIMEOUT))
+                    .timeout_global(Some(LOCAL_REQUEST_TIMEOUT))
                     .build()
                     .into();
 
@@ -325,7 +394,7 @@ impl DataSources {
                 let uri = format!("http://127.0.0.1:{port}/api/version");
 
                 let request_agent: ureq::Agent = ureq::Agent::config_builder()
-                    .timeout_global(Some(REQUEST_TIMEOUT))
+                    .timeout_global(Some(LOCAL_REQUEST_TIMEOUT))
                     .build()
                     .into();
 
@@ -387,6 +456,7 @@ impl DataSources {
             events_receiver,
             server_connected,
             running,
+            version_check_thread: Some(version_check_thread),
             requests_thread: Some(requests_thread),
             events_thread: Some(events_thread),
             ping_thread: Some(ping_thread),
@@ -410,6 +480,7 @@ impl Drop for DataSources {
     fn drop(&mut self) {
         self.running.set(false);
 
+        self.version_check_thread.take().unwrap().join().ok();
         self.requests_thread.take().unwrap().join().ok();
         self.events_thread.take().unwrap().join().ok();
         self.ping_thread.take().unwrap().join().ok();

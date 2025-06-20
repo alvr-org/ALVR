@@ -355,6 +355,7 @@ pub fn tracking_loop(
             Ok(tracking) => tracking,
             Err(ConnectionError::TryAgain(_)) => continue,
             Err(ConnectionError::Other(_)) => return,
+            Err(ConnectionError::ConfigReload(_)) => unreachable!(),
         };
         let Ok(mut tracking) = data.get_header() else {
             return;

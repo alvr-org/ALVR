@@ -36,6 +36,7 @@ static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> =
 fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
     thread::spawn(move || {
         if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+            thread::sleep(Duration::from_millis(500)); // delay start to avoid connection resets
             context.start_connection();
         }
 

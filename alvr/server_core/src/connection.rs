@@ -9,7 +9,7 @@ use crate::{
 };
 use alvr_adb::{WiredConnection, WiredConnectionStatus};
 use alvr_common::{
-    con_bail, dbg_connection, debug, error,
+    anyhow, con_bail, dbg_connection, debug, error,
     glam::{Quat, UVec2, Vec2, Vec3},
     info,
     parking_lot::{Condvar, Mutex, RwLock},
@@ -486,7 +486,9 @@ fn try_connect(
                 client_hostname.clone(),
                 client_ip,
             ) {
-                error!("Handshake error for {client_hostname}: {e}");
+                if !matches!(e, ConnectionError::ConfigReload(_)) {
+                    error!("Handshake error for {client_hostname}: {e}");
+                }
             }
 
             let mut clients_to_be_removed = ctx.clients_to_be_removed.lock();
@@ -541,6 +543,7 @@ fn connection_pipeline(
 
             return Ok(());
         }
+        Err(ConnectionError::ConfigReload(_)) => unreachable!(),
         Err(e) => return Err(e),
     };
 
@@ -803,12 +806,19 @@ fn connection_pipeline(
     new_openvr_config.encoding_gamma = encoding_gamma;
     new_openvr_config.codec = codec as _;
 
-    if session_manager_lock.session().openvr_config != new_openvr_config {
+    if !session_manager_lock.session().initialized {
         session_manager_lock.session_mut().openvr_config = new_openvr_config;
-
+        session_manager_lock.session_mut().initialized = true;
+        return ConResult::Err(ConnectionError::ConfigReload(anyhow::Error::msg(
+            "try again",
+        )));
+    } else if session_manager_lock.session().openvr_config != new_openvr_config {
+        warn!("config not up to date, restarting SteamVR");
+        session_manager_lock.session_mut().openvr_config = new_openvr_config;
+        session_manager_lock.session_mut().initialized = true;
         control_sender.send(&ServerControlPacket::Restarting).ok();
 
-        crate::notify_restart_driver();
+        crate::restart_driver();
     }
 
     dbg_connection!("connection_pipeline: Send StartStream packet");
@@ -1054,6 +1064,7 @@ fn connection_pipeline(
                     Ok(stats) => stats,
                     Err(ConnectionError::TryAgain(_)) => continue,
                     Err(ConnectionError::Other(_)) => return,
+                    Err(ConnectionError::ConfigReload(_)) => unreachable!(),
                 };
                 let Ok(client_stats) = data.get_header() else {
                     return;
@@ -1164,6 +1175,9 @@ fn connection_pipeline(
                         }
                     }
                     Err(e) => {
+                        if let ConnectionError::ConfigReload(_) = e {
+                            unreachable!()
+                        }
                         info!("Client disconnected. Cause: {e}");
                         break;
                     }

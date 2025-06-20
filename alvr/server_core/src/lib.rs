@@ -41,6 +41,7 @@ use std::{
     ffi::OsStr,
     fs::File,
     io::Write,
+    process::exit,
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc::{self, SyncSender, TrySendError},
@@ -145,13 +146,14 @@ pub fn create_recording_file(connection_context: &ConnectionContext, settings: &
     }
 }
 
-pub fn notify_restart_driver() {
+pub fn restart_driver() {
     if sysinfo::System::new_all()
         .processes_by_name(OsStr::new(&afs::dashboard_fname()))
         .next()
         .is_some()
     {
         alvr_events::send_event(EventType::ServerRequestsSelfRestart);
+        exit(0); //remove when connection loop won't be called from steamvr
     } else {
         error!("Cannot restart SteamVR. No dashboard process found on local device.");
     }

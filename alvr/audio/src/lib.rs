@@ -448,6 +448,7 @@ pub fn receive_samples_loop(
             Ok(data) => data,
             Err(ConnectionError::TryAgain(_)) => continue,
             Err(ConnectionError::Other(e)) => return Err(e),
+            Err(ConnectionError::ConfigReload(_)) => unreachable!(),
         };
         let (_, packet) = data.get()?;
 

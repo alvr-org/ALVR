@@ -295,6 +295,7 @@ fn connection_pipeline(
                     Ok(data) => data,
                     Err(ConnectionError::TryAgain(_)) => continue,
                     Err(ConnectionError::Other(_)) => return,
+                    Err(ConnectionError::ConfigReload(_)) => unreachable!(),
                 };
                 let Ok((header, nal)) = data.get() else {
                     return;
@@ -399,6 +400,7 @@ fn connection_pipeline(
                     Ok(packet) => packet,
                     Err(ConnectionError::TryAgain(_)) => continue,
                     Err(ConnectionError::Other(_)) => return,
+                    Err(ConnectionError::ConfigReload(_)) => unreachable!(),
                 };
                 let Ok(haptics) = data.get_header() else {
                     return;
@@ -511,6 +513,9 @@ fn connection_pipeline(
                         }
                     }
                     Err(e) => {
+                        if let ConnectionError::ConfigReload(_) = e {
+                            unreachable!()
+                        }
                         info!("{SERVER_DISCONNECTED_MESSAGE} Cause: {e}");
                         set_hud_message(&event_queue, SERVER_DISCONNECTED_MESSAGE);
                         disconnect_notif.notify_one();

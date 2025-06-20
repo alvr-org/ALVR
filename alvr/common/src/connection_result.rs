@@ -9,11 +9,14 @@ use std::{
 pub enum ConnectionError {
     TryAgain(anyhow::Error),
     Other(anyhow::Error),
+    ConfigReload(anyhow::Error), //used only when first connecting
 }
 
 impl Display for ConnectionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (ConnectionError::TryAgain(e) | ConnectionError::Other(e)) = self;
+        let (ConnectionError::TryAgain(e)
+        | ConnectionError::Other(e)
+        | ConnectionError::ConfigReload(e)) = self;
         write!(f, "{e:?}")
     }
 }

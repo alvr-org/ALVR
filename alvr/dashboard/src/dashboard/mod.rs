@@ -3,17 +3,17 @@ mod components;
 use self::components::{
     DevicesTab, LogsTab, NotificationBar, SettingsTab, SetupWizard, SetupWizardRequest,
 };
-use crate::{dashboard::components::StatisticsTab, DataSources};
+use crate::{
+    dashboard::components::{NewVersionPopup, StatisticsTab},
+    DataSources,
+};
 use alvr_common::parking_lot::{Condvar, Mutex};
 use alvr_events::EventType;
-use alvr_gui_common::{theme, ModalButton};
+use alvr_gui_common::theme;
 use alvr_packets::{PathValuePair, ServerRequest};
 use alvr_session::SessionConfig;
-use eframe::egui::{
-    self, Align, CentralPanel, Frame, Layout, Margin, OpenUrl, OutputCommand, RichText, SidePanel,
-    Stroke, Ui,
-};
-use std::{collections::BTreeMap, process::Command, sync::Arc};
+use eframe::egui::{self, Align, CentralPanel, Frame, Layout, Margin, RichText, SidePanel, Stroke};
+use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 enum Tab {
@@ -42,12 +42,9 @@ pub struct Dashboard {
     logs_tab: LogsTab,
     notification_bar: NotificationBar,
     setup_wizard: SetupWizard,
+    new_version_popup: Option<components::NewVersionPopup>,
     setup_wizard_open: bool,
     session: Option<SessionConfig>,
-    version_modal_data: Option<(
-        String, // version
-        String, // message
-    )>,
 }
 
 impl Dashboard {
@@ -86,7 +83,7 @@ impl Dashboard {
             setup_wizard: SetupWizard::new(),
             setup_wizard_open: false,
             session: None,
-            version_modal_data: None,
+            new_version_popup: None,
         }
     }
 
@@ -162,7 +159,7 @@ impl eframe::App for Dashboard {
                     .connections_tab
                     .update_adb_download_progress(adb_event.download_progress),
                 EventType::NewVersionFound { version, message } => {
-                    self.version_modal_data = Some((version, message))
+                    self.new_version_popup = Some(NewVersionPopup::new(version, message));
                 }
                 EventType::DebugGroup { .. }
                 | EventType::Tracking(_)
@@ -318,84 +315,11 @@ impl eframe::App for Dashboard {
                 .ensure_steamvr_shutdown();
         };
 
-        if let Some((version, message)) = &self.version_modal_data {
-            let no_remind_button =
-                ModalButton::Custom("Don't remind me again for this version".to_string());
+        if let Some(popup) = &self.new_version_popup {
+            if let Some(request) = popup.ui(context, shutdown_alvr) {
+                requests.push(request);
 
-            let result = alvr_gui_common::modal(
-                context,
-                "New ALVR version available",
-                Some(|ui: &mut Ui| {
-                    ui.horizontal(|ui| {
-                        ui.add_space(10.0);
-
-                        ui.vertical(|ui| {
-                            ui.heading(format!("ALVR v{version}"));
-
-                            ui.horizontal(|ui| {
-                                ui.spacing_mut().item_spacing.x = 5.0;
-                                ui.style_mut().spacing.button_padding = egui::vec2(10.0, 4.0);
-
-                                ui.heading("You can download this version using the launcher:");
-
-                                if ui.button("Open Launcher").clicked() {
-                                    let layout = crate::get_filesystem_layout();
-                                    let mut success = false;
-                                    if let Some(path) = layout.launcher_exe() {
-                                        if Command::new(path).spawn().is_ok() {
-                                            shutdown_alvr();
-
-                                            success = true;
-                                        }
-                                    }
-
-                                    if !success {
-                                        ui.output_mut(|out| {
-                                            out.commands.push(OutputCommand::OpenUrl(
-                                                OpenUrl::same_tab(
-                                                    "https://github.com/alvr-org/ALVR/releases",
-                                                ),
-                                            ));
-                                        });
-                                    }
-                                }
-                            });
-
-                            ui.add_space(10.0);
-
-                            ui.label(message);
-                            ui.hyperlink_to(
-                                "Releases page",
-                                "https://github.com/alvr-org/ALVR/releases",
-                            );
-                        });
-
-                        ui.add_space(10.0);
-                    });
-                }),
-                &[no_remind_button.clone(), ModalButton::Close],
-                Some(490.0),
-            );
-
-            if let Some(button) = result {
-                if button == no_remind_button {
-                    requests.push(ServerRequest::SetValues(vec![
-                        PathValuePair {
-                            path: alvr_packets::parse_path(
-                                "session_settings.extra.new_version_popup.HideWhileVersion",
-                            ),
-                            value: serde_json::Value::String(version.clone()),
-                        },
-                        PathValuePair {
-                            path: alvr_packets::parse_path(
-                                "session_settings.extra.new_version_popup.variant",
-                            ),
-                            value: serde_json::Value::String("HideWhileVersion".to_string()),
-                        },
-                    ]));
-                }
-
-                self.version_modal_data = None;
+                self.new_version_popup = None;
             }
         }
 

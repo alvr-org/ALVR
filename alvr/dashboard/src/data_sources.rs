@@ -22,7 +22,8 @@ use tungstenite::{
     http::{HeaderValue, Uri},
 };
 
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(2);
+const LOCAL_REQUEST_TIMEOUT: Duration = Duration::from_millis(200);
+const REMOTE_REQUEST_TIMEOUT: Duration = Duration::from_secs(2);
 
 enum SessionSource {
     Local(Box<ServerSessionManager>),
@@ -111,7 +112,7 @@ pub struct DataSources {
     requests_sender: mpsc::Sender<ServerRequest>,
     events_receiver: mpsc::Receiver<PolledEvent>,
     server_connected: Arc<RelaxedAtomic>,
-    version_check_thread: Option<JoinHandle<()>>,
+    version_check_thread: Option<JoinHandle<Option<()>>>,
     requests_thread: Option<JoinHandle<()>>,
     events_thread: Option<JoinHandle<()>>,
     ping_thread: Option<JoinHandle<()>>,
@@ -143,7 +144,7 @@ impl DataSources {
                     // no retries
                     let SessionSource::Local(session_manager_lock) = &mut *session_source.lock()
                     else {
-                        return;
+                        return None;
                     };
 
                     match &session_manager_lock.settings().extra.new_version_popup {
@@ -151,29 +152,24 @@ impl DataSources {
                         NewVersionPopupConfig::HideWhileVersion(version) => {
                             VersionReq::parse(&format!(">{version}")).unwrap()
                         }
-                        NewVersionPopupConfig::AlwaysHide => return,
+                        NewVersionPopupConfig::AlwaysHide => return None,
                     }
                 };
 
                 let request_agent: ureq::Agent = ureq::Agent::config_builder()
-                    .timeout_global(Some(REQUEST_TIMEOUT))
+                    .timeout_global(Some(REMOTE_REQUEST_TIMEOUT))
                     .build()
                     .into();
                 if let Ok(response) = request_agent
                     .get("https://api.github.com/repos/alvr-org/ALVR/releases/latest")
                     .call()
                 {
-                    let Ok(version_data) = response.into_body().read_json::<serde_json::Value>()
-                    else {
-                        return;
-                    };
+                    let version_data =
+                        response.into_body().read_json::<serde_json::Value>().ok()?;
 
-                    let Some(version_str) = version_data
+                    let version_str = version_data
                         .get("tag_name")
-                        .and_then(|v| Some(v.as_str()?.trim_start_matches("v")))
-                    else {
-                        return;
-                    };
+                        .and_then(|v| Some(v.as_str()?.trim_start_matches("v")))?;
 
                     let version = version_str.parse::<Version>().ok();
 
@@ -196,6 +192,8 @@ impl DataSources {
                         );
                     }
                 }
+
+                None
             }
         });
 
@@ -207,7 +205,7 @@ impl DataSources {
             move || {
                 let uri = format!("http://127.0.0.1:{port}/api/dashboard-request");
                 let request_agent: ureq::Agent = ureq::Agent::config_builder()
-                    .timeout_global(Some(REQUEST_TIMEOUT))
+                    .timeout_global(Some(LOCAL_REQUEST_TIMEOUT))
                     .build()
                     .into();
 
@@ -396,7 +394,7 @@ impl DataSources {
                 let uri = format!("http://127.0.0.1:{port}/api/version");
 
                 let request_agent: ureq::Agent = ureq::Agent::config_builder()
-                    .timeout_global(Some(REQUEST_TIMEOUT))
+                    .timeout_global(Some(LOCAL_REQUEST_TIMEOUT))
                     .build()
                     .into();
 

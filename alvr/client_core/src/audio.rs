@@ -1,164 +1,99 @@
-use alvr_audio::{AudioDevice, AudioRecordState};
+use alvr_audio::AudioDevice;
 use alvr_common::{
     anyhow::{bail, Result},
     parking_lot::Mutex,
-    ToAny,
 };
 use alvr_session::AudioBufferingConfig;
 use alvr_sockets::{StreamReceiver, StreamSender};
-use oboe::{
-    AudioInputCallback, AudioInputStreamSafe, AudioOutputCallback, AudioOutputStreamSafe,
-    AudioStream, AudioStreamBuilder, DataCallbackResult, InputPreset, Mono, PerformanceMode,
-    SampleRateConversionQuality, Stereo, Usage,
+use ndk::audio::{
+    AudioCallbackResult, AudioDirection, AudioError, AudioFormat, AudioPerformanceMode,
+    AudioSharingMode, AudioStreamBuilder,
 };
-use std::{collections::VecDeque, mem, sync::Arc, thread, time::Duration};
+use std::{
+    collections::VecDeque,
+    mem, slice,
+    sync::{mpsc, Arc},
+    time::Duration,
+};
 
-struct RecorderCallback {
-    is_running: Arc<dyn Fn() -> bool + Send + Sync>,
-    sender: StreamSender<()>,
-    state: Arc<Mutex<AudioRecordState>>,
-}
-
-impl AudioInputCallback for RecorderCallback {
-    type FrameType = (i16, Mono);
-
-    fn on_audio_ready(
-        &mut self,
-        _: &mut dyn AudioInputStreamSafe,
-        frames: &[i16],
-    ) -> DataCallbackResult {
-        let mut sample_buffer = Vec::with_capacity(frames.len() * mem::size_of::<i16>());
-
-        for frame in frames {
-            sample_buffer.extend(&frame.to_ne_bytes());
-        }
-
-        if (self.is_running)() {
-            let mut buffer = self.sender.get_buffer(&()).unwrap();
-            buffer
-                .get_range_mut(0, sample_buffer.len())
-                .copy_from_slice(&sample_buffer);
-            self.sender.send(buffer).ok();
-
-            DataCallbackResult::Continue
-        } else {
-            *self.state.lock() = AudioRecordState::ShouldStop;
-
-            DataCallbackResult::Stop
-        }
-    }
-
-    fn on_error_before_close(&mut self, _: &mut dyn AudioInputStreamSafe, error: oboe::Error) {
-        *self.state.lock() = AudioRecordState::Err(Some(error.into()));
-    }
-
-    fn on_error_after_close(&mut self, _: &mut dyn AudioInputStreamSafe, error: oboe::Error) {
-        *self.state.lock() = AudioRecordState::Err(Some(error.into()));
-    }
-}
+const INPUT_SAMPLES_MAX_BUFFER_COUNT: usize = 20;
+const INPUT_RECV_TIMEOUT: Duration = Duration::from_millis(20);
 
 #[allow(unused_variables)]
 pub fn record_audio_blocking(
     is_running: Arc<dyn Fn() -> bool + Send + Sync>,
-    sender: StreamSender<()>,
+    mut sender: StreamSender<()>,
     device: &AudioDevice,
-    channels_count: u16,
+    _channels_count: u16,
     mute: bool,
 ) -> Result<()> {
     let sample_rate = device.input_sample_rate()?;
 
-    let state = Arc::new(Mutex::new(AudioRecordState::Recording));
+    let error = Arc::new(Mutex::new(None::<AudioError>));
 
-    let mut stream = AudioStreamBuilder::default()
-        .set_shared()
-        .set_performance_mode(PerformanceMode::LowLatency)
-        .set_sample_rate(sample_rate as _)
-        .set_sample_rate_conversion_quality(SampleRateConversionQuality::Fastest)
-        .set_mono()
-        .set_i16()
-        .set_input()
-        .set_usage(Usage::VoiceCommunication)
-        .set_input_preset(InputPreset::VoiceCommunication)
-        .set_callback(RecorderCallback {
-            is_running: Arc::clone(&is_running),
-            sender,
-            state: Arc::clone(&state),
+    let (samples_sender, samples_receiver) =
+        mpsc::sync_channel::<Vec<u8>>(INPUT_SAMPLES_MAX_BUFFER_COUNT);
+
+    let stream = AudioStreamBuilder::new()?
+        .direction(AudioDirection::Input)
+        .channel_count(1)
+        .sample_rate(sample_rate as _)
+        .format(AudioFormat::PCM_I16)
+        .performance_mode(AudioPerformanceMode::LowLatency)
+        .sharing_mode(AudioSharingMode::Shared)
+        .data_callback(Box::new(move |_, data_ptr, frames_count| {
+            let buffer_size = frames_count as usize * mem::size_of::<i16>();
+
+            let mut sample_buffer = Vec::with_capacity(buffer_size);
+            sample_buffer
+                .extend(unsafe { slice::from_raw_parts(data_ptr as *mut u8, buffer_size) });
+
+            // it will block only when the channel is full
+            samples_sender.send(sample_buffer).ok();
+
+            AudioCallbackResult::Continue
+        }))
+        .error_callback({
+            let error = Arc::clone(&error);
+            Box::new(move |_, e| *error.lock() = Some(e.into()))
         })
         .open_stream()?;
 
-    let mut res = stream.start().to_any();
+    // If configuration changed, the stream must be restarted
+    if stream.channel_count() != 1
+        || stream.sample_rate() != sample_rate as i32
+        || stream.format() != AudioFormat::PCM_I16
+    {
+        bail!("Invalid audio configuration");
+    }
 
-    if res.is_ok() {
-        while matches!(*state.lock(), AudioRecordState::Recording) && is_running() {
-            thread::sleep(Duration::from_millis(500))
+    stream.request_start()?;
+
+    while is_running() && error.lock().is_none() {
+        while let Ok(sample_buffer) = samples_receiver.recv_timeout(INPUT_RECV_TIMEOUT) {
+            let mut buffer = sender.get_buffer(&()).unwrap();
+            buffer
+                .get_range_mut(0, sample_buffer.len())
+                .copy_from_slice(&sample_buffer);
+            sender.send(buffer).ok();
         }
-
-        if let AudioRecordState::Err(e) = &mut *state.lock() {
-            res = Err(e.take().unwrap());
-        }
     }
 
-    stream.stop_with_timeout(0).ok();
+    // Note: request_stop() is asyncronous, and must be called always, even on error
+    stream.request_stop()?;
 
-    res
-}
-
-pub enum AudioPlaybackState {
-    Playing,
-    Err(oboe::Error),
-}
-
-struct PlayerCallback {
-    sample_buffer: Arc<Mutex<VecDeque<f32>>>,
-    state: Arc<Mutex<AudioPlaybackState>>,
-    batch_frames_count: usize,
-}
-
-impl AudioOutputCallback for PlayerCallback {
-    type FrameType = (f32, Stereo);
-
-    fn on_audio_ready(
-        &mut self,
-        _: &mut dyn AudioOutputStreamSafe,
-        out_frames: &mut [(f32, f32)],
-    ) -> DataCallbackResult {
-        assert!(self.batch_frames_count == out_frames.len());
-
-        let samples = alvr_audio::get_next_frame_batch(
-            &mut *self.sample_buffer.lock(),
-            2,
-            self.batch_frames_count,
-        );
-
-        for f in 0..out_frames.len() {
-            out_frames[f] = (samples[f * 2], samples[f * 2 + 1]);
-        }
-
-        DataCallbackResult::Continue
+    if let Some(e) = *error.lock() {
+        return Err(e.into());
     }
 
-    fn on_error_before_close(
-        &mut self,
-        _audio_stream: &mut dyn AudioOutputStreamSafe,
-        error: oboe::Error,
-    ) {
-        *self.state.lock() = AudioPlaybackState::Err(error);
-    }
-
-    fn on_error_after_close(
-        &mut self,
-        _audio_stream: &mut dyn AudioOutputStreamSafe,
-        error: oboe::Error,
-    ) {
-        *self.state.lock() = AudioPlaybackState::Err(error);
-    }
+    Ok(())
 }
 
 #[allow(unused_variables)]
 pub fn play_audio_loop(
     is_running: impl Fn() -> bool,
     device: &AudioDevice,
-    channels_count: u16,
+    _channels_count: u16,
     sample_rate: u32,
     config: AudioBufferingConfig,
     receiver: &mut StreamReceiver<()>,
@@ -174,29 +109,55 @@ pub fn play_audio_loop(
         sample_rate as usize * config.average_buffering_ms as usize / 1000;
 
     let sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
-    let state = Arc::new(Mutex::new(AudioPlaybackState::Playing));
+    let error = Arc::new(Mutex::new(None));
 
-    let mut stream = AudioStreamBuilder::default()
-        .set_shared()
-        .set_performance_mode(PerformanceMode::LowLatency)
-        .set_sample_rate(sample_rate as _)
-        .set_sample_rate_conversion_quality(SampleRateConversionQuality::Fastest)
-        .set_stereo()
-        .set_f32()
-        .set_frames_per_callback(batch_frames_count as _)
-        .set_output()
-        .set_usage(Usage::Game)
-        .set_callback(PlayerCallback {
-            sample_buffer: Arc::clone(&sample_buffer),
-            batch_frames_count,
-            state: state.clone(),
+    let stream = AudioStreamBuilder::new()?
+        .direction(AudioDirection::Output)
+        .channel_count(2)
+        .sample_rate(sample_rate as _)
+        .format(AudioFormat::PCM_Float)
+        .frames_per_data_callback(batch_frames_count as _)
+        .performance_mode(AudioPerformanceMode::LowLatency)
+        .sharing_mode(AudioSharingMode::Shared)
+        .data_callback({
+            let sample_buffer = Arc::clone(&sample_buffer);
+            Box::new(move |_, data_ptr, frames_count| {
+                assert!(frames_count == batch_frames_count as i32);
+
+                let samples = alvr_audio::get_next_frame_batch(
+                    &mut *sample_buffer.lock(),
+                    2,
+                    batch_frames_count as _,
+                );
+
+                let out_frames = unsafe {
+                    // 2 channels
+                    slice::from_raw_parts_mut(data_ptr as *mut f32, frames_count as usize * 2)
+                };
+                out_frames.copy_from_slice(&samples);
+
+                AudioCallbackResult::Continue
+            })
+        })
+        .error_callback({
+            let error = Arc::clone(&error);
+            Box::new(move |_, e| *error.lock() = Some(e))
         })
         .open_stream()?;
 
-    stream.start()?;
+    // If configuration changed, the stream must be restarted
+    if stream.channel_count() != 2
+        || stream.sample_rate() != sample_rate as i32
+        || stream.format() != AudioFormat::PCM_Float
+        || stream.frames_per_data_callback() != Some(batch_frames_count as _)
+    {
+        bail!("Invalid audio configuration");
+    }
+
+    stream.request_start()?;
 
     alvr_audio::receive_samples_loop(
-        || is_running() && matches!(*state.lock(), AudioPlaybackState::Playing),
+        || is_running() && error.lock().is_none(),
         receiver,
         sample_buffer,
         2,
@@ -205,15 +166,12 @@ pub fn play_audio_loop(
     )
     .ok();
 
-    // If we had an error, the stream is already stopped/closed
-    if matches!(*state.lock(), AudioPlaybackState::Playing) {
-        // Note: Oboe crahes if stream.stop() is NOT called on AudioPlayer
-        return Ok(stream.stop_with_timeout(0)?);
+    // Note: request_stop() is asyncronous, and must be called always, even on error
+    stream.request_stop()?;
+
+    if let Some(e) = *error.lock() {
+        return Err(e.into());
     }
 
-    let result = match *state.lock() {
-        AudioPlaybackState::Err(error) => Err(error.into()),
-        AudioPlaybackState::Playing => Ok(()),
-    };
-    result
+    Ok(())
 }

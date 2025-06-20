@@ -24,20 +24,15 @@ For any problem visit the [Troubleshooting page](https://github.com/alvr-org/ALV
 
 To use your microphone in ALVR on Windows you need to install **VB-Audio Cable** (or equivalent software). However if VB-Audio Cable is already installed but not working with ALVR **or if you encounter any issues**, it's worth following these steps to reinstall and configure it properly.
 
-### **1. Install or Reinstall VB-Audio Cable**
-1. **Download** the latest version of [VB-Audio Cable](https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack45.zip).
+### **1. Install or Reinstall Virtual Audio Cable**
+1. **Download** the latest Lite version of [Virtual Audio Cable](https://software.muzychenko.net/freeware/vac470lite.zip).
 2. **Extract** the ZIP archive.
-3. Open the extracted folder and run **"VBCABLE_Setup_x64.exe"** as administrator.
-
-- **If you already have VB-Audio Cable installed and ALVR doesn’t detect it**:
-   - Click **"Remove Driver"** then restart your PC when prompted.
-
-4. Click **"Install Driver"** then restart your PC when prompted.
+3. Open the extracted folder and run **"setup64.exe"** as administrator.
 
 ### **2. Configure Windows Sound Settings**
 1. **Open** Windows Sound Settings (`Win + I` → "Sound").
 2. **Under Output Devices**:
-   - **Do not set any "VB-Audio Virtual Cable" as the default output**, or you’ll hear yourself. Select your headphone or whatever you're using.
+   - **Do not set any "Virtual Audio Cable" as the default output**, or you’ll hear yourself. Select your headphone or whatever you're using.
 
 ### **3. Configure ALVR**
 1. **Open ALVR** and go to **Settings**.

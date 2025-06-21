@@ -32,7 +32,7 @@ serde_json = "1"
 android_logger = "0.14"
 ndk = { version = "0.9", features = ["api-level-26", "media"] }
 ndk-context = "0.1"
-oboe = "0.6"                                                    # todo: remove once AudioThread shutdown crash is fixed
+ndk-sys = "0.6"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 env_logger = "0.11"

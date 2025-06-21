@@ -33,15 +33,35 @@ fn main() {
         NativeOptions,
     };
     use ico::IconDir;
-    use std::{env, ffi::OsStr, fs, process};
+    use std::{env, ffi::OsStr, fs};
     use std::{io::Cursor, sync::mpsc};
 
-    // don't launch dashboard if another instance is already running
-    let process_id = process::id();
-    //todo: focus already open dashboard before exiting
-    for proc in sysinfo::System::new_all().processes_by_name(OsStr::new(&afs::dashboard_fname())) {
-        if proc.pid().as_u32() != process_id {
-            return;
+    #[cfg(target_os = "windows")]
+    {
+        use std::process;
+        // don't launch dashboard if another instance is already running
+        let process_id = process::id();
+        //todo: focus already open dashboard before exiting
+        for proc in
+            sysinfo::System::new_all().processes_by_name(OsStr::new(&afs::dashboard_fname()))
+        {
+            if proc.pid().as_u32() != process_id {
+                return;
+            }
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        // Kill any other dashboard instance
+        let self_path = std::env::current_exe().unwrap();
+        for proc in
+            sysinfo::System::new_all().processes_by_name(OsStr::new(&afs::dashboard_fname()))
+        {
+            if let Some(other_path) = proc.exe() {
+                if other_path != self_path {
+                    proc.kill();
+                }
+            }
         }
     }
 

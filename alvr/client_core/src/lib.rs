@@ -12,9 +12,6 @@ mod sockets;
 mod statistics;
 mod storage;
 
-#[cfg(target_os = "android")]
-mod audio;
-
 pub mod video_decoder;
 
 use alvr_common::{

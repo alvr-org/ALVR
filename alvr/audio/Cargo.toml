@@ -11,8 +11,8 @@ alvr_common.workspace = true
 alvr_session.workspace = true
 alvr_sockets.workspace = true
 
-cpal = "0.15"
-rodio = "0.20"
+cpal = "0.16"
+rodio = { git = "https://github.com/RustAudio/rodio" }
 serde = "1"
 
 [target.'cfg(windows)'.dependencies]

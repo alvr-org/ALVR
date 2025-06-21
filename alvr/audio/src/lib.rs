@@ -12,7 +12,7 @@ use alvr_common::{
     info,
     once_cell::sync::Lazy,
     parking_lot::Mutex,
-    ConnectionError, ToAny,
+    ConnectionError, RelaxedAtomic, ToAny,
 };
 use alvr_session::{AudioBufferingConfig, CustomAudioDeviceConfig, MicrophoneDevicesConfig};
 use alvr_sockets::{StreamReceiver, StreamSender};
@@ -20,7 +20,7 @@ use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     BufferSize, Device, Host, Sample, SampleFormat, StreamConfig,
 };
-use rodio::{OutputStream, Source};
+use rodio::{OutputStreamBuilder, Source};
 use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,
@@ -545,7 +545,7 @@ struct StreamingSource {
 }
 
 impl Source for StreamingSource {
-    fn current_frame_len(&self) -> Option<usize> {
+    fn current_span_len(&self) -> Option<usize> {
         None
     }
 
@@ -601,19 +601,29 @@ pub fn play_audio_loop(
 
     let sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
 
-    let (_stream, handle) = OutputStream::try_from_device(&device.inner)?;
+    let stream_has_error = Arc::new(RelaxedAtomic::new(false));
 
-    handle.play_raw(StreamingSource {
+    let stream_handle = OutputStreamBuilder::from_device(device.inner.clone())?
+        .with_error_callback({
+            let stream_has_error = Arc::clone(&stream_has_error);
+            move |_| {
+                alvr_common::error!("detected audio error!");
+                stream_has_error.set(true)
+            }
+        })
+        .open_stream()?;
+
+    stream_handle.mixer().add(StreamingSource {
         sample_buffer: Arc::clone(&sample_buffer),
         current_batch: vec![],
         current_batch_cursor: 0,
         channels_count: channels_count as _,
         sample_rate,
         batch_frames_count,
-    })?;
+    });
 
     receive_samples_loop(
-        is_running,
+        || is_running() && !stream_has_error.value(),
         receiver,
         sample_buffer,
         channels_count as _,
@@ -621,6 +631,8 @@ pub fn play_audio_loop(
         average_buffer_frames_count,
     )
     .ok();
+
+    alvr_common::error!("destroying playback audio stream");
 
     Ok(())
 }

@@ -225,7 +225,6 @@ dependencies = [
  "mdns-sd",
  "ndk 0.9.0",
  "ndk-context",
- "oboe",
  "rand 0.9.0",
  "serde",
  "serde_json",

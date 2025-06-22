@@ -743,7 +743,8 @@ fn connection_pipeline(
                 .to_con()?;
                 if matches!(
                     microphone_config.devices,
-                    alvr_session::MicrophoneDevicesConfig::VBCable
+                    alvr_session::MicrophoneDevicesConfig::VAC
+                        | alvr_session::MicrophoneDevicesConfig::VBCable
                 ) {
                     // VoiceMeeter and Custom devices may have arbitrary internal routing.
                     // Therefore, we cannot detect the loopback issue without knowing the routing.

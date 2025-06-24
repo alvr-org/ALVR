@@ -24,9 +24,14 @@ pub fn record_audio_blocking(
     is_running: Arc<dyn Fn() -> bool + Send + Sync>,
     mut sender: StreamSender<()>,
     device: &AudioDevice,
-    _channels_count: u16,
+    channels_count: u16,
     mute: bool,
 ) -> Result<()> {
+    assert_eq!(
+        channels_count, 1,
+        "This code only supports mono microphone input"
+    );
+
     let sample_rate = device.input_sample_rate()?;
 
     let error = Arc::new(Mutex::new(None::<AudioError>));
@@ -44,9 +49,8 @@ pub fn record_audio_blocking(
         .data_callback(Box::new(move |_, data_ptr, frames_count| {
             let buffer_size = frames_count as usize * mem::size_of::<i16>();
 
-            let mut sample_buffer = Vec::with_capacity(buffer_size);
-            sample_buffer
-                .extend(unsafe { slice::from_raw_parts(data_ptr as *mut u8, buffer_size) });
+            let mut sample_buffer =
+                unsafe { slice::from_raw_parts(data_ptr as *mut u8, buffer_size) }.to_vec();
 
             // it will block only when the channel is full
             samples_sender.send(sample_buffer).ok();
@@ -79,7 +83,7 @@ pub fn record_audio_blocking(
         }
     }
 
-    // Note: request_stop() is asyncronous, and must be called always, even on error
+    // Note: request_stop() is asynchronous, and must be called always, even on error
     stream.request_stop()?;
 
     if let Some(e) = *error.lock() {
@@ -93,11 +97,13 @@ pub fn record_audio_blocking(
 pub fn play_audio_loop(
     is_running: impl Fn() -> bool,
     device: &AudioDevice,
-    _channels_count: u16,
+    channels_count: u16,
     sample_rate: u32,
     config: AudioBufferingConfig,
     receiver: &mut StreamReceiver<()>,
 ) -> Result<()> {
+    assert_eq!(channels_count, 2, "This code only supports stereo output");
+
     // the client sends invalid sample rates sometimes, and we crash if we try and use one
     // (batch_frames_count ends up zero and the audio callback gets confused)
     if sample_rate < 8000 {
@@ -166,7 +172,7 @@ pub fn play_audio_loop(
     )
     .ok();
 
-    // Note: request_stop() is asyncronous, and must be called always, even on error
+    // Note: request_stop() is asynchronous, and must be called always, even on error
     stream.request_stop()?;
 
     if let Some(e) = *error.lock() {

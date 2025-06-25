@@ -96,6 +96,7 @@ pub enum EventType {
     DriversList(Vec<PathBuf>),
     ServerRequestsSelfRestart,
     Adb(AdbEvent),
+    NewVersionFound { version: String, message: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -124,6 +125,7 @@ impl Event {
             EventType::DriversList(_) => "DRV LIST".to_string(),
             EventType::ServerRequestsSelfRestart => "RESTART".to_string(),
             EventType::Adb(_) => "ADB".to_string(),
+            EventType::NewVersionFound { .. } => "NEW VER".to_string(),
         }
     }
 
@@ -140,6 +142,7 @@ impl Event {
             EventType::DriversList(drivers) => serde_json::to_string(drivers).unwrap(),
             EventType::ServerRequestsSelfRestart => "Request for server restart".into(),
             EventType::Adb(adb) => serde_json::to_string(adb).unwrap(),
+            EventType::NewVersionFound { version, .. } => version.clone(),
         }
     }
 }

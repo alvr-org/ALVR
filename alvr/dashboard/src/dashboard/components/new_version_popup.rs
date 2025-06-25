@@ -56,11 +56,11 @@ impl NewVersionPopup {
                                 }
                             } else if ui.button("Download Launcher").clicked() {
                                 let base_url =
-                                    "https://github.com/alvr-org/ALVR/releases/download/v20.13.0/";
+                                    "https://github.com/alvr-org/ALVR/releases/latest/download/";
                                 let file = if cfg!(windows) {
                                     "alvr_launcher_windows.zip"
                                 } else {
-                                    "alvr_streamer_linux.tar.gz"
+                                    "alvr_launcher_linux.tar.gz"
                                 };
 
                                 context.open_url(OpenUrl::new_tab(format!("{base_url}{file}")));

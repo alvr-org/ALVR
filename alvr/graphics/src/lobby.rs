@@ -153,6 +153,12 @@ const BODY_SKELETON_BONES_BD: [(usize, usize); 23] = [
     (21, 23),
 ];
 
+pub struct HandData {
+    pub grip_motion: Option<DeviceMotion>,
+    pub detached_grip_motion: Option<DeviceMotion>,
+    pub skeleton_joints: Option<[Pose; 26]>,
+}
+
 pub enum BodyTrackingType {
     Meta,
     Pico,
@@ -409,7 +415,7 @@ impl LobbyRenderer {
     pub fn render(
         &self,
         view_params: [LobbyViewParams; 2],
-        hand_data: [(Option<DeviceMotion>, Option<[Pose; 26]>); 2],
+        hand_data: [HandData; 2],
         additional_motions: Option<Vec<DeviceMotion>>,
         body_skeleton: Option<Vec<Option<Pose>>>,
         body_tracking_type: Option<BodyTrackingType>,
@@ -510,6 +516,7 @@ impl LobbyRenderer {
                 pass: &mut RenderPass,
                 motion: &DeviceMotion,
                 view_proj: Mat4,
+                color: &[u8],
                 show_velocities: bool,
             ) {
                 let hand_transform = Mat4::from_scale_rotation_translation(
@@ -524,11 +531,7 @@ impl LobbyRenderer {
                     Mat4::from_rotation_y(FRAC_PI_2),
                     Mat4::from_rotation_x(FRAC_PI_2),
                 ];
-                pass.set_push_constants(
-                    ShaderStages::VERTEX_FRAGMENT,
-                    COLOR_CONST_OFFSET,
-                    &[255, 255, 255, 255],
-                );
+                pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, COLOR_CONST_OFFSET, color);
                 for rot in &segment_rotations {
                     let transform = hand_transform
                         * *rot
@@ -568,8 +571,8 @@ impl LobbyRenderer {
 
             // Render hands and body skeleton
             pass.set_pipeline(&self.line_pipeline);
-            for (maybe_motion, maybe_skeleton) in &hand_data {
-                if let Some(skeleton) = maybe_skeleton {
+            for data in &hand_data {
+                if let Some(skeleton) = data.skeleton_joints {
                     pass.set_push_constants(
                         ShaderStages::VERTEX_FRAGMENT,
                         COLOR_CONST_OFFSET,
@@ -589,14 +592,36 @@ impl LobbyRenderer {
                     }
                 }
 
-                if let Some(motion) = maybe_motion {
-                    draw_crosshair(&mut pass, motion, view_proj, show_velocities);
+                if let Some(motion) = data.grip_motion {
+                    draw_crosshair(
+                        &mut pass,
+                        &motion,
+                        view_proj,
+                        &[255, 255, 255, 255],
+                        show_velocities,
+                    );
+                }
+
+                if let Some(motion) = data.detached_grip_motion {
+                    draw_crosshair(
+                        &mut pass,
+                        &motion,
+                        view_proj,
+                        &[50, 50, 50, 255],
+                        show_velocities,
+                    );
                 }
             }
 
             if let Some(motions) = &additional_motions {
                 for motion in motions {
-                    draw_crosshair(&mut pass, motion, view_proj, show_velocities);
+                    draw_crosshair(
+                        &mut pass,
+                        motion,
+                        view_proj,
+                        &[255, 255, 0, 255],
+                        show_velocities,
+                    );
                 }
             }
 

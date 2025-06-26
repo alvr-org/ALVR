@@ -392,8 +392,10 @@ impl StreamContext {
         // altered FoVs based on settings and view conversions done for canting.
         let input_view_params = view_params;
         let mut output_view_params = input_view_params;
-        // Avoid passing invalid timestamp to runtime
-        // TODO(shinyquagsire23): Is there a technical reason to do it this way? Why not just vsync?
+        // Avoid passing invalid timestamp to runtime.
+        // `timestamp` is generally a current vsync time, but may be repeated if frames are
+        // dropped. Some runtimes dislike it if the timestamp is repeated for too long, so after
+        // one second we begin presenting a lagged vsync time instead.
         let mut openxr_display_time =
             Duration::max(timestamp, vsync_time.saturating_sub(Duration::from_secs(1)));
 

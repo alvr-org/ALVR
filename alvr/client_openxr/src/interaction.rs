@@ -107,6 +107,8 @@ pub struct HandInteraction {
     pub grip_action: xr::Action<xr::Posef>,
     pub grip_space: xr::Space,
 
+    pub detached_controller_space: Option<xr::Space>,
+
     #[expect(dead_code)]
     pub aim_action: xr::Action<xr::Posef>,
     #[expect(dead_code)]
@@ -158,7 +160,7 @@ impl InteractionSourcesConfig {
                 .headset
                 .controllers
                 .as_option()
-                .is_some_and(|c| c.multimodal_tracking),
+                .is_some_and(|c| c.multimodal_tracking)
         }
     }
 }
@@ -304,34 +306,43 @@ impl InteractionContext {
 
         let left_detached_controller_pose_action;
         let right_detached_controller_pose_action;
+        let mut left_detached_controller_space = None;
+        let mut right_detached_controller_space= None;
         if multimodal_handle.is_some() {
             // Note: when multimodal input is enabled, both controllers and hands will always be active.
             // To be able to detect when controllers are actually held, we have to register detached
             // controllers pose; the controller pose will be diverted to the detached controllers when
             // they are not held. Currently the detached controllers pose is ignored
             left_detached_controller_pose_action = action_set
-                .create_action::<xr::Posef>(
-                    "left_detached_controller_pose",
-                    "Left detached controller pose",
-                    &[],
-                )
-                .unwrap();
+            .create_action::<xr::Posef>(
+                "left_detached_controller_pose",
+                "Left detached controller pose",
+                &[],
+            )
+            .unwrap();
             right_detached_controller_pose_action = action_set
-                .create_action::<xr::Posef>(
-                    "right_detached_controller_pose",
-                    "Right detached controller pose",
-                    &[],
-                )
-                .unwrap();
+            .create_action::<xr::Posef>(
+                "right_detached_controller_pose",
+                "Right detached controller pose",
+                &[],
+            )
+            .unwrap();
 
             bindings.push(binding(
                 &left_detached_controller_pose_action,
-                "/user/detached_controller_meta/left/input/grip/pose",
+                    "/user/detached_controller_meta/left/input/grip/pose",
             ));
             bindings.push(binding(
                 &right_detached_controller_pose_action,
-                "/user/detached_controller_meta/right/input/grip/pose",
+                    "/user/detached_controller_meta/right/input/grip/pose",
             ));
+
+            left_detached_controller_space = Some(left_detached_controller_pose_action
+            .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+            .unwrap());
+            right_detached_controller_space = Some(right_detached_controller_pose_action
+            .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+            .unwrap());
         }
 
         // Apply bindings:
@@ -437,6 +448,7 @@ impl InteractionContext {
                     pose_offset: get_controller_offset(platform, false),
                     grip_action: left_grip_action,
                     grip_space: left_grip_space,
+                    detached_controller_space: left_detached_controller_space,
                     aim_action: left_aim_action,
                     aim_space: left_aim_space,
                     vibration_action: left_vibration_action,
@@ -447,6 +459,7 @@ impl InteractionContext {
                     pose_offset: get_controller_offset(platform, true),
                     grip_action: right_grip_action,
                     grip_space: right_grip_space,
+                    detached_controller_space: right_detached_controller_space,
                     aim_action: right_aim_action,
                     aim_space: right_aim_space,
                     vibration_action: right_vibration_action,
@@ -528,7 +541,7 @@ impl InteractionContext {
                 }
             }
         }
-
+        
         self.face_sources.eye_tracker_fb = create_ext_object(
             "EyeTrackerSocial",
             config.face_tracking.as_ref().map(|s| s.eye_tracking_fb),
@@ -730,6 +743,39 @@ pub fn get_head_data(
     };
 
     Some((motion, view_params))
+}
+
+pub fn get_detached_controller_motion_data(
+    xr_session: &xr::Session<xr::OpenGlEs>,
+    reference_space: &xr::Space,
+    time: Duration,
+    hand_source: &HandInteraction,
+    last_controller_pose: &mut Pose,
+) -> Option<DeviceMotion> {
+    let xr_time = crate::to_xr_time(time);
+
+    if hand_source.grip_action.is_active(xr_session, xr::Path::NULL).unwrap_or(false) {
+        return None;
+    }
+
+    if let Some(space) = &hand_source.detached_controller_space {
+        if let Ok((location, velocity)) = space.relate(reference_space, xr_time) {
+            if location.location_flags.contains(xr::SpaceLocationFlags::ORIENTATION_VALID) {
+                last_controller_pose.orientation = crate::from_xr_quat(location.pose.orientation);
+            }
+            if location.location_flags.contains(xr::SpaceLocationFlags::POSITION_VALID) {
+                last_controller_pose.position = crate::from_xr_vec3(location.pose.position);
+            }
+
+            return Some(DeviceMotion {
+                pose: *last_controller_pose * hand_source.pose_offset,
+                linear_velocity: crate::from_xr_vec3(velocity.linear_velocity),
+                angular_velocity: crate::from_xr_vec3(velocity.angular_velocity),
+            });
+        }
+    }
+
+    None
 }
 
 #[expect(clippy::too_many_arguments)]

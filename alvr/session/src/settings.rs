@@ -43,7 +43,7 @@ pub enum FrameSize {
 
 #[repr(u32)]
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-pub enum EncoderQualityPresetAmd {
+pub enum EncoderQualityPreset {
     Quality = 0,
     Balanced = 1,
     Speed = 2,
@@ -162,16 +162,6 @@ Temporal: Helps improve overall encoding quality, very small trade-off in speed.
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(collapsible)]
 pub struct AmfConfig {
-    #[schema(flag = "steamvr-restart")]
-    pub quality_preset: EncoderQualityPresetAmd,
-    #[schema(
-        strings(
-            display_name = "Enable VBAQ/CAQ",
-            help = "Enables Variance Based Adaptive Quantization on h264 and HEVC, and Content Adaptive Quantization on AV1"
-        ),
-        flag = "steamvr-restart"
-    )]
-    pub enable_vbaq: bool,
     #[schema(
         strings(
             display_name = "Enable High-Motion Quality Boost",
@@ -201,6 +191,7 @@ Does not work with the "Reduce color banding" option, requires enabling "Use pre
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[schema(collapsible)]
 pub struct SoftwareEncodingConfig {
     #[schema(strings(
         display_name = "Force software encoding",
@@ -216,17 +207,60 @@ pub struct SoftwareEncodingConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(collapsible)]
+pub struct HDRConfig {
+    #[schema(strings(
+        display_name = "Enable HDR",
+        help = "If the client has no preference, enables compositing VR layers to an RGBA float16 framebuffer, and doing sRGB/YUV conversions in shader code."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub enable_hdr: bool,
+
+    #[schema(strings(
+        display_name = "Override for HDR",
+        help = "The server will override the headset client's preference for HDR."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub server_overrides_enable_hdr: bool,
+
+    #[schema(strings(
+        display_name = "Force HDR sRGB Correction",
+        help = "Forces sRGB correction on all composited SteamVR layers. Useful if an HDR-injected game is too dark."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub force_hdr_srgb_correction: bool,
+
+    #[schema(strings(
+        display_name = "Clamp HDR extended range",
+        help = "Clamps HDR extended range to 0.0~1.0, useful if you only want HDR to reduce banding."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub clamp_hdr_extended_range: bool,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[schema(collapsible)]
 pub struct EncoderConfig {
+    #[schema(flag = "steamvr-restart")]
+    #[schema(strings(
+        display_name = "Quality preset",
+        help = "Controls overall quality preset of the encoder. Works only on Windows AMD AMF, Linux VAAPI (AMD/Intel)."
+    ))]
+    pub quality_preset: EncoderQualityPreset,
+
+    #[schema(
+        strings(
+            display_name = "Enable VBAQ/CAQ",
+            help = "Enables Variance Based Adaptive Quantization on h264 and HEVC, and Content Adaptive Quantization on AV1"
+        ),
+        flag = "steamvr-restart"
+    )]
+    pub enable_vbaq: bool,
+
+    #[cfg_attr(not(target_os = "windows"), schema(flag = "hidden"))]
     #[schema(strings(help = r#"CBR: Constant BitRate mode. This is recommended.
 VBR: Variable BitRate mode. Not commended because it may throw off the adaptive bitrate algorithm. This is only supported on Windows and only with AMD/Nvidia GPUs"#))]
     #[schema(flag = "steamvr-restart")]
     pub rate_control_mode: RateControlMode,
-
-    #[schema(strings(
-        help = r#"In CBR mode, this makes sure the bitrate does not fall below the assigned value. This is mostly useful for debugging."#
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub filler_data: bool,
 
     #[schema(strings(
         display_name = "h264: Profile",
@@ -239,6 +273,12 @@ VBR: Variable BitRate mode. Not commended because it may throw off the adaptive 
 CABAC produces better compression but it's significantly slower and may lead to runaway latency"#))]
     #[schema(flag = "steamvr-restart")]
     pub entropy_coding: EntropyCoding,
+
+    #[schema(strings(
+        help = r#"In CBR mode, this makes sure the bitrate does not fall below the assigned value. This is mostly useful for debugging."#
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub filler_data: bool,
 
     #[schema(strings(
         display_name = "10-bit encoding",
@@ -281,43 +321,20 @@ CABAC produces better compression but it's significantly slower and may lead to 
     ))]
     #[schema(flag = "steamvr-restart")]
     pub server_overrides_encoding_gamma: bool,
-
-    #[schema(strings(
-        display_name = "Enable HDR",
-        help = "If the client has no preference, enables compositing VR layers to an RGBA float16 framebuffer, and doing sRGB/YUV conversions in shader code."
-    ))]
+    #[schema(strings(display_name = "HDR"))]
     #[schema(flag = "steamvr-restart")]
-    pub enable_hdr: bool,
-
-    #[schema(strings(
-        display_name = "Override for HDR",
-        help = "The server will override the headset client's preference for HDR."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub server_overrides_enable_hdr: bool,
-
-    #[schema(strings(
-        display_name = "Force HDR sRGB Correction",
-        help = "Forces sRGB correction on all composited SteamVR layers. Useful if an HDR-injected game is too dark."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub force_hdr_srgb_correction: bool,
-
-    #[schema(strings(
-        display_name = "Clamp HDR extended range",
-        help = "Clamps HDR extended range to 0.0~1.0, useful if you only want HDR to reduce banding."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub clamp_hdr_extended_range: bool,
+    pub hdr: HDRConfig,
 
     #[schema(strings(display_name = "NVENC"))]
     #[schema(flag = "steamvr-restart")]
     pub nvenc: NvencConfig,
 
+    #[cfg_attr(not(target_os = "windows"), schema(flag = "hidden"))]
     #[schema(strings(display_name = "AMF"))]
     #[schema(flag = "steamvr-restart")]
     pub amf: AmfConfig,
 
+    #[schema(strings(display_name = "Software (CPU) encoding"))]
     pub software: SoftwareEncodingConfig,
 }
 
@@ -472,6 +489,7 @@ pub struct ClientsideFoveationConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[schema(collapsible)]
 pub struct FoveatedEncodingConfig {
     #[schema(strings(help = "Force enable on smartphone clients"))]
     pub force_enable: bool,
@@ -658,6 +676,36 @@ This is a similar effect to AR glasses."
     HsvChromaKey(#[schema(flag = "real-time")] HsvChromaKeyConfig),
 }
 
+#[repr(u8)]
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
+#[schema(gui = "button_group")]
+pub enum ClientsidePostProcessingSuperSamplingMode {
+    Disabled = 0,
+    Normal = 1 << 0,
+    Quality = 1 << 1,
+}
+
+#[repr(u8)]
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
+#[schema(gui = "button_group")]
+pub enum ClientsidePostProcessingSharpeningMode {
+    Disabled = 0,
+    Normal = 1 << 2,
+    Quality = 1 << 3,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct ClientsidePostProcessingConfig {
+    #[schema(strings(
+        help = "Reduce flicker for high contrast edges.\nUseful when the input resolution is high compared to the headset display"
+    ))]
+    pub super_sampling: ClientsidePostProcessingSuperSamplingMode,
+    #[schema(strings(
+        help = "Improve clarity of high contrast edges and counteract blur.\nUseful when the input resolution is low compared to the headset display"
+    ))]
+    pub sharpening: ClientsidePostProcessingSharpeningMode,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct UpscalingConfig {
     #[schema(strings(
@@ -711,6 +759,7 @@ If you want to reduce the amount of pixelation on the edges, increase the center
     #[schema(gui(slider(min = 0.50, max = 0.99, step = 0.01)))]
     pub buffering_history_weight: f32,
 
+    #[cfg_attr(not(target_os = "windows"), schema(flag = "hidden"))]
     #[schema(strings(
         help = r"This works only on Windows. It shouldn't be disabled except in certain circumstances when you know the VR game will not meet the target framerate."
     ))]
@@ -744,11 +793,21 @@ If you want to reduce the amount of pixelation on the edges, increase the center
     #[schema(flag = "steamvr-restart")]
     pub preferred_fps: f32,
 
-    #[schema(strings(help = "You probably don't want to change this"))]
+    #[cfg_attr(not(target_os = "windows"), schema(flag = "hidden"))]
+    #[schema(strings(
+        help = "You probably don't want to change this. Allows for changing adapter for ALVR compositor."
+    ))]
     #[schema(flag = "steamvr-restart")]
     pub adapter_index: u32,
 
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,
+
+    #[schema(strings(
+        display_name = "Client-side post-processing",
+        help = "Hardware optimized algorithms, available on Quest and Pico headsets"
+    ))]
+    #[schema(flag = "real-time")]
+    pub clientside_post_processing: Switch<ClientsidePostProcessingConfig>,
 
     #[schema(strings(help = "Snapdragon Game Super Resolution client-side upscaling"))]
     pub upscaling: Switch<UpscalingConfig>,
@@ -791,6 +850,8 @@ pub struct GameAudioConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub enum MicrophoneDevicesConfig {
     Automatic,
+    #[schema(strings(display_name = "Virtual Audio Cable"))]
+    VAC,
     #[schema(strings(display_name = "VB Cable"))]
     VBCable,
     #[schema(strings(display_name = "VoiceMeeter"))]
@@ -799,8 +860,6 @@ pub enum MicrophoneDevicesConfig {
     VoiceMeeterAux,
     #[schema(strings(display_name = "VoiceMeeter VAIO3"))]
     VoiceMeeterVaio3,
-    #[schema(strings(display_name = "Virtual Audio Cable"))]
-    VAC,
     Custom {
         #[schema(strings(help = "This device is used by ALVR to output microphone audio"))]
         sink: CustomAudioDeviceConfig,
@@ -1346,8 +1405,7 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     pub allow_untrusted_http: bool,
 
     #[schema(strings(
-        help = r#"If the client, server or the network discarded one packet, discard packets until a IDR packet is found.
-For now works only on Windows+Nvidia"#
+        help = r#"If the client, server or the network discarded one packet, discard packets until a IDR packet is found."#
     ))]
     pub avoid_video_glitching: bool,
 
@@ -1490,10 +1548,18 @@ pub struct Patches {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum NewVersionPopupConfig {
+    Show,
+    HideWhileVersion(String),
+    AlwaysHide,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ExtraConfig {
     pub steamvr_launcher: SteamvrLauncher,
     pub capture: CaptureConfig,
     pub logging: LoggingConfig,
+    #[cfg_attr(not(target_os = "linux"), schema(flag = "hidden"))]
     pub patches: Patches,
 
     #[schema(
@@ -1503,6 +1569,7 @@ It does not update in real time.")
     pub velocities_multiplier: f32,
 
     pub open_setup_wizard: bool,
+    pub new_version_popup: NewVersionPopupConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1576,6 +1643,17 @@ pub fn session_settings_default() -> SettingsDefault {
                         value_start_min: 0.1,
                         value_end_min: 1.0,
                         value_end_max: 1.1,
+                    },
+                },
+            },
+            clientside_post_processing: SwitchDefault {
+                enabled: false,
+                content: ClientsidePostProcessingConfigDefault {
+                    super_sampling: ClientsidePostProcessingSuperSamplingModeDefault {
+                        variant: ClientsidePostProcessingSuperSamplingModeDefaultVariant::Quality,
+                    },
+                    sharpening: ClientsidePostProcessingSharpeningModeDefault {
+                        variant: ClientsidePostProcessingSharpeningModeDefaultVariant::Quality,
                     },
                 },
             },
@@ -1662,10 +1740,13 @@ pub fn session_settings_default() -> SettingsDefault {
                 server_overrides_use_full_range: false,
                 encoding_gamma: 1.0,
                 server_overrides_encoding_gamma: false,
-                enable_hdr: false,
-                server_overrides_enable_hdr: false,
-                force_hdr_srgb_correction: false,
-                clamp_hdr_extended_range: false,
+                hdr: HDRConfigDefault {
+                    gui_collapsed: true,
+                    enable_hdr: false,
+                    server_overrides_enable_hdr: false,
+                    force_hdr_srgb_correction: false,
+                    clamp_hdr_extended_range: false,
+                },
                 nvenc: NvencConfigDefault {
                     gui_collapsed: true,
                     quality_preset: EncoderQualityPresetNvidiaDefault {
@@ -1695,19 +1776,20 @@ pub fn session_settings_default() -> SettingsDefault {
                     rc_average_bitrate: -1,
                     enable_weighted_prediction: false,
                 },
+                quality_preset: EncoderQualityPresetDefault {
+                    variant: EncoderQualityPresetDefaultVariant::Speed,
+                },
+                enable_vbaq: false,
                 amf: AmfConfigDefault {
                     gui_collapsed: true,
-                    quality_preset: EncoderQualityPresetAmdDefault {
-                        variant: EncoderQualityPresetAmdDefaultVariant::Speed,
-                    },
                     enable_pre_analysis: false,
-                    enable_vbaq: false,
                     enable_hmqb: false,
                     use_preproc: false,
                     preproc_sigma: 4,
                     preproc_tor: 7,
                 },
                 software: SoftwareEncodingConfigDefault {
+                    gui_collapsed: true,
                     force_software_encoding: false,
                     thread_count: 0,
                 },
@@ -1741,6 +1823,7 @@ pub fn session_settings_default() -> SettingsDefault {
             foveated_encoding: SwitchDefault {
                 enabled: true,
                 content: FoveatedEncodingConfigDefault {
+                    gui_collapsed: true,
                     force_enable: false,
                     center_size_x: 0.45,
                     center_size_y: 0.4,
@@ -2115,6 +2198,14 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             velocities_multiplier: 1.0,
             open_setup_wizard: alvr_common::is_stable() || alvr_common::is_nightly(),
+            new_version_popup: NewVersionPopupConfigDefault {
+                variant: if alvr_common::is_stable() {
+                    NewVersionPopupConfigDefaultVariant::Show
+                } else {
+                    NewVersionPopupConfigDefaultVariant::AlwaysHide
+                },
+                HideWhileVersion: "0.0.0".into(),
+            },
         },
     }
 }

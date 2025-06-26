@@ -162,7 +162,7 @@ pub fn encoder_preset_schema() -> PresetSchemaNode {
                     val_nv,
                 ),
                 string_modifier(
-                    "session_settings.video.encoder_config.amf.quality_preset.variant",
+                    "session_settings.video.encoder_config.quality_preset.variant",
                     val_amd,
                 ),
             ]
@@ -364,11 +364,11 @@ pub fn microphone_schema() -> PresetSchemaNode {
     if cfg!(windows) {
         for (key, display_name) in [
             ("Automatic", "Automatic"),
+            ("VAC", "Virtual Audio Cable"),
             ("VBCable", "VB Cable"),
             ("VoiceMeeter", "VoiceMeeter"),
             ("VoiceMeeterAux", "VoiceMeeter Aux"),
             ("VoiceMeeterVaio3", "VoiceMeeter VAIO3"),
-            ("VAC", "Virtual Audio Cable"),
         ] {
             microhone_options.push(HigherOrderChoiceOption {
                 display_name: display_name.into(),

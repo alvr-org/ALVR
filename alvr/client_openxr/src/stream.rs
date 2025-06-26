@@ -18,8 +18,8 @@ use alvr_graphics::{
 };
 use alvr_packets::{FaceData, RealTimeConfig, StreamConfig};
 use alvr_session::{
-    ClientsideFoveationConfig, ClientsideFoveationMode, CodecType, FoveatedEncodingConfig,
-    MediacodecProperty, PassthroughMode, UpscalingConfig,
+    ClientsideFoveationConfig, ClientsideFoveationMode, ClientsidePostProcessingConfig, CodecType,
+    FoveatedEncodingConfig, MediacodecProperty, PassthroughMode, UpscalingConfig,
 };
 use alvr_system_info::Platform;
 use openxr as xr;
@@ -42,6 +42,7 @@ pub struct ParsedStreamConfig {
     pub passthrough: Option<PassthroughMode>,
     pub foveated_encoding_config: Option<FoveatedEncodingConfig>,
     pub clientside_foveation_config: Option<ClientsideFoveationConfig>,
+    pub clientside_post_processing: Option<ClientsidePostProcessingConfig>,
     pub upscaling: Option<UpscalingConfig>,
     pub force_software_decoder: bool,
     pub max_buffering_frames: f32,
@@ -68,6 +69,12 @@ impl ParsedStreamConfig {
                 .settings
                 .video
                 .clientside_foveation
+                .as_option()
+                .cloned(),
+            clientside_post_processing: config
+                .settings
+                .video
+                .clientside_post_processing
                 .as_option()
                 .cloned(),
             upscaling: config.settings.video.upscaling.as_option().cloned(),
@@ -324,6 +331,7 @@ impl StreamContext {
 
     pub fn update_real_time_config(&mut self, config: &RealTimeConfig) {
         self.config.passthrough = config.passthrough.clone();
+        self.config.clientside_post_processing = config.clientside_post_processing.clone();
     }
 
     pub fn render(
@@ -446,6 +454,13 @@ impl StreamContext {
             },
         };
 
+        let clientside_post_processing = self
+            .xr_session
+            .instance()
+            .exts()
+            .fb_composition_layer_settings
+            .and(self.config.clientside_post_processing.clone());
+
         let layer = ProjectionLayerBuilder::new(
             &self.stage_reference_space,
             [
@@ -481,6 +496,7 @@ impl StreamContext {
                             | PassthroughMode::HsvChromaKey(_)
                     ),
                 }),
+            clientside_post_processing,
         );
 
         (layer, openxr_display_time)

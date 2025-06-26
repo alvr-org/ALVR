@@ -4,7 +4,9 @@ use alvr_common::{
     semver::Version,
     ConnectionState, DeviceMotion, Fov, LogEntry, LogSeverity, Pose, ToAny,
 };
-use alvr_session::{CodecType, PassthroughMode, SessionConfig, Settings};
+use alvr_session::{
+    ClientsidePostProcessingConfig, CodecType, PassthroughMode, SessionConfig, Settings,
+};
 use serde::{Deserialize, Serialize};
 use serde_json as json;
 use std::{
@@ -411,14 +413,28 @@ pub enum ServerRequest {
 #[derive(Serialize, Deserialize)]
 pub struct RealTimeConfig {
     pub passthrough: Option<PassthroughMode>,
+    pub clientside_post_processing: Option<ClientsidePostProcessingConfig>,
 }
 
-pub fn encode_real_time_config(config: &RealTimeConfig) -> Result<ServerControlPacket> {
-    Ok(ServerControlPacket::ReservedBuffer(bincode::serialize(
-        config,
-    )?))
-}
+impl RealTimeConfig {
+    pub fn encode(&self) -> Result<ServerControlPacket> {
+        Ok(ServerControlPacket::ReservedBuffer(bincode::serialize(
+            self,
+        )?))
+    }
 
-pub fn decode_real_time_config(buffer: &[u8]) -> Result<RealTimeConfig> {
-    Ok(bincode::deserialize(buffer)?)
+    pub fn decode(buffer: &[u8]) -> Result<Self> {
+        Ok(bincode::deserialize(buffer)?)
+    }
+
+    pub fn from_settings(settings: &Settings) -> Self {
+        Self {
+            passthrough: settings.video.passthrough.clone().into_option(),
+            clientside_post_processing: settings
+                .video
+                .clientside_post_processing
+                .clone()
+                .into_option(),
+        }
+    }
 }

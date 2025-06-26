@@ -169,6 +169,7 @@ pub fn entry_point() {
     exts.ext_local_floor = available_extensions.ext_local_floor;
     exts.fb_body_tracking = available_extensions.fb_body_tracking;
     exts.fb_color_space = available_extensions.fb_color_space;
+    exts.fb_composition_layer_settings = available_extensions.fb_composition_layer_settings;
     exts.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
     exts.fb_eye_tracking_social = available_extensions.fb_eye_tracking_social;
     exts.fb_face_tracking2 = available_extensions.fb_face_tracking2;

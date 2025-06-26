@@ -383,28 +383,28 @@ impl StreamContext {
         // The poses and FoVs we received from the PC runtime, which may differ and/or include
         // altered FoVs based on settings and view conversions done for canting.
         let input_view_params = view_params;
-        let mut output_view_params = [
-            ViewParams {
-                pose: crate::from_xr_pose(current_headset_views[0].pose),
-                fov: crate::from_xr_fov(current_headset_views[0].fov),
-            },
-            ViewParams {
-                pose: crate::from_xr_pose(current_headset_views[1].pose),
-                fov: crate::from_xr_fov(current_headset_views[1].fov),
-            },
-        ];
-        let mut openxr_display_time = vsync_time;
+        let mut output_view_params = input_view_params;
+        // Avoid passing invalid timestamp to runtime
+        // TODO(shinyquagsire23): Is there a technical reason to do it this way? Why not just vsync?
+        let mut openxr_display_time =
+            Duration::max(timestamp, vsync_time.saturating_sub(Duration::from_secs(1)));
 
         // (shinyquagsire23) I don't entirely trust runtimes to implement CompositionLayerProjectionView
-        // correctly, but if we do trust them, avoid doing rotation ourselves.
+        // correctly, but if we do trust them, avoid doing rotation ourselves. Otherwise, rerender.
         // Ex: YVR/PFDMR has issues with aspect ratio mismatches and passthrough compositing.
-        if !self.use_custom_reprojection {
-            output_view_params = input_view_params;
+        if self.use_custom_reprojection {
+            output_view_params = [
+                ViewParams {
+                    pose: crate::from_xr_pose(current_headset_views[0].pose),
+                    fov: crate::from_xr_fov(current_headset_views[0].fov),
+                },
+                ViewParams {
+                    pose: crate::from_xr_pose(current_headset_views[1].pose),
+                    fov: crate::from_xr_fov(current_headset_views[1].fov),
+                },
+            ];
 
-            // Avoid passing invalid timestamp to runtime
-            // TODO(shinyquagsire23): Is there a technical reason to do it this way? Why not just vsync?
-            openxr_display_time =
-                Duration::max(timestamp, vsync_time.saturating_sub(Duration::from_secs(1)))
+            openxr_display_time = vsync_time;
         }
 
         unsafe {

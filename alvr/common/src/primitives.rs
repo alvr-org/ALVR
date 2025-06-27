@@ -90,3 +90,11 @@ impl DeviceMotion {
         }
     }
 }
+
+// Per eye view parameters
+// todo: send together with video frame
+#[derive(Serialize, Deserialize, Clone, Copy, Default)]
+pub struct ViewParams {
+    pub pose: Pose,
+    pub fov: Fov,
+}

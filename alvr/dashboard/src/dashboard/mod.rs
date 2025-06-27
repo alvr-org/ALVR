@@ -4,7 +4,7 @@ use self::components::{
     DevicesTab, LogsTab, NotificationBar, SettingsTab, SetupWizard, SetupWizardRequest,
 };
 use crate::{
-    dashboard::components::{NewVersionPopup, StatisticsTab},
+    dashboard::components::{CloseAction, NewVersionPopup, StatisticsTab},
     DataSources,
 };
 use alvr_common::parking_lot::{Condvar, Mutex};
@@ -316,8 +316,10 @@ impl eframe::App for Dashboard {
         };
 
         if let Some(popup) = &self.new_version_popup {
-            if let Some(request) = popup.ui(context, shutdown_alvr) {
-                requests.push(request);
+            if let Some(action) = popup.ui(context, shutdown_alvr) {
+                if let CloseAction::CloseWithRequest(request) = action {
+                    requests.push(request);
+                }
 
                 self.new_version_popup = None;
             }

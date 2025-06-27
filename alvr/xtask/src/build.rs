@@ -130,10 +130,17 @@ pub fn build_streamer(
 
     // build server
     {
-        let gpl_flag = gpl.then(|| vec!["--features", "gpl"]).unwrap_or_default();
-        let profiling_flag = profiling
-            .then(|| vec!["--features", "alvr_server_core/trace-performance"])
-            .unwrap_or_default();
+        let gpl_flag = if gpl {
+            vec!["--features", "gpl"]
+        } else {
+            vec![]
+        };
+
+        let profiling_flag = if profiling {
+            vec!["--features", "alvr_server_core/trace-performance"]
+        } else {
+            vec![]
+        };
 
         let _push_guard = sh.push_dir(afs::crate_dir("server_openvr"));
         cmd!(

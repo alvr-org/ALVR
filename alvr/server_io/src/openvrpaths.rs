@@ -1,6 +1,6 @@
 use alvr_common::{
-    anyhow::{bail, Result},
-    ToAny,
+    anyhow::{bail, Error, Result},
+    debug, ToAny,
 };
 use encoding_rs_io::DecodeReaderBytes;
 use serde_json as json;
@@ -27,20 +27,20 @@ fn openvr_source_file_path() -> Result<PathBuf> {
 }
 
 pub fn steamvr_settings_file_path() -> Result<PathBuf> {
-    let path = if cfg!(windows) {
-        // N.B. if ever implementing this: given Steam can be installed on another
-        // drive, etc., this should probably start by looking at Windows registry keys.
-        bail!("Not implemented for Windows.") // Original motive for implementation had little reason for Windows.
-    } else {
-        dirs::data_dir()
-    }
-    .to_any()?
-    .join("Steam/config/steamvr.vrsettings");
+    let steamvr_vrsettings_path = steamlocate::SteamDir::locate()?
+        .path()
+        .join("config/steamvr.vrsettings");
+    debug!(
+        "steamvr_vrsettings_path: {}",
+        steamvr_vrsettings_path.display()
+    );
 
-    if path.exists() {
-        Ok(path)
+    if steamvr_vrsettings_path.exists() {
+        Ok(steamvr_vrsettings_path)
     } else {
-        bail!("{} does not exist", path.to_string_lossy())
+        bail!(
+            "Couldn't find SteamVR config file (steamvr.vrsettings). Please make sure SteamVR is launched at least once."
+        )
     }
 }
 
@@ -85,12 +85,13 @@ pub fn to_openvr_paths(paths: &[PathBuf]) -> json::Value {
     json::Value::Array(paths_vec)
 }
 
-fn get_single_openvr_path(path_type: &str) -> Result<PathBuf> {
-    let openvr_paths_json = load_openvr_paths_json()?;
-    let paths_json = openvr_paths_json.get(path_type).to_any()?;
-    from_openvr_paths(paths_json).first().cloned().to_any()
-}
-
 pub fn steamvr_root_dir() -> Result<PathBuf> {
-    get_single_openvr_path("runtime")
+    let steam_dir = steamlocate::SteamDir::locate()?;
+    const STEAMVR_APPID: u32 = 250_820;
+    match steam_dir.find_app(STEAMVR_APPID)? {
+        Some((app, library)) => Ok(library.resolve_app_dir(&app)),
+        None => Err(Error::msg(
+            "Couldn't locate SteamVR, please make sure you have installed it.",
+        )),
+    }
 }

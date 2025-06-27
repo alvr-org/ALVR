@@ -86,6 +86,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
             ControllersEmulationMode::ValveIndex => 20,
             ControllersEmulationMode::ViveWand => 40,
             ControllersEmulationMode::ViveTracker => 41,
+            ControllersEmulationMode::PSVR2Sense => 60,
             ControllersEmulationMode::Custom { .. } => 500,
         };
         use_separate_hand_trackers = config

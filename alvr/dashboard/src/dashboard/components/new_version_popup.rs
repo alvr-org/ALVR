@@ -4,6 +4,11 @@ use alvr_gui_common::ModalButton;
 use alvr_packets::{PathValuePair, ServerRequest};
 use eframe::egui::{self, Context, OpenUrl, Ui};
 
+pub enum CloseAction {
+    Close,
+    CloseWithRequest(ServerRequest),
+}
+
 pub struct NewVersionPopup {
     version: String,
     message: String,
@@ -28,7 +33,7 @@ impl NewVersionPopup {
         }
     }
 
-    pub fn ui(&self, context: &Context, shutdown_alvr_cb: impl Fn()) -> Option<ServerRequest> {
+    pub fn ui(&self, context: &Context, shutdown_alvr_cb: impl Fn()) -> Option<CloseAction> {
         let no_remind_button =
             ModalButton::Custom("Don't remind me again for this version".to_string());
 
@@ -85,20 +90,16 @@ impl NewVersionPopup {
 
         if let Some(button) = result {
             if button == no_remind_button {
-                return Some(ServerRequest::SetValues(vec![
-                    PathValuePair {
+                return Some(CloseAction::CloseWithRequest(ServerRequest::SetValues(
+                    vec![PathValuePair {
                         path: alvr_packets::parse_path(
-                            "session_settings.extra.new_version_popup.HideWhileVersion",
+                            "session_settings.extra.new_version_popup.content.hide_while_version",
                         ),
                         value: serde_json::Value::String(self.version.clone()),
-                    },
-                    PathValuePair {
-                        path: alvr_packets::parse_path(
-                            "session_settings.extra.new_version_popup.variant",
-                        ),
-                        value: serde_json::Value::String("HideWhileVersion".to_string()),
-                    },
-                ]));
+                    }],
+                )));
+            } else {
+                return Some(CloseAction::Close);
             }
         }
 

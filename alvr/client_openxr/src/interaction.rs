@@ -666,16 +666,22 @@ pub fn get_head_data(
 
     let mut motion = DeviceMotion {
         pose: crate::from_xr_pose(head_location.pose),
-        linear_velocity: head_velocity
+        linear_velocity: if head_velocity
             .velocity_flags
             .contains(xr::SpaceVelocityFlags::LINEAR_VALID)
-            .then(|| crate::from_xr_vec3(head_velocity.linear_velocity))
-            .unwrap_or_default(),
-        angular_velocity: head_velocity
+        {
+            crate::from_xr_vec3(head_velocity.linear_velocity)
+        } else {
+            Vec3::ZERO
+        },
+        angular_velocity: if head_velocity
             .velocity_flags
             .contains(xr::SpaceVelocityFlags::ANGULAR_VALID)
-            .then(|| crate::from_xr_vec3(head_velocity.angular_velocity))
-            .unwrap_or_default(),
+        {
+            crate::from_xr_vec3(head_velocity.angular_velocity)
+        } else {
+            Vec3::ZERO
+        },
     };
 
     // Some headsets use wrong frame of reference for linear and angular velocities.

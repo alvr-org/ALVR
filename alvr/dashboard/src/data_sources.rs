@@ -7,7 +7,6 @@ use alvr_common::{
 use alvr_events::{Event, EventType};
 use alvr_packets::ServerRequest;
 use alvr_server_io::ServerSessionManager;
-use alvr_session::NewVersionPopupConfig;
 use eframe::egui;
 use std::{
     io::ErrorKind,
@@ -147,13 +146,14 @@ impl DataSources {
                         return None;
                     };
 
-                    match &session_manager_lock.settings().extra.new_version_popup {
-                        NewVersionPopupConfig::Show => VersionReq::STAR,
-                        NewVersionPopupConfig::HideWhileVersion(version) => {
-                            VersionReq::parse(&format!(">{version}")).unwrap()
-                        }
-                        NewVersionPopupConfig::AlwaysHide => return None,
-                    }
+                    let version = &session_manager_lock
+                        .settings()
+                        .extra
+                        .new_version_popup
+                        .as_option()?
+                        .hide_while_version;
+
+                    VersionReq::parse(&format!(">{version}")).unwrap()
                 };
 
                 let request_agent: ureq::Agent = ureq::Agent::config_builder()

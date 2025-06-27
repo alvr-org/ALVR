@@ -12,12 +12,12 @@ use alvr_common::{
     dbg_connection, debug, error, info,
     parking_lot::{Condvar, Mutex, RwLock},
     wait_rwlock, warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState,
-    Pose, RelaxedAtomic, ALVR_VERSION,
+    Pose, RelaxedAtomic, ViewParams, ALVR_VERSION,
 };
 use alvr_packets::{
     ClientConnectionResult, ClientControlPacket, ClientStatistics, Haptics, RealTimeConfig,
     ServerControlPacket, StreamConfigPacket, Tracking, VideoPacketHeader,
-    VideoStreamingCapabilities, ViewParams, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
+    VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{settings_schema::Switch, SocketProtocol};
 use alvr_sockets::{

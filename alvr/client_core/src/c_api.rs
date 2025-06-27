@@ -12,13 +12,13 @@ use alvr_common::{
     info,
     once_cell::sync::Lazy,
     parking_lot::Mutex,
-    warn, DeviceMotion, Fov, OptLazy, Pose,
+    warn, DeviceMotion, Fov, OptLazy, Pose, ViewParams,
 };
 use alvr_graphics::{
     compute_target_view_resolution, GraphicsContext, LobbyRenderer, LobbyViewParams,
     StreamRenderer, StreamViewParams,
 };
-use alvr_packets::{ButtonEntry, ButtonValue, FaceData, ViewParams};
+use alvr_packets::{ButtonEntry, ButtonValue, FaceData};
 use alvr_session::{
     CodecType, FoveatedEncodingConfig, MediacodecPropType, MediacodecProperty, UpscalingConfig,
 };
@@ -865,13 +865,31 @@ pub unsafe extern "C" fn alvr_render_stream_opengl(
                 [
                     StreamViewParams {
                         swapchain_index: left_params.swapchain_index,
-                        reprojection_rotation: from_capi_quat(left_params.reprojection_rotation),
-                        fov: from_capi_fov(left_params.fov),
+                        input_view_params: ViewParams {
+                            pose: Pose::default(),
+                            fov: from_capi_fov(left_params.fov),
+                        },
+                        output_view_params: ViewParams {
+                            pose: Pose {
+                                orientation: from_capi_quat(left_params.reprojection_rotation),
+                                position: Vec3::ZERO,
+                            },
+                            fov: from_capi_fov(left_params.fov),
+                        },
                     },
                     StreamViewParams {
                         swapchain_index: right_params.swapchain_index,
-                        reprojection_rotation: from_capi_quat(right_params.reprojection_rotation),
-                        fov: from_capi_fov(right_params.fov),
+                        input_view_params: ViewParams {
+                            pose: Pose::default(),
+                            fov: from_capi_fov(right_params.fov),
+                        },
+                        output_view_params: ViewParams {
+                            pose: Pose {
+                                orientation: from_capi_quat(right_params.reprojection_rotation),
+                                position: Vec3::ZERO,
+                            },
+                            fov: from_capi_fov(right_params.fov),
+                        },
                     },
                 ],
                 None,

@@ -1,7 +1,7 @@
 use super::{staging::StagingRenderer, GraphicsContext, MAX_PUSH_CONSTANTS_SIZE};
 use alvr_common::{
-    glam::{self, Mat4, Quat, UVec2, Vec3, Vec4},
-    Fov,
+    glam::{self, Mat4, UVec2, Vec3, Vec4},
+    ViewParams,
 };
 use alvr_session::{FoveatedEncodingConfig, PassthroughMode, UpscalingConfig};
 use std::{collections::HashMap, ffi::c_void, iter, mem, rc::Rc};
@@ -37,8 +37,8 @@ const _: () = assert!(
 
 pub struct StreamViewParams {
     pub swapchain_index: u32,
-    pub reprojection_rotation: Quat,
-    pub fov: Fov,
+    pub input_view_params: ViewParams,
+    pub output_view_params: ViewParams,
 }
 
 #[derive(Debug)]
@@ -276,22 +276,37 @@ impl StreamRenderer {
                 ..Default::default()
             });
 
-            let fov = view_params.fov;
+            let input_fov = view_params.input_view_params.fov;
 
-            let tanl = f32::tan(fov.left);
-            let tanr = f32::tan(fov.right);
-            let tanu = f32::tan(fov.up);
-            let tand = f32::tan(fov.down);
+            let tanl = f32::tan(input_fov.left);
+            let tanr = f32::tan(input_fov.right);
+            let tanu = f32::tan(input_fov.up);
+            let tand = f32::tan(input_fov.down);
 
             let width = tanr - tanl;
             let height = tanu - tand;
+            let quad_depth = 1000.0;
+
+            let output_mat4 = Mat4::from_translation(view_params.output_view_params.pose.position)
+                * Mat4::from_quat(view_params.output_view_params.pose.orientation);
+            let input_mat4 = Mat4::from_translation(view_params.input_view_params.pose.position)
+                * Mat4::from_quat(view_params.input_view_params.pose.orientation);
 
             // The image is at z = -1.0, so we use tangents for the size
             let model_mat =
-                Mat4::from_translation(Vec3::new(width / 2.0 + tanl, height / 2.0 + tand, -1.0))
+                Mat4::from_translation(Vec3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: -quad_depth * 0.5,
+                }) * Mat4::from_scale(Vec3::new(quad_depth, quad_depth, quad_depth * 0.5))
+                    * Mat4::from_translation(Vec3::new(
+                        width / 2.0 + tanl,
+                        height / 2.0 + tand,
+                        -1.0,
+                    ))
                     * Mat4::from_scale(Vec3::new(width, height, 1.));
-            let view_mat = Mat4::from_quat(view_params.reprojection_rotation).inverse();
-            let proj_mat = super::projection_from_fov(view_params.fov);
+            let view_mat = output_mat4.inverse() * input_mat4;
+            let proj_mat = super::projection_from_fov(view_params.output_view_params.fov);
 
             let transform = proj_mat * view_mat * model_mat;
 

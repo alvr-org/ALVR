@@ -124,6 +124,10 @@ bool FakeViveTracker::activate() {
         name = "ALVR/tracker/left_knee";
     } else if (this->device_id == BODY_RIGHT_KNEE_ID) {
         name = "ALVR/tracker/right_knee";
+    } else if (this->device_id == BODY_LEFT_ELBOW_ID) {
+        name = "ALVR/tracker/left_elbow";
+    } else if (this->device_id == BODY_RIGHT_ELBOW_ID) {
+        name = "ALVR/tracker/right_elbow";
     } else {
         name = "ALVR/tracker/unknown";
     }

@@ -1011,7 +1011,7 @@ pub enum ControllersEmulationMode {
     QuestPro,
     #[schema(strings(display_name = "Pico 4"))]
     Pico4,
-     #[schema(strings(display_name = "PSVR2 Sense Controller"))]
+    #[schema(strings(display_name = "PSVR2 Sense Controller"))]
     PSVR2Sense,
     #[schema(strings(display_name = "Valve Index"))]
     ValveIndex,

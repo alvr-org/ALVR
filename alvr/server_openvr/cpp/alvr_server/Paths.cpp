@@ -83,59 +83,85 @@ void init_paths() {
     BODY_IDS.insert(BODY_RIGHT_FOOT_ID);
 
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/system/click"),
-                                            { { "/input/system/click" }, ButtonType::Binary } });
+                                            { { "/input/system/click", "/input/left_ps/click" },
+                                              ButtonType::Binary } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/system/touch"),
-                                            { { "/input/system/touch" }, ButtonType::Binary } });
+                                            { { "/input/system/touch", "/input/left_ps/touch" },
+                                              ButtonType::Binary } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert(
         { PathStringToHash("/user/hand/left/input/menu/click"),
-          { { "/input/system/click", "/input/application_menu/click" }, ButtonType::Binary } }
+          { { "/input/system/click", "/input/application_menu/click", "/input/create/click" },
+            ButtonType::Binary } }
+    );
+    LEFT_CONTROLLER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/left/input/menu/touch"),
+          { { "/input/system/touch", "/input/application_menu/touch", "/input/create/touch" },
+            ButtonType::Binary } }
     );
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/a/click"),
-                                            { { "/input/a/click" }, ButtonType::Binary } });
+                                            { { "/input/a/click", "/input/cross/click" },
+                                              ButtonType::Binary } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/a/touch"),
-                                            { { "/input/a/touch" }, ButtonType::Binary } });
+                                            { { "/input/a/touch", "/input/cross/touch" },
+                                              ButtonType::Binary } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/b/click"),
-                                            { { "/input/b/click" }, ButtonType::Binary } });
+                                            { { "/input/b/click", "/input/circle/click" },
+                                              ButtonType::Binary } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/b/touch"),
-                                            { { "/input/b/touch" }, ButtonType::Binary } });
+                                            { { "/input/b/touch", "/input/circle/touch" },
+                                              ButtonType::Binary } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/x/click"),
-                                            { { "/input/x/click" }, ButtonType::Binary } });
+                                            { { "/input/x/click", "/input/square/click" },
+                                              ButtonType::Binary } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/x/touch"),
-                                            { { "/input/x/touch" }, ButtonType::Binary } });
+                                            { { "/input/x/touch", "/input/square/touch" },
+                                              ButtonType::Binary } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/y/click"),
-                                            { { "/input/y/click" }, ButtonType::Binary } });
+                                            { { "/input/y/click", "/input/triangle/click" },
+                                              ButtonType::Binary } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/y/touch"),
-                                            { { "/input/y/touch" }, ButtonType::Binary } });
+                                            { { "/input/y/touch", "/input/triangle/touch" },
+                                              ButtonType::Binary } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/squeeze/click"),
-                                            { { "/input/grip/click" }, ButtonType::Binary } });
+                                            { { "/input/grip/click", "/input/l1/click" },
+                                              ButtonType::Binary } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/squeeze/touch"),
-                                            { { "/input/grip/touch" }, ButtonType::Binary } });
+                                            { { "/input/grip/touch", "/input/l1/touch" },
+                                              ButtonType::Binary } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/squeeze/value"),
-                                            { { "/input/grip/value" },
+                                            { { "/input/grip/value", "/input/l1/value" },
                                               ButtonType::ScalarOneSided } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/squeeze/force"),
                                             { { "/input/grip/force" },
                                               ButtonType::ScalarOneSided } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/trigger/click"),
-                                            { { "/input/trigger/click" }, ButtonType::Binary } });
+                                            { { "/input/trigger/click", "/input/l2/click" },
+                                              ButtonType::Binary } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/trigger/value"),
-                                            { { "/input/trigger/value" },
+                                            { { "/input/trigger/value", "/input/l2/value" },
                                               ButtonType::ScalarOneSided } });
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/trigger/touch"),
-                                            { { "/input/trigger/touch" }, ButtonType::Binary } });
-    LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/thumbstick/x"),
-                                            { { "/input/joystick/x", "/input/thumbstick/x" },
-                                              ButtonType::ScalarTwoSided } });
-    LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/thumbstick/y"),
-                                            { { "/input/joystick/y", "/input/thumbstick/y" },
-                                              ButtonType::ScalarTwoSided } });
+                                            { { "/input/trigger/touch", "/input/l2/touch" },
+                                              ButtonType::Binary } });
+    LEFT_CONTROLLER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/left/input/thumbstick/x"),
+          { { "/input/joystick/x", "/input/thumbstick/x", "/input/left_stick/x" },
+            ButtonType::ScalarTwoSided } }
+    );
+    LEFT_CONTROLLER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/left/input/thumbstick/y"),
+          { { "/input/joystick/y", "/input/thumbstick/y", "/input/left_stick/y" },
+            ButtonType::ScalarTwoSided } }
+    );
     LEFT_CONTROLLER_BUTTON_MAPPING.insert(
         { PathStringToHash("/user/hand/left/input/thumbstick/click"),
-          { { "/input/joystick/click", "/input/thumbstick/click" }, ButtonType::Binary } }
+          { { "/input/joystick/click", "/input/thumbstick/click", "/input/left_stick/click" },
+            ButtonType::Binary } }
     );
     LEFT_CONTROLLER_BUTTON_MAPPING.insert(
         { PathStringToHash("/user/hand/left/input/thumbstick/touch"),
-          { { "/input/joystick/touch", "/input/thumbstick/touch" }, ButtonType::Binary } }
+          { { "/input/joystick/touch", "/input/thumbstick/touch", "/input/left_stick/touch" },
+            ButtonType::Binary } }
     );
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/trackpad/x"),
                                             { { "/input/trackpad/x" },
@@ -157,63 +183,83 @@ void init_paths() {
                                             ),
                                             { { "/input/thumbrest/touch" }, ButtonType::Binary } });
 
-    RIGHT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/right/input/system/click"
-                                             ),
-                                             { { "/input/system/click" }, ButtonType::Binary } });
-    RIGHT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/right/input/system/touch"
-                                             ),
-                                             { { "/input/system/touch" }, ButtonType::Binary } });
+    RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/right/input/system/click"),
+          { { "/input/system/click", "/input/right_ps/click" }, ButtonType::Binary } }
+    );
+    RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/right/input/system/touch"),
+          { { "/input/system/touch", "/input/right_ps/touch" }, ButtonType::Binary } }
+    );
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
         { PathStringToHash("/user/hand/right/input/menu/click"),
-          { { "/input/system/click", "/input/application_menu/click" }, ButtonType::Binary } }
+          { { "/input/system/click", "/input/application_menu/click", "/input/options/click" },
+            ButtonType::Binary } }
+    );
+    RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/right/input/menu/touch"),
+          { { "/input/system/touch", "/input/application_menu/touch", "/input/options/touch" },
+            ButtonType::Binary } }
     );
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/right/input/a/click"),
-                                             { { "/input/a/click" }, ButtonType::Binary } });
+                                             { { "/input/a/click", "/input/cross/click" },
+                                               ButtonType::Binary } });
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/right/input/a/touch"),
-                                             { { "/input/a/touch" }, ButtonType::Binary } });
+                                             { { "/input/a/touch", "/input/cross/touch" },
+                                               ButtonType::Binary } });
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/right/input/b/click"),
-                                             { { "/input/b/click" }, ButtonType::Binary } });
+                                             { { "/input/b/click", "/input/circle/click" },
+                                               ButtonType::Binary } });
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/right/input/b/touch"),
-                                             { { "/input/b/touch" }, ButtonType::Binary } });
-    RIGHT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/right/input/squeeze/click"
-                                             ),
-                                             { { "/input/grip/click" }, ButtonType::Binary } });
-    RIGHT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/right/input/squeeze/touch"
-                                             ),
-                                             { { "/input/grip/touch" }, ButtonType::Binary } });
+                                             { { "/input/b/touch", "/input/circle/touch" },
+                                               ButtonType::Binary } });
+    RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/right/input/squeeze/click"),
+          { { "/input/grip/click", "/input/r1/click" }, ButtonType::Binary } }
+    );
+    RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/right/input/squeeze/touch"),
+          { { "/input/grip/touch", "/input/r1/touch" }, ButtonType::Binary } }
+    );
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
         { PathStringToHash("/user/hand/right/input/squeeze/value"),
-          { { "/input/grip/value" }, ButtonType::ScalarOneSided } }
+          { { "/input/grip/value", "/input/r1/value" }, ButtonType::ScalarOneSided } }
     );
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
         { PathStringToHash("/user/hand/right/input/squeeze/force"),
           { { "/input/grip/force" }, ButtonType::ScalarOneSided } }
     );
-    RIGHT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/right/input/trigger/click"
-                                             ),
-                                             { { "/input/trigger/click" }, ButtonType::Binary } });
+    RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/right/input/trigger/click"),
+          { { "/input/trigger/click", "/input/r2/click" }, ButtonType::Binary } }
+    );
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
         { PathStringToHash("/user/hand/right/input/trigger/value"),
-          { { "/input/trigger/value" }, ButtonType::ScalarOneSided } }
+          { { "/input/trigger/value", "/input/r2/value" }, ButtonType::ScalarOneSided } }
     );
-    RIGHT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/right/input/trigger/touch"
-                                             ),
-                                             { { "/input/trigger/touch" }, ButtonType::Binary } });
+    RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/right/input/trigger/touch"),
+          { { "/input/trigger/touch", "/input/r2/touch" }, ButtonType::Binary } }
+    );
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
         { PathStringToHash("/user/hand/right/input/thumbstick/x"),
-          { { "/input/joystick/x", "/input/thumbstick/x" }, ButtonType::ScalarTwoSided } }
+          { { "/input/joystick/x", "/input/thumbstick/x", "/input/right_stick/x" },
+            ButtonType::ScalarTwoSided } }
     );
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
         { PathStringToHash("/user/hand/right/input/thumbstick/y"),
-          { { "/input/joystick/y", "/input/thumbstick/y" }, ButtonType::ScalarTwoSided } }
+          { { "/input/joystick/y", "/input/thumbstick/y", "/input/right_stick/y" },
+            ButtonType::ScalarTwoSided } }
     );
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
         { PathStringToHash("/user/hand/right/input/thumbstick/click"),
-          { { "/input/joystick/click", "/input/thumbstick/click" }, ButtonType::Binary } }
+          { { "/input/joystick/click", "/input/thumbstick/click", "/input/right_stick/click" },
+            ButtonType::Binary } }
     );
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
         { PathStringToHash("/user/hand/right/input/thumbstick/touch"),
-          { { "/input/joystick/touch", "/input/thumbstick/touch" }, ButtonType::Binary } }
+          { { "/input/joystick/touch", "/input/thumbstick/touch", "/input/right_stick/touch" },
+            ButtonType::Binary } }
     );
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/right/input/trackpad/x"),
                                              { { "/input/trackpad/x" },

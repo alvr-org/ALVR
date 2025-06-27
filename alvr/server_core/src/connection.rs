@@ -246,7 +246,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
 pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<LifecycleState>>) {
     dbg_connection!("handshake_loop: Begin");
 
-    let welcome_socket = match WelcomeSocket::new() {
+    let mut welcome_socket = match WelcomeSocket::new() {
         Ok(socket) => socket,
         Err(e) => {
             error!("Failed to create discovery socket: {e:?}");

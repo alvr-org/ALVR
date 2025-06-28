@@ -19,7 +19,7 @@ public:
     vr::PropertyContainerHandle_t prop_container = vr::k_ulInvalidPropertyContainer;
     vr::DriverPose_t last_pose;
 
-    bool register_device();
+    bool register_device(bool await_activation);
     void set_prop(FfiOpenvrProperty prop);
 
 protected:

@@ -133,7 +133,7 @@ extern "C" void (*SetOpenvrProps)(void* instancePtr, unsigned long long deviceID
 extern "C" void (*RegisterButtons)(void* instancePtr, unsigned long long deviceID);
 extern "C" void (*WaitForVSync)();
 
-extern "C" void CppInit();
+extern "C" void CppInit(bool earlyHmdInitialization);
 extern "C" void* CppOpenvrEntryPoint(const char* pInterfaceName, int* pReturnCode);
 extern "C" bool InitializeStreaming();
 extern "C" void DeinitializeStreaming();

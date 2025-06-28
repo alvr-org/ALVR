@@ -79,6 +79,8 @@ static void load_debug_privilege(void) {
 
 class DriverProvider : public vr::IServerTrackedDeviceProvider {
 public:
+    bool early_hmd_initialization = false;
+
     std::unique_ptr<Hmd> hmd;
     std::unique_ptr<Controller> left_controller, right_controller;
     std::unique_ptr<Controller> left_hand_tracker, right_hand_tracker;
@@ -94,12 +96,14 @@ public:
         VR_INIT_SERVER_DRIVER_CONTEXT(pContext);
         InitDriverLog(vr::VRDriverLog());
 
-        auto hmd = new Hmd();
-        // Note: we disable awaiting for Acivate() call. That will only be called after
-        // IServerTrackedDeviceProvider::Init() (this function) returns.
-        hmd->register_device(false);
-        this->hmd = std::unique_ptr<Hmd>(hmd);
-        this->tracked_devices.insert({ HEAD_ID, this->hmd.get() });
+        if (this->early_hmd_initialization) {
+            auto hmd = new Hmd();
+            // Note: we disable awaiting for Acivate() call. That will only be called after
+            // IServerTrackedDeviceProvider::Init() (this function) returns.
+            hmd->register_device(false);
+            this->hmd = std::unique_ptr<Hmd>(hmd);
+            this->tracked_devices.insert({ HEAD_ID, this->hmd.get() });
+        }
 
         return vr::VRInitError_None;
     }
@@ -217,7 +221,9 @@ void (*SetOpenvrProps)(void* instancePtr, unsigned long long deviceID);
 void (*RegisterButtons)(void* instancePtr, unsigned long long deviceID);
 void (*WaitForVSync)();
 
-void CppInit() {
+void CppInit(bool earlyHmdInitialization) {
+    g_driver_provider.early_hmd_initialization = earlyHmdInitialization;
+
     HookCrashHandler();
 
     // Initialize path constants
@@ -242,6 +248,16 @@ bool InitializeStreaming() {
     Settings::Instance().Load();
 
     if (!g_driver_provider.devices_initialized) {
+        if (!g_driver_provider.early_hmd_initialization) {
+            auto hmd = new Hmd();
+            if (!hmd->register_device(false)) {
+                Error("Failed to register HMD");
+                return false;
+            }
+            g_driver_provider.hmd = std::unique_ptr<Hmd>(hmd);
+            g_driver_provider.tracked_devices.insert({ HEAD_ID, g_driver_provider.hmd.get() });
+        }
+
         // Note: for controllers, hands and trackers don't bail out if registration fails
         if (Settings::Instance().m_enableControllers) {
             auto controllerSkeletonLevel = Settings::Instance().m_useSeparateHandTrackers

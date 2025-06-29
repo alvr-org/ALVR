@@ -1,9 +1,9 @@
-use crate::backend::{tcp, SocketReader, SocketWriter};
+use crate::backend::{SocketReader, SocketWriter, tcp};
 
 use super::CONTROL_PORT;
-use alvr_common::{anyhow::Result, ConResult, HandleTryAgain, ToCon};
+use alvr_common::{ConResult, HandleTryAgain, ToCon, anyhow::Result};
 use alvr_session::SocketBufferSize;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use std::{
     marker::PhantomData,
     mem,

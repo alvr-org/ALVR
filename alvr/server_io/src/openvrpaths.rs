@@ -1,6 +1,6 @@
 use alvr_common::{
-    anyhow::{bail, Result},
     ToAny,
+    anyhow::{Result, bail},
 };
 use encoding_rs_io::DecodeReaderBytes;
 use serde_json as json;

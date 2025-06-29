@@ -1,4 +1,4 @@
-use crate::{actions, InstallationInfo, Progress, ReleaseChannelsInfo, UiMessage, WorkerMessage};
+use crate::{InstallationInfo, Progress, ReleaseChannelsInfo, UiMessage, WorkerMessage, actions};
 use alvr_gui_common::ModalButton;
 use eframe::{
     egui::{

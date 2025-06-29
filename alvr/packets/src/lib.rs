@@ -1,8 +1,8 @@
 use alvr_common::{
+    ConnectionState, DeviceMotion, Fov, LogEntry, LogSeverity, Pose, ToAny,
     anyhow::Result,
     glam::{UVec2, Vec2},
     semver::Version,
-    ConnectionState, DeviceMotion, Fov, LogEntry, LogSeverity, Pose, ToAny,
 };
 use alvr_session::{
     ClientsidePostProcessingConfig, CodecType, PassthroughMode, SessionConfig, Settings,

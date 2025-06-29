@@ -1,32 +1,32 @@
 #![allow(clippy::if_same_then_else)]
 
 use crate::{
-    logging_backend::{LogMirrorData, LOG_CHANNEL_SENDER},
+    ClientCapabilities, ClientCoreEvent,
+    logging_backend::{LOG_CHANNEL_SENDER, LogMirrorData},
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
     storage::Config,
-    ClientCapabilities, ClientCoreEvent,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
-    dbg_connection, debug, error, info,
+    ALVR_VERSION, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, Pose,
+    RelaxedAtomic, ViewParams, dbg_connection, debug, error, info,
     parking_lot::{Condvar, Mutex, RwLock},
-    wait_rwlock, warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState,
-    Pose, RelaxedAtomic, ViewParams, ALVR_VERSION,
+    wait_rwlock, warn,
 };
 use alvr_packets::{
-    ClientConnectionResult, ClientControlPacket, ClientStatistics, Haptics, RealTimeConfig,
-    ServerControlPacket, StreamConfigPacket, Tracking, VideoPacketHeader,
-    VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
+    AUDIO, ClientConnectionResult, ClientControlPacket, ClientStatistics, HAPTICS, Haptics,
+    RealTimeConfig, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, Tracking, VIDEO,
+    VideoPacketHeader, VideoStreamingCapabilities,
 };
-use alvr_session::{settings_schema::Switch, SocketProtocol};
+use alvr_session::{SocketProtocol, settings_schema::Switch};
 use alvr_sockets::{
-    ControlSocketSender, PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder,
-    KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT,
+    ControlSocketSender, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, PeerType, ProtoControlSocket,
+    StreamSender, StreamSocketBuilder,
 };
 use std::{
     collections::VecDeque,
-    sync::{mpsc, Arc},
+    sync::{Arc, mpsc},
     thread,
     time::{Duration, Instant},
 };

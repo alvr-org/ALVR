@@ -13,7 +13,7 @@ use dependencies::OpenXRLoadersSelection;
 use packaging::ReleaseFlavor;
 use pico_args::Arguments;
 use std::{fs, process, time::Instant};
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 const HELP_STR: &str = r#"
 cargo xtask

@@ -29,8 +29,8 @@ fn main() {
     use alvr_common::ALVR_VERSION;
     use alvr_filesystem as afs;
     use eframe::{
-        egui::{IconData, ViewportBuilder},
         NativeOptions,
+        egui::{IconData, ViewportBuilder},
     };
     use ico::IconDir;
     use std::{env, ffi::OsStr, fs};

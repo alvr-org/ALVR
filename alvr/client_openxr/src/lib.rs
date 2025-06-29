@@ -10,11 +10,10 @@ use crate::stream::ParsedStreamConfig;
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::settings_schema::Switch;
 use alvr_common::{
-    error,
+    Fov, HAND_LEFT_ID, Pose, error,
     glam::{Quat, UVec2, Vec3},
     info,
     parking_lot::RwLock,
-    Fov, Pose, HAND_LEFT_ID,
 };
 use alvr_graphics::GraphicsContext;
 use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig};
@@ -343,7 +342,7 @@ pub fn entry_point() {
                             xr_session.end().unwrap();
                         }
                         xr::SessionState::EXITING | xr::SessionState::LOSS_PENDING => {
-                            break 'render_loop
+                            break 'render_loop;
                         }
                         _ => (),
                     },

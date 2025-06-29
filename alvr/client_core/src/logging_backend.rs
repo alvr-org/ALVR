@@ -1,8 +1,8 @@
 use alvr_common::{
+    DebugGroupsConfig, LogSeverity, OptLazy,
     log::{Level, Record},
     once_cell::sync::Lazy,
     parking_lot::Mutex,
-    DebugGroupsConfig, LogSeverity, OptLazy,
 };
 use alvr_packets::ClientControlPacket;
 use std::{

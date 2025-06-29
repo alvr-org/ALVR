@@ -18,11 +18,11 @@ mod audio;
 pub mod video_decoder;
 
 use alvr_common::{
-    dbg_client_core, error,
+    ConnectionState, DeviceMotion, Fov, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID, LifecycleState, Pose,
+    ViewParams, dbg_client_core, error,
     glam::{Quat, UVec2, Vec2, Vec3},
     parking_lot::{Mutex, RwLock},
-    warn, ConnectionState, DeviceMotion, Fov, LifecycleState, Pose, ViewParams, HAND_LEFT_ID,
-    HAND_RIGHT_ID, HEAD_ID,
+    warn,
 };
 use alvr_packets::{
     BatteryInfo, ButtonEntry, ClientControlPacket, FaceData, RealTimeConfig,

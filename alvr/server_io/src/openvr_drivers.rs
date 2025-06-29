@@ -1,7 +1,7 @@
 use crate::openvrpaths;
 use alvr_common::{
-    anyhow::{bail, Result},
     ToAny,
+    anyhow::{Result, bail},
 };
 use serde_json as json;
 use std::{

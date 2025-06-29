@@ -1,6 +1,6 @@
 use alvr_audio::AudioDevice;
 use alvr_common::{
-    anyhow::{bail, Result},
+    anyhow::{Result, bail},
     parking_lot::Mutex,
 };
 use alvr_session::AudioBufferingConfig;
@@ -12,7 +12,7 @@ use ndk::audio::{
 use std::{
     collections::VecDeque,
     mem, slice,
-    sync::{mpsc, Arc},
+    sync::{Arc, mpsc},
     time::Duration,
 };
 

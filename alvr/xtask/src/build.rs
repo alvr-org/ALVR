@@ -7,7 +7,7 @@ use std::{
     path::PathBuf,
     vec,
 };
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 #[derive(Clone, Copy)]
 pub enum Profile {

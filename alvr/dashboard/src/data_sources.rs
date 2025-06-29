@@ -1,8 +1,8 @@
 use alvr_common::{
-    debug, error, info,
+    ALVR_VERSION, RelaxedAtomic, debug, error, info,
     parking_lot::Mutex,
     semver::{Version, VersionReq},
-    warn, RelaxedAtomic, ALVR_VERSION,
+    warn,
 };
 use alvr_events::{Event, EventType};
 use alvr_packets::ServerRequest;
@@ -12,7 +12,7 @@ use std::{
     io::ErrorKind,
     net::{SocketAddr, TcpStream},
     str::FromStr,
-    sync::{mpsc, Arc},
+    sync::{Arc, mpsc},
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
@@ -296,7 +296,9 @@ impl DataSources {
                                 | ServerRequest::InsertIdr
                                 | ServerRequest::StartRecording
                                 | ServerRequest::StopRecording => {
-                                    warn!("Cannot perform action, streamer (SteamVR) is not connected.")
+                                    warn!(
+                                        "Cannot perform action, streamer (SteamVR) is not connected."
+                                    )
                                 }
                                 ServerRequest::RestartSteamvr | ServerRequest::ShutdownSteamvr => {
                                     warn!("Streamer not launched, can't signal SteamVR shutdown")
@@ -415,7 +417,9 @@ impl DataSources {
                         let matches = version == *alvr_common::ALVR_VERSION;
 
                         if !matches {
-                            error!("Server version mismatch: found {version}. Please remove all previous ALVR installations");
+                            error!(
+                                "Server version mismatch: found {version}. Please remove all previous ALVR installations"
+                            );
                         }
 
                         matches

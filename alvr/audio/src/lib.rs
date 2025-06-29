@@ -8,17 +8,17 @@ pub mod linux;
 pub use crate::windows::*;
 
 use alvr_common::{
-    anyhow::{self, anyhow, bail, Context, Result},
+    ConnectionError, ToAny,
+    anyhow::{self, Context, Result, anyhow, bail},
     info,
     once_cell::sync::Lazy,
     parking_lot::Mutex,
-    ConnectionError, ToAny,
 };
 use alvr_session::{AudioBufferingConfig, CustomAudioDeviceConfig, MicrophoneDevicesConfig};
 use alvr_sockets::{StreamReceiver, StreamSender};
 use cpal::{
-    traits::{DeviceTrait, HostTrait, StreamTrait},
     BufferSize, Device, Host, Sample, SampleFormat, StreamConfig,
+    traits::{DeviceTrait, HostTrait, StreamTrait},
 };
 use rodio::{OutputStream, Source};
 use std::{

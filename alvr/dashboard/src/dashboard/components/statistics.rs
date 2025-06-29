@@ -1,10 +1,10 @@
-use crate::dashboard::{theme::graph_colors, ServerRequest};
+use crate::dashboard::{ServerRequest, theme::graph_colors};
 use alvr_events::{GraphStatistics, StatisticsSummary};
 use alvr_gui_common::theme;
 use eframe::{
     egui::{
-        popup, pos2, vec2, Align2, Color32, CornerRadius, FontId, Frame, Grid, Id, Painter, Rect,
-        RichText, ScrollArea, Shape, Stroke, Ui,
+        Align2, Color32, CornerRadius, FontId, Frame, Grid, Id, Painter, Rect, RichText,
+        ScrollArea, Shape, Stroke, Ui, popup, pos2, vec2,
     },
     emath::RectTransform,
     epaint::Pos2,

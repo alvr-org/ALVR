@@ -3,7 +3,7 @@ use crate::{
     graphics::{self, ProjectionLayerAlphaConfig, ProjectionLayerBuilder},
     interaction::{self, InteractionContext},
 };
-use alvr_common::{glam::UVec2, parking_lot::RwLock, Pose};
+use alvr_common::{Pose, glam::UVec2, parking_lot::RwLock};
 use alvr_graphics::{
     BodyTrackingType, GraphicsContext, LobbyRenderer, LobbyViewParams, SDR_FORMAT_GL,
 };

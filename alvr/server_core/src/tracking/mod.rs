@@ -7,23 +7,23 @@ pub use face::*;
 pub use vmc::*;
 
 use crate::{
+    ConnectionContext, SESSION_MANAGER, ServerCoreEvent,
     connection::STREAMING_RECV_TIMEOUT,
-    hand_gestures::{self, HandGestureManager, HAND_GESTURE_BUTTON_SET},
+    hand_gestures::{self, HAND_GESTURE_BUTTON_SET, HandGestureManager},
     input_mapping::ButtonMappingManager,
-    ConnectionContext, ServerCoreEvent, SESSION_MANAGER,
 };
 use alvr_common::{
+    BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID,
+    BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, ConnectionError,
+    DEVICE_ID_TO_PATH, DeviceMotion, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID, Pose,
     glam::{EulerRot, Quat, Vec3},
     parking_lot::Mutex,
-    ConnectionError, DeviceMotion, Pose, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID,
-    BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID,
-    BODY_RIGHT_KNEE_ID, DEVICE_ID_TO_PATH, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
 use alvr_events::{EventType, TrackingEvent};
 use alvr_packets::{FaceData, Tracking};
 use alvr_session::{
-    settings_schema::Switch, BodyTrackingConfig, HeadsetConfig, PositionRecenteringMode,
-    RotationRecenteringMode, Settings, VMCConfig,
+    BodyTrackingConfig, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode, Settings,
+    VMCConfig, settings_schema::Switch,
 };
 use alvr_sockets::StreamReceiver;
 use std::{

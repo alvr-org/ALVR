@@ -1,16 +1,16 @@
 use crate::AudioDevice;
-use alvr_common::anyhow::{bail, Result};
+use alvr_common::anyhow::{Result, bail};
 use rodio::DeviceTrait;
 use windows::{
-    core::GUID,
     Win32::{
         Devices::FunctionDiscovery::PKEY_Device_FriendlyName,
         Media::Audio::{
-            eAll, Endpoints::IAudioEndpointVolume, IMMDevice, IMMDeviceEnumerator,
-            MMDeviceEnumerator, DEVICE_STATE_ACTIVE,
+            DEVICE_STATE_ACTIVE, Endpoints::IAudioEndpointVolume, IMMDevice, IMMDeviceEnumerator,
+            MMDeviceEnumerator, eAll,
         },
         System::Com::{self, CLSCTX_ALL, COINIT_MULTITHREADED, STGM_READ},
     },
+    core::GUID,
 };
 
 fn get_windows_device(device: &AudioDevice) -> Result<IMMDevice> {

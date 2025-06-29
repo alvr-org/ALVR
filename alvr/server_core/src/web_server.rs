@@ -1,10 +1,11 @@
 use crate::{
-    logging_backend::LOGGING_EVENTS_SENDER, ConnectionContext, ServerCoreEvent, FILESYSTEM_LAYOUT,
-    SESSION_MANAGER,
+    ConnectionContext, FILESYSTEM_LAYOUT, SESSION_MANAGER, ServerCoreEvent,
+    logging_backend::LOGGING_EVENTS_SENDER,
 };
 use alvr_common::{
+    ConnectionState,
     anyhow::{self, Result},
-    error, info, log, ConnectionState,
+    error, info, log,
 };
 use alvr_events::{ButtonEvent, EventType};
 use alvr_packets::{ButtonEntry, ClientListAction, ServerRequest};
@@ -15,16 +16,17 @@ use headers::{
     AccessControlRequestMethod, HeaderMapExt,
 };
 use hyper::{
+    Body, Method, Request, Response, StatusCode,
     header::{
-        self, HeaderName, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_TYPE,
+        self, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_TYPE, HeaderName, HeaderValue,
     },
-    service, Body, Method, Request, Response, StatusCode,
+    service,
 };
 use serde::de::DeserializeOwned;
 use serde_json as json;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::broadcast::{self, error::RecvError};
-use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
+use tokio_tungstenite::{WebSocketStream, tungstenite::protocol};
 
 pub const WS_BROADCAST_CAPACITY: usize = 256;
 

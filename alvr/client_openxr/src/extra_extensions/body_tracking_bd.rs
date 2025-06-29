@@ -1,7 +1,7 @@
 use crate::extra_extensions::get_instance_proc;
 use alvr_common::once_cell::sync::Lazy;
-use openxr::{self as xr, sys, AnyGraphics};
-use std::ffi::{c_char, c_void, CString};
+use openxr::{self as xr, AnyGraphics, sys};
+use std::ffi::{CString, c_char, c_void};
 use std::ptr;
 
 pub const BD_BODY_TRACKING_EXTENSION_NAME: &str = "XR_BD_body_tracking";

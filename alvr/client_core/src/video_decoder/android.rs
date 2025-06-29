@@ -1,9 +1,10 @@
 use super::VideoDecoderConfig;
 use alvr_common::{
-    anyhow::{anyhow, bail, Context, Result},
+    RelaxedAtomic, ToAny,
+    anyhow::{Context, Result, anyhow, bail},
     error, info,
     parking_lot::{Condvar, Mutex},
-    warn, RelaxedAtomic, ToAny,
+    warn,
 };
 use alvr_session::{CodecType, MediacodecPropType};
 use ndk::{

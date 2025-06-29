@@ -1,15 +1,15 @@
 use crate::extra_extensions::MotionTrackerBD;
 use crate::{
-    extra_extensions::{
-        self, BodyJointSetBD, BodyTrackerBD, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB,
-        FaceTrackerPico, FacialTrackerHTC, MultimodalMeta, BODY_JOINT_LEFT_ELBOW_BD,
-        BODY_JOINT_LEFT_FOOT_BD, BODY_JOINT_LEFT_KNEE_BD, BODY_JOINT_PELVIS_BD,
-        BODY_JOINT_RIGHT_ELBOW_BD, BODY_JOINT_RIGHT_FOOT_BD, BODY_JOINT_RIGHT_KNEE_BD,
-        BODY_JOINT_SET_FULL_BODY_META, BODY_JOINT_SPINE3_BD, FULL_BODY_JOINT_COUNT_META,
-        FULL_BODY_JOINT_LEFT_FOOT_BALL_META, FULL_BODY_JOINT_LEFT_LOWER_LEG_META,
-        FULL_BODY_JOINT_RIGHT_FOOT_BALL_META, FULL_BODY_JOINT_RIGHT_LOWER_LEG_META,
-    },
     Platform,
+    extra_extensions::{
+        self, BODY_JOINT_LEFT_ELBOW_BD, BODY_JOINT_LEFT_FOOT_BD, BODY_JOINT_LEFT_KNEE_BD,
+        BODY_JOINT_PELVIS_BD, BODY_JOINT_RIGHT_ELBOW_BD, BODY_JOINT_RIGHT_FOOT_BD,
+        BODY_JOINT_RIGHT_KNEE_BD, BODY_JOINT_SET_FULL_BODY_META, BODY_JOINT_SPINE3_BD,
+        BodyJointSetBD, BodyTrackerBD, BodyTrackerFB, EyeTrackerSocial, FULL_BODY_JOINT_COUNT_META,
+        FULL_BODY_JOINT_LEFT_FOOT_BALL_META, FULL_BODY_JOINT_LEFT_LOWER_LEG_META,
+        FULL_BODY_JOINT_RIGHT_FOOT_BALL_META, FULL_BODY_JOINT_RIGHT_LOWER_LEG_META, FaceTracker2FB,
+        FaceTrackerPico, FacialTrackerHTC, MultimodalMeta,
+    },
 };
 use alvr_common::{
     glam::{Quat, Vec3},

@@ -1,41 +1,41 @@
 use crate::{
+    ConnectionContext, FILESYSTEM_LAYOUT, SESSION_MANAGER, ServerCoreEvent, ViewsConfig,
     bitrate::BitrateManager,
     hand_gestures::HandGestureManager,
     input_mapping::ButtonMappingManager,
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
-    ConnectionContext, ServerCoreEvent, ViewsConfig, FILESYSTEM_LAYOUT, SESSION_MANAGER,
 };
 use alvr_adb::{WiredConnection, WiredConnectionStatus};
 use alvr_common::{
-    con_bail, dbg_connection, debug, error,
+    AnyhowToCon, BUTTON_INFO, CONTROLLER_PROFILE_INFO, ConResult, ConnectionError, ConnectionState,
+    LifecycleState, Pose, QUEST_CONTROLLER_PROFILE_PATH, con_bail, dbg_connection, debug, error,
     glam::{Quat, UVec2, Vec2, Vec3},
     info,
     parking_lot::{Condvar, Mutex, RwLock},
     settings_schema::Switch,
-    warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, Pose,
-    BUTTON_INFO, CONTROLLER_PROFILE_INFO, QUEST_CONTROLLER_PROFILE_PATH,
+    warn,
 };
 use alvr_events::{AdbEvent, ButtonEvent, EventType};
 use alvr_packets::{
-    ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
-    NegotiatedStreamingConfig, RealTimeConfig, ReservedClientControlPacket, ServerControlPacket,
-    Tracking, VideoPacketHeader, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
+    AUDIO, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
+    HAPTICS, NegotiatedStreamingConfig, RealTimeConfig, ReservedClientControlPacket, STATISTICS,
+    ServerControlPacket, TRACKING, Tracking, VIDEO, VideoPacketHeader,
 };
 use alvr_session::{
     BodyTrackingBDConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize,
     H264Profile, OpenvrConfig, SessionConfig, SocketProtocol,
 };
 use alvr_sockets::{
-    PeerType, ProtoControlSocket, StreamSocketBuilder, CONTROL_PORT, KEEPALIVE_INTERVAL,
-    KEEPALIVE_TIMEOUT, WIRED_CLIENT_HOSTNAME,
+    CONTROL_PORT, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, PeerType, ProtoControlSocket,
+    StreamSocketBuilder, WIRED_CLIENT_HOSTNAME,
 };
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr},
     process::Command,
-    sync::{mpsc::RecvTimeoutError, Arc},
+    sync::{Arc, mpsc::RecvTimeoutError},
     thread,
     time::{Duration, Instant},
 };
@@ -537,7 +537,9 @@ fn connection_pipeline(
     let connection_result = match proto_socket.recv(HANDSHAKE_ACTION_TIMEOUT) {
         Ok(r) => r,
         Err(ConnectionError::TryAgain(e)) => {
-            debug!("Failed to recive client connection packet. This is normal for USB connection.\n{e}");
+            debug!(
+                "Failed to recive client connection packet. This is normal for USB connection.\n{e}"
+            );
 
             return Ok(());
         }
@@ -1304,16 +1306,17 @@ fn connection_pipeline(
                         info!("Client {client_hostname}: [{level:?}] {message}")
                     }
                     ClientControlPacket::Reserved(json_string) => {
-                        let reserved: ReservedClientControlPacket =
-                            match serde_json::from_str(&json_string) {
-                                Ok(reserved) => reserved,
-                                Err(e) => {
-                                    info!(
+                        let reserved: ReservedClientControlPacket = match serde_json::from_str(
+                            &json_string,
+                        ) {
+                            Ok(reserved) => reserved,
+                            Err(e) => {
+                                info!(
                                     "Failed to parse reserved packet: {e}. Packet: {json_string}"
                                 );
-                                    continue;
-                                }
-                            };
+                                continue;
+                            }
+                        };
 
                         match reserved {
                             ReservedClientControlPacket::CustomInteractionProfile {

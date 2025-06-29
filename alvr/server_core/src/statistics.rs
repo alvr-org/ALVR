@@ -1,4 +1,4 @@
-use alvr_common::{SlidingWindowAverage, HEAD_ID};
+use alvr_common::{HEAD_ID, SlidingWindowAverage};
 use alvr_events::{BitrateDirectives, EventType, GraphStatistics, StatisticsSummary};
 use alvr_packets::ClientStatistics;
 use std::{

@@ -1,4 +1,4 @@
-use super::{reset, NestingInfo};
+use super::{NestingInfo, reset};
 use crate::dashboard::components::f64_eq;
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{NumberType, NumericGuiType};

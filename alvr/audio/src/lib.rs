@@ -182,7 +182,9 @@ impl AudioDevice {
 }
 
 pub fn is_same_device(device1: &AudioDevice, device2: &AudioDevice) -> bool {
-    if let (Ok(name1), Ok(name2)) = (device1.inner.name(), device2.inner.name()) {
+    if let Ok(name1) = device1.inner.name()
+        && let Ok(name2) = device2.inner.name()
+    {
         name1 == name2
     } else {
         false

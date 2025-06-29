@@ -431,14 +431,13 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                         .client_list()
                         .get(&client_hostname)
                         .is_some_and(|c| c.connection_state == ConnectionState::Disconnected)
-                {
-                    if let Err(e) = try_connect(
+                    && let Err(e) = try_connect(
                         Arc::clone(&ctx),
                         Arc::clone(&lifecycle_state),
                         [(client_ip, client_hostname.clone())].into_iter().collect(),
-                    ) {
-                        error!("Could not initiate connection for {client_hostname}: {e}");
-                    }
+                    )
+                {
+                    error!("Could not initiate connection for {client_hostname}: {e}");
                 }
 
                 thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
@@ -738,27 +737,26 @@ fn connection_pipeline(
         {
             let game_audio_device =
                 alvr_audio::AudioDevice::new_output(game_audio_config.device.as_ref()).to_con()?;
-            if let Switch::Enabled(microphone_config) = &initial_settings.audio.microphone {
+
+            if let Switch::Enabled(microphone_config) = &initial_settings.audio.microphone
+                && matches!(
+                    microphone_config.devices,
+                    alvr_session::MicrophoneDevicesConfig::VAC
+                        | alvr_session::MicrophoneDevicesConfig::VBCable
+                )
+            {
                 let (sink, source) = alvr_audio::AudioDevice::new_virtual_microphone_pair(
                     microphone_config.devices.clone(),
                 )
                 .to_con()?;
-                if matches!(
-                    microphone_config.devices,
-                    alvr_session::MicrophoneDevicesConfig::VAC
-                        | alvr_session::MicrophoneDevicesConfig::VBCable
-                ) {
-                    // VoiceMeeter and Custom devices may have arbitrary internal routing.
-                    // Therefore, we cannot detect the loopback issue without knowing the routing.
-                    if alvr_audio::is_same_device(&game_audio_device, &sink)
-                        || alvr_audio::is_same_device(&game_audio_device, &source)
-                    {
-                        con_bail!("Game audio and microphone cannot point to the same device!");
-                    }
+
+                // VoiceMeeter and Custom devices may have arbitrary internal routing.
+                // Therefore, we cannot detect the loopback issue without knowing the routing.
+                if alvr_audio::is_same_device(&game_audio_device, &sink)
+                    || alvr_audio::is_same_device(&game_audio_device, &source)
+                {
+                    con_bail!("Game audio and microphone cannot point to the same device!");
                 }
-                // else:
-                // Stream played via VA-CABLE-X will be directly routed to VA-CABLE-X's virtual microphone.
-                // Game audio will loop back to the game microphone if they are set to the same VA-CABLE-X device.
             }
 
             game_audio_device.input_sample_rate().to_con()?
@@ -1286,10 +1284,10 @@ fn connection_pipeline(
                         {
                             if let Some(mappings) = &config.button_mappings {
                                 Some(ButtonMappingManager::new_manual(mappings))
-                            } else if let (Some(profile_info), Some(emulation_mode)) = (
-                                CONTROLLER_PROFILE_INFO.get(&profile_id),
-                                &controllers_emulation_mode,
-                            ) {
+                            } else if let Some(profile_info) =
+                                CONTROLLER_PROFILE_INFO.get(&profile_id)
+                                && let Some(emulation_mode) = &controllers_emulation_mode
+                            {
                                 Some(ButtonMappingManager::new_automatic(
                                     &profile_info.button_set,
                                     emulation_mode,

@@ -207,19 +207,18 @@ async fn http_api(
                         mut action,
                     } => {
                         let mut session_manager = SESSION_MANAGER.write();
-                        if matches!(action, ClientListAction::RemoveEntry) {
-                            if let Some(entry) = session_manager.client_list().get(&hostname) {
-                                if entry.connection_state != ConnectionState::Disconnected {
-                                    connection_context
-                                        .clients_to_be_removed
-                                        .lock()
-                                        .insert(hostname.clone());
+                        if matches!(action, ClientListAction::RemoveEntry)
+                            && let Some(entry) = session_manager.client_list().get(&hostname)
+                            && entry.connection_state != ConnectionState::Disconnected
+                        {
+                            connection_context
+                                .clients_to_be_removed
+                                .lock()
+                                .insert(hostname.clone());
 
-                                    action = ClientListAction::SetConnectionState(
-                                        ConnectionState::Disconnecting,
-                                    )
-                                };
-                            }
+                            action = ClientListAction::SetConnectionState(
+                                ConnectionState::Disconnecting,
+                            );
                         }
 
                         session_manager.update_client_list(hostname, action);

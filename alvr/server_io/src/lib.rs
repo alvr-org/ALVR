@@ -249,21 +249,21 @@ impl ServerSessionManager {
                 }
             }
             ClientListAction::UpdateCurrentIp(current_ip) => {
-                if let Entry::Occupied(mut entry) = maybe_client_entry {
-                    if entry.get().current_ip != current_ip {
-                        entry.get_mut().current_ip = current_ip;
+                if let Entry::Occupied(mut entry) = maybe_client_entry
+                    && entry.get().current_ip != current_ip
+                {
+                    entry.get_mut().current_ip = current_ip;
 
-                        updated = true;
-                    }
+                    updated = true;
                 }
             }
             ClientListAction::SetConnectionState(state) => {
-                if let Entry::Occupied(mut entry) = maybe_client_entry {
-                    if entry.get().connection_state != state {
-                        entry.get_mut().connection_state = state;
+                if let Entry::Occupied(mut entry) = maybe_client_entry
+                    && entry.get().connection_state != state
+                {
+                    entry.get_mut().connection_state = state;
 
-                        updated = true;
-                    }
+                    updated = true;
                 }
             }
         }

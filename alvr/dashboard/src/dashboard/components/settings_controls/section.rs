@@ -114,14 +114,14 @@ impl Control {
                         label_res.on_hover_text(&*entry.id);
                     }
 
-                    if let Some(string) = &entry.help {
-                        if ui.colored_label(INFO_LIGHT, "❓").hovered() {
-                            alvr_gui_common::tooltip(
-                                ui,
-                                &format!("{}_help_tooltip", entry.id.display),
-                                string,
-                            );
-                        }
+                    if let Some(string) = &entry.help
+                        && ui.colored_label(INFO_LIGHT, "❓").hovered()
+                    {
+                        alvr_gui_common::tooltip(
+                            ui,
+                            &format!("{}_help_tooltip", entry.id.display),
+                            string,
+                        );
                     }
                     if entry.steamvr_restart_flag && ui.colored_label(WARNING_LIGHT, "⚠").hovered()
                     {

@@ -20,10 +20,10 @@ impl NewVersionPopup {
         let mut launcher_path = None;
 
         let layout = crate::get_filesystem_layout();
-        if let Some(path) = layout.launcher_exe() {
-            if path.exists() {
-                launcher_path = Some(path);
-            }
+        if let Some(path) = layout.launcher_exe()
+            && path.exists()
+        {
+            launcher_path = Some(path);
         }
 
         Self {
@@ -90,19 +90,19 @@ impl NewVersionPopup {
 
         if let Some(button) = result {
             if button == no_remind_button {
-                return Some(CloseAction::CloseWithRequest(ServerRequest::SetValues(
+                Some(CloseAction::CloseWithRequest(ServerRequest::SetValues(
                     vec![PathValuePair {
                         path: alvr_packets::parse_path(
                             "session_settings.extra.new_version_popup.content.hide_while_version",
                         ),
                         value: serde_json::Value::String(self.version.clone()),
                     }],
-                )));
+                )))
             } else {
-                return Some(CloseAction::Close);
+                Some(CloseAction::Close)
             }
+        } else {
+            None
         }
-
-        None
     }
 }

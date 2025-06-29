@@ -52,13 +52,11 @@ pub fn play_microphone_loop_pipewire(
     });
 
     while running() {
-        let stream_audio = {
-            || {
-                if let Some(stream_state) = pw_stream_state_arc.try_lock() {
-                    *stream_state == StreamState::Streaming && running()
-                } else {
-                    false
-                }
+        let stream_audio = || {
+            if let Some(stream_state) = pw_stream_state_arc.try_lock() {
+                *stream_state == StreamState::Streaming && running()
+            } else {
+                false
             }
         };
         let receive_samples_buffer_arc = Arc::clone(&receive_samples_buffer_arc);

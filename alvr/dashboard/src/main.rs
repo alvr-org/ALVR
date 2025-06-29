@@ -39,10 +39,10 @@ fn main() {
     // Kill any other dashboard instance
     let self_path = std::env::current_exe().unwrap();
     for proc in sysinfo::System::new_all().processes_by_name(OsStr::new(&afs::dashboard_fname())) {
-        if let Some(other_path) = proc.exe() {
-            if other_path != self_path {
-                proc.kill();
-            }
+        if let Some(other_path) = proc.exe()
+            && other_path != self_path
+        {
+            proc.kill();
         }
     }
 

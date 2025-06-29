@@ -335,61 +335,59 @@ pub extern "C" fn alvr_pause() {
 /// Returns true if there was a new event
 #[unsafe(no_mangle)]
 pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
-    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
-        if let Some(event) = context.poll_event() {
-            let event = match event {
-                ClientCoreEvent::UpdateHudMessage(message) => {
-                    *HUD_MESSAGE.lock() = message;
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock()
+        && let Some(event) = context.poll_event()
+    {
+        let event = match event {
+            ClientCoreEvent::UpdateHudMessage(message) => {
+                *HUD_MESSAGE.lock() = message;
 
-                    AlvrEvent::HudMessageUpdated
+                AlvrEvent::HudMessageUpdated
+            }
+            ClientCoreEvent::StreamingStarted(stream_config) => {
+                *SETTINGS.lock() = serde_json::to_string(&stream_config.settings).unwrap();
+                *SERVER_VERSION.lock() = stream_config.server_version.to_string();
+
+                AlvrEvent::StreamingStarted {
+                    view_width: stream_config.negotiated_config.view_resolution.x,
+                    view_height: stream_config.negotiated_config.view_resolution.y,
+                    refresh_rate_hint: stream_config.negotiated_config.refresh_rate_hint,
+                    encoding_gamma: stream_config.negotiated_config.encoding_gamma,
+                    enable_foveated_encoding: stream_config
+                        .negotiated_config
+                        .enable_foveated_encoding,
+                    enable_hdr: stream_config.negotiated_config.enable_hdr,
                 }
-                ClientCoreEvent::StreamingStarted(stream_config) => {
-                    *SETTINGS.lock() = serde_json::to_string(&stream_config.settings).unwrap();
-                    *SERVER_VERSION.lock() = stream_config.server_version.to_string();
+            }
+            ClientCoreEvent::StreamingStopped => AlvrEvent::StreamingStopped,
+            ClientCoreEvent::Haptics {
+                device_id,
+                duration,
+                frequency,
+                amplitude,
+            } => AlvrEvent::Haptics {
+                device_id,
+                duration_s: duration.as_secs_f32(),
+                frequency,
+                amplitude,
+            },
+            ClientCoreEvent::DecoderConfig { codec, config_nal } => {
+                *DECODER_CONFIG_BUFFER.lock() = config_nal;
 
-                    AlvrEvent::StreamingStarted {
-                        view_width: stream_config.negotiated_config.view_resolution.x,
-                        view_height: stream_config.negotiated_config.view_resolution.y,
-                        refresh_rate_hint: stream_config.negotiated_config.refresh_rate_hint,
-                        encoding_gamma: stream_config.negotiated_config.encoding_gamma,
-                        enable_foveated_encoding: stream_config
-                            .negotiated_config
-                            .enable_foveated_encoding,
-                        enable_hdr: stream_config.negotiated_config.enable_hdr,
-                    }
+                AlvrEvent::DecoderConfig {
+                    codec: match codec {
+                        CodecType::H264 => AlvrCodec::H264,
+                        CodecType::Hevc => AlvrCodec::Hevc,
+                        CodecType::AV1 => AlvrCodec::AV1,
+                    },
                 }
-                ClientCoreEvent::StreamingStopped => AlvrEvent::StreamingStopped,
-                ClientCoreEvent::Haptics {
-                    device_id,
-                    duration,
-                    frequency,
-                    amplitude,
-                } => AlvrEvent::Haptics {
-                    device_id,
-                    duration_s: duration.as_secs_f32(),
-                    frequency,
-                    amplitude,
-                },
-                ClientCoreEvent::DecoderConfig { codec, config_nal } => {
-                    *DECODER_CONFIG_BUFFER.lock() = config_nal;
+            }
+            ClientCoreEvent::RealTimeConfig(_) => AlvrEvent::RealTimeConfig {},
+        };
 
-                    AlvrEvent::DecoderConfig {
-                        codec: match codec {
-                            CodecType::H264 => AlvrCodec::H264,
-                            CodecType::Hevc => AlvrCodec::Hevc,
-                            CodecType::AV1 => AlvrCodec::AV1,
-                        },
-                    }
-                }
-                ClientCoreEvent::RealTimeConfig(_) => AlvrEvent::RealTimeConfig {},
-            };
+        unsafe { *out_event = event };
 
-            unsafe { *out_event = event };
-
-            true
-        } else {
-            false
-        }
+        true
     } else {
         false
     }
@@ -1028,17 +1026,15 @@ pub extern "C" fn alvr_get_frame(
     out_timestamp_ns: *mut u64,
     out_buffer_ptr: *mut *mut c_void,
 ) -> bool {
-    if let Some(source) = &mut *DECODER_SOURCE.lock() {
-        if let Some((timestamp, buffer_ptr)) = source.get_frame() {
-            unsafe {
-                *out_timestamp_ns = timestamp.as_nanos() as u64;
-                *out_buffer_ptr = buffer_ptr;
-            }
-
-            true
-        } else {
-            false
+    if let Some(source) = &mut *DECODER_SOURCE.lock()
+        && let Some((timestamp, buffer_ptr)) = source.get_frame()
+    {
+        unsafe {
+            *out_timestamp_ns = timestamp.as_nanos() as u64;
+            *out_buffer_ptr = buffer_ptr;
         }
+
+        true
     } else {
         false
     }

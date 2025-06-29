@@ -125,34 +125,31 @@ impl StreamContext {
                 .unwrap();
         }
 
-        let foveation_profile = if let Some(config) = &config.clientside_foveation_config {
-            if xr_exts.fb_swapchain_update_state.is_some()
-                && xr_exts.fb_foveation.is_some()
-                && xr_exts.fb_foveation_configuration.is_some()
-            {
-                let level;
-                let dynamic;
-                match config.mode {
-                    ClientsideFoveationMode::Static { level: lvl } => {
-                        level = lvl;
-                        dynamic = false;
-                    }
-                    ClientsideFoveationMode::Dynamic { max_level } => {
-                        level = max_level;
-                        dynamic = true;
-                    }
-                };
+        let foveation_profile = if let Some(config) = &config.clientside_foveation_config
+            && xr_exts.fb_swapchain_update_state.is_some()
+            && xr_exts.fb_foveation.is_some()
+            && xr_exts.fb_foveation_configuration.is_some()
+        {
+            let level;
+            let dynamic;
+            match config.mode {
+                ClientsideFoveationMode::Static { level: lvl } => {
+                    level = lvl;
+                    dynamic = false;
+                }
+                ClientsideFoveationMode::Dynamic { max_level } => {
+                    level = max_level;
+                    dynamic = true;
+                }
+            };
 
-                xr_session
-                    .create_foveation_profile(Some(xr::FoveationLevelProfile {
-                        level: xr::FoveationLevelFB::from_raw(level as i32),
-                        vertical_offset: config.vertical_offset_deg,
-                        dynamic: xr::FoveationDynamicFB::from_raw(dynamic as i32),
-                    }))
-                    .ok()
-            } else {
-                None
-            }
+            xr_session
+                .create_foveation_profile(Some(xr::FoveationLevelProfile {
+                    level: xr::FoveationLevelFB::from_raw(level as i32),
+                    vertical_offset: config.vertical_offset_deg,
+                    dynamic: xr::FoveationDynamicFB::from_raw(dynamic as i32),
+                }))
+                .ok()
         } else {
             None
         };
@@ -437,13 +434,13 @@ impl StreamContext {
         self.swapchains[0].release_image().unwrap();
         self.swapchains[1].release_image().unwrap();
 
-        if !buffer_ptr.is_null() {
-            if let Some(xr_now) = crate::xr_runtime_now(self.xr_session.instance()) {
-                self.core_context.report_submit(
-                    timestamp,
-                    vsync_time.saturating_sub(Duration::from_nanos(xr_now.as_nanos() as u64)),
-                );
-            }
+        if !buffer_ptr.is_null()
+            && let Some(xr_now) = crate::xr_runtime_now(self.xr_session.instance())
+        {
+            self.core_context.report_submit(
+                timestamp,
+                vsync_time.saturating_sub(Duration::from_nanos(xr_now.as_nanos() as u64)),
+            );
         }
 
         let rect = xr::Rect2Di {
@@ -588,15 +585,15 @@ fn stream_input_loop(
 
         // Note: When multimodal input is enabled, we are sure that when free hands are used
         // (not holding controllers) the controller data is None.
-        if int_ctx.multimodal_hands_enabled || left_hand_skeleton.is_none() {
-            if let Some(motion) = left_hand_motion {
-                device_motions.push((*HAND_LEFT_ID, motion));
-            }
+        if (int_ctx.multimodal_hands_enabled || left_hand_skeleton.is_none())
+            && let Some(motion) = left_hand_motion
+        {
+            device_motions.push((*HAND_LEFT_ID, motion));
         }
-        if int_ctx.multimodal_hands_enabled || right_hand_skeleton.is_none() {
-            if let Some(motion) = right_hand_motion {
-                device_motions.push((*HAND_RIGHT_ID, motion));
-            }
+        if (int_ctx.multimodal_hands_enabled || right_hand_skeleton.is_none())
+            && let Some(motion) = right_hand_motion
+        {
+            device_motions.push((*HAND_RIGHT_ID, motion));
         }
 
         let face_data = FaceData {

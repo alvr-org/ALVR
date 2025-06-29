@@ -380,22 +380,20 @@ impl ServerCoreContext {
                 .extra
                 .capture
                 .rolling_video_files
-            {
-                if Instant::now()
+                && Instant::now()
                     > *LAST_IDR_INSTANT.lock() + Duration::from_secs(config.duration_s)
-                {
-                    self.connection_context
-                        .events_sender
-                        .send(ServerCoreEvent::RequestIDR)
-                        .ok();
+            {
+                self.connection_context
+                    .events_sender
+                    .send(ServerCoreEvent::RequestIDR)
+                    .ok();
 
-                    if is_idr {
-                        create_recording_file(
-                            &self.connection_context,
-                            SESSION_MANAGER.read().settings(),
-                        );
-                        *LAST_IDR_INSTANT.lock() = Instant::now();
-                    }
+                if is_idr {
+                    create_recording_file(
+                        &self.connection_context,
+                        SESSION_MANAGER.read().settings(),
+                    );
+                    *LAST_IDR_INSTANT.lock() = Instant::now();
                 }
             }
 

@@ -369,12 +369,12 @@ impl DataSources {
                                 }
                             }
                             Err(e) => {
-                                if let tungstenite::Error::Io(e) = e {
-                                    if e.kind() == ErrorKind::WouldBlock {
-                                        thread::sleep(Duration::from_millis(50));
+                                if let tungstenite::Error::Io(e) = e
+                                    && e.kind() == ErrorKind::WouldBlock
+                                {
+                                    thread::sleep(Duration::from_millis(50));
 
-                                        continue;
-                                    }
+                                    continue;
                                 }
 
                                 break;

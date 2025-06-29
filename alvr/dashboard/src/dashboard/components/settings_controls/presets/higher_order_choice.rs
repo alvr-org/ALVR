@@ -143,10 +143,10 @@ impl Control {
             ui.add_space(INDENTATION_STEP);
             ui.label(&self.name);
 
-            if let Some(string) = &self.help {
-                if ui.colored_label(INFO_LIGHT, "❓").hovered() {
-                    alvr_gui_common::tooltip(ui, &format!("{}_help_tooltip", self.name), string);
-                }
+            if let Some(string) = &self.help
+                && ui.colored_label(INFO_LIGHT, "❓").hovered()
+            {
+                alvr_gui_common::tooltip(ui, &format!("{}_help_tooltip", self.name), string);
             }
             if self.steamvr_restart_flag && ui.colored_label(WARNING_LIGHT, "⚠").hovered() {
                 alvr_gui_common::tooltip(

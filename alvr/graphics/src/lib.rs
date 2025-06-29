@@ -6,16 +6,16 @@ pub use lobby::*;
 pub use stream::*;
 
 use alvr_common::{
-    glam::{Mat4, UVec2, Vec4},
     Fov,
+    glam::{Mat4, UVec2, Vec4},
 };
 use glow::{self as gl, HasContext};
 use khronos_egl as egl;
 use std::{ffi::c_void, num::NonZeroU32, ptr};
 use wgpu::{
-    hal::{self, api, MemoryFlags, TextureUses},
     Adapter, Device, Extent3d, Instance, Queue, Texture, TextureDescriptor, TextureDimension,
     TextureFormat, TextureUsages, TextureView,
+    hal::{self, MemoryFlags, TextureUses, api},
 };
 
 pub const SDR_FORMAT: TextureFormat = TextureFormat::Rgba8Unorm;
@@ -371,28 +371,32 @@ impl GraphicsContext {
         const EGL_NATIVE_BUFFER_ANDROID: u32 = 0x3140;
 
         if !buffer.is_null() {
-            let client_buffer = (self.get_native_client_buffer)(buffer);
+            let client_buffer = unsafe { (self.get_native_client_buffer)(buffer) };
             check_error(&self.gl_context, "get_native_client_buffer");
 
-            let image = (self.create_image)(
-                self.egl_display.as_ptr(),
-                egl::NO_CONTEXT,
-                EGL_NATIVE_BUFFER_ANDROID,
-                client_buffer,
-                ptr::null(),
-            );
+            let image = unsafe {
+                (self.create_image)(
+                    self.egl_display.as_ptr(),
+                    egl::NO_CONTEXT,
+                    EGL_NATIVE_BUFFER_ANDROID,
+                    client_buffer,
+                    ptr::null(),
+                )
+            };
             check_error(&self.gl_context, "create_image");
 
-            self.gl_context
-                .bind_texture(GL_TEXTURE_EXTERNAL_OES, Some(texture));
+            unsafe {
+                self.gl_context
+                    .bind_texture(GL_TEXTURE_EXTERNAL_OES, Some(texture))
+            };
             check_error(&self.gl_context, "bind texture OES");
 
-            (self.image_target_texture_2d)(GL_TEXTURE_EXTERNAL_OES, image);
+            unsafe { (self.image_target_texture_2d)(GL_TEXTURE_EXTERNAL_OES, image) };
             check_error(&self.gl_context, "image_target_texture_2d");
 
             render_cb();
 
-            (self.destroy_image)(self.egl_display.as_ptr(), image);
+            unsafe { (self.destroy_image)(self.egl_display.as_ptr(), image) };
             check_error(&self.gl_context, "destroy_image");
         }
     }

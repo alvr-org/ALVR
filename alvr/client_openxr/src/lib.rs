@@ -532,7 +532,7 @@ fn xr_runtime_now(xr_instance: &xr::Instance) -> Option<xr::Time> {
 }
 
 #[cfg(target_os = "android")]
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn android_main(app: android_activity::AndroidApp) {
     use android_activity::{InputStatus, MainEvent, PollEvent};
 

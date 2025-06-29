@@ -245,7 +245,7 @@ impl StreamRenderer {
 
     /// # Safety
     /// `hardware_buffer` must be a valid pointer to a ANativeWindowBuffer.
-    pub unsafe fn render(
+    pub fn render(
         &self,
         hardware_buffer: *mut c_void,
         view_params: [StreamViewParams; 2],

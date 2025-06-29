@@ -149,12 +149,14 @@ fn main() {
             assert!(ffmpeg_pkg_path.exists());
 
             let ffmpeg_pkg_path = ffmpeg_pkg_path.to_string_lossy().to_string();
-            env::set_var(
-                "PKG_CONFIG_PATH",
-                env::var("PKG_CONFIG_PATH").map_or(ffmpeg_pkg_path.clone(), |old| {
-                    format!("{ffmpeg_pkg_path}:{old}")
-                }),
-            );
+            unsafe {
+                env::set_var(
+                    "PKG_CONFIG_PATH",
+                    env::var("PKG_CONFIG_PATH").map_or(ffmpeg_pkg_path.clone(), |old| {
+                        format!("{ffmpeg_pkg_path}:{old}")
+                    }),
+                )
+            };
 
             let pkg = pkg_config::Config::new().statik(true).to_owned();
 

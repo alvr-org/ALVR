@@ -15,17 +15,17 @@ mod bindings {
 use bindings::*;
 
 use alvr_common::{
-    error, once_cell::sync::Lazy, parking_lot::RwLock, settings_schema::Switch, warn, BUTTON_INFO,
-    HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
+    BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
+    error, once_cell::sync::Lazy, parking_lot::RwLock, settings_schema::Switch, warn,
 };
 use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};
 use alvr_server_core::{HandType, ServerCoreContext, ServerCoreEvent};
 use alvr_session::{CodecType, ControllersConfig};
 use std::{
-    ffi::{c_char, c_void, CString, OsStr},
+    ffi::{CString, OsStr, c_char, c_void},
     ptr,
-    sync::{mpsc, Once},
+    sync::{Once, mpsc},
     thread,
     time::{Duration, Instant},
 };
@@ -420,7 +420,7 @@ pub fn should_initialize_driver(driver_layout: &afs::Layout) -> bool {
 
 /// This is the SteamVR/OpenVR entry point
 /// # Safety
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn HmdDriverFactory(
     interface_name: *const c_char,
     return_code: *mut i32,
@@ -496,5 +496,5 @@ pub unsafe extern "C" fn HmdDriverFactory(
         event_loop(events_receiver);
     });
 
-    CppOpenvrEntryPoint(interface_name, return_code)
+    unsafe { CppOpenvrEntryPoint(interface_name, return_code) }
 }

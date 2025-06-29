@@ -189,7 +189,7 @@ impl ServerCoreContext {
             .logging
             .prefer_backtrace
         {
-            env::set_var("RUST_BACKTRACE", "1");
+            unsafe { env::set_var("RUST_BACKTRACE", "1") };
         }
 
         SESSION_MANAGER.write().clean_client_list();

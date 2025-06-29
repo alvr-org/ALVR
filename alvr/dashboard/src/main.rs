@@ -68,7 +68,7 @@ fn main() {
         .map(|vendor| vendor.trim() == "Valve")
         .unwrap_or(false)
     {
-        env::set_var("WINIT_X11_SCALE_FACTOR", "1");
+        unsafe { env::set_var("WINIT_X11_SCALE_FACTOR", "1") };
     }
 
     eframe::run_native(

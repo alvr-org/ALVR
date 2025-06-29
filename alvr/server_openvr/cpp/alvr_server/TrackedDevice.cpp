@@ -83,7 +83,7 @@ void TrackedDevice::submit_pose(vr::DriverPose_t pose) {
     );
 }
 
-bool TrackedDevice::register_device() {
+bool TrackedDevice::register_device(bool await_activation) {
     if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
             this->get_serial_number().c_str(),
             this->device_class,
@@ -94,12 +94,16 @@ bool TrackedDevice::register_device() {
         return false;
     }
 
-    auto lock = std::unique_lock<std::mutex>(this->activation_mutex);
-    this->activation_condvar.wait_for(lock, std::chrono::seconds(1), [this] {
-        return this->activation_state != ActivationState::Pending;
-    });
+    if (await_activation) {
+        auto lock = std::unique_lock<std::mutex>(this->activation_mutex);
+        this->activation_condvar.wait_for(lock, std::chrono::seconds(1), [this] {
+            return this->activation_state != ActivationState::Pending;
+        });
 
-    return this->activation_state == ActivationState::Success;
+        return this->activation_state == ActivationState::Success;
+    } else {
+        return true;
+    }
 }
 
 vr::EVRInitError TrackedDevice::Activate(vr::TrackedDeviceIndex_t object_id) {

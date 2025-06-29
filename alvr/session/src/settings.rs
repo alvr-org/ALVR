@@ -1,6 +1,6 @@
 use alvr_common::{
-    DebugGroupsConfig, DebugGroupsConfigDefault, LogSeverity, LogSeverityDefault,
-    LogSeverityDefaultVariant, ALVR_VERSION,
+    ALVR_VERSION, DebugGroupsConfig, DebugGroupsConfigDefault, LogSeverity, LogSeverityDefault,
+    LogSeverityDefaultVariant,
 };
 use alvr_system_info::{ClientFlavor, ClientFlavorDefault, ClientFlavorDefaultVariant};
 use bytemuck::{Pod, Zeroable};

@@ -1,10 +1,10 @@
-use super::{collapsible, notice, NestingInfo, SettingControl, INDENTATION_STEP};
+use super::{INDENTATION_STEP, NestingInfo, SettingControl, collapsible, notice};
 use alvr_gui_common::{
-    theme::{
-        log_colors::{INFO_LIGHT, WARNING_LIGHT},
-        OK_GREEN,
-    },
     DisplayString,
+    theme::{
+        OK_GREEN,
+        log_colors::{INFO_LIGHT, WARNING_LIGHT},
+    },
 };
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{SchemaEntry, SchemaNode};

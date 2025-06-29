@@ -1,4 +1,4 @@
-use super::{reset, NestingInfo, SettingControl};
+use super::{NestingInfo, SettingControl, reset};
 use alvr_gui_common::DisplayString;
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{ChoiceControlType, SchemaEntry, SchemaNode};

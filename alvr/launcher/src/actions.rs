@@ -1,8 +1,8 @@
 use crate::{
     InstallationInfo, Progress, ReleaseChannelsInfo, ReleaseInfo, UiMessage, WorkerMessage,
 };
-use alvr_common::{anyhow::Result, semver::Version, ToAny};
-use anyhow::{bail, Context};
+use alvr_common::{ToAny, anyhow::Result, semver::Version};
+use anyhow::{Context, bail};
 use flate2::read::GzDecoder;
 use futures_util::StreamExt;
 use std::{

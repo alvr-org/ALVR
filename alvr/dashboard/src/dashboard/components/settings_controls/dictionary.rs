@@ -1,4 +1,4 @@
-use super::{reset, NestingInfo, SettingControl, INDENTATION_STEP};
+use super::{INDENTATION_STEP, NestingInfo, SettingControl, reset};
 use crate::dashboard::components::{
     collapsible,
     up_down::{self, UpDownResult},

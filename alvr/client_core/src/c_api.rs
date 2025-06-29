@@ -1,22 +1,22 @@
 #![expect(dead_code)]
 
 use crate::{
-    storage,
+    ClientCapabilities, ClientCoreContext, ClientCoreEvent, storage,
     video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
-    ClientCapabilities, ClientCoreContext, ClientCoreEvent,
 };
 use alvr_common::{
+    DeviceMotion, Fov, OptLazy, Pose, ViewParams,
     anyhow::Result,
     debug, error,
     glam::{Quat, UVec2, Vec2, Vec3},
     info,
     once_cell::sync::Lazy,
     parking_lot::Mutex,
-    warn, DeviceMotion, Fov, OptLazy, Pose, ViewParams,
+    warn,
 };
 use alvr_graphics::{
-    compute_target_view_resolution, GraphicsContext, LobbyRenderer, LobbyViewParams,
-    StreamRenderer, StreamViewParams,
+    GraphicsContext, LobbyRenderer, LobbyViewParams, StreamRenderer, StreamViewParams,
+    compute_target_view_resolution,
 };
 use alvr_packets::{ButtonEntry, ButtonValue, FaceData};
 use alvr_session::{
@@ -24,7 +24,7 @@ use alvr_session::{
 };
 use std::{
     cell::RefCell,
-    ffi::{c_char, c_void, CStr, CString},
+    ffi::{CStr, CString, c_char, c_void},
     ptr,
     rc::Rc,
     slice,
@@ -197,19 +197,19 @@ pub enum AlvrLogLevel {
     Debug,
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_initialize_logging() {
     crate::init_logging();
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn alvr_path_string_to_id(path: *const c_char) -> u64 {
-    alvr_common::hash_string(CStr::from_ptr(path).to_str().unwrap())
+#[unsafe(no_mangle)]
+pub extern "C" fn alvr_path_string_to_id(path: *const c_char) -> u64 {
+    alvr_common::hash_string(unsafe { CStr::from_ptr(path) }.to_str().unwrap())
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn alvr_log(level: AlvrLogLevel, message: *const c_char) {
-    let message = CStr::from_ptr(message).to_str().unwrap();
+#[unsafe(no_mangle)]
+pub extern "C" fn alvr_log(level: AlvrLogLevel, message: *const c_char) {
+    let message = unsafe { CStr::from_ptr(message) }.to_str().unwrap();
     match level {
         AlvrLogLevel::Error => error!("[ALVR NATIVE] {message}"),
         AlvrLogLevel::Warn => warn!("[ALVR NATIVE] {message}"),
@@ -218,21 +218,21 @@ pub unsafe extern "C" fn alvr_log(level: AlvrLogLevel, message: *const c_char) {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[cfg_attr(not(debug_assertions), expect(unused_variables))]
-pub unsafe extern "C" fn alvr_dbg_client_impl(message: *const c_char) {
-    alvr_common::dbg_client_impl!("{}", CStr::from_ptr(message).to_str().unwrap())
+pub extern "C" fn alvr_dbg_client_impl(message: *const c_char) {
+    alvr_common::dbg_client_impl!("{}", unsafe { CStr::from_ptr(message) }.to_str().unwrap())
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[cfg_attr(not(debug_assertions), expect(unused_variables))]
-pub unsafe extern "C" fn alvr_dbg_decoder(message: *const c_char) {
-    alvr_common::dbg_decoder!("{}", CStr::from_ptr(message).to_str().unwrap())
+pub extern "C" fn alvr_dbg_decoder(message: *const c_char) {
+    alvr_common::dbg_decoder!("{}", unsafe { CStr::from_ptr(message) }.to_str().unwrap())
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn alvr_log_time(tag: *const c_char) {
-    let tag = CStr::from_ptr(tag).to_str().unwrap();
+#[unsafe(no_mangle)]
+pub extern "C" fn alvr_log_time(tag: *const c_char) {
+    let tag = unsafe { CStr::from_ptr(tag) }.to_str().unwrap();
     error!("[ALVR NATIVE] {tag}: {:?}", Instant::now());
 }
 
@@ -247,51 +247,50 @@ fn string_to_c_str(buffer: *mut c_char, value: &str) -> u64 {
     cstring.as_bytes_with_nul().len() as u64
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_mdns_service(service_buffer: *mut c_char) -> u64 {
     string_to_c_str(service_buffer, alvr_sockets::MDNS_SERVICE_TYPE)
 }
 
 /// To make sure the value is correct, call after alvr_initialize()
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_hostname(hostname_buffer: *mut c_char) -> u64 {
     string_to_c_str(hostname_buffer, &storage::Config::load().hostname)
 }
 
 /// To make sure the value is correct, call after alvr_initialize()
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_protocol_id(protocol_buffer: *mut c_char) -> u64 {
     string_to_c_str(protocol_buffer, &storage::Config::load().protocol_id)
 }
 
 #[cfg(target_os = "android")]
-#[no_mangle]
-pub unsafe extern "C" fn alvr_try_get_permission(permission: *const c_char) {
-    alvr_system_info::try_get_permission(CStr::from_ptr(permission).to_str().unwrap());
+#[unsafe(no_mangle)]
+pub extern "C" fn alvr_try_get_permission(permission: *const c_char) {
+    alvr_system_info::try_get_permission(unsafe { CStr::from_ptr(permission) }.to_str().unwrap());
 }
 
 /// NB: for android, `context` must be thread safe.
 #[cfg(target_os = "android")]
-#[no_mangle]
-pub unsafe extern "C" fn alvr_initialize_android_context(
-    java_vm: *mut c_void,
-    context: *mut c_void,
-) {
-    ndk_context::initialize_android_context(java_vm, context);
+#[unsafe(no_mangle)]
+pub extern "C" fn alvr_initialize_android_context(java_vm: *mut c_void, context: *mut c_void) {
+    unsafe { ndk_context::initialize_android_context(java_vm, context) };
 }
 
 /// On android, alvr_initialize_android_context() must be called first, then alvr_initialize().
-#[no_mangle]
-pub unsafe extern "C" fn alvr_initialize(capabilities: AlvrClientCapabilities) {
+#[unsafe(no_mangle)]
+pub extern "C" fn alvr_initialize(capabilities: AlvrClientCapabilities) {
     let default_view_resolution = UVec2::new(
         capabilities.default_view_width,
         capabilities.default_view_height,
     );
 
-    let refresh_rates = slice::from_raw_parts(
-        capabilities.refresh_rates,
-        capabilities.refresh_rates_count as usize,
-    )
+    let refresh_rates = unsafe {
+        slice::from_raw_parts(
+            capabilities.refresh_rates,
+            capabilities.refresh_rates_count as usize,
+        )
+    }
     .to_vec();
 
     let capabilities = ClientCapabilities {
@@ -309,22 +308,24 @@ pub unsafe extern "C" fn alvr_initialize(capabilities: AlvrClientCapabilities) {
     *CLIENT_CORE_CONTEXT.lock() = Some(ClientCoreContext::new(capabilities));
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn alvr_destroy() {
+#[unsafe(no_mangle)]
+pub extern "C" fn alvr_destroy() {
     *CLIENT_CORE_CONTEXT.lock() = None;
 
     #[cfg(target_os = "android")]
-    ndk_context::release_android_context();
+    unsafe {
+        ndk_context::release_android_context()
+    };
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_resume() {
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
         context.resume();
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_pause() {
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
         context.pause();
@@ -332,7 +333,7 @@ pub extern "C" fn alvr_pause() {
 }
 
 /// Returns true if there was a new event
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
         if let Some(event) = context.poll_event() {
@@ -395,7 +396,7 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
 }
 
 // Returns the length of the message. message_buffer can be null.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_hud_message(message_buffer: *mut c_char) -> u64 {
     let cstring = CString::new(HUD_MESSAGE.lock().clone()).unwrap();
     if !message_buffer.is_null() {
@@ -412,19 +413,19 @@ pub extern "C" fn alvr_hud_message(message_buffer: *mut c_char) -> u64 {
 }
 
 /// Settings will be updated after receiving StreamingStarted event
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_get_settings_json(out_buffer: *mut c_char) -> u64 {
     string_to_c_str(out_buffer, &SETTINGS.lock())
 }
 
 /// Will be updated after receiving StreamingStarted event
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_get_server_version(out_buffer: *mut c_char) -> u64 {
     string_to_c_str(out_buffer, &SERVER_VERSION.lock())
 }
 
 /// Returns the number of bytes of the decoder_buffer
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_get_decoder_config(out_buffer: *mut c_char) -> u64 {
     let buffer = DECODER_CONFIG_BUFFER.lock();
 
@@ -437,28 +438,28 @@ pub extern "C" fn alvr_get_decoder_config(out_buffer: *mut c_char) -> u64 {
     size as u64
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_send_battery(device_id: u64, gauge_value: f32, is_plugged: bool) {
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
         context.send_battery(device_id, gauge_value, is_plugged);
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_send_playspace(width: f32, height: f32) {
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
         context.send_playspace(Some(Vec2::new(width, height)));
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_send_active_interaction_profile(device_id: u64, profile_id: u64) {
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
         context.send_active_interaction_profile(device_id, profile_id);
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_send_custom_interaction_profile(
     device_id: u64,
     input_ids_ptr: *const u64,
@@ -470,7 +471,7 @@ pub extern "C" fn alvr_send_custom_interaction_profile(
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_send_button(path_id: u64, value: AlvrButtonValue) {
     let value = match value {
         AlvrButtonValue::Binary(value) => ButtonValue::Binary(value),
@@ -485,7 +486,7 @@ pub extern "C" fn alvr_send_button(path_id: u64, value: AlvrButtonValue) {
 
 /// The view poses need to be in local space, as if the head is at the origin.
 /// view_params: array of 2
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_send_view_params(view_params: *const AlvrViewParams) {
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
         context.send_view_params(unsafe {
@@ -510,7 +511,7 @@ pub extern "C" fn alvr_send_view_params(view_params: *const AlvrViewParams) {
 /// eye_gazes:
 /// * outer ptr: array of 2 (can be null);
 /// * inner ptr: pose (can be null if eye gaze is absent)
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_send_tracking(
     poll_timestamp_ns: u64,
     device_motions: *const AlvrDeviceMotion,
@@ -606,7 +607,7 @@ pub extern "C" fn alvr_send_tracking(
 }
 
 /// Safety: `context` must be thread safe and valid until the StreamingStopped event.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_set_decoder_input_callback(
     callback_context: *mut c_void,
     callback: extern "C" fn(AlvrVideoFrameData) -> bool,
@@ -632,14 +633,14 @@ pub extern "C" fn alvr_set_decoder_input_callback(
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_report_frame_decoded(target_timestamp_ns: u64) {
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
         context.report_frame_decoded(Duration::from_nanos(target_timestamp_ns));
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_report_fatal_decoder_error(message: *const c_char) {
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
         context.report_fatal_decoder_error(unsafe { CStr::from_ptr(message).to_str().unwrap() });
@@ -648,8 +649,8 @@ pub extern "C" fn alvr_report_fatal_decoder_error(message: *const c_char) {
 
 /// out_view_params must be a vector of 2 elements
 /// out_view_params is populated only if the core context is valid
-#[no_mangle]
-pub unsafe extern "C" fn alvr_report_compositor_start(
+#[unsafe(no_mangle)]
+pub extern "C" fn alvr_report_compositor_start(
     target_timestamp_ns: u64,
     out_view_params: *mut AlvrViewParams,
 ) {
@@ -657,18 +658,20 @@ pub unsafe extern "C" fn alvr_report_compositor_start(
         let view_params =
             context.report_compositor_start(Duration::from_nanos(target_timestamp_ns));
 
-        *out_view_params = AlvrViewParams {
-            pose: to_capi_pose(view_params[0].pose),
-            fov: to_capi_fov(view_params[0].fov),
-        };
-        *out_view_params.offset(1) = AlvrViewParams {
-            pose: to_capi_pose(view_params[1].pose),
-            fov: to_capi_fov(view_params[1].fov),
-        };
+        unsafe {
+            *out_view_params = AlvrViewParams {
+                pose: to_capi_pose(view_params[0].pose),
+                fov: to_capi_fov(view_params[0].fov),
+            };
+            *out_view_params.offset(1) = AlvrViewParams {
+                pose: to_capi_pose(view_params[1].pose),
+                fov: to_capi_fov(view_params[1].fov),
+            };
+        }
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_report_submit(target_timestamp_ns: u64, vsync_queue_ns: u64) {
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
         context.report_submit(
@@ -720,39 +723,43 @@ pub struct AlvrStreamConfig {
     upscale_factor: f32,
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_initialize_opengl() {
     GRAPHICS_CONTEXT.set(Some(Rc::new(GraphicsContext::new_gl())));
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_destroy_opengl() {
     GRAPHICS_CONTEXT.set(None);
 }
 
-unsafe fn convert_swapchain_array(
+fn convert_swapchain_array(
     swapchain_textures: *mut *const u32,
     swapchain_length: u32,
 ) -> [Vec<u32>; 2] {
     let swapchain_length = swapchain_length as usize;
     let mut left_swapchain = vec![0; swapchain_length];
-    ptr::copy_nonoverlapping(
-        *swapchain_textures,
-        left_swapchain.as_mut_ptr(),
-        swapchain_length,
-    );
+    unsafe {
+        ptr::copy_nonoverlapping(
+            *swapchain_textures,
+            left_swapchain.as_mut_ptr(),
+            swapchain_length,
+        )
+    };
     let mut right_swapchain = vec![0; swapchain_length];
-    ptr::copy_nonoverlapping(
-        *swapchain_textures.offset(1),
-        right_swapchain.as_mut_ptr(),
-        swapchain_length,
-    );
+    unsafe {
+        ptr::copy_nonoverlapping(
+            *swapchain_textures.offset(1),
+            right_swapchain.as_mut_ptr(),
+            swapchain_length,
+        )
+    };
 
     [left_swapchain, right_swapchain]
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn alvr_resume_opengl(
+#[unsafe(no_mangle)]
+pub extern "C" fn alvr_resume_opengl(
     preferred_view_width: u32,
     preferred_view_height: u32,
     swapchain_textures: *mut *const u32,
@@ -766,23 +773,23 @@ pub unsafe extern "C" fn alvr_resume_opengl(
     )));
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_pause_opengl() {
     STREAM_RENDERER.set(None);
     LOBBY_RENDERER.set(None)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn alvr_update_hud_message_opengl(message: *const c_char) {
+#[unsafe(no_mangle)]
+pub extern "C" fn alvr_update_hud_message_opengl(message: *const c_char) {
     LOBBY_RENDERER.with_borrow(|renderer| {
         if let Some(renderer) = renderer {
-            renderer.update_hud_message(CStr::from_ptr(message).to_str().unwrap());
+            renderer.update_hud_message(unsafe { CStr::from_ptr(message) }.to_str().unwrap());
         }
     });
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
+#[unsafe(no_mangle)]
+pub extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
     let view_resolution = UVec2::new(config.view_resolution_width, config.view_resolution_height);
     let swapchain_textures =
         convert_swapchain_array(config.swapchain_textures, config.swapchain_length);
@@ -817,23 +824,25 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
 }
 
 // todo: support hands
-#[no_mangle]
-pub unsafe extern "C" fn alvr_render_lobby_opengl(
+#[unsafe(no_mangle)]
+pub extern "C" fn alvr_render_lobby_opengl(
     view_inputs: *const AlvrLobbyViewParams,
     render_background: bool,
 ) {
-    let view_inputs = [
-        LobbyViewParams {
-            swapchain_index: (*view_inputs).swapchain_index,
-            pose: from_capi_pose((*view_inputs).pose),
-            fov: from_capi_fov((*view_inputs).fov),
-        },
-        LobbyViewParams {
-            swapchain_index: (*view_inputs.offset(1)).swapchain_index,
-            pose: from_capi_pose((*view_inputs.offset(1)).pose),
-            fov: from_capi_fov((*view_inputs.offset(1)).fov),
-        },
-    ];
+    let view_inputs = unsafe {
+        [
+            LobbyViewParams {
+                swapchain_index: (*view_inputs).swapchain_index,
+                pose: from_capi_pose((*view_inputs).pose),
+                fov: from_capi_fov((*view_inputs).fov),
+            },
+            LobbyViewParams {
+                swapchain_index: (*view_inputs.offset(1)).swapchain_index,
+                pose: from_capi_pose((*view_inputs.offset(1)).pose),
+                fov: from_capi_fov((*view_inputs.offset(1)).fov),
+            },
+        ]
+    };
 
     LOBBY_RENDERER.with_borrow(|renderer| {
         if let Some(renderer) = renderer {
@@ -851,15 +860,15 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(
 }
 
 /// view_params: array of 2
-#[no_mangle]
-pub unsafe extern "C" fn alvr_render_stream_opengl(
+#[unsafe(no_mangle)]
+pub extern "C" fn alvr_render_stream_opengl(
     hardware_buffer: *mut c_void,
     view_params: *const AlvrStreamViewParams,
 ) {
     STREAM_RENDERER.with_borrow(|renderer| {
         if let Some(renderer) = renderer {
-            let left_params = &*view_params;
-            let right_params = &*view_params.offset(1);
+            let left_params = unsafe { &*view_params };
+            let right_params = unsafe { &*view_params.offset(1) };
             renderer.render(
                 hardware_buffer,
                 [
@@ -938,7 +947,7 @@ pub struct AlvrDecoderConfig {
 }
 
 /// alvr_initialize() must be called before alvr_create_decoder
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_create_decoder(config: AlvrDecoderConfig) {
     let config = VideoDecoderConfig {
         codec: match config.codec {
@@ -1008,13 +1017,13 @@ pub extern "C" fn alvr_create_decoder(config: AlvrDecoderConfig) {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_destroy_decoder() {
     *DECODER_SOURCE.lock() = None;
 }
 
 // Returns true if the timestamp and buffer has been written to
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_get_frame(
     out_timestamp_ns: *mut u64,
     out_buffer_ptr: *mut *mut c_void,
@@ -1035,7 +1044,7 @@ pub extern "C" fn alvr_get_frame(
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn alvr_rotation_delta(source: AlvrQuat, destination: AlvrQuat) -> AlvrQuat {
     to_capi_quat(from_capi_quat(source).inverse() * from_capi_quat(destination))
 }

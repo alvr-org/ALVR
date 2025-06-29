@@ -16,19 +16,19 @@
 // Note: We can't clone the underlying socket for each StreamSender and the mutex around the socket
 // cannot be removed. This is because we need to make sure at least shards are written whole.
 
-use crate::backend::{tcp, udp, SocketReader, SocketWriter};
+use crate::backend::{SocketReader, SocketWriter, tcp, udp};
 use alvr_common::{
-    anyhow::Result, debug, parking_lot::Mutex, AnyhowToCon, ConResult, HandleTryAgain, ToCon,
+    AnyhowToCon, ConResult, HandleTryAgain, ToCon, anyhow::Result, debug, parking_lot::Mutex,
 };
 use alvr_session::{DscpTos, SocketBufferSize, SocketProtocol};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
     marker::PhantomData,
     mem,
     net::{IpAddr, TcpListener, UdpSocket},
-    sync::{mpsc, Arc},
+    sync::{Arc, mpsc},
     time::Duration,
 };
 
@@ -533,7 +533,7 @@ impl StreamSocket {
             // This branch may be hit in case the thread related to the stream hangs for some reason
             shard_recv_state_mut.should_discard = true;
             shard_recv_state_mut.packet_cursor = 0; // reset cursor from old shards
-                                                    // always write at the start of the packet so the buffer doesn't grow much
+            // always write at the start of the packet so the buffer doesn't grow much
             shard_recv_state_mut.shard_index = 0;
 
             &mut components.discarded_shards_sink

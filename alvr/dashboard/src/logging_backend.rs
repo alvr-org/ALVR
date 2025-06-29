@@ -1,9 +1,9 @@
 use crate::data_sources::PolledEvent;
-use alvr_common::{log::LevelFilter, parking_lot::Mutex, LogEntry, LogSeverity};
+use alvr_common::{LogEntry, LogSeverity, log::LevelFilter, parking_lot::Mutex};
 use alvr_events::{Event, EventType};
 use std::{
     io::Write,
-    sync::{mpsc, Arc},
+    sync::{Arc, mpsc},
 };
 
 pub fn init_logging(event_sender: mpsc::Sender<PolledEvent>) {

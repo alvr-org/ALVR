@@ -1,6 +1,6 @@
 use crate::extra_extensions::get_instance_proc;
-use openxr::{self as xr, sys, AnyGraphics};
-use std::ffi::{c_char, CString};
+use openxr::{self as xr, AnyGraphics, sys};
+use std::ffi::{CString, c_char};
 
 pub const BD_MOTION_TRACKING_EXTENSION_NAME: &str = "XR_BD_motion_tracking";
 pub const PICO_CONFIGURATION_EXTENSION_NAME: &str = "XR_PICO_configuration";

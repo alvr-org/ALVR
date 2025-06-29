@@ -8,16 +8,16 @@ use crate::{
     FfiOpenvrPropertyType_Uint64, FfiOpenvrPropertyType_Vector3, FfiOpenvrPropertyValue,
 };
 use alvr_common::{
-    debug, settings_schema::Switch, warn, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID,
-    BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID,
-    BODY_RIGHT_KNEE_ID, DEVICE_ID_TO_PATH, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID,
-    HAND_TRACKER_RIGHT_ID, HEAD_ID,
+    BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID,
+    BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, DEVICE_ID_TO_PATH, HAND_LEFT_ID,
+    HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID, debug,
+    settings_schema::Switch, warn,
 };
 use alvr_session::{
     ControllersEmulationMode, HeadsetEmulationMode, OpenvrPropKey, OpenvrPropType, OpenvrProperty,
 };
 use std::{
-    ffi::{c_char, c_void, CString},
+    ffi::{CString, c_char, c_void},
     ptr,
 };
 
@@ -173,7 +173,7 @@ fn serial_number(device_id: u64) -> String {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn get_serial_number(device_id: u64, out_str: *mut c_char) -> u64 {
     let string = serial_number(device_id);
 
@@ -188,7 +188,7 @@ pub extern "C" fn get_serial_number(device_id: u64, out_str: *mut c_char) -> u64
     len as u64
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: u64) {
     #[expect(clippy::enum_glob_use)]
     use OpenvrPropKey::*;

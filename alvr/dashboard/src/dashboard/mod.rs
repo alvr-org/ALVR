@@ -4,8 +4,8 @@ use self::components::{
     DevicesTab, LogsTab, NotificationBar, SettingsTab, SetupWizard, SetupWizardRequest,
 };
 use crate::{
-    dashboard::components::{CloseAction, NewVersionPopup, StatisticsTab},
     DataSources,
+    dashboard::components::{CloseAction, NewVersionPopup, StatisticsTab},
 };
 use alvr_common::parking_lot::{Condvar, Mutex};
 use alvr_events::EventType;

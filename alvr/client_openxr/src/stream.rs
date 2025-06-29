@@ -3,18 +3,18 @@ use crate::{
     interaction::{self, InteractionContext, InteractionSourcesConfig},
 };
 use alvr_client_core::{
-    video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
     ClientCoreContext,
+    video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
 };
 use alvr_common::{
+    HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID, Pose, RelaxedAtomic, ViewParams,
     anyhow::Result,
     error,
     glam::{UVec2, Vec2},
     parking_lot::RwLock,
-    Pose, RelaxedAtomic, ViewParams, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
 use alvr_graphics::{
-    compute_target_view_resolution, GraphicsContext, StreamRenderer, StreamViewParams,
+    GraphicsContext, StreamRenderer, StreamViewParams, compute_target_view_resolution,
 };
 use alvr_packets::{FaceData, RealTimeConfig, StreamConfig};
 use alvr_session::{
@@ -417,24 +417,22 @@ impl StreamContext {
             openxr_display_time = vsync_time;
         }
 
-        unsafe {
-            self.renderer.render(
-                buffer_ptr,
-                [
-                    StreamViewParams {
-                        swapchain_index: left_swapchain_idx,
-                        input_view_params: input_view_params[0],
-                        output_view_params: output_view_params[0],
-                    },
-                    StreamViewParams {
-                        swapchain_index: right_swapchain_idx,
-                        input_view_params: input_view_params[1],
-                        output_view_params: output_view_params[1],
-                    },
-                ],
-                self.config.passthrough.as_ref(),
-            )
-        };
+        self.renderer.render(
+            buffer_ptr,
+            [
+                StreamViewParams {
+                    swapchain_index: left_swapchain_idx,
+                    input_view_params: input_view_params[0],
+                    output_view_params: output_view_params[0],
+                },
+                StreamViewParams {
+                    swapchain_index: right_swapchain_idx,
+                    input_view_params: input_view_params[1],
+                    output_view_params: output_view_params[1],
+                },
+            ],
+            self.config.passthrough.as_ref(),
+        );
 
         self.swapchains[0].release_image().unwrap();
         self.swapchains[1].release_image().unwrap();

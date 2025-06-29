@@ -1,19 +1,20 @@
-use super::{staging::StagingRenderer, GraphicsContext, MAX_PUSH_CONSTANTS_SIZE};
+use super::{GraphicsContext, MAX_PUSH_CONSTANTS_SIZE, staging::StagingRenderer};
 use alvr_common::{
-    glam::{self, Mat4, UVec2, Vec3, Vec4},
     ViewParams,
+    glam::{self, Mat4, UVec2, Vec3, Vec4},
 };
 use alvr_session::{FoveatedEncodingConfig, PassthroughMode, UpscalingConfig};
 use std::{collections::HashMap, ffi::c_void, iter, mem, rc::Rc};
 use wgpu::{
-    hal::{api, gles},
-    include_wgsl, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, Color, ColorTargetState, ColorWrites,
     FragmentState, LoadOp, PipelineCompilationOptions, PipelineLayoutDescriptor, PrimitiveState,
     PrimitiveTopology, PushConstantRange, RenderPass, RenderPassColorAttachment,
     RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, SamplerBindingType,
     SamplerDescriptor, ShaderStages, StoreOp, TextureSampleType, TextureView,
     TextureViewDescriptor, TextureViewDimension, VertexState,
+    hal::{api, gles},
+    include_wgsl,
 };
 
 const FLOAT_SIZE: u32 = mem::size_of::<f32>() as u32;
@@ -245,7 +246,7 @@ impl StreamRenderer {
 
     /// # Safety
     /// `hardware_buffer` must be a valid pointer to a ANativeWindowBuffer.
-    pub unsafe fn render(
+    pub fn render(
         &self,
         hardware_buffer: *mut c_void,
         view_params: [StreamViewParams; 2],

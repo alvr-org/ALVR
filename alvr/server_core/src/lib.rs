@@ -16,13 +16,13 @@ pub use tracking::HandType;
 
 use crate::connection::VideoPacket;
 use alvr_common::{
+    ConnectionState, DEVICE_ID_TO_PATH, DeviceMotion, Fov, LifecycleState, Pose, RelaxedAtomic,
     dbg_server_core, error,
     glam::Vec2,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
-    warn, ConnectionState, DeviceMotion, Fov, LifecycleState, Pose, RelaxedAtomic,
-    DEVICE_ID_TO_PATH,
+    warn,
 };
 use alvr_events::{EventType, HapticsEvent};
 use alvr_filesystem as afs;
@@ -42,9 +42,9 @@ use std::{
     fs::File,
     io::Write,
     sync::{
+        Arc, OnceLock,
         atomic::{AtomicBool, Ordering},
         mpsc::{self, SyncSender, TrySendError},
-        Arc, OnceLock,
     },
     thread::{self, JoinHandle},
     time::{Duration, Instant},
@@ -189,7 +189,7 @@ impl ServerCoreContext {
             .logging
             .prefer_backtrace
         {
-            env::set_var("RUST_BACKTRACE", "1");
+            unsafe { env::set_var("RUST_BACKTRACE", "1") };
         }
 
         SESSION_MANAGER.write().clean_client_list();

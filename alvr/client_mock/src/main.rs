@@ -1,20 +1,20 @@
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
+    DeviceMotion, Fov, HEAD_ID, Pose, RelaxedAtomic, ViewParams,
     glam::{Quat, UVec2, Vec3},
     parking_lot::RwLock,
-    DeviceMotion, Fov, Pose, RelaxedAtomic, ViewParams, HEAD_ID,
 };
 use alvr_packets::FaceData;
 use alvr_session::CodecType;
 use eframe::{
-    egui::{CentralPanel, Context, RichText, Slider, ViewportBuilder},
     Frame, NativeOptions,
+    egui::{CentralPanel, Context, RichText, Slider, ViewportBuilder},
 };
 use std::{
     f32::consts::{FRAC_PI_2, PI},
     sync::{
-        mpsc::{self, TryRecvError},
         Arc,
+        mpsc::{self, TryRecvError},
     },
     thread,
     time::{Duration, Instant},

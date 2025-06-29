@@ -1,5 +1,5 @@
 use crate::SESSION_MANAGER;
-use alvr_common::{log::LevelFilter, once_cell::sync::Lazy, LogEntry, LogSeverity};
+use alvr_common::{LogEntry, LogSeverity, log::LevelFilter, once_cell::sync::Lazy};
 use alvr_events::{Event, EventType};
 use chrono::Local;
 use fern::Dispatch;

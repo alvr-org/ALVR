@@ -1,7 +1,7 @@
-use crate::{command, BuildPlatform};
+use crate::{BuildPlatform, command};
 use alvr_filesystem as afs;
 use std::{fs, path::Path};
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 pub enum OpenXRLoadersSelection {
     OnlyGeneric,

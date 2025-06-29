@@ -1,7 +1,7 @@
 use alvr_common::{
-    anyhow::Result, once_cell::sync::Lazy, DeviceMotion, BODY_CHEST_ID, BODY_HIPS_ID,
-    BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID,
-    BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, HEAD_ID,
+    BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID,
+    BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, DeviceMotion, HEAD_ID,
+    anyhow::Result, once_cell::sync::Lazy,
 };
 use alvr_session::BodyTrackingSinkConfig;
 use rosc::{OscMessage, OscPacket, OscType};

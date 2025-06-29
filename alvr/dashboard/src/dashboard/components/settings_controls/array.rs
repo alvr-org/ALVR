@@ -1,4 +1,4 @@
-use super::{collapsible, NestingInfo, SettingControl};
+use super::{NestingInfo, SettingControl, collapsible};
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::SchemaNode;
 use eframe::egui::Ui;

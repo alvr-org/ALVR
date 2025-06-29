@@ -1,12 +1,12 @@
 use crate::{
+    BuildPlatform,
     build::{self, Profile},
     command,
     dependencies::{self, OpenXRLoadersSelection},
-    BuildPlatform,
 };
 use alvr_filesystem as afs;
 use std::{fs, path::Path};
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 pub enum ReleaseFlavor {
     GitHub,

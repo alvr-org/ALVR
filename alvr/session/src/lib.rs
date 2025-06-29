@@ -4,9 +4,9 @@ pub use settings::*;
 pub use settings_schema;
 
 use alvr_common::{
-    anyhow::{bail, Result},
+    ALVR_VERSION, ConnectionState, ToAny,
+    anyhow::{Result, bail},
     semver::Version,
-    ConnectionState, ToAny, ALVR_VERSION,
 };
 use serde::{Deserialize, Serialize};
 use serde_json as json;

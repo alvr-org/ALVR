@@ -1,6 +1,6 @@
 use alvr_audio::AudioDevice;
 use alvr_common::{
-    anyhow::{bail, Result},
+    anyhow::{Result, bail},
     parking_lot::Mutex,
 };
 use alvr_session::AudioBufferingConfig;
@@ -12,7 +12,7 @@ use ndk::audio::{
 use std::{
     collections::VecDeque,
     mem, slice,
-    sync::{mpsc, Arc},
+    sync::{Arc, mpsc},
     time::Duration,
 };
 
@@ -49,7 +49,7 @@ pub fn record_audio_blocking(
         .data_callback(Box::new(move |_, data_ptr, frames_count| {
             let buffer_size = frames_count as usize * mem::size_of::<i16>();
 
-            let mut sample_buffer =
+            let sample_buffer =
                 unsafe { slice::from_raw_parts(data_ptr as *mut u8, buffer_size) }.to_vec();
 
             // it will block only when the channel is full

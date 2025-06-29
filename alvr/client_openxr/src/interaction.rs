@@ -509,24 +509,23 @@ impl InteractionContext {
             }
         }
 
-        if let Some(config) = &config.body_tracking {
-            if (config.body_tracking_fb.enabled())
-                && self.platform.is_quest()
-                && self.platform != Platform::Quest1
-            {
-                #[cfg(target_os = "android")]
-                alvr_system_info::try_get_permission("com.oculus.permission.BODY_TRACKING")
-            }
+        if let Some(config) = &config.body_tracking
+            && config.body_tracking_fb.enabled()
+            && self.platform.is_quest()
+            && self.platform != Platform::Quest1
+        {
+            #[cfg(target_os = "android")]
+            alvr_system_info::try_get_permission("com.oculus.permission.BODY_TRACKING")
         }
 
         // Note: We cannot enable multimodal if fb body tracking is active. It would result in a
         // ERROR_RUNTIME_FAILURE crash.
-        if config.body_tracking.is_none() && config.prefers_multimodal_input {
-            if let Some(handle) = &mut self.multimodal_handle {
-                if handle.resume().is_ok() {
-                    self.multimodal_hands_enabled = true;
-                }
-            }
+        if config.body_tracking.is_none()
+            && config.prefers_multimodal_input
+            && let Some(handle) = &mut self.multimodal_handle
+            && handle.resume().is_ok()
+        {
+            self.multimodal_hands_enabled = true;
         }
 
         self.face_sources.eye_tracker_fb = create_ext_object(
@@ -750,112 +749,96 @@ pub fn get_hand_data(
     last_palm_pose: &mut Pose,
 ) -> (Option<DeviceMotion>, Option<[Pose; 26]>) {
     let xr_time = crate::to_xr_time(time);
+    let xr_now = crate::xr_runtime_now(xr_session.instance()).unwrap_or(xr_time);
 
     let controller_motion = if hand_source
         .grip_action
         .is_active(xr_session, xr::Path::NULL)
         .unwrap_or(false)
+        && let Ok((location, velocity)) = hand_source.grip_space.relate(reference_space, xr_time)
     {
-        if let Ok((location, velocity)) = hand_source.grip_space.relate(reference_space, xr_time) {
-            let orientation_valid = location
-                .location_flags
-                .contains(xr::SpaceLocationFlags::ORIENTATION_VALID);
-            let position_valid = location
-                .location_flags
-                .contains(xr::SpaceLocationFlags::POSITION_VALID);
+        let orientation_valid = location
+            .location_flags
+            .contains(xr::SpaceLocationFlags::ORIENTATION_VALID);
+        let position_valid = location
+            .location_flags
+            .contains(xr::SpaceLocationFlags::POSITION_VALID);
 
-            if orientation_valid {
-                last_controller_pose.orientation = crate::from_xr_quat(location.pose.orientation);
-            }
-
-            if position_valid {
-                last_controller_pose.position = crate::from_xr_vec3(location.pose.position);
-            }
-
-            let pose = *last_controller_pose * hand_source.pose_offset;
-
-            let mut linear_velocity = crate::from_xr_vec3(velocity.linear_velocity);
-            let mut angular_velocity = crate::from_xr_vec3(velocity.angular_velocity);
-
-            // Some headsets use wrong frame of reference for linear and angular velocities.
-            if platform.is_pico() || platform.is_vive() {
-                let xr_future_time = crate::to_xr_time(future_time);
-
-                let maybe_future_location = hand_source
-                    .grip_space
-                    .locate(reference_space, xr_future_time);
-
-                if let Ok(future_location) = maybe_future_location {
-                    if future_location.location_flags.contains(
-                        xr::SpaceLocationFlags::ORIENTATION_VALID
-                            | xr::SpaceLocationFlags::POSITION_VALID,
-                    ) {
-                        let time_offset = future_time.saturating_sub(time);
-
-                        if !time_offset.is_zero() {
-                            let time_offset_s = time_offset.as_secs_f32();
-
-                            linear_velocity = (crate::from_xr_vec3(future_location.pose.position)
-                                - last_controller_pose.position)
-                                / time_offset_s;
-                            angular_velocity =
-                                (crate::from_xr_quat(future_location.pose.orientation)
-                                    * last_controller_pose.orientation.inverse())
-                                .to_scaled_axis()
-                                    / time_offset_s;
-                        }
-                    }
-                }
-            }
-
-            Some(DeviceMotion {
-                pose,
-                linear_velocity,
-                angular_velocity,
-            })
-        } else {
-            None
+        if orientation_valid {
+            last_controller_pose.orientation = crate::from_xr_quat(location.pose.orientation);
         }
+
+        if position_valid {
+            last_controller_pose.position = crate::from_xr_vec3(location.pose.position);
+        }
+
+        let pose = *last_controller_pose * hand_source.pose_offset;
+
+        let mut linear_velocity = crate::from_xr_vec3(velocity.linear_velocity);
+        let mut angular_velocity = crate::from_xr_vec3(velocity.angular_velocity);
+
+        let time_offset = future_time.saturating_sub(time);
+
+        // Some headsets use wrong frame of reference for linear and angular velocities.
+        if (platform.is_pico() || platform.is_vive())
+            && !time_offset.is_zero()
+            && let Ok(future_location) = hand_source
+                .grip_space
+                .locate(reference_space, crate::to_xr_time(future_time))
+            && future_location.location_flags.contains(
+                xr::SpaceLocationFlags::ORIENTATION_VALID | xr::SpaceLocationFlags::POSITION_VALID,
+            )
+        {
+            let time_offset_s = time_offset.as_secs_f32();
+
+            linear_velocity = (crate::from_xr_vec3(future_location.pose.position)
+                - last_controller_pose.position)
+                / time_offset_s;
+            angular_velocity = (crate::from_xr_quat(future_location.pose.orientation)
+                * last_controller_pose.orientation.inverse())
+            .to_scaled_axis()
+                / time_offset_s;
+        }
+
+        Some(DeviceMotion {
+            pose,
+            linear_velocity,
+            angular_velocity,
+        })
     } else {
         None
     };
 
-    let hand_joints = if let Some(tracker) = &hand_source.skeleton_tracker {
-        let xr_now = crate::xr_runtime_now(xr_session.instance()).unwrap_or(xr_time);
-
-        if let Some(joint_locations) = reference_space
+    let hand_joints = if let Some(tracker) = &hand_source.skeleton_tracker
+        && let Some(joint_locations) = reference_space
             .locate_hand_joints(tracker, xr_now)
             .ok()
             .flatten()
+    {
+        if joint_locations[0]
+            .location_flags
+            .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
         {
-            if joint_locations[0]
-                .location_flags
-                .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
-            {
-                last_palm_pose.orientation =
-                    crate::from_xr_quat(joint_locations[0].pose.orientation);
-            }
-
-            if joint_locations[0]
-                .location_flags
-                .contains(xr::SpaceLocationFlags::POSITION_VALID)
-            {
-                last_palm_pose.position = crate::from_xr_vec3(joint_locations[0].pose.position);
-            }
-
-            let mut joints: [_; 26] = joint_locations
-                .iter()
-                .map(|j| crate::from_xr_pose(j.pose))
-                .collect::<Vec<_>>()
-                .try_into()
-                .unwrap();
-
-            joints[0] = *last_palm_pose;
-
-            Some(joints)
-        } else {
-            None
+            last_palm_pose.orientation = crate::from_xr_quat(joint_locations[0].pose.orientation);
         }
+
+        if joint_locations[0]
+            .location_flags
+            .contains(xr::SpaceLocationFlags::POSITION_VALID)
+        {
+            last_palm_pose.position = crate::from_xr_vec3(joint_locations[0].pose.position);
+        }
+
+        let mut joints: [_; 26] = joint_locations
+            .iter()
+            .map(|j| crate::from_xr_pose(j.pose))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        joints[0] = *last_palm_pose;
+
+        Some(joints)
     } else {
         None
     };
@@ -908,17 +891,13 @@ pub fn get_eye_gazes(
 ) -> [Option<Pose>; 2] {
     let xr_time = crate::to_xr_time(time);
 
-    'fb_eyes: {
-        let Some(tracker) = &sources.eye_tracker_fb else {
-            break 'fb_eyes;
-        };
-
-        if let Ok(gazes) = tracker.get_eye_gazes(reference_space, xr_time) {
-            return [
-                gazes[0].map(crate::from_xr_pose),
-                gazes[1].map(crate::from_xr_pose),
-            ];
-        }
+    if let Some(tracker) = &sources.eye_tracker_fb
+        && let Ok(gazes) = tracker.get_eye_gazes(reference_space, xr_time)
+    {
+        return [
+            gazes[0].map(crate::from_xr_pose),
+            gazes[1].map(crate::from_xr_pose),
+        ];
     };
 
     let Some((eyes_action, eyes_space)) = &sources.combined_eyes_source else {
@@ -1026,112 +1005,110 @@ pub fn get_fb_body_tracking_points(
 
         let mut joints = Vec::<(u64, DeviceMotion)>::with_capacity(8);
 
-        if let Some(joint) = joint_locations.get(xr::BodyJointFB::CHEST.into_raw() as usize) {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_CHEST_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+        if let Some(joint) = joint_locations.get(xr::BodyJointFB::CHEST.into_raw() as usize)
+            && joint.location_flags.contains(valid_flags)
+        {
+            joints.push((
+                *BODY_CHEST_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
-        if let Some(joint) = joint_locations.get(xr::BodyJointFB::HIPS.into_raw() as usize) {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_HIPS_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+        if let Some(joint) = joint_locations.get(xr::BodyJointFB::HIPS.into_raw() as usize)
+            && joint.location_flags.contains(valid_flags)
+        {
+            joints.push((
+                *BODY_HIPS_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
         if let Some(joint) =
             joint_locations.get(xr::BodyJointFB::LEFT_ARM_LOWER.into_raw() as usize)
+            && joint.location_flags.contains(valid_flags)
         {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_LEFT_ELBOW_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+            joints.push((
+                *BODY_LEFT_ELBOW_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
         if let Some(joint) =
             joint_locations.get(xr::BodyJointFB::RIGHT_ARM_LOWER.into_raw() as usize)
+            && joint.location_flags.contains(valid_flags)
         {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_RIGHT_ELBOW_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+            joints.push((
+                *BODY_RIGHT_ELBOW_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
-        if let Some(joint) = joint_locations.get(FULL_BODY_JOINT_LEFT_LOWER_LEG_META) {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_LEFT_KNEE_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+        if let Some(joint) = joint_locations.get(FULL_BODY_JOINT_LEFT_LOWER_LEG_META)
+            && joint.location_flags.contains(valid_flags)
+        {
+            joints.push((
+                *BODY_LEFT_KNEE_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
-        if let Some(joint) = joint_locations.get(FULL_BODY_JOINT_LEFT_FOOT_BALL_META) {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_LEFT_FOOT_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+        if let Some(joint) = joint_locations.get(FULL_BODY_JOINT_LEFT_FOOT_BALL_META)
+            && joint.location_flags.contains(valid_flags)
+        {
+            joints.push((
+                *BODY_LEFT_FOOT_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
-        if let Some(joint) = joint_locations.get(FULL_BODY_JOINT_RIGHT_LOWER_LEG_META) {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_RIGHT_KNEE_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+        if let Some(joint) = joint_locations.get(FULL_BODY_JOINT_RIGHT_LOWER_LEG_META)
+            && joint.location_flags.contains(valid_flags)
+        {
+            joints.push((
+                *BODY_RIGHT_KNEE_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
-        if let Some(joint) = joint_locations.get(FULL_BODY_JOINT_RIGHT_FOOT_BALL_META) {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_RIGHT_FOOT_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+        if let Some(joint) = joint_locations.get(FULL_BODY_JOINT_RIGHT_FOOT_BALL_META)
+            && joint.location_flags.contains(valid_flags)
+        {
+            joints.push((
+                *BODY_RIGHT_FOOT_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
         return joints;
@@ -1216,108 +1193,108 @@ pub fn get_bd_body_tracking_points(
 
         let mut joints = Vec::<(u64, DeviceMotion)>::with_capacity(8);
 
-        if let Some(joint) = joint_locations.get(BODY_JOINT_SPINE3_BD) {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_CHEST_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+        if let Some(joint) = joint_locations.get(BODY_JOINT_SPINE3_BD)
+            && joint.location_flags.contains(valid_flags)
+        {
+            joints.push((
+                *BODY_CHEST_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
-        if let Some(joint) = joint_locations.get(BODY_JOINT_PELVIS_BD) {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_HIPS_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+        if let Some(joint) = joint_locations.get(BODY_JOINT_PELVIS_BD)
+            && joint.location_flags.contains(valid_flags)
+        {
+            joints.push((
+                *BODY_HIPS_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
-        if let Some(joint) = joint_locations.get(BODY_JOINT_LEFT_ELBOW_BD) {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_LEFT_ELBOW_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+        if let Some(joint) = joint_locations.get(BODY_JOINT_LEFT_ELBOW_BD)
+            && joint.location_flags.contains(valid_flags)
+        {
+            joints.push((
+                *BODY_LEFT_ELBOW_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
-        if let Some(joint) = joint_locations.get(BODY_JOINT_RIGHT_ELBOW_BD) {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_RIGHT_ELBOW_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+        if let Some(joint) = joint_locations.get(BODY_JOINT_RIGHT_ELBOW_BD)
+            && joint.location_flags.contains(valid_flags)
+        {
+            joints.push((
+                *BODY_RIGHT_ELBOW_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
-        if let Some(joint) = joint_locations.get(BODY_JOINT_LEFT_KNEE_BD) {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_LEFT_KNEE_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+        if let Some(joint) = joint_locations.get(BODY_JOINT_LEFT_KNEE_BD)
+            && joint.location_flags.contains(valid_flags)
+        {
+            joints.push((
+                *BODY_LEFT_KNEE_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
-        if let Some(joint) = joint_locations.get(BODY_JOINT_LEFT_FOOT_BD) {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_LEFT_FOOT_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+        if let Some(joint) = joint_locations.get(BODY_JOINT_LEFT_FOOT_BD)
+            && joint.location_flags.contains(valid_flags)
+        {
+            joints.push((
+                *BODY_LEFT_FOOT_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
-        if let Some(joint) = joint_locations.get(BODY_JOINT_RIGHT_KNEE_BD) {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_RIGHT_KNEE_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+        if let Some(joint) = joint_locations.get(BODY_JOINT_RIGHT_KNEE_BD)
+            && joint.location_flags.contains(valid_flags)
+        {
+            joints.push((
+                *BODY_RIGHT_KNEE_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
-        if let Some(joint) = joint_locations.get(BODY_JOINT_RIGHT_FOOT_BD) {
-            if joint.location_flags.contains(valid_flags) {
-                joints.push((
-                    *BODY_RIGHT_FOOT_ID,
-                    DeviceMotion {
-                        pose: crate::from_xr_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
+        if let Some(joint) = joint_locations.get(BODY_JOINT_RIGHT_FOOT_BD)
+            && joint.location_flags.contains(valid_flags)
+        {
+            joints.push((
+                *BODY_RIGHT_FOOT_ID,
+                DeviceMotion {
+                    pose: crate::from_xr_pose(joint.pose),
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ))
         }
 
         return joints;

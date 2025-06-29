@@ -427,24 +427,22 @@ fn connection_pipeline(
             let mut battery_deadline = Instant::now();
 
             while is_streaming(&ctx) && *lifecycle_state.read() == LifecycleState::Resumed {
-                if let (Ok(packet), Some(sender)) = (
-                    log_channel_receiver.recv_timeout(STREAMING_RECV_TIMEOUT),
-                    &mut *ctx.control_sender.lock(),
-                ) {
-                    if let Err(e) = sender.send(&packet) {
-                        info!("Server disconnected. Cause: {e:?}");
-                        set_hud_message(&event_queue, SERVER_DISCONNECTED_MESSAGE);
+                if let Ok(packet) = log_channel_receiver.recv_timeout(STREAMING_RECV_TIMEOUT)
+                    && let Some(sender) = &mut *ctx.control_sender.lock()
+                    && let Err(e) = sender.send(&packet)
+                {
+                    info!("Server disconnected. Cause: {e:?}");
+                    set_hud_message(&event_queue, SERVER_DISCONNECTED_MESSAGE);
 
-                        break;
-                    }
+                    break;
                 }
 
-                if Instant::now() > keepalive_deadline {
-                    if let Some(sender) = &mut *ctx.control_sender.lock() {
-                        sender.send(&ClientControlPacket::KeepAlive).ok();
+                if Instant::now() > keepalive_deadline
+                    && let Some(sender) = &mut *ctx.control_sender.lock()
+                {
+                    sender.send(&ClientControlPacket::KeepAlive).ok();
 
-                        keepalive_deadline = Instant::now() + KEEPALIVE_INTERVAL;
-                    }
+                    keepalive_deadline = Instant::now() + KEEPALIVE_INTERVAL;
                 }
 
                 #[cfg(target_os = "android")]

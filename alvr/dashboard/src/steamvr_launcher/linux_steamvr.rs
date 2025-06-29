@@ -325,8 +325,7 @@ fn probe_libva_encoder_profile(
     } else if let Ok(profile) = profile_probe {
         if profile.is_empty() {
             message = format!("{profile_name} profile entrypoint is empty.");
-        }
-        if !profile.contains(&libva::VAEntrypoint::VAEntrypointEncSlice) {
+        } else if !profile.contains(&libva::VAEntrypoint::VAEntrypointEncSlice) {
             message = format!("{profile_name} profile does not contain encoding entrypoint.");
         }
     }

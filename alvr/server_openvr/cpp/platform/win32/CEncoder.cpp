@@ -145,8 +145,6 @@ void CEncoder::WaitForEncode() { m_encodeFinished.Wait(); }
 
 void CEncoder::OnStreamStart() { m_scheduler.OnStreamStart(); }
 
-void CEncoder::OnPacketLoss() { m_scheduler.OnPacketLoss(); }
-
 void CEncoder::InsertIDR() { m_scheduler.InsertIDR(); }
 
 void CEncoder::CaptureFrame() { }

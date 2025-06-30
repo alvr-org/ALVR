@@ -304,15 +304,15 @@ pub unsafe extern "C" fn register_buttons(instance_ptr: *mut c_void, device_id: 
 }
 
 extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
-    if let Ok(duration) = Duration::try_from_secs_f32(duration_s) {
-        if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-            context.send_haptics(Haptics {
-                device_id,
-                duration,
-                frequency,
-                amplitude,
-            });
-        }
+    if let Ok(duration) = Duration::try_from_secs_f32(duration_s)
+        && let Some(context) = &*SERVER_CORE_CONTEXT.read()
+    {
+        context.send_haptics(Haptics {
+            device_id,
+            duration,
+            frequency,
+            amplitude,
+        });
     }
 }
 
@@ -342,15 +342,13 @@ extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_id
 }
 
 extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-        if let Some(params) = context.get_dynamic_encoder_params() {
-            FfiDynamicEncoderParams {
-                updated: 1,
-                bitrate_bps: params.bitrate_bps as u64,
-                framerate: params.framerate,
-            }
-        } else {
-            FfiDynamicEncoderParams::default()
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read()
+        && let Some(params) = context.get_dynamic_encoder_params()
+    {
+        FfiDynamicEncoderParams {
+            updated: 1,
+            bitrate_bps: params.bitrate_bps as u64,
+            framerate: params.framerate,
         }
     } else {
         FfiDynamicEncoderParams::default()

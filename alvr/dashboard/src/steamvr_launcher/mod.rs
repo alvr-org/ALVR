@@ -120,10 +120,8 @@ impl Launcher {
             .session()
             .client_connections
             .contains_key(alvr_sockets::WIRED_CLIENT_HOSTNAME);
-        if wired_enabled {
-            if let Some(path) = adb::get_adb_path(&crate::get_filesystem_layout()) {
-                adb::kill_server(&path).ok();
-            }
+        if wired_enabled && let Some(path) = adb::get_adb_path(&crate::get_filesystem_layout()) {
+            adb::kill_server(&path).ok();
         }
 
         #[cfg(target_os = "linux")]

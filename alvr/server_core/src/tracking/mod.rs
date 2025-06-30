@@ -456,41 +456,41 @@ pub fn tracking_loop(
         ) {
             let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
 
-            if !device_motion_keys.contains(&*HAND_LEFT_ID) {
-                if let Some(hand_skeleton) = tracking.hand_skeletons[0] {
-                    ctx.events_sender
-                        .send(ServerCoreEvent::Buttons(
-                            hand_gestures::trigger_hand_gesture_actions(
-                                gestures_button_mapping_manager,
+            if !device_motion_keys.contains(&*HAND_LEFT_ID)
+                && let Some(hand_skeleton) = tracking.hand_skeletons[0]
+            {
+                ctx.events_sender
+                    .send(ServerCoreEvent::Buttons(
+                        hand_gestures::trigger_hand_gesture_actions(
+                            gestures_button_mapping_manager,
+                            *HAND_LEFT_ID,
+                            &hand_gesture_manager_lock.get_active_gestures(
+                                &hand_skeleton,
+                                gestures_config,
                                 *HAND_LEFT_ID,
-                                &hand_gesture_manager_lock.get_active_gestures(
-                                    &hand_skeleton,
-                                    gestures_config,
-                                    *HAND_LEFT_ID,
-                                ),
-                                gestures_config.only_touch,
                             ),
-                        ))
-                        .ok();
-                }
+                            gestures_config.only_touch,
+                        ),
+                    ))
+                    .ok();
             }
-            if !device_motion_keys.contains(&*HAND_RIGHT_ID) {
-                if let Some(hand_skeleton) = tracking.hand_skeletons[1] {
-                    ctx.events_sender
-                        .send(ServerCoreEvent::Buttons(
-                            hand_gestures::trigger_hand_gesture_actions(
-                                gestures_button_mapping_manager,
+            if !device_motion_keys.contains(&*HAND_RIGHT_ID)
+                && let Some(hand_skeleton) = tracking.hand_skeletons[1]
+            {
+                ctx.events_sender
+                    .send(ServerCoreEvent::Buttons(
+                        hand_gestures::trigger_hand_gesture_actions(
+                            gestures_button_mapping_manager,
+                            *HAND_RIGHT_ID,
+                            &hand_gesture_manager_lock.get_active_gestures(
+                                &hand_skeleton,
+                                gestures_config,
                                 *HAND_RIGHT_ID,
-                                &hand_gesture_manager_lock.get_active_gestures(
-                                    &hand_skeleton,
-                                    gestures_config,
-                                    *HAND_RIGHT_ID,
-                                ),
-                                gestures_config.only_touch,
                             ),
-                        ))
-                        .ok();
-                }
+                            gestures_config.only_touch,
+                        ),
+                    ))
+                    .ok();
             }
         }
 
@@ -541,22 +541,20 @@ pub fn tracking_loop(
             SESSION_MANAGER.read().settings().headset.body_tracking,
             Switch::Enabled(BodyTrackingConfig { tracked: true, .. })
         );
-        if track_body {
-            if let Some(sink) = &mut body_tracking_sink {
-                let tracking_manager_lock = ctx.tracking_manager.read();
-                let device_motions = device_motion_keys
-                    .iter()
-                    .map(move |id| {
-                        (
-                            *id,
-                            tracking_manager_lock
-                                .get_device_motion(*id, timestamp)
-                                .unwrap(),
-                        )
-                    })
-                    .collect::<Vec<_>>();
-                sink.send_tracking(&device_motions);
-            }
+        if track_body && let Some(sink) = &mut body_tracking_sink {
+            let tracking_manager_lock = ctx.tracking_manager.read();
+            let device_motions = device_motion_keys
+                .iter()
+                .map(move |id| {
+                    (
+                        *id,
+                        tracking_manager_lock
+                            .get_device_motion(*id, timestamp)
+                            .unwrap(),
+                    )
+                })
+                .collect::<Vec<_>>();
+            sink.send_tracking(&device_motions);
         }
     }
 }

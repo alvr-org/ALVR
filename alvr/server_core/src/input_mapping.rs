@@ -148,15 +148,16 @@ fn map_button_pair_automatic(
         if let Some(destination_click) = destination.click {
             targets.push(passthrough(destination_click));
         }
-        if source.touch.is_none() {
-            if let Some(destination_touch) = destination.touch {
-                targets.push(passthrough(destination_touch));
-            }
+        if source.touch.is_none()
+            && let Some(destination_touch) = destination.touch
+        {
+            targets.push(passthrough(destination_touch));
         }
-        if source.value.is_none() {
-            if let Some(destination_value) = destination.value {
-                targets.push(binary_to_scalar(destination_value, click_to_value));
-            }
+
+        if source.value.is_none()
+            && let Some(destination_value) = destination.value
+        {
+            targets.push(binary_to_scalar(destination_value, click_to_value));
         }
 
         entries.push((source_click, targets));
@@ -173,35 +174,36 @@ fn map_button_pair_automatic(
         let mut remap_for_touch = false;
         let mut remap_for_force = false;
 
-        if source.click.is_none() {
-            if let Some(destination_click) = destination.click {
-                targets.push(hysteresis_threshold(
-                    destination_click,
-                    config.click_threshold,
-                ));
-            }
+        if source.click.is_none()
+            && let Some(destination_click) = destination.click
+        {
+            targets.push(hysteresis_threshold(
+                destination_click,
+                config.click_threshold,
+            ));
         }
-        if source.touch.is_none() {
-            if let Some(destination_touch) = destination.touch {
-                targets.push(hysteresis_threshold(
-                    destination_touch,
-                    config.touch_threshold,
-                ));
-                remap_for_touch = true;
-            }
+        if source.touch.is_none()
+            && let Some(destination_touch) = destination.touch
+        {
+            targets.push(hysteresis_threshold(
+                destination_touch,
+                config.touch_threshold,
+            ));
+            remap_for_touch = true;
         }
-        if source.force.is_none() {
-            if let Some(destination_force) = destination.force {
-                targets.push(remap(
-                    destination_force,
-                    Range {
-                        min: config.force_threshold,
-                        max: 1.0,
-                    },
-                ));
-                remap_for_force = true;
-            }
+        if source.force.is_none()
+            && let Some(destination_force) = destination.force
+        {
+            targets.push(remap(
+                destination_force,
+                Range {
+                    min: config.force_threshold,
+                    max: 1.0,
+                },
+            ));
+            remap_for_force = true;
         }
+
         if let Some(destination_value) = destination.value {
             if !remap_for_touch && !remap_for_force {
                 targets.push(passthrough(destination_value));

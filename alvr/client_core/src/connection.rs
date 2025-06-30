@@ -10,7 +10,7 @@ use crate::{
 use alvr_audio::AudioDevice;
 use alvr_common::{
     ALVR_VERSION, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, Pose,
-    RelaxedAtomic, ViewParams, dbg_connection, debug, error, info,
+    ToCon, ViewParams, dbg_connection, debug, error, info,
     parking_lot::{Condvar, Mutex, RwLock},
     wait_rwlock, warn,
 };
@@ -68,7 +68,6 @@ pub struct ConnectionContext {
     pub head_pose_queue: RwLock<VecDeque<(Duration, Pose)>>,
     pub last_good_head_pose: RwLock<Pose>,
     pub view_params: RwLock<[ViewParams; 2]>,
-    pub uses_multimodal_protocol: RelaxedAtomic,
     pub velocities_multiplier: RwLock<f32>,
     pub max_prediction: RwLock<Duration>,
 }
@@ -173,17 +172,15 @@ fn connection_pipeline(
             display_name: alvr_system_info::platform().to_string(),
             server_ip,
             streaming_capabilities: Some(
-                alvr_packets::encode_video_streaming_capabilities(&VideoStreamingCapabilities {
+                serde_json::to_string(&VideoStreamingCapabilities {
                     default_view_resolution: capabilities.default_view_resolution,
-                    supported_refresh_rates: capabilities.refresh_rates,
+                    refresh_rates: capabilities.refresh_rates,
                     microphone_sample_rate,
-                    supports_foveated_encoding: capabilities.foveated_encoding,
+                    foveated_encoding: capabilities.foveated_encoding,
                     encoder_high_profile: capabilities.encoder_high_profile,
                     encoder_10_bits: capabilities.encoder_10_bits,
                     encoder_av1: capabilities.encoder_av1,
-                    multimodal_protocol: true,
                     prefer_10bit: capabilities.prefer_10bit,
-                    prefer_full_range: capabilities.prefer_full_range,
                     preferred_encoding_gamma: capabilities.preferred_encoding_gamma,
                     prefer_hdr: capabilities.prefer_hdr,
                 })
@@ -196,9 +193,6 @@ fn connection_pipeline(
     dbg_connection!("connection_pipeline: stream config received");
 
     let stream_config = alvr_packets::decode_stream_config(&config_packet).to_con()?;
-
-    ctx.uses_multimodal_protocol
-        .set(stream_config.negotiated_config.use_multimodal_protocol);
 
     let streaming_start_event = ClientCoreEvent::StreamingStarted(Box::new(stream_config.clone()));
 

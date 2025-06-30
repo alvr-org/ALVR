@@ -310,7 +310,6 @@ impl TrackingManager {
 pub fn tracking_loop(
     ctx: &ConnectionContext,
     initial_settings: Settings,
-    multimodal_protocol: bool,
     hand_gesture_manager: Arc<Mutex<HandGestureManager>>,
     mut tracking_receiver: StreamReceiver<Tracking>,
     is_streaming: impl Fn() -> bool,
@@ -356,7 +355,7 @@ pub fn tracking_loop(
             Err(ConnectionError::TryAgain(_)) => continue,
             Err(ConnectionError::Other(_)) => return,
         };
-        let Ok(mut tracking) = data.get_header() else {
+        let Ok(tracking) = data.get_header() else {
             return;
         };
 
@@ -364,20 +363,6 @@ pub fn tracking_loop(
 
         if let Some(stats) = &mut *ctx.statistics_manager.write() {
             stats.report_tracking_received(timestamp);
-        }
-
-        if !multimodal_protocol {
-            if tracking.hand_skeletons[0].is_some() {
-                tracking
-                    .device_motions
-                    .retain(|(id, _)| *id != *HAND_LEFT_ID);
-            }
-
-            if tracking.hand_skeletons[1].is_some() {
-                tracking
-                    .device_motions
-                    .retain(|(id, _)| *id != *HAND_RIGHT_ID);
-            }
         }
 
         let controllers_config = {

@@ -43,7 +43,6 @@ pub struct OpenvrConfig {
     pub h264_profile: u32,
     pub refresh_rate: u32,
     pub use_10bit_encoder: bool,
-    pub use_full_range_encoding: bool,
     pub encoding_gamma: f32,
     pub enable_hdr: bool,
     pub force_hdr_srgb_correction: bool,

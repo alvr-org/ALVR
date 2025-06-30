@@ -77,7 +77,7 @@ jobs:
           RUST_BACKTRACE: 1
         run:  cargo xtask prepare-deps --platform linux --no-nvidia
 
-      - run: cargo xtask clippy --ci
+      - run: cargo clippy
 
   check-macos:
     runs-on: macos-latest

@@ -1204,13 +1204,6 @@ fn connection_pipeline(
                         }
                         ctx.events_sender.send(ServerCoreEvent::RequestIDR).ok();
                     }
-                    ClientControlPacket::VideoErrorReport => {
-                        // legacy endpoint. todo: remove
-                        if let Some(stats) = &mut *ctx.statistics_manager.write() {
-                            stats.report_packet_loss();
-                        }
-                        ctx.events_sender.send(ServerCoreEvent::RequestIDR).ok();
-                    }
                     ClientControlPacket::ViewsConfig(config) => {
                         ctx.events_sender
                             .send(ServerCoreEvent::ViewsConfig(ViewsConfig {

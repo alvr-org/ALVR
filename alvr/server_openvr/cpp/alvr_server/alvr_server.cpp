@@ -441,12 +441,6 @@ void SetTracking(
     }
 }
 
-void VideoErrorReportReceive() {
-    if (g_driver_provider.hmd) {
-        g_driver_provider.hmd->m_encoder->OnPacketLoss();
-    }
-}
-
 void RequestDriverResync() {
     if (g_driver_provider.hmd) {
         vr::VRServerDriverHost()->VendorSpecificEvent(

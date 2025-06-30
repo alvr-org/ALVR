@@ -148,7 +148,6 @@ extern "C" void SetTracking(
     const FfiDeviceMotion* bodyTrackerMotions,
     int bodyTrackerMotionCount
 );
-extern "C" void VideoErrorReportReceive();
 extern "C" void RequestDriverResync();
 extern "C" void ShutdownSteamvr();
 

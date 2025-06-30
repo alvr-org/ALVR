@@ -265,7 +265,6 @@ pub enum ClientControlPacket {
     StreamReady, // This flag notifies the server the client streaming socket is ready listening
     ViewsConfig(ViewsConfig),
     Battery(BatteryInfo),
-    VideoErrorReport, // legacy
     Buttons(Vec<ButtonEntry>),
     ActiveInteractionProfile { device_id: u64, profile_id: u64 },
     Log { level: LogSeverity, message: String },

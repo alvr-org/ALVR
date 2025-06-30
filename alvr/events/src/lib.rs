@@ -14,8 +14,6 @@ pub struct StatisticsSummary {
     pub network_latency_ms: f32,
     pub encode_latency_ms: f32,
     pub decode_latency_ms: f32,
-    pub packets_lost_total: usize,
-    pub packets_lost_per_sec: usize,
     pub client_fps: u32,
     pub server_fps: u32,
     pub battery_hmd: u32,

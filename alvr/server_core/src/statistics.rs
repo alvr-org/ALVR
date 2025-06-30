@@ -50,8 +50,6 @@ pub struct StatisticsManager {
     video_packets_partial_sum: usize,
     video_bytes_total: usize,
     video_bytes_partial_sum: usize,
-    packets_lost_total: usize,
-    packets_lost_partial_sum: usize,
     battery_gauges: HashMap<u64, BatteryData>,
     steamvr_pipeline_latency: Duration,
     motion_to_photon_latency_average: SlidingWindowAverage<Duration>,
@@ -77,8 +75,6 @@ impl StatisticsManager {
             video_packets_partial_sum: 0,
             video_bytes_total: 0,
             video_bytes_partial_sum: 0,
-            packets_lost_total: 0,
-            packets_lost_partial_sum: 0,
             battery_gauges: HashMap::new(),
             steamvr_pipeline_latency: Duration::from_secs_f32(
                 steamvr_pipeline_frames * nominal_server_frame_interval.as_secs_f32(),
@@ -165,11 +161,6 @@ impl StatisticsManager {
         }
     }
 
-    pub fn report_packet_loss(&mut self) {
-        self.packets_lost_total += 1;
-        self.packets_lost_partial_sum += 1;
-    }
-
     pub fn report_battery(&mut self, device_id: u64, gauge_value: f32, is_plugged: bool) {
         *self.battery_gauges.entry(device_id).or_default() = BatteryData {
             gauge_value,
@@ -244,9 +235,6 @@ impl StatisticsManager {
                     network_latency_ms: network_latency.as_secs_f32() * 1000.,
                     encode_latency_ms: encoder_latency.as_secs_f32() * 1000.,
                     decode_latency_ms: client_stats.video_decode.as_secs_f32() * 1000.,
-                    packets_lost_total: self.packets_lost_total,
-                    packets_lost_per_sec: (self.packets_lost_partial_sum as f32 / interval_secs)
-                        as _,
                     client_fps: client_fps as _,
                     server_fps: server_fps as _,
                     battery_hmd: (self
@@ -266,7 +254,6 @@ impl StatisticsManager {
 
                 self.video_packets_partial_sum = 0;
                 self.video_bytes_partial_sum = 0;
-                self.packets_lost_partial_sum = 0;
             }
 
             let packet_bits = frame.video_packet_bytes as f32 * 8.0;

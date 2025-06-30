@@ -312,8 +312,6 @@ void CEncoder::Stop() {
 
 void CEncoder::OnStreamStart() { m_scheduler.OnStreamStart(); }
 
-void CEncoder::OnPacketLoss() { m_scheduler.OnPacketLoss(); }
-
 void CEncoder::InsertIDR() { m_scheduler.InsertIDR(); }
 
 void CEncoder::CaptureFrame() { m_captureFrame = true; }

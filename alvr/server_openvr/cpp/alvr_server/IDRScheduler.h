@@ -9,8 +9,6 @@ public:
     IDRScheduler();
     ~IDRScheduler();
 
-    void OnPacketLoss();
-
     void OnStreamStart();
     void InsertIDR();
 

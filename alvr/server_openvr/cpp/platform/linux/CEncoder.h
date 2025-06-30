@@ -18,7 +18,6 @@ public:
 
     void Stop();
     void OnStreamStart();
-    void OnPacketLoss();
     void InsertIDR();
     bool IsConnected() { return m_connected; }
     void CaptureFrame();

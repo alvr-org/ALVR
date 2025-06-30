@@ -62,8 +62,6 @@ public:
 
     void OnStreamStart();
 
-    void OnPacketLoss();
-
     void InsertIDR();
 
     void CaptureFrame();

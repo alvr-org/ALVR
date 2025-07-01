@@ -541,7 +541,7 @@ bool FrameRender::Startup() {
     return true;
 }
 
-void FrameRender::SetViewsConfig(
+void FrameRender::SetViewParams(
     vr::HmdRect2_t projLeft,
     vr::HmdMatrix34_t eyeToHeadLeft,
     vr::HmdRect2_t projRight,

@@ -14,17 +14,26 @@ struct FfiQuat {
     float w;
 };
 
-struct FfiHandSkeleton {
-    float jointPositions[31][3];
-    FfiQuat jointRotations[31];
+struct FfiPose {
+    FfiQuat orientation;
+    float position[3];
 };
 
 struct FfiDeviceMotion {
     unsigned long long deviceID;
-    FfiQuat orientation;
-    float position[3];
+    FfiPose pose;
     float linearVelocity[3];
     float angularVelocity[3];
+};
+
+struct FfiViewParams {
+    FfiPose pose;
+    FfiFov fov;
+};
+
+struct FfiHandSkeleton {
+    float jointPositions[31][3];
+    FfiQuat jointRotations[31];
 };
 
 struct FfiHandData {
@@ -58,11 +67,6 @@ struct FfiOpenvrProperty {
     unsigned int key;
     FfiOpenvrPropertyType type;
     FfiOpenvrPropertyValue value;
-};
-
-struct FfiViewsConfig {
-    FfiFov fov[2];
-    float ipd_m;
 };
 
 enum FfiButtonType {
@@ -154,7 +158,7 @@ extern "C" void ShutdownSteamvr();
 extern "C" void SetOpenvrProperty(void* instancePtr, FfiOpenvrProperty prop);
 extern "C" void SetOpenvrPropByDeviceID(unsigned long long deviceID, FfiOpenvrProperty prop);
 extern "C" void RegisterButton(void* instancePtr, unsigned long long buttonID);
-extern "C" void SetViewsConfig(FfiViewsConfig config);
+extern "C" void SetViewParams(const FfiViewParams params[2]);
 extern "C" void SetBattery(unsigned long long deviceID, float gauge_value, bool is_plugged);
 extern "C" void SetButton(unsigned long long buttonID, FfiButtonValue value);
 

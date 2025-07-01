@@ -106,19 +106,20 @@ pub struct AlvrBatteryInfo {
     pub is_plugged: bool,
 }
 
+#[repr(C)]
+pub struct AlvrViewParams {
+    pub pose: AlvrPose,
+    pub fov: AlvrFov,
+}
+
 #[repr(u8)]
 pub enum AlvrEvent {
     ClientConnected,
     ClientDisconnected,
     Battery(AlvrBatteryInfo),
     PlayspaceSync([f32; 2]),
-    ViewsConfig {
-        local_view_transform: [AlvrPose; 2],
-        fov: [AlvrFov; 2],
-    },
-    TrackingUpdated {
-        sample_timestamp_ns: u64,
-    },
+    ViewParams([AlvrViewParams; 2]),
+    TrackingUpdated { sample_timestamp_ns: u64 },
     ButtonsUpdated,
     RequestIDR,
     CaptureFrame,
@@ -342,14 +343,17 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
             ServerCoreEvent::PlayspaceSync(bounds) => unsafe {
                 *out_event = AlvrEvent::PlayspaceSync(bounds.to_array())
             },
-            ServerCoreEvent::ViewsConfig(config) => unsafe {
-                *out_event = AlvrEvent::ViewsConfig {
-                    local_view_transform: [
-                        pose_to_capi(&config.local_view_transforms[0]),
-                        pose_to_capi(&config.local_view_transforms[1]),
-                    ],
-                    fov: [fov_to_capi(&config.fov[0]), fov_to_capi(&config.fov[1])],
-                }
+            ServerCoreEvent::ViewParams(config) => unsafe {
+                *out_event = AlvrEvent::ViewParams([
+                    AlvrViewParams {
+                        pose: pose_to_capi(&config[0].pose),
+                        fov: fov_to_capi(&config[0].fov),
+                    },
+                    AlvrViewParams {
+                        pose: pose_to_capi(&config[1].pose),
+                        fov: fov_to_capi(&config[1].fov),
+                    },
+                ])
             },
             ServerCoreEvent::Tracking { sample_timestamp } => unsafe {
                 *out_event = AlvrEvent::TrackingUpdated {

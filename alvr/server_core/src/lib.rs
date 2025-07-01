@@ -16,8 +16,8 @@ pub use tracking::HandType;
 
 use crate::connection::VideoPacket;
 use alvr_common::{
-    ConnectionState, DEVICE_ID_TO_PATH, DeviceMotion, Fov, LifecycleState, Pose, RelaxedAtomic,
-    dbg_server_core, error,
+    ConnectionState, DEVICE_ID_TO_PATH, DeviceMotion, LifecycleState, Pose, RelaxedAtomic,
+    ViewParams, dbg_server_core, error,
     glam::Vec2,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
@@ -71,13 +71,6 @@ pub fn initialize_environment(layout: afs::Layout) {
     SESSION_MANAGER.write().session_mut();
 }
 
-// todo: use this as the network packet
-pub struct ViewsConfig {
-    // transforms relative to the head
-    pub local_view_transforms: [Pose; 2],
-    pub fov: [Fov; 2],
-}
-
 pub enum ServerCoreEvent {
     SetOpenvrProperty {
         device_id: u64,
@@ -87,7 +80,7 @@ pub enum ServerCoreEvent {
     ClientDisconnected,
     Battery(BatteryInfo),
     PlayspaceSync(Vec2),
-    ViewsConfig(ViewsConfig),
+    ViewParams([ViewParams; 2]),
     Tracking {
         sample_timestamp: Duration,
     },

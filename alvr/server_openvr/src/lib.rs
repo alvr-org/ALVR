@@ -68,26 +68,12 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                 ServerCoreEvent::PlayspaceSync(bounds) => unsafe {
                     SetChaperoneArea(bounds.x, bounds.y)
                 },
-                ServerCoreEvent::ViewsConfig(config) => unsafe {
-                    SetViewsConfig(FfiViewsConfig {
-                        fov: [
-                            FfiFov {
-                                left: config.fov[0].left,
-                                right: config.fov[0].right,
-                                up: config.fov[0].up,
-                                down: config.fov[0].down,
-                            },
-                            FfiFov {
-                                left: config.fov[1].left,
-                                right: config.fov[1].right,
-                                up: config.fov[1].up,
-                                down: config.fov[1].down,
-                            },
-                        ],
-                        // todo: send full matrix to steamvr
-                        ipd_m: config.local_view_transforms[1].position.x
-                            - config.local_view_transforms[0].position.x,
-                    });
+                ServerCoreEvent::ViewParams(params) => unsafe {
+                    let ffi_view_params = [
+                        tracking::to_ffi_view_params(params[0]),
+                        tracking::to_ffi_view_params(params[1]),
+                    ];
+                    SetViewParams(ffi_view_params.as_ptr());
                 },
                 ServerCoreEvent::Tracking { sample_timestamp } => {
                     let headset_config = &alvr_server_core::settings().headset;

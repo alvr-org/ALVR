@@ -1,5 +1,5 @@
 use crate::{
-    ConnectionContext, FILESYSTEM_LAYOUT, SESSION_MANAGER, ServerCoreEvent, ViewsConfig,
+    ConnectionContext, FILESYSTEM_LAYOUT, SESSION_MANAGER, ServerCoreEvent,
     bitrate::BitrateManager,
     hand_gestures::HandGestureManager,
     input_mapping::ButtonMappingManager,
@@ -10,8 +10,8 @@ use crate::{
 use alvr_adb::{WiredConnection, WiredConnectionStatus};
 use alvr_common::{
     AnyhowToCon, BUTTON_INFO, CONTROLLER_PROFILE_INFO, ConResult, ConnectionError, ConnectionState,
-    LifecycleState, Pose, QUEST_CONTROLLER_PROFILE_PATH, con_bail, dbg_connection, debug, error,
-    glam::{Quat, UVec2, Vec2, Vec3},
+    LifecycleState, QUEST_CONTROLLER_PROFILE_PATH, con_bail, dbg_connection, debug, error,
+    glam::{UVec2, Vec2},
     info,
     parking_lot::{Condvar, Mutex, RwLock},
     settings_schema::Switch,
@@ -1179,21 +1179,9 @@ fn connection_pipeline(
                         }
                         ctx.events_sender.send(ServerCoreEvent::RequestIDR).ok();
                     }
-                    ClientControlPacket::ViewsConfig(config) => {
+                    ClientControlPacket::ViewParams(params) => {
                         ctx.events_sender
-                            .send(ServerCoreEvent::ViewsConfig(ViewsConfig {
-                                local_view_transforms: [
-                                    Pose {
-                                        position: Vec3::new(-config.ipd_m / 2., 0., 0.),
-                                        orientation: Quat::IDENTITY,
-                                    },
-                                    Pose {
-                                        position: Vec3::new(config.ipd_m / 2., 0., 0.),
-                                        orientation: Quat::IDENTITY,
-                                    },
-                                ],
-                                fov: config.fov,
-                            }))
+                            .send(ServerCoreEvent::ViewParams(params))
                             .ok();
                     }
                     ClientControlPacket::Battery(packet) => {

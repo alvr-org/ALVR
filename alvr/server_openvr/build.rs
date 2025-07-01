@@ -117,12 +117,14 @@ fn main() {
         assert!(x264_pkg_path.exists());
 
         let x264_pkg_path = x264_pkg_path.to_string_lossy().to_string();
-        env::set_var(
-            "PKG_CONFIG_PATH",
-            env::var("PKG_CONFIG_PATH").map_or(x264_pkg_path.clone(), |old| {
-                format!("{x264_pkg_path}:{old}")
-            }),
-        );
+        unsafe {
+            env::set_var(
+                "PKG_CONFIG_PATH",
+                env::var("PKG_CONFIG_PATH").map_or(x264_pkg_path.clone(), |old| {
+                    format!("{x264_pkg_path}:{old}")
+                }),
+            )
+        };
         println!("cargo:rustc-link-lib=static=x264");
 
         pkg_config::Config::new()

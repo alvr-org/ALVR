@@ -20,8 +20,9 @@ use alvr_common::{
 use alvr_events::{AdbEvent, ButtonEvent, EventType};
 use alvr_packets::{
     AUDIO, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
-    HAPTICS, NegotiatedStreamingConfig, RealTimeConfig, ReservedClientControlPacket, STATISTICS,
-    ServerControlPacket, TRACKING, Tracking, VIDEO, VideoPacketHeader,
+    HAPTICS, NegotiatedStreamingConfig, NegotiatedStreamingConfigExt, RealTimeConfig,
+    ReservedClientControlPacket, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING,
+    Tracking, VIDEO, VideoPacketHeader,
 };
 use alvr_session::{
     BodyTrackingBDConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize,
@@ -573,9 +574,7 @@ fn connection_pipeline(
         return Ok(());
     };
 
-    let streaming_caps = if let Some(streaming_caps) = maybe_streaming_caps {
-        alvr_packets::decode_video_streaming_capabilities(&streaming_caps).to_con()?
-    } else {
+    let Some(streaming_caps) = maybe_streaming_caps else {
         con_bail!("Only streaming clients are supported for now");
     };
 
@@ -667,30 +666,29 @@ fn connection_pipeline(
         initial_settings.video.encoder_config.h264_profile
     };
 
-    let mut enable_10_bits_encoding =
-        if let Some(use_10bit) = initial_settings.video.encoder_config.use_10bit {
-            use_10bit
-        } else {
-            streaming_caps.prefer_10bit
-        };
+    let mut enable_10_bits_encoding = initial_settings
+        .video
+        .encoder_config
+        .use_10bit
+        .unwrap_or(streaming_caps.prefer_10bit);
 
     if enable_10_bits_encoding && !streaming_caps.encoder_10_bits {
         warn!("10 bits encoding is not supported by the client.");
         enable_10_bits_encoding = false
     }
 
-    let enable_hdr = if let Some(enable_hdr) = initial_settings.video.encoder_config.hdr.enable {
-        enable_hdr
-    } else {
-        streaming_caps.prefer_hdr
-    };
+    let enable_hdr = initial_settings
+        .video
+        .encoder_config
+        .hdr
+        .enable
+        .unwrap_or(streaming_caps.prefer_hdr);
 
-    let encoding_gamma =
-        if let Some(encoding_gamma) = initial_settings.video.encoder_config.encoding_gamma {
-            encoding_gamma
-        } else {
-            streaming_caps.preferred_encoding_gamma
-        };
+    let encoding_gamma = initial_settings
+        .video
+        .encoder_config
+        .encoding_gamma
+        .unwrap_or(streaming_caps.preferred_encoding_gamma);
 
     let codec = if initial_settings.video.preferred_codec == CodecType::AV1 {
         let codec = if streaming_caps.encoder_av1 {
@@ -749,9 +747,9 @@ fn connection_pipeline(
     let wired = client_ip.is_loopback();
 
     dbg_connection!("connection_pipeline: send streaming config");
-    let stream_config_packet = alvr_packets::encode_stream_config(
+    let stream_config_packet = StreamConfigPacket::new(
         session_manager_lock.session(),
-        &NegotiatedStreamingConfig {
+        NegotiatedStreamingConfig {
             view_resolution: stream_view_resolution,
             refresh_rate_hint: fps,
             game_audio_sample_rate,
@@ -759,7 +757,9 @@ fn connection_pipeline(
             encoding_gamma,
             enable_hdr,
             wired,
-        },
+            ext_str: String::new(),
+        }
+        .with_ext(NegotiatedStreamingConfigExt {}),
     )
     .to_con()?;
     proto_socket.send(&stream_config_packet).to_con()?;

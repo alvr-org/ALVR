@@ -23,7 +23,11 @@ pub const AUDIO: u16 = 2;
 pub const VIDEO: u16 = 3;
 pub const STATISTICS: u16 = 4;
 
-// Note: not a network packet
+#[derive(Serialize, Deserialize, Clone)]
+pub struct VideoStreamingCapabilitiesExt {
+    // Nothing for now
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct VideoStreamingCapabilities {
     pub default_view_resolution: UVec2,
@@ -36,23 +40,24 @@ pub struct VideoStreamingCapabilities {
     pub prefer_10bit: bool,
     pub preferred_encoding_gamma: f32,
     pub prefer_hdr: bool,
+    pub ext_str: String,
 }
 
-pub fn decode_video_streaming_capabilities(cap_str: &str) -> Result<VideoStreamingCapabilities> {
-    let caps_json = json::from_str::<json::Value>(cap_str)?;
+impl VideoStreamingCapabilities {
+    pub fn with_ext(self, ext: VideoStreamingCapabilitiesExt) -> Self {
+        Self {
+            ext_str: json::to_string(&ext).unwrap(),
+            ..self
+        }
+    }
 
-    Ok(VideoStreamingCapabilities {
-        default_view_resolution: json::from_value(caps_json["default_view_resolution"].clone())?,
-        refresh_rates: json::from_value(caps_json["refresh_rates"].clone())?,
-        microphone_sample_rate: json::from_value(caps_json["microphone_sample_rate"].clone())?,
-        foveated_encoding: json::from_value(caps_json["foveated_encoding"].clone())?,
-        encoder_high_profile: json::from_value(caps_json["encoder_high_profile"].clone())?,
-        encoder_10_bits: json::from_value(caps_json["encoder_10_bits"].clone())?,
-        encoder_av1: json::from_value(caps_json["encoder_av1"].clone())?,
-        prefer_10bit: json::from_value(caps_json["prefer_10bit"].clone())?,
-        preferred_encoding_gamma: json::from_value(caps_json["preferred_encoding_gamma"].clone())?,
-        prefer_hdr: json::from_value(caps_json["prefer_hdr"].clone())?,
-    })
+    pub fn ext(&self) -> Result<VideoStreamingCapabilitiesExt> {
+        let _ext_json = json::from_str::<json::Value>(&self.ext_str)?;
+
+        // decode values here
+
+        Ok(VideoStreamingCapabilitiesExt {})
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -61,12 +66,16 @@ pub enum ClientConnectionResult {
         client_protocol_id: u64,
         display_name: String,
         server_ip: IpAddr,
-        streaming_capabilities: Option<String>,
+        streaming_capabilities: Option<VideoStreamingCapabilities>,
     },
     ClientStandby,
 }
 
-// Note: not a network packet
+#[derive(Serialize, Deserialize)]
+pub struct NegotiatedStreamingConfigExt {
+    // Nothing for now
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NegotiatedStreamingConfig {
     pub view_resolution: UVec2,
@@ -76,22 +85,30 @@ pub struct NegotiatedStreamingConfig {
     pub encoding_gamma: f32,
     pub enable_hdr: bool,
     pub wired: bool,
+    pub ext_str: String,
+}
+
+impl NegotiatedStreamingConfig {
+    pub fn with_ext(self, ext: NegotiatedStreamingConfigExt) -> Self {
+        Self {
+            ext_str: json::to_string(&ext).unwrap(),
+            ..self
+        }
+    }
+
+    pub fn ext(&self) -> Result<NegotiatedStreamingConfigExt> {
+        let _ext_json = json::from_str::<json::Value>(&self.ext_str)?;
+
+        // decode values here
+
+        Ok(NegotiatedStreamingConfigExt {})
+    }
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct StreamConfigPacket {
-    pub session: String,    // JSON session that allows for extrapolation
-    pub negotiated: String, // Encoded NegotiatedVideoStreamingConfig
-}
-
-pub fn encode_stream_config(
-    session: &SessionConfig,
-    negotiated: &NegotiatedStreamingConfig,
-) -> Result<StreamConfigPacket> {
-    Ok(StreamConfigPacket {
-        session: json::to_string(session)?,
-        negotiated: json::to_string(negotiated)?,
-    })
+    pub session: String, // JSON session that allows for extrapolation
+    pub negotiated: NegotiatedStreamingConfig,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -101,28 +118,25 @@ pub struct StreamConfig {
     pub negotiated_config: NegotiatedStreamingConfig,
 }
 
-pub fn decode_stream_config(packet: &StreamConfigPacket) -> Result<StreamConfig> {
-    let mut session_config = SessionConfig::default();
-    session_config.merge_from_json(&json::from_str(&packet.session)?)?;
-    let settings = session_config.to_settings();
+impl StreamConfigPacket {
+    pub fn new(session: &SessionConfig, negotiated: NegotiatedStreamingConfig) -> Result<Self> {
+        Ok(Self {
+            session: json::to_string(session)?,
+            negotiated,
+        })
+    }
 
-    let neg_json = json::from_str::<json::Value>(&packet.negotiated)?;
+    pub fn to_stream_config(self) -> Result<StreamConfig> {
+        let mut session_config = SessionConfig::default();
+        session_config.merge_from_json(&json::from_str(&self.session)?)?;
+        let settings = session_config.to_settings();
 
-    Ok(StreamConfig {
-        server_version: session_config.server_version,
-        settings,
-        negotiated_config: NegotiatedStreamingConfig {
-            view_resolution: json::from_value(neg_json["view_resolution"].clone())?,
-            refresh_rate_hint: json::from_value(neg_json["refresh_rate_hint"].clone())?,
-            game_audio_sample_rate: json::from_value(neg_json["game_audio_sample_rate"].clone())?,
-            enable_foveated_encoding: json::from_value(
-                neg_json["enable_foveated_encoding"].clone(),
-            )?,
-            encoding_gamma: json::from_value(neg_json["encoding_gamma"].clone())?,
-            enable_hdr: json::from_value(neg_json["enable_hdr"].clone())?,
-            wired: json::from_value(neg_json["wired"].clone())?,
-        },
-    })
+        Ok(StreamConfig {
+            server_version: session_config.server_version,
+            settings,
+            negotiated_config: self.negotiated,
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]

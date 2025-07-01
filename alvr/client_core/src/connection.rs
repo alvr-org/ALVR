@@ -10,14 +10,14 @@ use crate::{
 use alvr_audio::AudioDevice;
 use alvr_common::{
     ALVR_VERSION, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, Pose,
-    ToCon, ViewParams, dbg_connection, debug, error, info,
+    ViewParams, dbg_connection, debug, error, info,
     parking_lot::{Condvar, Mutex, RwLock},
     wait_rwlock, warn,
 };
 use alvr_packets::{
     AUDIO, ClientConnectionResult, ClientControlPacket, ClientStatistics, HAPTICS, Haptics,
     RealTimeConfig, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, Tracking, VIDEO,
-    VideoPacketHeader, VideoStreamingCapabilities,
+    VideoPacketHeader, VideoStreamingCapabilities, VideoStreamingCapabilitiesExt,
 };
 use alvr_session::{SocketProtocol, settings_schema::Switch};
 use alvr_sockets::{
@@ -172,7 +172,7 @@ fn connection_pipeline(
             display_name: alvr_system_info::platform().to_string(),
             server_ip,
             streaming_capabilities: Some(
-                serde_json::to_string(&VideoStreamingCapabilities {
+                VideoStreamingCapabilities {
                     default_view_resolution: capabilities.default_view_resolution,
                     refresh_rates: capabilities.refresh_rates,
                     microphone_sample_rate,
@@ -183,8 +183,9 @@ fn connection_pipeline(
                     prefer_10bit: capabilities.prefer_10bit,
                     preferred_encoding_gamma: capabilities.preferred_encoding_gamma,
                     prefer_hdr: capabilities.prefer_hdr,
-                })
-                .to_con()?,
+                    ext_str: String::new(),
+                }
+                .with_ext(VideoStreamingCapabilitiesExt {}),
             ),
         })
         .to_con()?;
@@ -192,7 +193,7 @@ fn connection_pipeline(
         proto_control_socket.recv::<StreamConfigPacket>(HANDSHAKE_ACTION_TIMEOUT)?;
     dbg_connection!("connection_pipeline: stream config received");
 
-    let stream_config = alvr_packets::decode_stream_config(&config_packet).to_con()?;
+    let stream_config = config_packet.to_stream_config().to_con()?;
 
     let streaming_start_event = ClientCoreEvent::StreamingStarted(Box::new(stream_config.clone()));
 

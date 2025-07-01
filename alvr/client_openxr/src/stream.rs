@@ -194,7 +194,7 @@ impl StreamContext {
             format,
             config.foveated_encoding_config.clone(),
             platform != Platform::Lynx && !((platform.is_pico()) && config.enable_hdr),
-            !config.enable_hdr, // TODO: figure out why HDR doesn't need the limited range hackfix in staging?
+            !config.enable_hdr,
             config.encoding_gamma,
             config.upscaling.clone(),
         );

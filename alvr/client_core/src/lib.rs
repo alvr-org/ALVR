@@ -30,7 +30,6 @@ use alvr_packets::{
 };
 use alvr_session::CodecType;
 use connection::{ConnectionContext, DecoderCallback};
-use core::f32;
 use std::{
     collections::{HashSet, VecDeque},
     sync::Arc,

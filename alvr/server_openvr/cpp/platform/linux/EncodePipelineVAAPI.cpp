@@ -226,8 +226,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
     encoder_ctx->sample_aspect_ratio = AVRational { 1, 1 };
     encoder_ctx->pix_fmt = AV_PIX_FMT_VAAPI;
     encoder_ctx->max_b_frames = 0;
-    encoder_ctx->color_range
-        = Settings::Instance().m_useFullRangeEncoding ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
+    encoder_ctx->color_range = AVCOL_RANGE_JPEG;
 
     auto params = FfiDynamicEncoderParams {};
     params.updated = true;
@@ -348,9 +347,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
     inputs->pad_idx = 0;
     inputs->next = NULL;
 
-    std::string filters = Settings::Instance().m_useFullRangeEncoding
-        ? "scale_vaapi=out_range=full:format="
-        : "scale_vaapi=format=";
+    std::string filters = "scale_vaapi=out_range=full:format=";
     if ((Settings::Instance().m_codec == ALVR_CODEC_HEVC
          || Settings::Instance().m_codec == ALVR_CODEC_AV1)
         && Settings::Instance().m_use10bitEncoder) {

@@ -18,8 +18,8 @@ mod audio;
 pub mod video_decoder;
 
 use alvr_common::{
-    ConnectionState, DeviceMotion, Fov, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID, LifecycleState, Pose,
-    ViewParams, dbg_client_core, error,
+    ConnectionState, DeviceMotion, Fov, HEAD_ID, LifecycleState, Pose, ViewParams, dbg_client_core,
+    error,
     glam::{Quat, UVec2, Vec2, Vec3},
     parking_lot::{Mutex, RwLock},
     warn,
@@ -281,32 +281,6 @@ impl ClientCoreContext {
                     + Duration::min(stats.tracker_prediction_offset(), max_prediction);
 
                 *motion = motion.predict(poll_timestamp, tracker_timestamp);
-            }
-        }
-
-        // send_tracking() expects hand data in the multimodal protocol. In case multimodal protocol
-        // is not supported, convert back to legacy protocol.
-        if !self.connection_context.uses_multimodal_protocol.value() {
-            if hand_skeletons[0].is_some() {
-                device_motions.push((
-                    *HAND_LEFT_ID,
-                    DeviceMotion {
-                        pose: hand_skeletons[0].unwrap()[0],
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ));
-            }
-
-            if hand_skeletons[1].is_some() {
-                device_motions.push((
-                    *HAND_RIGHT_ID,
-                    DeviceMotion {
-                        pose: hand_skeletons[1].unwrap()[0],
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ));
             }
         }
 

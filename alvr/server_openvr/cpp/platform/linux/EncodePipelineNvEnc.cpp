@@ -168,8 +168,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
     encoder_ctx->sample_aspect_ratio = AVRational { 1, 1 };
     encoder_ctx->max_b_frames = 0;
     encoder_ctx->gop_size = INT16_MAX;
-    encoder_ctx->color_range
-        = Settings::Instance().m_useFullRangeEncoding ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
+    encoder_ctx->color_range = AVCOL_RANGE_JPEG;
     auto params = FfiDynamicEncoderParams {};
     params.updated = true;
     params.bitrate_bps = 30'000'000;

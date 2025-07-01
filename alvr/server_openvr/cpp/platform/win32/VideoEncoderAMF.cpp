@@ -240,18 +240,13 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
         }
 
         // Enable Full Range
-        amfEncoder->SetProperty(
-            AMF_VIDEO_ENCODER_FULL_RANGE_COLOR, Settings::Instance().m_useFullRangeEncoding
-        );
+        amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FULL_RANGE_COLOR, true);
 
         // Use BT.2020 for HDR encoding, BT.709 otherwise.
         if (Settings::Instance().m_enableHdr) {
             // Also specify the input formats for HDR to prevent incorrect color conversions
             amfEncoder->SetProperty(
-                AMF_VIDEO_ENCODER_INPUT_COLOR_PROFILE,
-                Settings::Instance().m_useFullRangeEncoding
-                    ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020
-                    : AMF_VIDEO_CONVERTER_COLOR_PROFILE_2020
+                AMF_VIDEO_ENCODER_INPUT_COLOR_PROFILE, AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020
             );
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_INPUT_TRANSFER_CHARACTERISTIC,
@@ -262,10 +257,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             );
 
             amfEncoder->SetProperty(
-                AMF_VIDEO_ENCODER_OUTPUT_COLOR_PROFILE,
-                Settings::Instance().m_useFullRangeEncoding
-                    ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020
-                    : AMF_VIDEO_CONVERTER_COLOR_PROFILE_2020
+                AMF_VIDEO_ENCODER_OUTPUT_COLOR_PROFILE, AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020
             );
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_OUTPUT_TRANSFER_CHARACTERISTIC,
@@ -276,10 +268,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             );
         } else {
             amfEncoder->SetProperty(
-                AMF_VIDEO_ENCODER_OUTPUT_COLOR_PROFILE,
-                Settings::Instance().m_useFullRangeEncoding
-                    ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_709
-                    : AMF_VIDEO_CONVERTER_COLOR_PROFILE_709
+                AMF_VIDEO_ENCODER_OUTPUT_COLOR_PROFILE, AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_709
             );
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_OUTPUT_TRANSFER_CHARACTERISTIC,
@@ -404,10 +393,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 
         // Enable Full Range
         amfEncoder->SetProperty(
-            AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE,
-            Settings::Instance().m_useFullRangeEncoding
-                ? AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE_FULL
-                : AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE_STUDIO
+            AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE, AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE_FULL
         );
 
         // Use BT.2020 for HDR encoding, BT.709 otherwise.
@@ -415,9 +401,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             // Also specify the input formats for HDR to prevent incorrect color conversions
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_HEVC_INPUT_COLOR_PROFILE,
-                Settings::Instance().m_useFullRangeEncoding
-                    ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020
-                    : AMF_VIDEO_CONVERTER_COLOR_PROFILE_2020
+                AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020
             );
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_HEVC_INPUT_TRANSFER_CHARACTERISTIC,
@@ -429,9 +413,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_HEVC_OUTPUT_COLOR_PROFILE,
-                Settings::Instance().m_useFullRangeEncoding
-                    ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020
-                    : AMF_VIDEO_CONVERTER_COLOR_PROFILE_2020
+                AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020
             );
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_HEVC_OUTPUT_TRANSFER_CHARACTERISTIC,
@@ -443,9 +425,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
         } else {
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_HEVC_OUTPUT_COLOR_PROFILE,
-                Settings::Instance().m_useFullRangeEncoding
-                    ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_709
-                    : AMF_VIDEO_CONVERTER_COLOR_PROFILE_709
+                AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_709
             );
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_HEVC_OUTPUT_TRANSFER_CHARACTERISTIC,
@@ -584,9 +564,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 
         // Enable Full Range
         amfEncoder->SetProperty(
-            AMF_VIDEO_ENCODER_AV1_OUTPUT_COLOR_PROFILE,
-            Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_JPEG
-                                                        : AMF_VIDEO_CONVERTER_COLOR_PROFILE_UNKNOWN
+            AMF_VIDEO_ENCODER_AV1_OUTPUT_COLOR_PROFILE, AMF_VIDEO_CONVERTER_COLOR_PROFILE_JPEG
         );
 
         // May impact performance but improves quality in high-motion areas

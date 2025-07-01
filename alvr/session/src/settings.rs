@@ -213,14 +213,7 @@ pub struct HDRConfig {
         help = "If the client has no preference, enables compositing VR layers to an RGBA float16 framebuffer, and doing sRGB/YUV conversions in shader code."
     ))]
     #[schema(flag = "steamvr-restart")]
-    pub enable_hdr: bool,
-
-    #[schema(strings(
-        display_name = "Override for HDR",
-        help = "The server will override the headset client's preference for HDR."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub server_overrides_enable_hdr: bool,
+    pub enable: Option<bool>,
 
     #[schema(strings(
         display_name = "Force HDR sRGB Correction",
@@ -285,42 +278,15 @@ CABAC produces better compression but it's significantly slower and may lead to 
         help = "Sets the encoder to use 10 bits per channel instead of 8, if the client has no preference. Does not work on Linux with Nvidia"
     ))]
     #[schema(flag = "steamvr-restart")]
-    pub use_10bit: bool,
-
-    #[schema(strings(
-        display_name = "Override for 10-bit encoding",
-        help = "The server will override the headset client's preference for 10-bit encoding."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub server_overrides_use_10bit: bool,
-
-    #[schema(strings(
-        display_name = "Full range color",
-        help = "Sets the encoder to encode full range RGB (0-255) instead of limited/video range RGB (16-235), if the client has no preference"
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub use_full_range: bool,
-
-    #[schema(strings(
-        display_name = "Override for full range color",
-        help = "The server will override the headset client's preference for full range color."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub server_overrides_use_full_range: bool,
+    pub use_10bit: Option<bool>,
 
     #[schema(strings(
         display_name = "Encoding Gamma",
         help = "To prioritize darker pixels at the expense of potentially additional banding in midtones, set to 2.2. To allow the encoder to decide priority on its own, set to 1.0."
     ))]
     #[schema(flag = "steamvr-restart")]
-    pub encoding_gamma: f32,
+    pub encoding_gamma: Option<f32>,
 
-    #[schema(strings(
-        display_name = "Override for encoding gamma",
-        help = "The server will override the headset client's preference for encoding gamma."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub server_overrides_encoding_gamma: bool,
     #[schema(strings(display_name = "HDR"))]
     #[schema(flag = "steamvr-restart")]
     pub hdr: HDRConfig,
@@ -1732,16 +1698,20 @@ pub fn session_settings_default() -> SettingsDefault {
                 entropy_coding: EntropyCodingDefault {
                     variant: EntropyCodingDefaultVariant::Cavlc,
                 },
-                use_10bit: false,
-                server_overrides_use_10bit: false,
-                use_full_range: true,
-                server_overrides_use_full_range: false,
-                encoding_gamma: 1.0,
-                server_overrides_encoding_gamma: false,
+                use_10bit: OptionalDefault {
+                    set: false,
+                    content: false,
+                },
+                encoding_gamma: OptionalDefault {
+                    set: false,
+                    content: 1.0,
+                },
                 hdr: HDRConfigDefault {
                     gui_collapsed: true,
-                    enable_hdr: false,
-                    server_overrides_enable_hdr: false,
+                    enable: OptionalDefault {
+                        set: false,
+                        content: false,
+                    },
                     force_hdr_srgb_correction: false,
                     clamp_hdr_extended_range: false,
                 },

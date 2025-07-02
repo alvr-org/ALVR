@@ -94,8 +94,8 @@ fn get_hand_skeleton_offsets(config: &HeadsetConfig) -> (Pose, Pose) {
             position: Vec3::new(-t[0], t[1], t[2]),
         };
     } else {
-        left_offset = Pose::default();
-        right_offset = Pose::default();
+        left_offset = Pose::IDENTITY;
+        right_offset = Pose::IDENTITY;
     }
 
     (left_offset, right_offset)

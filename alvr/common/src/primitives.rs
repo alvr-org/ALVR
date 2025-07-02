@@ -11,24 +11,27 @@ pub struct Fov {
     pub down: f32,
 }
 
-impl Default for Fov {
-    fn default() -> Self {
-        Fov {
-            left: -1.0,
-            right: 1.0,
-            up: 1.0,
-            down: -1.0,
-        }
-    }
+impl Fov {
+    pub const DUMMY: Self = Fov {
+        left: -1.0,
+        right: 1.0,
+        up: 1.0,
+        down: -1.0,
+    };
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
 pub struct Pose {
-    pub orientation: Quat, // NB: default Quat is identity
+    pub orientation: Quat,
     pub position: Vec3,
 }
 
 impl Pose {
+    pub const IDENTITY: Self = Pose {
+        orientation: Quat::IDENTITY,
+        position: Vec3::ZERO,
+    };
+
     pub fn inverse(&self) -> Pose {
         let inverse_orientation = self.orientation.conjugate();
         Pose {
@@ -92,8 +95,15 @@ impl DeviceMotion {
 }
 
 // Per eye view parameters
-#[derive(Serialize, Deserialize, Clone, Copy, Default)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct ViewParams {
     pub pose: Pose,
     pub fov: Fov,
+}
+
+impl ViewParams {
+    pub const DUMMY: Self = ViewParams {
+        pose: Pose::IDENTITY,
+        fov: Fov::DUMMY,
+    };
 }

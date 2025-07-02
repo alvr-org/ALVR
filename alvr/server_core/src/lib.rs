@@ -80,7 +80,7 @@ pub enum ServerCoreEvent {
     ClientDisconnected,
     Battery(BatteryInfo),
     PlayspaceSync(Vec2),
-    LocalViewParams([ViewParams; 2]), // Head-to-view
+    LocalViewParams([ViewParams; 2]), // In relation to head
     Tracking {
         sample_timestamp: Duration,
     },

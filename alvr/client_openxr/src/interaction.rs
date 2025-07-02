@@ -57,7 +57,7 @@ fn get_controller_offset(platform: Platform, is_right_hand: bool) -> Pose {
             position: Vec3::new(0.0, 0.0, -0.02),
             orientation: Quat::IDENTITY,
         },
-        _ => Pose::default(),
+        _ => Pose::IDENTITY,
     };
 
     if is_right_hand {

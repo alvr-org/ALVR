@@ -17,7 +17,6 @@ use bindings::*;
 use alvr_common::{
     BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
     Pose, ViewParams, error,
-    once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
     warn,
@@ -36,10 +35,8 @@ use std::{
 };
 
 static SERVER_CORE_CONTEXT: RwLock<Option<ServerCoreContext>> = RwLock::new(None);
-static LOCAL_VIEW_PARAMS: Lazy<RwLock<[ViewParams; 2]>> =
-    Lazy::new(|| RwLock::new([ViewParams::default(); 2]));
-static HEAD_POSE_QUEUE: Lazy<Mutex<VecDeque<(Duration, Pose)>>> =
-    Lazy::new(|| Mutex::new(VecDeque::new()));
+static LOCAL_VIEW_PARAMS: RwLock<[ViewParams; 2]> = RwLock::new([ViewParams::DUMMY; 2]);
+static HEAD_POSE_QUEUE: Mutex<VecDeque<(Duration, Pose)>> = Mutex::new(VecDeque::new());
 
 fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
     thread::spawn(move || {
@@ -101,7 +98,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                         {
                             let mut head_pose_queue_lock = HEAD_POSE_QUEUE.lock();
                             head_pose_queue_lock.push_back((sample_timestamp, motion.pose));
-                            while head_pose_queue_lock.len() > 1024 {
+                            while head_pose_queue_lock.len() > 128 {
                                 head_pose_queue_lock.pop_front();
                             }
 
@@ -344,15 +341,11 @@ extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_id
         let timestamp = Duration::from_nanos(timestamp_ns);
         let buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
 
-        let mut head_pose = None;
-        for (ts, pose) in &*HEAD_POSE_QUEUE.lock() {
-            if *ts == timestamp {
-                head_pose = Some(*pose);
-                break;
-            }
-        }
-
-        let Some(head_pose) = head_pose else {
+        let Some(head_pose) = HEAD_POSE_QUEUE
+            .lock()
+            .iter()
+            .find_map(|(ts, pose)| (*ts <= timestamp).then_some(*pose))
+        else {
             // We can't submit the frame without its pose
             return;
         };

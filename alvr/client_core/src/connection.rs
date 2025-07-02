@@ -317,7 +317,7 @@ fn connection_pipeline(
                         global_view_params_queue_lock
                             .push_back((header.timestamp, header.global_view_params));
 
-                        while global_view_params_queue_lock.len() > 1024 {
+                        while global_view_params_queue_lock.len() > 128 {
                             global_view_params_queue_lock.pop_front();
                         }
                     }

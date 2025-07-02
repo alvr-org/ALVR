@@ -117,7 +117,7 @@ pub enum AlvrEvent {
     ClientDisconnected,
     Battery(AlvrBatteryInfo),
     PlayspaceSync([f32; 2]),
-    LocalViewParams([AlvrViewParams; 2]), // Head-to-view
+    LocalViewParams([AlvrViewParams; 2]), // In relation to head
     TrackingUpdated { sample_timestamp_ns: u64 },
     ButtonsUpdated,
     RequestIDR,

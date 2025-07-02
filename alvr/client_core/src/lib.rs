@@ -120,7 +120,7 @@ impl ClientCoreContext {
             event_queue,
             connection_context,
             connection_thread: Arc::new(Mutex::new(Some(connection_thread))),
-            last_good_global_view_params: Mutex::new([ViewParams::default(); 2]),
+            last_good_global_view_params: Mutex::new([ViewParams::DUMMY; 2]),
         }
     }
 

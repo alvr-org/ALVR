@@ -550,7 +550,7 @@ pub extern "C" fn alvr_send_tracking(
                 (!hand_skeleton.is_null()).then(|| {
                     let hand_skeleton = unsafe { slice::from_raw_parts(hand_skeleton, 26) };
 
-                    let mut array = [Pose::default(); 26];
+                    let mut array = [Pose::IDENTITY; 26];
 
                     for (pose, capi_pose) in array.iter_mut().zip(hand_skeleton.iter()) {
                         *pose = Pose {
@@ -872,7 +872,7 @@ pub extern "C" fn alvr_render_stream_opengl(
                     StreamViewParams {
                         swapchain_index: left_params.swapchain_index,
                         input_view_params: ViewParams {
-                            pose: Pose::default(),
+                            pose: Pose::IDENTITY,
                             fov: from_capi_fov(left_params.fov),
                         },
                         output_view_params: ViewParams {
@@ -886,7 +886,7 @@ pub extern "C" fn alvr_render_stream_opengl(
                     StreamViewParams {
                         swapchain_index: right_params.swapchain_index,
                         input_view_params: ViewParams {
-                            pose: Pose::default(),
+                            pose: Pose::IDENTITY,
                             fov: from_capi_fov(right_params.fov),
                         },
                         output_view_params: ViewParams {

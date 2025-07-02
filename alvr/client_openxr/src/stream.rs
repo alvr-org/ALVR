@@ -226,7 +226,7 @@ impl StreamContext {
             stage_reference_space,
             view_reference_space,
             swapchains,
-            last_good_view_params: [ViewParams::default(); 2],
+            last_good_view_params: [ViewParams::DUMMY; 2],
             input_thread: None,
             input_thread_running,
             config,
@@ -516,9 +516,9 @@ fn stream_input_loop(
 ) {
     let platform = alvr_system_info::platform();
 
-    let mut last_controller_poses = [Pose::default(); 2];
-    let mut last_palm_poses = [Pose::default(); 2];
-    let mut last_view_params = [ViewParams::default(); 2];
+    let mut last_controller_poses = [Pose::IDENTITY; 2];
+    let mut last_palm_poses = [Pose::IDENTITY; 2];
+    let mut last_view_params = [ViewParams::DUMMY; 2];
 
     let mut deadline = Instant::now();
     let frame_interval = Duration::from_secs_f32(1.0 / refresh_rate);

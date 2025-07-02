@@ -63,8 +63,8 @@ pub struct TrackingManager {
 impl TrackingManager {
     pub fn new(max_history_size: usize) -> TrackingManager {
         TrackingManager {
-            last_head_pose: Pose::default(),
-            inverse_recentering_origin: Pose::default(),
+            last_head_pose: Pose::IDENTITY,
+            inverse_recentering_origin: Pose::IDENTITY,
             device_motions_history: HashMap::new(),
             hand_skeletons_history: [VecDeque::new(), VecDeque::new()],
             last_face_data: FaceData::default(),

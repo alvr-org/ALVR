@@ -21,12 +21,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> =
-    Lazy::new(|| RwLock::new(None));
-static EVENTS_RECEIVER: Lazy<Mutex<Option<mpsc::Receiver<ServerCoreEvent>>>> =
-    Lazy::new(|| Mutex::new(None));
-static BUTTONS_QUEUE: Lazy<Mutex<VecDeque<Vec<ButtonEntry>>>> =
-    Lazy::new(|| Mutex::new(VecDeque::new()));
+static SERVER_CORE_CONTEXT: RwLock<Option<ServerCoreContext>> = RwLock::new(None);
+static EVENTS_RECEIVER: Mutex<Option<mpsc::Receiver<ServerCoreEvent>>> = Mutex::new(None);
+static BUTTONS_QUEUE: Mutex<VecDeque<Vec<ButtonEntry>>> = Mutex::new(VecDeque::new());
 
 #[repr(C)]
 pub struct AlvrFov {

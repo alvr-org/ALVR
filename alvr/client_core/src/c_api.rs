@@ -10,7 +10,6 @@ use alvr_common::{
     debug, error,
     glam::{Quat, UVec2, Vec2, Vec3},
     info,
-    once_cell::sync::Lazy,
     parking_lot::Mutex,
     warn,
 };
@@ -32,10 +31,10 @@ use std::{
 };
 
 static CLIENT_CORE_CONTEXT: OptLazy<ClientCoreContext> = alvr_common::lazy_mut_none();
-static HUD_MESSAGE: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
-static SETTINGS: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
-static SERVER_VERSION: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
-static DECODER_CONFIG_BUFFER: Lazy<Mutex<Vec<u8>>> = Lazy::new(|| Mutex::new("".into()));
+static HUD_MESSAGE: Mutex<String> = Mutex::new(String::new());
+static SETTINGS: Mutex<String> = Mutex::new(String::new());
+static SERVER_VERSION: Mutex<String> = Mutex::new(String::new());
+static DECODER_CONFIG_BUFFER: Mutex<Vec<u8>> = Mutex::new(vec![]);
 
 // Core interface:
 

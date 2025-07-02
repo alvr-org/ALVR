@@ -220,15 +220,15 @@ void FakeViveTracker::OnPoseUpdated(uint64_t targetTimestampNs, const FfiDeviceM
 
     if (motion != nullptr) {
         pose.qRotation = HmdQuaternion_Init(
-            motion->orientation.w,
-            motion->orientation.x,
-            motion->orientation.y,
-            motion->orientation.z
+            motion->pose.orientation.w,
+            motion->pose.orientation.x,
+            motion->pose.orientation.y,
+            motion->pose.orientation.z
         );
 
-        pose.vecPosition[0] = motion->position[0];
-        pose.vecPosition[1] = motion->position[1];
-        pose.vecPosition[2] = motion->position[2];
+        pose.vecPosition[0] = motion->pose.position[0];
+        pose.vecPosition[1] = motion->pose.position[1];
+        pose.vecPosition[2] = motion->pose.position[2];
     }
 
     this->submit_pose(pose);

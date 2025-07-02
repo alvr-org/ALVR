@@ -474,9 +474,9 @@ void RegisterButton(void* instancePtr, unsigned long long buttonID) {
     ((Controller*)instancePtr)->RegisterButton(buttonID);
 }
 
-void SetViewsConfig(FfiViewsConfig config) {
+void SetViewParams(const FfiViewParams params[2]) {
     if (g_driver_provider.hmd) {
-        g_driver_provider.hmd->SetViewsConfig(config);
+        g_driver_provider.hmd->SetViewParams(params);
     }
 }
 

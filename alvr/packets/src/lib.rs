@@ -1,5 +1,5 @@
 use alvr_common::{
-    ConnectionState, DeviceMotion, Fov, LogEntry, LogSeverity, Pose,
+    ConnectionState, DeviceMotion, LogEntry, LogSeverity, Pose, ViewParams,
     anyhow::Result,
     glam::{UVec2, Vec2},
     semver::Version,
@@ -157,13 +157,6 @@ pub enum ServerControlPacket {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct ViewsConfig {
-    // Note: the head-to-eye transform is always a translation along the x axis
-    pub ipd_m: f32,
-    pub fov: [Fov; 2],
-}
-
-#[derive(Serialize, Deserialize, Clone)]
 pub struct BatteryInfo {
     pub device_id: u64,
     pub gauge_value: f32, // range [0, 1]
@@ -203,7 +196,7 @@ pub enum ClientControlPacket {
     RequestIdr,
     KeepAlive,
     StreamReady, // This flag notifies the server the client streaming socket is ready listening
-    ViewsConfig(ViewsConfig),
+    ViewParams([ViewParams; 2]),
     Battery(BatteryInfo),
     Buttons(Vec<ButtonEntry>),
     ActiveInteractionProfile { device_id: u64, profile_id: u64 },

@@ -33,7 +33,7 @@ public:
 
     void Initialize(std::shared_ptr<CD3DRender> d3dRender);
 
-    void SetViewsConfig(
+    void SetViewParams(
         vr::HmdRect2_t projLeft,
         vr::HmdMatrix34_t eyeToHeadLeft,
         vr::HmdRect2_t projRight,

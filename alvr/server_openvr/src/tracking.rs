@@ -1,7 +1,8 @@
-use crate::{FfiDeviceMotion, FfiHandSkeleton, FfiQuat};
+use crate::{FfiDeviceMotion, FfiFov, FfiHandSkeleton, FfiPose, FfiQuat, FfiViewParams};
 use alvr_common::{
     BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID,
-    BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, DeviceMotion, HAND_LEFT_ID, Pose,
+    BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, DeviceMotion, Fov, HAND_LEFT_ID,
+    Pose, ViewParams,
     glam::{EulerRot, Quat, Vec3},
     once_cell::sync::Lazy,
     settings_schema::Switch,
@@ -26,6 +27,15 @@ pub static BODY_TRACKER_IDS: Lazy<[u64; 8]> = Lazy::new(|| {
     ]
 });
 
+fn to_ffi_fov(fov: Fov) -> FfiFov {
+    FfiFov {
+        left: fov.left,
+        right: fov.right,
+        up: fov.up,
+        down: fov.down,
+    }
+}
+
 fn to_ffi_quat(quat: Quat) -> FfiQuat {
     FfiQuat {
         x: quat.x,
@@ -35,13 +45,26 @@ fn to_ffi_quat(quat: Quat) -> FfiQuat {
     }
 }
 
+fn to_ffi_pose(pose: Pose) -> FfiPose {
+    FfiPose {
+        orientation: to_ffi_quat(pose.orientation),
+        position: pose.position.to_array(),
+    }
+}
+
 pub fn to_ffi_motion(device_id: u64, motion: DeviceMotion) -> FfiDeviceMotion {
     FfiDeviceMotion {
         deviceID: device_id,
-        orientation: to_ffi_quat(motion.pose.orientation),
-        position: motion.pose.position.to_array(),
+        pose: to_ffi_pose(motion.pose),
         linearVelocity: motion.linear_velocity.to_array(),
         angularVelocity: motion.angular_velocity.to_array(),
+    }
+}
+
+pub fn to_ffi_view_params(params: ViewParams) -> FfiViewParams {
+    FfiViewParams {
+        pose: to_ffi_pose(params.pose),
+        fov: to_ffi_fov(params.fov),
     }
 }
 

@@ -80,7 +80,7 @@ pub enum ServerCoreEvent {
     ClientDisconnected,
     Battery(BatteryInfo),
     PlayspaceSync(Vec2),
-    ViewParams([ViewParams; 2]),
+    LocalViewParams([ViewParams; 2]), // Head-to-view
     Tracking {
         sample_timestamp: Duration,
     },
@@ -350,10 +350,17 @@ impl ServerCoreContext {
         *self.connection_context.decoder_config.lock() = Some(DecoderInitializationConfig {
             codec,
             config_buffer,
+            ext_str: String::new(),
         });
     }
 
-    pub fn send_video_nal(&self, target_timestamp: Duration, nal_buffer: Vec<u8>, is_idr: bool) {
+    pub fn send_video_nal(
+        &self,
+        target_timestamp: Duration,
+        global_view_params: [ViewParams; 2],
+        is_idr: bool,
+        nal_buffer: Vec<u8>,
+    ) {
         dbg_server_core!("send_video_nal");
 
         // start in the corrupts state, the client didn't receive the initial IDR yet.
@@ -405,16 +412,16 @@ impl ServerCoreContext {
                     file.write_all(&nal_buffer).ok();
                 }
 
-                if matches!(
-                    sender.try_send(VideoPacket {
-                        header: VideoPacketHeader {
-                            timestamp: target_timestamp,
-                            is_idr
-                        },
-                        payload: nal_buffer,
-                    }),
-                    Err(TrySendError::Full(_))
-                ) {
+                let sender_result = sender.try_send(VideoPacket {
+                    header: VideoPacketHeader {
+                        timestamp: target_timestamp,
+                        global_view_params,
+                        is_idr,
+                        ext_str: String::new(),
+                    },
+                    payload: nal_buffer,
+                });
+                if matches!(sender_result, Err(TrySendError::Full(_))) {
                     STREAM_CORRUPTED.store(true, Ordering::SeqCst);
                     self.connection_context
                         .events_sender

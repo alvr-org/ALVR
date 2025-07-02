@@ -5,7 +5,9 @@ use crate::{
     SESSION_MANAGER, ServerCoreContext, ServerCoreEvent, logging_backend, tracking::HandType,
 };
 use alvr_common::{
-    Fov, Pose, log,
+    Fov, Pose, ViewParams,
+    glam::{Quat, Vec3},
+    log,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
 };
@@ -115,7 +117,7 @@ pub enum AlvrEvent {
     ClientDisconnected,
     Battery(AlvrBatteryInfo),
     PlayspaceSync([f32; 2]),
-    ViewParams([AlvrViewParams; 2]),
+    LocalViewParams([AlvrViewParams; 2]), // Head-to-view
     TrackingUpdated { sample_timestamp_ns: u64 },
     ButtonsUpdated,
     RequestIDR,
@@ -156,8 +158,25 @@ fn pose_to_capi(pose: &Pose) -> AlvrPose {
     }
 }
 
+fn pose_from_capi(pose: &AlvrPose) -> Pose {
+    let o = &pose.orientation;
+    Pose {
+        orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
+        position: Vec3::from_slice(&pose.position),
+    }
+}
+
 fn fov_to_capi(fov: &Fov) -> AlvrFov {
     AlvrFov {
+        left: fov.left,
+        right: fov.right,
+        up: fov.up,
+        down: fov.down,
+    }
+}
+
+fn fov_from_capi(fov: &AlvrFov) -> Fov {
+    Fov {
         left: fov.left,
         right: fov.right,
         up: fov.up,
@@ -340,8 +359,8 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
             ServerCoreEvent::PlayspaceSync(bounds) => unsafe {
                 *out_event = AlvrEvent::PlayspaceSync(bounds.to_array())
             },
-            ServerCoreEvent::ViewParams(config) => unsafe {
-                *out_event = AlvrEvent::ViewParams([
+            ServerCoreEvent::LocalViewParams(config) => unsafe {
+                *out_event = AlvrEvent::LocalViewParams([
                     AlvrViewParams {
                         pose: pose_to_capi(&config[0].pose),
                         fov: fov_to_capi(&config[0].fov),
@@ -497,16 +516,37 @@ pub unsafe extern "C" fn alvr_set_video_config_nals(
     }
 }
 
+/// global_view_params must be an array of length 2
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn alvr_send_video_nal(
     timestamp_ns: u64,
+    global_view_params: *const AlvrViewParams,
+    is_idr: bool,
     buffer_ptr: *mut u8,
     len: i32,
-    is_idr: bool,
 ) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         let buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
-        context.send_video_nal(Duration::from_nanos(timestamp_ns), buffer.to_vec(), is_idr);
+
+        let global_view_params = unsafe {
+            [
+                ViewParams {
+                    pose: pose_from_capi(&(*global_view_params).pose),
+                    fov: fov_from_capi(&(*global_view_params).fov),
+                },
+                ViewParams {
+                    pose: pose_from_capi(&(*global_view_params.add(1)).pose),
+                    fov: fov_from_capi(&(*global_view_params.add(1)).fov),
+                },
+            ]
+        };
+
+        context.send_video_nal(
+            Duration::from_nanos(timestamp_ns),
+            global_view_params,
+            is_idr,
+            buffer.to_vec(),
+        );
     }
 }
 

@@ -9,7 +9,7 @@ use crate::{
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
-    ALVR_VERSION, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, Pose,
+    ALVR_VERSION, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState,
     ViewParams, dbg_connection, debug, error, info,
     parking_lot::{Condvar, Mutex, RwLock},
     wait_rwlock, warn,
@@ -65,9 +65,7 @@ pub struct ConnectionContext {
     pub statistics_sender: Mutex<Option<StreamSender<ClientStatistics>>>,
     pub statistics_manager: Mutex<Option<StatisticsManager>>,
     pub decoder_callback: Mutex<Option<Box<DecoderCallback>>>,
-    pub head_pose_queue: RwLock<VecDeque<(Duration, Pose)>>,
-    pub last_good_head_pose: RwLock<Pose>,
-    pub view_params: RwLock<[ViewParams; 2]>,
+    pub global_view_params_queue: Mutex<VecDeque<(Duration, [ViewParams; 2])>>,
     pub velocities_multiplier: RwLock<f32>,
     pub max_prediction: RwLock<Duration>,
 }
@@ -310,6 +308,20 @@ fn connection_pipeline(
                 }
 
                 if !stream_corrupted || !settings.connection.avoid_video_glitching {
+                    // The view params must be enqueued before calling the decoder callback, there
+                    // is no problem if the callback fails
+                    {
+                        let global_view_params_queue_lock =
+                            &mut ctx.global_view_params_queue.lock();
+
+                        global_view_params_queue_lock
+                            .push_back((header.timestamp, header.global_view_params));
+
+                        while global_view_params_queue_lock.len() > 1024 {
+                            global_view_params_queue_lock.pop_front();
+                        }
+                    }
+
                     let submitted = ctx
                         .decoder_callback
                         .lock()

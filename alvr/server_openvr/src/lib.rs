@@ -16,13 +16,18 @@ use bindings::*;
 
 use alvr_common::{
     BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
-    error, parking_lot::RwLock, settings_schema::Switch, warn,
+    Pose, ViewParams, error,
+    once_cell::sync::Lazy,
+    parking_lot::{Mutex, RwLock},
+    settings_schema::Switch,
+    warn,
 };
 use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};
 use alvr_server_core::{HandType, ServerCoreContext, ServerCoreEvent};
 use alvr_session::{CodecType, ControllersConfig};
 use std::{
+    collections::VecDeque,
     ffi::{CString, OsStr, c_char, c_void},
     ptr,
     sync::{Once, mpsc},
@@ -31,6 +36,10 @@ use std::{
 };
 
 static SERVER_CORE_CONTEXT: RwLock<Option<ServerCoreContext>> = RwLock::new(None);
+static LOCAL_VIEW_PARAMS: Lazy<RwLock<[ViewParams; 2]>> =
+    Lazy::new(|| RwLock::new([ViewParams::default(); 2]));
+static HEAD_POSE_QUEUE: Lazy<Mutex<VecDeque<(Duration, Pose)>>> =
+    Lazy::new(|| Mutex::new(VecDeque::new()));
 
 fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
     thread::spawn(move || {
@@ -67,12 +76,14 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                 ServerCoreEvent::PlayspaceSync(bounds) => unsafe {
                     SetChaperoneArea(bounds.x, bounds.y)
                 },
-                ServerCoreEvent::ViewParams(params) => unsafe {
-                    let ffi_view_params = [
+                ServerCoreEvent::LocalViewParams(params) => unsafe {
+                    *LOCAL_VIEW_PARAMS.write() = params;
+
+                    let ffi_params = [
                         tracking::to_ffi_view_params(params[0]),
                         tracking::to_ffi_view_params(params[1]),
                     ];
-                    SetViewParams(ffi_view_params.as_ptr());
+                    SetLocalViewParams(ffi_params.as_ptr());
                 },
                 ServerCoreEvent::Tracking { sample_timestamp } => {
                     let headset_config = &alvr_server_core::settings().headset;
@@ -85,11 +96,20 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
                         let controllers_pose_time_offset = context.get_tracker_pose_time_offset();
 
-                        let ffi_head_motion = context
-                            .get_device_motion(*HEAD_ID, sample_timestamp)
-                            .map_or_else(FfiDeviceMotion::default, |m| {
-                                tracking::to_ffi_motion(*HEAD_ID, m)
-                            });
+                        let ffi_head_motion = if let Some(motion) =
+                            context.get_device_motion(*HEAD_ID, sample_timestamp)
+                        {
+                            let mut head_pose_queue_lock = HEAD_POSE_QUEUE.lock();
+                            head_pose_queue_lock.push_back((sample_timestamp, motion.pose));
+                            while head_pose_queue_lock.len() > 1024 {
+                                head_pose_queue_lock.pop_front();
+                            }
+
+                            tracking::to_ffi_motion(*HEAD_ID, motion)
+                        } else {
+                            FfiDeviceMotion::default()
+                        };
+
                         let ffi_left_controller_motion = context
                             .get_device_motion(*HAND_LEFT_ID, sample_timestamp)
                             .map(|m| tracking::to_ffi_motion(*HAND_LEFT_ID, m))
@@ -321,8 +341,36 @@ extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32)
 
 extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_idr: bool) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        let timestamp = Duration::from_nanos(timestamp_ns);
         let buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
-        context.send_video_nal(Duration::from_nanos(timestamp_ns), buffer.to_vec(), is_idr);
+
+        let mut head_pose = None;
+        for (ts, pose) in &*HEAD_POSE_QUEUE.lock() {
+            if *ts == timestamp {
+                head_pose = Some(*pose);
+                break;
+            }
+        }
+
+        let Some(head_pose) = head_pose else {
+            // We can't submit the frame without its pose
+            return;
+        };
+
+        let local_views_params = LOCAL_VIEW_PARAMS.read();
+
+        let global_view_params = [
+            ViewParams {
+                pose: head_pose * local_views_params[0].pose,
+                fov: local_views_params[0].fov,
+            },
+            ViewParams {
+                pose: head_pose * local_views_params[1].pose,
+                fov: local_views_params[1].fov,
+            },
+        ];
+
+        context.send_video_nal(timestamp, global_view_params, is_idr, buffer.to_vec());
     }
 }
 

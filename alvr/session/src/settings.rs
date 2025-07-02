@@ -888,7 +888,7 @@ pub struct AudioConfig {
         windows,
         schema(strings(
             display_name = "Headset microphone",
-            notice = r"To be able to use the microphone on Windows, you need to install VB-Cable or VoiceMeeter"
+            notice = r"To be able to use the microphone on Windows, you need to install Virtual Audio Cable"
         ))
     )]
     #[cfg_attr(not(windows), schema(strings(display_name = "Headset microphone")))]

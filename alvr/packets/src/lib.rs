@@ -219,7 +219,6 @@ pub struct VideoPacketHeader {
     pub timestamp: Duration,
     pub global_view_params: [ViewParams; 2],
     pub is_idr: bool,
-    pub ext_str: String,
 }
 
 // Note: face_data does not respect target_timestamp.
@@ -229,7 +228,6 @@ pub struct Tracking {
     pub device_motions: Vec<(u64, DeviceMotion)>,
     pub hand_skeletons: [Option<[Pose; 26]>; 2],
     pub face_data: FaceData,
-    pub ext_str: String,
 }
 
 #[derive(Serialize, Deserialize)]

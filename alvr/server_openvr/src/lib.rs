@@ -98,7 +98,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                         {
                             let mut head_pose_queue_lock = HEAD_POSE_QUEUE.lock();
                             head_pose_queue_lock.push_back((sample_timestamp, motion.pose));
-                            while head_pose_queue_lock.len() > 128 {
+                            while head_pose_queue_lock.len() > 360 {
                                 head_pose_queue_lock.pop_front();
                             }
 
@@ -344,7 +344,7 @@ extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_id
         let Some(head_pose) = HEAD_POSE_QUEUE
             .lock()
             .iter()
-            .find_map(|(ts, pose)| (*ts <= timestamp).then_some(*pose))
+            .find_map(|(ts, pose)| (*ts == timestamp).then_some(*pose))
         else {
             // We can't submit the frame without its pose
             return;

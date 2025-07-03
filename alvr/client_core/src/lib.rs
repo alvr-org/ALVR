@@ -270,7 +270,6 @@ impl ClientCoreContext {
                     device_motions,
                     hand_skeletons,
                     face_data,
-                    ext_str: String::new(),
                 })
                 .ok();
 

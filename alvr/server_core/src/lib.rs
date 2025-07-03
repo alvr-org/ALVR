@@ -417,7 +417,6 @@ impl ServerCoreContext {
                         timestamp: target_timestamp,
                         global_view_params,
                         is_idr,
-                        ext_str: String::new(),
                     },
                     payload: nal_buffer,
                 });

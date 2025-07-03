@@ -4,15 +4,17 @@ use alvr_common::{
     BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, DeviceMotion, Fov, HAND_LEFT_ID,
     Pose, ViewParams,
     glam::{EulerRot, Quat, Vec3},
-    once_cell::sync::Lazy,
     settings_schema::Switch,
 };
 use alvr_session::HeadsetConfig;
-use std::f32::consts::{FRAC_PI_2, PI};
+use std::{
+    f32::consts::{FRAC_PI_2, PI},
+    sync::LazyLock,
+};
 
 const DEG_TO_RAD: f32 = PI / 180.0;
 
-pub static BODY_TRACKER_IDS: Lazy<[u64; 8]> = Lazy::new(|| {
+pub static BODY_TRACKER_IDS: LazyLock<[u64; 8]> = LazyLock::new(|| {
     [
         // Upper body
         *BODY_CHEST_ID,

@@ -1,19 +1,16 @@
+use crate::input_mapping::ButtonMappingManager;
+use alvr_common::{
+    glam::{Vec2, Vec3},
+    *,
+};
+use alvr_packets::{ButtonEntry, ButtonValue};
+use alvr_session::HandTrackingInteractionConfig;
 use std::{
     collections::{HashMap, HashSet},
     hash::Hash,
+    sync::LazyLock,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-
-use alvr_common::{
-    glam::{Vec2, Vec3},
-    once_cell::sync::Lazy,
-    *,
-};
-
-use alvr_packets::{ButtonEntry, ButtonValue};
-use alvr_session::HandTrackingInteractionConfig;
-
-use crate::input_mapping::ButtonMappingManager;
 
 fn lerp_pose(a: Pose, b: Pose, fac: f32) -> Pose {
     Pose {
@@ -22,7 +19,7 @@ fn lerp_pose(a: Pose, b: Pose, fac: f32) -> Pose {
     }
 }
 
-pub static HAND_GESTURE_BUTTON_SET: Lazy<HashSet<u64>> = Lazy::new(|| {
+pub static HAND_GESTURE_BUTTON_SET: LazyLock<HashSet<u64>> = LazyLock::new(|| {
     HashSet::from([
         *LEFT_X_CLICK_ID,
         *LEFT_X_TOUCH_ID,

@@ -5,7 +5,7 @@ use crate::{
     video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
 };
 use alvr_common::{
-    DeviceMotion, Fov, OptLazy, Pose, ViewParams,
+    DeviceMotion, Fov, Pose, ViewParams,
     anyhow::Result,
     debug, error,
     glam::{Quat, UVec2, Vec2, Vec3},
@@ -30,7 +30,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-static CLIENT_CORE_CONTEXT: OptLazy<ClientCoreContext> = alvr_common::lazy_mut_none();
+static CLIENT_CORE_CONTEXT: Mutex<Option<ClientCoreContext>> = Mutex::new(None);
 static HUD_MESSAGE: Mutex<String> = Mutex::new(String::new());
 static SETTINGS: Mutex<String> = Mutex::new(String::new());
 static SERVER_VERSION: Mutex<String> = Mutex::new(String::new());
@@ -906,7 +906,7 @@ pub extern "C" fn alvr_render_stream_opengl(
 
 // Decoder-related interface
 
-static DECODER_SOURCE: OptLazy<VideoDecoderSource> = alvr_common::lazy_mut_none();
+static DECODER_SOURCE: Mutex<Option<VideoDecoderSource>> = Mutex::new(None);
 
 #[repr(u8)]
 pub enum AlvrMediacodecPropType {

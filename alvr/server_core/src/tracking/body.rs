@@ -1,13 +1,13 @@
 use alvr_common::{
     BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID,
     BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, DeviceMotion, HEAD_ID,
-    anyhow::Result, once_cell::sync::Lazy,
+    anyhow::Result,
 };
 use alvr_session::BodyTrackingSinkConfig;
 use rosc::{OscMessage, OscPacket, OscType};
-use std::{collections::HashMap, net::UdpSocket};
+use std::{collections::HashMap, net::UdpSocket, sync::LazyLock};
 
-static BODY_TRACKER_OSC_PATH_MAP: Lazy<HashMap<u64, &'static str>> = Lazy::new(|| {
+static BODY_TRACKER_OSC_PATH_MAP: LazyLock<HashMap<u64, &'static str>> = LazyLock::new(|| {
     HashMap::from([
         (*HEAD_ID, "/tracking/trackers/head/"),
         (*BODY_CHEST_ID, "/tracking/trackers/1/"),

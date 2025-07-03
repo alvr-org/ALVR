@@ -1,12 +1,11 @@
 use alvr_common::{
-    DebugGroupsConfig, LogSeverity, OptLazy,
+    DebugGroupsConfig, LogSeverity,
     log::{Level, Record},
-    once_cell::sync::Lazy,
     parking_lot::Mutex,
 };
 use alvr_packets::ClientControlPacket;
 use std::{
-    sync::mpsc,
+    sync::{LazyLock, mpsc},
     time::{Duration, Instant},
 };
 
@@ -18,7 +17,7 @@ pub struct LogMirrorData {
     pub debug_groups_config: DebugGroupsConfig,
 }
 
-pub static LOG_CHANNEL_SENDER: OptLazy<LogMirrorData> = alvr_common::lazy_mut_none();
+pub static LOG_CHANNEL_SENDER: Mutex<Option<LogMirrorData>> = Mutex::new(None);
 
 struct RepeatedLogEvent {
     message: String,
@@ -26,7 +25,7 @@ struct RepeatedLogEvent {
     initial_timestamp: Instant,
 }
 
-static LAST_LOG_EVENT: Lazy<Mutex<RepeatedLogEvent>> = Lazy::new(|| {
+static LAST_LOG_EVENT: LazyLock<Mutex<RepeatedLogEvent>> = LazyLock::new(|| {
     Mutex::new(RepeatedLogEvent {
         message: "".into(),
         repetition_times: 0,

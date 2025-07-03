@@ -11,7 +11,6 @@ use alvr_common::{
     ConnectionError, ToAny,
     anyhow::{self, Context, Result, anyhow, bail},
     info,
-    once_cell::sync::Lazy,
     parking_lot::Mutex,
 };
 use alvr_session::{AudioBufferingConfig, CustomAudioDeviceConfig, MicrophoneDevicesConfig};
@@ -23,12 +22,12 @@ use cpal::{
 use rodio::{OutputStream, Source};
 use std::{
     collections::{HashMap, VecDeque},
-    sync::Arc,
+    sync::{Arc, LazyLock},
     thread,
     time::Duration,
 };
 
-static VIRTUAL_MICROPHONE_PAIRS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
+static VIRTUAL_MICROPHONE_PAIRS: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
     [
         ("Line 1", "Line 1"),
         ("CABLE Input", "CABLE Output"),

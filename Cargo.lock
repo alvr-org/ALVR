@@ -268,7 +268,6 @@ dependencies = [
  "backtrace",
  "glam",
  "log",
- "once_cell",
  "parking_lot",
  "paste",
  "rfd",
@@ -325,7 +324,6 @@ name = "alvr_filesystem"
 version = "21.0.0-dev05"
 dependencies = [
  "dirs",
- "once_cell",
 ]
 
 [[package]]

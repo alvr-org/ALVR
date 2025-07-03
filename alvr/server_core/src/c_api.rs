@@ -8,7 +8,6 @@ use alvr_common::{
     Fov, Pose, ViewParams,
     glam::{Quat, Vec3},
     log,
-    once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
 };
 use alvr_packets::{ButtonEntry, ButtonValue, Haptics};
@@ -19,7 +18,7 @@ use std::{
     path::PathBuf,
     ptr,
     str::FromStr,
-    sync::mpsc,
+    sync::{LazyLock, mpsc},
     time::{Duration, Instant},
 };
 
@@ -252,8 +251,8 @@ pub unsafe extern "C" fn alvr_dbg_encoder(string_ptr: *const c_char) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn alvr_log_periodically(tag_ptr: *const c_char, message_ptr: *const c_char) {
     const INTERVAL: Duration = Duration::from_secs(1);
-    static LASTEST_TAG_TIMESTAMPS: Lazy<Mutex<HashMap<String, Instant>>> =
-        Lazy::new(|| Mutex::new(HashMap::new()));
+    static LASTEST_TAG_TIMESTAMPS: LazyLock<Mutex<HashMap<String, Instant>>> =
+        LazyLock::new(|| Mutex::new(HashMap::new()));
 
     let tag = unsafe { CStr::from_ptr(tag_ptr) }.to_string_lossy();
     let message = unsafe { CStr::from_ptr(message_ptr) }.to_string_lossy();

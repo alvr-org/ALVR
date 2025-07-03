@@ -20,7 +20,7 @@ use alvr_common::{
     parking_lot::Mutex,
 };
 use alvr_events::{EventType, TrackingEvent};
-use alvr_packets::{FaceData, Tracking};
+use alvr_packets::{FaceTracking, Tracking};
 use alvr_session::{
     BodyTrackingConfig, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode, Settings,
     VMCConfig, settings_schema::Switch,
@@ -56,7 +56,7 @@ pub struct TrackingManager {
     inverse_recentering_origin: Pose, // client's reference space
     device_motions_history: HashMap<u64, VecDeque<(Duration, DeviceMotion)>>,
     hand_skeletons_history: [VecDeque<(Duration, [Pose; 26])>; 2],
-    last_face_data: FaceData,
+    last_face_data: FaceTracking,
     max_history_size: usize,
 }
 
@@ -67,7 +67,7 @@ impl TrackingManager {
             inverse_recentering_origin: Pose::IDENTITY,
             device_motions_history: HashMap::new(),
             hand_skeletons_history: [VecDeque::new(), VecDeque::new()],
-            last_face_data: FaceData::default(),
+            last_face_data: FaceTracking::default(),
             max_history_size,
         }
     }
@@ -293,7 +293,7 @@ impl TrackingManager {
     }
 
     // todo: send eyes in head local space from client directly
-    pub fn report_face_data(&mut self, mut face_data: FaceData) {
+    pub fn report_face_data(&mut self, mut face_data: FaceTracking) {
         face_data.eye_gazes = [
             face_data.eye_gazes[0].map(|e| self.last_head_pose.inverse() * self.recenter_pose(e)),
             face_data.eye_gazes[1].map(|e| self.last_head_pose.inverse() * self.recenter_pose(e)),
@@ -302,7 +302,7 @@ impl TrackingManager {
         self.last_face_data = face_data;
     }
 
-    pub fn get_face_data(&self) -> &FaceData {
+    pub fn get_face_data(&self) -> &FaceTracking {
         &self.last_face_data
     }
 }

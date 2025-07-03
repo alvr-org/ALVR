@@ -16,7 +16,7 @@ use alvr_common::{
 use alvr_graphics::{
     GraphicsContext, StreamRenderer, StreamViewParams, compute_target_view_resolution,
 };
-use alvr_packets::{FaceData, RealTimeConfig, StreamConfig};
+use alvr_packets::{FaceTracking, RealTimeConfig, StreamConfig};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, ClientsidePostProcessingConfig, CodecType,
     FoveatedEncodingConfig, MediacodecProperty, PassthroughMode, UpscalingConfig,
@@ -594,7 +594,7 @@ fn stream_input_loop(
             device_motions.push((*HAND_RIGHT_ID, motion));
         }
 
-        let face_data = FaceData {
+        let face_data = FaceTracking {
             eye_gazes: interaction::get_eye_gazes(
                 &xr_session,
                 &int_ctx.face_sources,

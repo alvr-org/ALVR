@@ -17,7 +17,7 @@ use alvr_graphics::{
     GraphicsContext, LobbyRenderer, LobbyViewParams, SDR_FORMAT_GL, StreamRenderer,
     StreamViewParams,
 };
-use alvr_packets::{ButtonEntry, ButtonValue, FaceData};
+use alvr_packets::{ButtonEntry, ButtonValue, FaceTracking};
 use alvr_session::{
     CodecType, FoveatedEncodingConfig, MediacodecPropType, MediacodecProperty, UpscalingConfig,
 };
@@ -506,7 +506,7 @@ pub extern "C" fn alvr_send_tracking(
             Duration::from_nanos(poll_timestamp_ns),
             device_motions,
             hand_skeletons,
-            FaceData {
+            FaceTracking {
                 eye_gazes,
                 ..Default::default()
             },

@@ -1,5 +1,5 @@
 use alvr_common::{anyhow::Result, glam::EulerRot};
-use alvr_packets::FaceData;
+use alvr_packets::FaceTracking;
 use alvr_session::FaceTrackingSinkConfig;
 use rosc::{OscMessage, OscPacket, OscType};
 use std::{f32::consts::PI, net::UdpSocket};
@@ -54,7 +54,7 @@ impl FaceTrackingSink {
         }
     }
 
-    pub fn send_tracking(&mut self, face_data: FaceData) {
+    pub fn send_tracking(&mut self, face_data: FaceTracking) {
         // todo: introduce pico_face_expression field in FaceData
         let fb_face_expression = match &face_data.fb_face_expression {
             Some(face_expression) if face_expression.len() == FB_FACE_EXPRESSION_COUNT => {

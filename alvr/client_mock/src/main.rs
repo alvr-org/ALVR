@@ -4,7 +4,7 @@ use alvr_common::{
     glam::{Quat, UVec2, Vec3},
     parking_lot::RwLock,
 };
-use alvr_packets::FaceData;
+use alvr_packets::FaceTracking;
 use alvr_session::CodecType;
 use eframe::{
     Frame, NativeOptions,
@@ -174,7 +174,7 @@ fn tracking_thread(
                 },
             )],
             [None, None],
-            FaceData {
+            FaceTracking {
                 eye_gazes: [None, None],
                 fb_face_expression: None,
                 htc_eye_expression: None,

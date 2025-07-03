@@ -25,7 +25,7 @@ use alvr_common::{
     warn,
 };
 use alvr_packets::{
-    BatteryInfo, ButtonEntry, ClientControlPacket, FaceData, RealTimeConfig,
+    BatteryInfo, ButtonEntry, ClientControlPacket, FaceTracking, RealTimeConfig,
     ReservedClientControlPacket, StreamConfig, Tracking,
 };
 use alvr_session::CodecType;
@@ -226,7 +226,7 @@ impl ClientCoreContext {
         poll_timestamp: Duration,
         mut device_motions: Vec<(u64, DeviceMotion)>,
         hand_skeletons: [Option<[Pose; 26]>; 2],
-        face_data: FaceData,
+        face_data: FaceTracking,
     ) {
         dbg_client_core!("send_tracking");
 

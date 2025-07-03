@@ -474,7 +474,7 @@ void RegisterButton(void* instancePtr, unsigned long long buttonID) {
     ((Controller*)instancePtr)->RegisterButton(buttonID);
 }
 
-void SetViewParams(const FfiViewParams params[2]) {
+void SetLocalViewParams(const FfiViewParams params[2]) {
     if (g_driver_provider.hmd) {
         g_driver_provider.hmd->SetViewParams(params);
     }

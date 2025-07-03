@@ -1179,9 +1179,9 @@ fn connection_pipeline(
                         }
                         ctx.events_sender.send(ServerCoreEvent::RequestIDR).ok();
                     }
-                    ClientControlPacket::ViewParams(params) => {
+                    ClientControlPacket::LocalViewParams(params) => {
                         ctx.events_sender
-                            .send(ServerCoreEvent::ViewParams(params))
+                            .send(ServerCoreEvent::LocalViewParams(params))
                             .ok();
                     }
                     ClientControlPacket::Battery(packet) => {

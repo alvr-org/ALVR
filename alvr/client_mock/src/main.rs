@@ -1,6 +1,6 @@
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
-    DeviceMotion, Fov, HEAD_ID, Pose, RelaxedAtomic, ViewParams,
+    DeviceMotion, HEAD_ID, Pose, RelaxedAtomic, ViewParams,
     glam::{Quat, UVec2, Vec3},
     parking_lot::RwLock,
 };
@@ -145,17 +145,7 @@ fn tracking_thread(
     input: Arc<RwLock<WindowInput>>,
 ) {
     let timestamp_origin = Instant::now();
-
-    let views_params = ViewParams {
-        pose: Pose::default(),
-        fov: Fov {
-            left: -1.0,
-            right: 1.0,
-            up: 1.0,
-            down: -1.0,
-        },
-    };
-    context.send_view_params([views_params, views_params]);
+    context.send_view_params([ViewParams::DUMMY; 2]);
 
     let mut loop_deadline = Instant::now();
     while streaming.value() {

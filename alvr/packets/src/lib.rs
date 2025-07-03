@@ -143,6 +143,7 @@ impl StreamConfigPacket {
 pub struct DecoderInitializationConfig {
     pub codec: CodecType,
     pub config_buffer: Vec<u8>, // e.g. SPS + PPS NALs
+    pub ext_str: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -196,7 +197,7 @@ pub enum ClientControlPacket {
     RequestIdr,
     KeepAlive,
     StreamReady, // This flag notifies the server the client streaming socket is ready listening
-    ViewParams([ViewParams; 2]),
+    LocalViewParams([ViewParams; 2]), // Head-to_view
     Battery(BatteryInfo),
     Buttons(Vec<ButtonEntry>),
     ActiveInteractionProfile { device_id: u64, profile_id: u64 },
@@ -216,6 +217,7 @@ pub struct FaceData {
 #[derive(Serialize, Deserialize)]
 pub struct VideoPacketHeader {
     pub timestamp: Duration,
+    pub global_view_params: [ViewParams; 2],
     pub is_idr: bool,
 }
 

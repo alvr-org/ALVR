@@ -78,6 +78,7 @@ pub struct ClientCoreContext {
     event_queue: Arc<Mutex<VecDeque<ClientCoreEvent>>>,
     connection_context: Arc<ConnectionContext>,
     connection_thread: Arc<Mutex<Option<JoinHandle<()>>>>,
+    last_good_global_view_params: Mutex<[ViewParams; 2]>,
 }
 
 impl ClientCoreContext {
@@ -119,6 +120,7 @@ impl ClientCoreContext {
             event_queue,
             connection_context,
             connection_thread: Arc::new(Mutex::new(Some(connection_thread))),
+            last_good_global_view_params: Mutex::new([ViewParams::DUMMY; 2]),
         }
     }
 
@@ -212,10 +214,10 @@ impl ClientCoreContext {
     pub fn send_view_params(&self, views: [ViewParams; 2]) {
         dbg_client_core!("send_view_params");
 
-        *self.connection_context.view_params.write() = views;
-
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
-            sender.send(&ClientControlPacket::ViewParams(views)).ok();
+            sender
+                .send(&ClientControlPacket::LocalViewParams(views))
+                .ok();
         }
     }
 
@@ -248,14 +250,6 @@ impl ClientCoreContext {
 
             if *id == *HEAD_ID {
                 *motion = motion.predict(poll_timestamp, target_timestamp);
-
-                let mut head_pose_queue = self.connection_context.head_pose_queue.write();
-
-                head_pose_queue.push_back((reported_timestamp, motion.pose));
-
-                while head_pose_queue.len() > 1024 {
-                    head_pose_queue.pop_front();
-                }
 
                 // This is done for backward compatibiity for the v20 protocol. Will be removed with the
                 // tracking rewrite protocol extension.
@@ -328,25 +322,15 @@ impl ClientCoreContext {
             stats.report_compositor_start(timestamp);
         }
 
-        let mut head_pose = *self.connection_context.last_good_head_pose.read();
-        for (ts, pose) in &*self.connection_context.head_pose_queue.read() {
+        let global_view_params_lock = &mut *self.last_good_global_view_params.lock();
+        for (ts, params) in &*self.connection_context.global_view_params_queue.lock() {
             if *ts == timestamp {
-                head_pose = *pose;
+                *global_view_params_lock = *params;
                 break;
             }
         }
-        let view_params = self.connection_context.view_params.read();
 
-        [
-            ViewParams {
-                pose: head_pose * view_params[0].pose,
-                fov: view_params[0].fov,
-            },
-            ViewParams {
-                pose: head_pose * view_params[1].pose,
-                fov: view_params[1].fov,
-            },
-        ]
+        *global_view_params_lock
     }
 
     pub fn report_submit(&self, timestamp: Duration, vsync_queue: Duration) {

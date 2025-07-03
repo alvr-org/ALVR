@@ -8,3 +8,7 @@ documentation_style = "c99"
 
 [enum]
 rename_variants = "QualifiedScreamingSnakeCase"
+
+[parse]
+parse_deps = true
+include = ["alvr_common"]

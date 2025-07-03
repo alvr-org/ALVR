@@ -1,4 +1,5 @@
 mod average;
+mod c_api;
 mod connection_result;
 mod inputs;
 mod logging;
@@ -17,6 +18,7 @@ pub use semver;
 pub use settings_schema;
 
 pub use average::*;
+pub use c_api::*;
 pub use connection_result::*;
 pub use inputs::*;
 pub use log::{debug, error, info, warn};

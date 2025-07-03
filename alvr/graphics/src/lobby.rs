@@ -1,6 +1,6 @@
 use super::{GraphicsContext, MAX_PUSH_CONSTANTS_SIZE, SDR_FORMAT};
 use alvr_common::{
-    DeviceMotion, Fov, Pose,
+    DeviceMotion, Pose, ViewParams,
     glam::{IVec2, Mat4, Quat, UVec2, Vec3},
 };
 use glyph_brush_layout::{
@@ -218,8 +218,7 @@ fn create_pipeline(
 
 pub struct LobbyViewParams {
     pub swapchain_index: u32,
-    pub pose: Pose,
-    pub fov: Fov,
+    pub view_params: ViewParams,
 }
 
 pub struct LobbyRenderer {
@@ -425,11 +424,11 @@ impl LobbyRenderer {
 
         for (view_idx, view_input) in view_params.iter().enumerate() {
             let view = Mat4::from_rotation_translation(
-                view_input.pose.orientation,
-                view_input.pose.position,
+                view_input.view_params.pose.orientation,
+                view_input.view_params.pose.position,
             )
             .inverse();
-            let view_proj = super::projection_from_fov(view_input.fov) * view;
+            let view_proj = super::projection_from_fov(view_input.view_params.fov) * view;
 
             let clear_color = if render_background {
                 Color {

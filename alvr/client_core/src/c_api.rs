@@ -5,17 +5,17 @@ use crate::{
     video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
 };
 use alvr_common::{
-    DeviceMotion, Fov, Pose, ViewParams,
+    AlvrCodecType, AlvrFov, AlvrPose, AlvrQuat, AlvrViewParams, DeviceMotion, Pose, ViewParams,
     anyhow::Result,
     debug, error,
-    glam::{Quat, UVec2, Vec2, Vec3},
+    glam::{UVec2, Vec2, Vec3},
     info,
     parking_lot::Mutex,
     warn,
 };
 use alvr_graphics::{
-    GraphicsContext, LobbyRenderer, LobbyViewParams, StreamRenderer, StreamViewParams,
-    compute_target_view_resolution,
+    GraphicsContext, LobbyRenderer, LobbyViewParams, SDR_FORMAT_GL, StreamRenderer,
+    StreamViewParams,
 };
 use alvr_packets::{ButtonEntry, ButtonValue, FaceData};
 use alvr_session::{
@@ -55,13 +55,6 @@ pub struct AlvrClientCapabilities {
 }
 
 #[repr(u8)]
-pub enum AlvrCodec {
-    H264 = 0,
-    Hevc = 1,
-    AV1 = 2,
-}
-
-#[repr(u8)]
 pub enum AlvrEvent {
     HudMessageUpdated,
     StreamingStarted {
@@ -81,7 +74,7 @@ pub enum AlvrEvent {
     },
     /// Note: All subsequent DecoderConfig events should be ignored until reconnection
     DecoderConfig {
-        codec: AlvrCodec,
+        codec: AlvrCodecType,
     },
     // Unimplemented
     RealTimeConfig {},
@@ -93,82 +86,6 @@ pub struct AlvrVideoFrameData {
     timestamp_ns: u64,
     buffer_ptr: *const u8,
     buffer_size: u64,
-}
-
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct AlvrFov {
-    left: f32,
-    right: f32,
-    up: f32,
-    down: f32,
-}
-
-pub fn from_capi_fov(fov: AlvrFov) -> Fov {
-    Fov {
-        left: fov.left,
-        right: fov.right,
-        up: fov.up,
-        down: fov.down,
-    }
-}
-
-pub fn to_capi_fov(fov: Fov) -> AlvrFov {
-    AlvrFov {
-        left: fov.left,
-        right: fov.right,
-        up: fov.up,
-        down: fov.down,
-    }
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, Default)]
-pub struct AlvrQuat {
-    x: f32,
-    y: f32,
-    z: f32,
-    w: f32,
-}
-
-pub fn from_capi_quat(quat: AlvrQuat) -> Quat {
-    Quat::from_xyzw(quat.x, quat.y, quat.z, quat.w)
-}
-
-pub fn to_capi_quat(quat: Quat) -> AlvrQuat {
-    AlvrQuat {
-        x: quat.x,
-        y: quat.y,
-        z: quat.z,
-        w: quat.w,
-    }
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, Default)]
-pub struct AlvrPose {
-    orientation: AlvrQuat,
-    position: [f32; 3],
-}
-
-pub fn from_capi_pose(pose: AlvrPose) -> Pose {
-    Pose {
-        orientation: from_capi_quat(pose.orientation),
-        position: Vec3::from_slice(&pose.position),
-    }
-}
-
-pub fn to_capi_pose(pose: Pose) -> AlvrPose {
-    AlvrPose {
-        orientation: to_capi_quat(pose.orientation),
-        position: pose.position.to_array(),
-    }
-}
-
-#[repr(C)]
-pub struct AlvrViewParams {
-    pose: AlvrPose,
-    fov: AlvrFov,
 }
 
 #[repr(C)]
@@ -375,9 +292,9 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
 
                 AlvrEvent::DecoderConfig {
                     codec: match codec {
-                        CodecType::H264 => AlvrCodec::H264,
-                        CodecType::Hevc => AlvrCodec::Hevc,
-                        CodecType::AV1 => AlvrCodec::AV1,
+                        CodecType::H264 => AlvrCodecType::H264,
+                        CodecType::Hevc => AlvrCodecType::Hevc,
+                        CodecType::AV1 => AlvrCodecType::AV1,
                     },
                 }
             }
@@ -488,14 +405,8 @@ pub extern "C" fn alvr_send_view_params(view_params: *const AlvrViewParams) {
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
         context.send_view_params(unsafe {
             [
-                ViewParams {
-                    pose: from_capi_pose((*view_params).pose),
-                    fov: from_capi_fov((*view_params).fov),
-                },
-                ViewParams {
-                    pose: from_capi_pose((*view_params.offset(1)).pose),
-                    fov: from_capi_fov((*view_params.offset(1)).fov),
-                },
+                alvr_common::from_capi_view_params(&(*view_params)),
+                alvr_common::from_capi_view_params(&(*view_params.offset(1))),
             ]
         });
     }
@@ -532,7 +443,7 @@ pub extern "C" fn alvr_send_tracking(
                 motion.device_id,
                 DeviceMotion {
                     pose: Pose {
-                        orientation: from_capi_quat(motion.pose.orientation),
+                        orientation: alvr_common::from_capi_quat(&motion.pose.orientation),
                         position: Vec3::from_slice(&motion.pose.position),
                     },
                     linear_velocity: Vec3::from_slice(&motion.linear_velocity),
@@ -554,7 +465,7 @@ pub extern "C" fn alvr_send_tracking(
 
                     for (pose, capi_pose) in array.iter_mut().zip(hand_skeleton.iter()) {
                         *pose = Pose {
-                            orientation: from_capi_quat(capi_pose.orientation),
+                            orientation: alvr_common::from_capi_quat(&capi_pose.orientation),
                             position: Vec3::from_slice(&capi_pose.position),
                         };
                     }
@@ -578,7 +489,7 @@ pub extern "C" fn alvr_send_tracking(
                     let eye_gaze = unsafe { &*eye_gaze };
 
                     Pose {
-                        orientation: from_capi_quat(eye_gaze.orientation),
+                        orientation: alvr_common::from_capi_quat(&eye_gaze.orientation),
                         position: Vec3::from_slice(&eye_gaze.position),
                     }
                 })
@@ -656,14 +567,8 @@ pub extern "C" fn alvr_report_compositor_start(
             context.report_compositor_start(Duration::from_nanos(target_timestamp_ns));
 
         unsafe {
-            *out_view_params = AlvrViewParams {
-                pose: to_capi_pose(view_params[0].pose),
-                fov: to_capi_fov(view_params[0].fov),
-            };
-            *out_view_params.offset(1) = AlvrViewParams {
-                pose: to_capi_pose(view_params[1].pose),
-                fov: to_capi_fov(view_params[1].fov),
-            };
+            *out_view_params = alvr_common::to_capi_view_params(&view_params[0]);
+            *out_view_params.offset(1) = alvr_common::to_capi_view_params(&view_params[1]);
         }
     }
 }
@@ -689,8 +594,7 @@ thread_local! {
 #[repr(C)]
 pub struct AlvrLobbyViewParams {
     swapchain_index: u32,
-    pose: AlvrPose,
-    fov: AlvrFov,
+    view_params: AlvrViewParams,
 }
 
 #[repr(C)]
@@ -809,9 +713,9 @@ pub extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
     STREAM_RENDERER.set(Some(StreamRenderer::new(
         GRAPHICS_CONTEXT.with_borrow(|c| c.as_ref().unwrap().clone()),
         view_resolution,
-        compute_target_view_resolution(view_resolution, &upscaling),
+        alvr_graphics::compute_target_view_resolution(view_resolution, &upscaling),
         swapchain_textures,
-        alvr_graphics::SDR_FORMAT_GL,
+        SDR_FORMAT_GL,
         foveated_encoding,
         true,
         false, // TODO: limited range fix config
@@ -830,13 +734,13 @@ pub extern "C" fn alvr_render_lobby_opengl(
         [
             LobbyViewParams {
                 swapchain_index: (*view_inputs).swapchain_index,
-                pose: from_capi_pose((*view_inputs).pose),
-                fov: from_capi_fov((*view_inputs).fov),
+                view_params: alvr_common::from_capi_view_params(&(*view_inputs).view_params),
             },
             LobbyViewParams {
                 swapchain_index: (*view_inputs.offset(1)).swapchain_index,
-                pose: from_capi_pose((*view_inputs.offset(1)).pose),
-                fov: from_capi_fov((*view_inputs.offset(1)).fov),
+                view_params: alvr_common::from_capi_view_params(
+                    &(*view_inputs.offset(1)).view_params,
+                ),
             },
         ]
     };
@@ -873,28 +777,32 @@ pub extern "C" fn alvr_render_stream_opengl(
                         swapchain_index: left_params.swapchain_index,
                         input_view_params: ViewParams {
                             pose: Pose::IDENTITY,
-                            fov: from_capi_fov(left_params.fov),
+                            fov: alvr_common::from_capi_fov(&left_params.fov),
                         },
                         output_view_params: ViewParams {
                             pose: Pose {
-                                orientation: from_capi_quat(left_params.reprojection_rotation),
+                                orientation: alvr_common::from_capi_quat(
+                                    &left_params.reprojection_rotation,
+                                ),
                                 position: Vec3::ZERO,
                             },
-                            fov: from_capi_fov(left_params.fov),
+                            fov: alvr_common::from_capi_fov(&left_params.fov),
                         },
                     },
                     StreamViewParams {
                         swapchain_index: right_params.swapchain_index,
                         input_view_params: ViewParams {
                             pose: Pose::IDENTITY,
-                            fov: from_capi_fov(right_params.fov),
+                            fov: alvr_common::from_capi_fov(&right_params.fov),
                         },
                         output_view_params: ViewParams {
                             pose: Pose {
-                                orientation: from_capi_quat(right_params.reprojection_rotation),
+                                orientation: alvr_common::from_capi_quat(
+                                    &right_params.reprojection_rotation,
+                                ),
                                 position: Vec3::ZERO,
                             },
-                            fov: from_capi_fov(right_params.fov),
+                            fov: alvr_common::from_capi_fov(&right_params.fov),
                         },
                     },
                 ],
@@ -933,7 +841,7 @@ pub struct AlvrMediacodecOption {
 
 #[repr(C)]
 pub struct AlvrDecoderConfig {
-    codec: AlvrCodec,
+    codec: AlvrCodecType,
     force_software_decoder: bool,
     max_buffering_frames: f32,
     buffering_history_weight: f32,
@@ -948,9 +856,9 @@ pub struct AlvrDecoderConfig {
 pub extern "C" fn alvr_create_decoder(config: AlvrDecoderConfig) {
     let config = VideoDecoderConfig {
         codec: match config.codec {
-            AlvrCodec::H264 => CodecType::H264,
-            AlvrCodec::Hevc => CodecType::Hevc,
-            AlvrCodec::AV1 => CodecType::AV1,
+            AlvrCodecType::H264 => CodecType::H264,
+            AlvrCodecType::Hevc => CodecType::Hevc,
+            AlvrCodecType::AV1 => CodecType::AV1,
         },
         force_software_decoder: config.force_software_decoder,
         max_buffering_frames: config.max_buffering_frames,
@@ -1041,5 +949,8 @@ pub extern "C" fn alvr_get_frame(
 
 #[unsafe(no_mangle)]
 pub extern "C" fn alvr_rotation_delta(source: AlvrQuat, destination: AlvrQuat) -> AlvrQuat {
-    to_capi_quat(from_capi_quat(source).inverse() * from_capi_quat(destination))
+    alvr_common::to_capi_quat(
+        &(alvr_common::from_capi_quat(&source).inverse()
+            * alvr_common::from_capi_quat(&destination)),
+    )
 }

@@ -5,9 +5,7 @@ use crate::{
     SESSION_MANAGER, ServerCoreContext, ServerCoreEvent, logging_backend, tracking::HandType,
 };
 use alvr_common::{
-    Fov, Pose, ViewParams,
-    glam::{Quat, Vec3},
-    log,
+    AlvrCodecType, AlvrPose, AlvrViewParams, log,
     parking_lot::{Mutex, RwLock},
 };
 use alvr_packets::{ButtonEntry, ButtonValue, Haptics};
@@ -25,50 +23,6 @@ use std::{
 static SERVER_CORE_CONTEXT: RwLock<Option<ServerCoreContext>> = RwLock::new(None);
 static EVENTS_RECEIVER: Mutex<Option<mpsc::Receiver<ServerCoreEvent>>> = Mutex::new(None);
 static BUTTONS_QUEUE: Mutex<VecDeque<Vec<ButtonEntry>>> = Mutex::new(VecDeque::new());
-
-#[repr(C)]
-pub struct AlvrFov {
-    /// Negative, radians
-    pub left: f32,
-    /// Positive, radians
-    pub right: f32,
-    /// Positive, radians
-    pub up: f32,
-    /// Negative, radians
-    pub down: f32,
-}
-
-#[repr(C)]
-pub struct AlvrQuat {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
-    pub w: f32,
-}
-
-impl Default for AlvrQuat {
-    fn default() -> Self {
-        Self {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-            w: 1.0,
-        }
-    }
-}
-
-#[repr(u8)]
-pub enum AlvrCodecType {
-    H264 = 0,
-    Hevc = 1,
-    AV1 = 2,
-}
-
-#[repr(C)]
-pub struct AlvrPose {
-    orientation: AlvrQuat,
-    position: [f32; 3],
-}
 
 #[repr(C)]
 pub struct AlvrDeviceMotion {
@@ -104,12 +58,6 @@ pub struct AlvrBatteryInfo {
     pub is_plugged: bool,
 }
 
-#[repr(C)]
-pub struct AlvrViewParams {
-    pub pose: AlvrPose,
-    pub fov: AlvrFov,
-}
-
 #[repr(u8)]
 pub enum AlvrEvent {
     ClientConnected,
@@ -143,44 +91,6 @@ pub struct AlvrDeviceConfig {
 pub struct AlvrDynamicEncoderParams {
     bitrate_bps: f32,
     framerate: f32,
-}
-
-fn pose_to_capi(pose: &Pose) -> AlvrPose {
-    AlvrPose {
-        orientation: AlvrQuat {
-            x: pose.orientation.x,
-            y: pose.orientation.y,
-            z: pose.orientation.z,
-            w: pose.orientation.w,
-        },
-        position: pose.position.to_array(),
-    }
-}
-
-fn pose_from_capi(pose: &AlvrPose) -> Pose {
-    let o = &pose.orientation;
-    Pose {
-        orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
-        position: Vec3::from_slice(&pose.position),
-    }
-}
-
-fn fov_to_capi(fov: &Fov) -> AlvrFov {
-    AlvrFov {
-        left: fov.left,
-        right: fov.right,
-        up: fov.up,
-        down: fov.down,
-    }
-}
-
-fn fov_from_capi(fov: &AlvrFov) -> Fov {
-    Fov {
-        left: fov.left,
-        right: fov.right,
-        up: fov.up,
-        down: fov.down,
-    }
 }
 
 fn string_to_c_str(buffer: *mut c_char, value: &str) -> u64 {
@@ -360,14 +270,8 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
             },
             ServerCoreEvent::LocalViewParams(config) => unsafe {
                 *out_event = AlvrEvent::LocalViewParams([
-                    AlvrViewParams {
-                        pose: pose_to_capi(&config[0].pose),
-                        fov: fov_to_capi(&config[0].fov),
-                    },
-                    AlvrViewParams {
-                        pose: pose_to_capi(&config[1].pose),
-                        fov: fov_to_capi(&config[1].fov),
-                    },
+                    alvr_common::to_capi_view_params(&config[0]),
+                    alvr_common::to_capi_view_params(&config[1]),
                 ])
             },
             ServerCoreEvent::Tracking { sample_timestamp } => unsafe {
@@ -410,7 +314,7 @@ pub unsafe extern "C" fn alvr_get_device_motion(
     {
         unsafe {
             *out_motion = AlvrDeviceMotion {
-                pose: pose_to_capi(&motion.pose),
+                pose: alvr_common::to_capi_pose(&motion.pose),
                 linear_velocity: motion.linear_velocity.to_array(),
                 angular_velocity: motion.angular_velocity.to_array(),
             };
@@ -440,7 +344,7 @@ pub unsafe extern "C" fn alvr_get_hand_skeleton(
         )
     {
         for (i, joint_pose) in skeleton.iter().enumerate() {
-            unsafe { *out_skeleton.add(i) = pose_to_capi(joint_pose) };
+            unsafe { *out_skeleton.add(i) = alvr_common::to_capi_pose(joint_pose) };
         }
 
         true
@@ -529,14 +433,8 @@ pub unsafe extern "C" fn alvr_send_video_nal(
 
         let global_view_params = unsafe {
             [
-                ViewParams {
-                    pose: pose_from_capi(&(*global_view_params).pose),
-                    fov: fov_from_capi(&(*global_view_params).fov),
-                },
-                ViewParams {
-                    pose: pose_from_capi(&(*global_view_params.add(1)).pose),
-                    fov: fov_from_capi(&(*global_view_params.add(1)).fov),
-                },
+                alvr_common::from_capi_view_params(&(*global_view_params)),
+                alvr_common::from_capi_view_params(&(*global_view_params.add(1))),
             ]
         };
 

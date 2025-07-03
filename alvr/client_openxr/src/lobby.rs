@@ -3,7 +3,7 @@ use crate::{
     graphics::{self, ProjectionLayerAlphaConfig, ProjectionLayerBuilder},
     interaction::{self, InteractionContext},
 };
-use alvr_common::{Pose, glam::UVec2, parking_lot::RwLock};
+use alvr_common::{Pose, ViewParams, glam::UVec2, parking_lot::RwLock};
 use alvr_graphics::{
     BodyTrackingType, GraphicsContext, LobbyRenderer, LobbyViewParams, SDR_FORMAT_GL,
 };
@@ -192,13 +192,17 @@ impl Lobby {
         self.renderer.render(
             [
                 LobbyViewParams {
-                    pose: crate::from_xr_pose(views[0].pose),
-                    fov: crate::from_xr_fov(views[0].fov),
+                    view_params: ViewParams {
+                        pose: crate::from_xr_pose(views[0].pose),
+                        fov: crate::from_xr_fov(views[0].fov),
+                    },
                     swapchain_index: left_swapchain_idx,
                 },
                 LobbyViewParams {
-                    pose: crate::from_xr_pose(views[1].pose),
-                    fov: crate::from_xr_fov(views[1].fov),
+                    view_params: ViewParams {
+                        pose: crate::from_xr_pose(views[1].pose),
+                        fov: crate::from_xr_fov(views[1].fov),
+                    },
                     swapchain_index: right_swapchain_idx,
                 },
             ],

@@ -23,7 +23,7 @@ fn lerp_pose(a: Pose, b: Pose, fac: f32) -> Pose {
 }
 
 pub static HAND_GESTURE_BUTTON_SET: Lazy<HashSet<u64>> = Lazy::new(|| {
-    [
+    HashSet::from([
         *LEFT_X_CLICK_ID,
         *LEFT_X_TOUCH_ID,
         *LEFT_Y_CLICK_ID,
@@ -47,9 +47,7 @@ pub static HAND_GESTURE_BUTTON_SET: Lazy<HashSet<u64>> = Lazy::new(|| {
         *RIGHT_THUMBSTICK_Y_ID,
         *RIGHT_THUMBSTICK_CLICK_ID,
         *RIGHT_THUMBSTICK_TOUCH_ID,
-    ]
-    .into_iter()
-    .collect()
+    ])
 });
 
 #[derive(Debug, Clone)]

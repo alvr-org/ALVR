@@ -16,7 +16,7 @@ use bindings::*;
 
 use alvr_common::{
     BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
-    error, once_cell::sync::Lazy, parking_lot::RwLock, settings_schema::Switch, warn,
+    error, parking_lot::RwLock, settings_schema::Switch, warn,
 };
 use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};
@@ -30,8 +30,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> =
-    Lazy::new(|| RwLock::new(None));
+static SERVER_CORE_CONTEXT: RwLock<Option<ServerCoreContext>> = RwLock::new(None);
 
 fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
     thread::spawn(move || {

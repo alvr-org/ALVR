@@ -230,12 +230,12 @@ fn show_e_block<E: Display>(e: E, blocking: bool) {
 
     #[cfg(all(not(target_os = "android"), not(target_os = "ios")))]
     {
-        // Store the last error shown in a message box. Do not open a new message box if the content
-        // of the error has not changed
-        use once_cell::sync::Lazy;
         use parking_lot::Mutex;
 
-        static LAST_MESSAGEBOX_ERROR: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
+        // Store the last error shown in a message box. Do not open a new message box if the content
+        // of the error has not changed
+
+        static LAST_MESSAGEBOX_ERROR: Mutex<String> = Mutex::new(String::new());
 
         let err_string = e.to_string();
         let last_messagebox_error_ref = &mut *LAST_MESSAGEBOX_ERROR.lock();

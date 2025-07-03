@@ -9,7 +9,6 @@ use alvr_common::{
     anyhow::{Context, Result},
     debug,
     glam::bool,
-    once_cell::sync::Lazy,
     parking_lot::Mutex,
     warn,
 };
@@ -182,8 +181,6 @@ impl Launcher {
 }
 
 // Singleton with exclusive access
-pub static LAUNCHER: Lazy<Mutex<Launcher>> = Lazy::new(|| {
-    Mutex::new(Launcher {
-        _phantom: PhantomData,
-    })
+pub static LAUNCHER: Mutex<Launcher> = Mutex::new(Launcher {
+    _phantom: PhantomData,
 });

@@ -70,8 +70,7 @@ static DEVICE_MOTIONS_ROTATION_MAP: Lazy<HashMap<u64, Quat>> = Lazy::new(|| {
     ])
 });
 
-static HAND_SKELETON_VMC_MAP: Lazy<[[(usize, &'static str); 1]; 2]> =
-    Lazy::new(|| [[(0, "LeftHand")], [(0, "RightHand")]]);
+static HAND_SKELETON_VMC_MAP: [[(usize, &str); 1]; 2] = [[(0, "LeftHand")], [(0, "RightHand")]];
 
 static HAND_SKELETON_ROTATIONS: Lazy<[HashMap<usize, Quat>; 2]> = Lazy::new(|| {
     [

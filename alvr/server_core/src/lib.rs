@@ -19,7 +19,6 @@ use alvr_common::{
     ConnectionState, DEVICE_ID_TO_PATH, DeviceMotion, LifecycleState, Pose, RelaxedAtomic,
     ViewParams, dbg_server_core, error,
     glam::Vec2,
-    once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
     warn,
@@ -42,7 +41,7 @@ use std::{
     fs::File,
     io::Write,
     sync::{
-        Arc, OnceLock,
+        Arc, LazyLock, OnceLock,
         atomic::{AtomicBool, Ordering},
         mpsc::{self, SyncSender, TrySendError},
     },
@@ -58,7 +57,7 @@ static FILESYSTEM_LAYOUT: OnceLock<afs::Layout> = OnceLock::new();
 // needs to be initialized first using initialize_environment().
 // NB: this must remain a global because only one instance should exist for the whole application
 // execution time.
-static SESSION_MANAGER: Lazy<RwLock<ServerSessionManager>> = Lazy::new(|| {
+static SESSION_MANAGER: LazyLock<RwLock<ServerSessionManager>> = LazyLock::new(|| {
     RwLock::new(ServerSessionManager::new(
         FILESYSTEM_LAYOUT.get().map(|l| l.session()),
     ))
@@ -365,7 +364,8 @@ impl ServerCoreContext {
 
         // start in the corrupts state, the client didn't receive the initial IDR yet.
         static STREAM_CORRUPTED: AtomicBool = AtomicBool::new(true);
-        static LAST_IDR_INSTANT: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
+        static LAST_IDR_INSTANT: LazyLock<Mutex<Instant>> =
+            LazyLock::new(|| Mutex::new(Instant::now()));
 
         if let Some(sender) = &*self.connection_context.video_channel_sender.lock() {
             let buffer_size = nal_buffer.len();

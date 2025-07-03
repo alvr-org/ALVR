@@ -1,12 +1,11 @@
 #![allow(dead_code)]
 
-use alvr_common::once_cell::sync::Lazy;
 use openxr::{self as xr, raw, sys};
-use std::ptr;
+use std::{ptr, sync::LazyLock};
 
 pub const META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME: &str = "XR_META_body_tracking_full_body";
-pub static BODY_JOINT_SET_FULL_BODY_META: Lazy<xr::BodyJointSetFB> =
-    Lazy::new(|| xr::BodyJointSetFB::from_raw(1000274000));
+pub static BODY_JOINT_SET_FULL_BODY_META: LazyLock<xr::BodyJointSetFB> =
+    LazyLock::new(|| xr::BodyJointSetFB::from_raw(1000274000));
 
 pub const FULL_BODY_JOINT_LEFT_UPPER_LEG_META: usize = 70;
 pub const FULL_BODY_JOINT_LEFT_LOWER_LEG_META: usize = 71;

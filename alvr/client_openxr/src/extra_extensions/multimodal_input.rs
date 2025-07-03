@@ -2,23 +2,24 @@
 // https://github.com/meta-quest/Meta-OpenXR-SDK/blob/main/OpenXR/meta_openxr_preview/meta_simultaneous_hands_and_controllers.h
 
 use crate::extra_extensions::get_instance_proc;
-use alvr_common::once_cell::sync::Lazy;
 use openxr::{
     self as xr,
     sys::{self},
 };
-use std::{ffi::c_void, ptr};
+use std::{ffi::c_void, ptr, sync::LazyLock};
 
 pub const META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME: &str =
     "XR_META_simultaneous_hands_and_controllers";
 pub const META_DETACHED_CONTROLLERS_EXTENSION_NAME: &str = "XR_META_detached_controllers";
 
-static TYPE_SYSTEM_SIMULTANEOUS_HANDS_AND_CONTROLLERS_PROPERTIES_META: Lazy<xr::StructureType> =
-    Lazy::new(|| xr::StructureType::from_raw(1000532001));
-static TYPE_SIMULTANEOUS_HANDS_AND_CONTROLLERS_TRACKING_RESUME_INFO_META: Lazy<xr::StructureType> =
-    Lazy::new(|| xr::StructureType::from_raw(1000532002));
-static TYPE_SIMULTANEOUS_HANDS_AND_CONTROLLERS_TRACKING_PAUSE_INFO_META: Lazy<xr::StructureType> =
-    Lazy::new(|| xr::StructureType::from_raw(1000532003));
+static TYPE_SYSTEM_SIMULTANEOUS_HANDS_AND_CONTROLLERS_PROPERTIES_META: LazyLock<xr::StructureType> =
+    LazyLock::new(|| xr::StructureType::from_raw(1000532001));
+static TYPE_SIMULTANEOUS_HANDS_AND_CONTROLLERS_TRACKING_RESUME_INFO_META: LazyLock<
+    xr::StructureType,
+> = LazyLock::new(|| xr::StructureType::from_raw(1000532002));
+static TYPE_SIMULTANEOUS_HANDS_AND_CONTROLLERS_TRACKING_PAUSE_INFO_META: LazyLock<
+    xr::StructureType,
+> = LazyLock::new(|| xr::StructureType::from_raw(1000532003));
 
 #[repr(C)]
 struct SystemSymultaneousHandsAndControllersPropertiesMETA {

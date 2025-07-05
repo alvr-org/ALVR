@@ -15,7 +15,7 @@ use crate::{
 use alvr_common::{
     BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID,
     BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, ConnectionError,
-    DEVICE_ID_TO_PATH, DeviceMotion, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID, Pose,
+    DEVICE_ID_TO_PATH, DeviceMotion, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID, Pose, ViewParams,
     glam::{EulerRot, Quat, Vec3},
     parking_lot::Mutex,
 };
@@ -86,8 +86,7 @@ impl TrackingManager {
                 pos
             }
             PositionRecenteringMode::Local { view_height } => {
-                self.last_head_pose.position
-                    - self.last_head_pose.orientation * Vec3::new(0.0, view_height, 0.0)
+                self.last_head_pose.position - Vec3::new(0.0, view_height, 0.0)
             }
         };
 
@@ -304,6 +303,12 @@ impl TrackingManager {
 
     pub fn get_face_data(&self) -> &FaceData {
         &self.last_face_data
+    }
+
+    pub fn unrecenter_view_params(&self, view_params: &mut [ViewParams; 2]) {
+        for params in view_params {
+            params.pose = self.inverse_recentering_origin.inverse() * params.pose;
+        }
     }
 }
 

@@ -877,7 +877,7 @@ fn connection_pipeline(
         thread::spawn(move || {
             while is_streaming(&client_hostname) {
                 #[cfg(target_os = "linux")]
-                if let Err(e) = alvr_audio::linux::record_audio_blocking_pipewire(
+                if let Err(e) = alvr_audio::linux::audio::record_audio_blocking(
                     Arc::new({
                         let client_hostname = client_hostname.clone();
                         move || is_streaming(&client_hostname)
@@ -986,7 +986,7 @@ fn connection_pipeline(
                     &mut microphone_receiver,
                 ));
                 #[cfg(target_os = "linux")]
-                alvr_common::show_err(alvr_audio::linux::play_microphone_loop_pipewire(
+                alvr_common::show_err(alvr_audio::linux::microphone::play_loop(
                     {
                         let client_hostname = client_hostname.clone();
                         move || is_streaming(&client_hostname)

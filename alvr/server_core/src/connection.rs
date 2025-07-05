@@ -877,16 +877,22 @@ fn connection_pipeline(
         thread::spawn(move || {
             while is_streaming(&client_hostname) {
                 #[cfg(target_os = "linux")]
-                if let Err(e) = alvr_audio::linux::audio::record_audio_blocking(
-                    Arc::new({
-                        let client_hostname = client_hostname.clone();
-                        move || is_streaming(&client_hostname)
-                    }),
-                    game_audio_sender.clone(),
-                    2,
-                    game_audio_sample_rate,
-                ) {
-                    error!("Audio record error: {e:?}");
+                {
+                    if let Err(e) = alvr_audio::linux::try_load_pipewire() {
+                        error!("Pipewire error: {e}, aborting audio thread");
+                        break;
+                    }
+                    if let Err(e) = alvr_audio::linux::audio::record_audio_blocking(
+                        Arc::new({
+                            let client_hostname = client_hostname.clone();
+                            move || is_streaming(&client_hostname)
+                        }),
+                        game_audio_sender.clone(),
+                        2,
+                        game_audio_sample_rate,
+                    ) {
+                        error!("Audio record error: {e:?}");
+                    }
                 }
 
                 #[cfg(not(target_os = "linux"))]
@@ -986,16 +992,22 @@ fn connection_pipeline(
                     &mut microphone_receiver,
                 ));
                 #[cfg(target_os = "linux")]
-                alvr_common::show_err(alvr_audio::linux::microphone::play_loop(
-                    {
-                        let client_hostname = client_hostname.clone();
-                        move || is_streaming(&client_hostname)
-                    },
-                    1,
-                    streaming_caps.microphone_sample_rate,
-                    config.buffering,
-                    &mut microphone_receiver,
-                ));
+                {
+                    if let Err(e) = alvr_audio::linux::try_load_pipewire() {
+                        error!("Pipewire error: {e}, aborting microphone thread");
+                        return;
+                    }
+                    alvr_common::show_err(alvr_audio::linux::microphone::play_loop(
+                        {
+                            let client_hostname = client_hostname.clone();
+                            move || is_streaming(&client_hostname)
+                        },
+                        1,
+                        streaming_caps.microphone_sample_rate,
+                        config.buffering,
+                        &mut microphone_receiver,
+                    ));
+                }
             })
         } else {
             thread::spawn(|| ())

@@ -1,14 +1,6 @@
-#![warn(clippy::pedantic)]
+#![warn(clippy::pedantic, clippy::nursery, clippy::cargo)]
 use alvr_common::{anyhow::Result, debug, error};
-use std::{
-    io,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
-    thread,
-    time::Duration,
-};
+use std::{io, sync::Arc, thread, time::Duration};
 
 use alvr_sockets::StreamSender;
 use pipewire::{
@@ -35,13 +27,8 @@ pub fn record_audio_blocking(
 ) -> Result<()> {
     let (pw_sender, pw_receiver) = pipewire::channel::channel();
     let is_running_for_pipewire = Arc::clone(&is_running);
-    let is_processing_aborted = Arc::new(AtomicBool::new(false));
 
-    audio_loop_thread(
-        pw_sender,
-        is_running_for_pipewire,
-        is_processing_aborted.clone(),
-    );
+    let thread_handle = audio_loop_thread(pw_sender, is_running_for_pipewire);
     let is_running_for_pipewire = Arc::clone(&is_running);
     match pipewire_main_loop(
         sample_rate,
@@ -54,31 +41,26 @@ pub fn record_audio_blocking(
             debug!("Pipewire audio loop exiting");
         }
         Err(e) => {
-            if let pipewire::Error::CreationFailed = e {
-                error!(
-                    "Could not create Pipewire Audio device. 
-            Make sure PipeWire is installed on your system and is at least 0.3.49 version."
-                );
-                is_processing_aborted.store(true, Ordering::Relaxed);
-            } else {
-                error!(
-                    "Unhandled pipewire microphone device error, please report it to GitHub: {e}"
-                );
-            }
+            error!("Unhandled pipewire microphone device error, please report it to GitHub: {e}");
+        }
+    }
+    match thread_handle.join() {
+        Ok(()) => debug!("Pipewire audio thread joined"),
+        Err(_) => {
+            error!("Couldn't wait for pipewire audio thread to finish.");
         }
     }
     Ok(())
 }
-
 fn audio_loop_thread(
     pw_sender: pipewire::channel::Sender<Terminate>,
     is_running_for_pipewire: Arc<dyn Fn() -> bool + Send + Sync + 'static>,
-    is_processing_aborted_clone: Arc<AtomicBool>,
-) {
+) -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        while !is_processing_aborted_clone.load(Ordering::Relaxed) && is_running_for_pipewire() {
+        while is_running_for_pipewire() {
             thread::sleep(Duration::from_millis(500));
         }
+        debug!("Pipewire audio loop thread terminating");
         if pw_sender.send(Terminate).is_err() {
             error!(
                 "Couldn't send pipewire termination signal, deinitializing forcefully.
@@ -86,7 +68,7 @@ fn audio_loop_thread(
             );
             unsafe { pipewire::deinit() };
         }
-    });
+    })
 }
 
 fn pipewire_main_loop(

@@ -16,7 +16,6 @@ use pipewire::{
     },
     stream::{Stream, StreamFlags, StreamListener},
 };
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 use std::{cmp, collections::VecDeque, io, sync::Arc};
@@ -40,8 +39,6 @@ pub fn play_loop(
     let receive_samples_buffer_arc = Arc::clone(&sample_buffer);
     let pw_stream_state = Arc::new(Mutex::new(StreamState::Unconnected));
     let pw_stream_state_arc = Arc::clone(&pw_stream_state);
-    let is_processing_aborted = Arc::new(AtomicBool::new(false));
-    let is_processing_aborted_clone = is_processing_aborted.clone();
 
     let thread_handle = microphone_loop_thread(
         channels_count,
@@ -49,16 +46,11 @@ pub fn play_loop(
         pw_receiver,
         pw_stream_state,
         Arc::clone(&sample_buffer),
-        is_processing_aborted,
     );
     while running() {
-        if is_processing_aborted_clone.load(Ordering::Relaxed) {
-            break;
-        }
-        let stream_audio =
-            is_microphone_running(&running, &pw_stream_state_arc, &is_processing_aborted_clone);
+        let is_microphone_running = is_microphone_running(&running, &pw_stream_state_arc);
         crate::receive_samples_loop(
-            stream_audio,
+            is_microphone_running,
             receiver,
             receive_samples_buffer_arc.clone(),
             channels_count as _,
@@ -106,14 +98,11 @@ fn is_microphone_running(
     pw_stream_state_arc: &Arc<
         alvr_common::parking_lot::lock_api::Mutex<alvr_common::parking_lot::RawMutex, StreamState>,
     >,
-    is_processing_aborted_clone: &Arc<AtomicBool>,
 ) -> impl Fn() -> bool {
     || {
-        pw_stream_state_arc.try_lock().is_some_and(|stream_state| {
-            !is_processing_aborted_clone.load(Ordering::Relaxed)
-                && *stream_state == StreamState::Streaming
-                && running()
-        })
+        pw_stream_state_arc
+            .try_lock()
+            .is_some_and(|stream_state| *stream_state == StreamState::Streaming && running())
     }
 }
 
@@ -130,7 +119,6 @@ fn microphone_loop_thread(
             VecDeque<f32>,
         >,
     >,
-    is_processing_aborted: Arc<AtomicBool>,
 ) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         match pipewire_main_loop(
@@ -144,18 +132,9 @@ fn microphone_loop_thread(
                 debug!("Pipewire microphone loop exiting");
             }
             Err(e) => {
-                if matches!(e, pipewire::Error::CreationFailed) {
-                    error!(
-                        "Could not create Pipewire Microphone device. 
-                Make sure PipeWire is installed on your system and is at least 0.3.49 version.
-                To retry, please restart SteamVR with ALVR."
-                    );
-                    is_processing_aborted.store(true, Ordering::Relaxed);
-                } else {
-                    error!(
-                        "Unhandled pipewire microphone device error, please report it to GitHub: {e}"
-                    );
-                }
+                error!(
+                    "Unhandled pipewire microphone device error, please report it to GitHub: {e}"
+                );
             }
         }
     })

@@ -1,4 +1,3 @@
-#![warn(clippy::pedantic, clippy::nursery, clippy::cargo)]
 use alvr_common::{ConnectionError, anyhow::Result, debug, error, parking_lot::Mutex};
 use alvr_session::AudioBufferingConfig;
 use alvr_sockets::StreamReceiver;
@@ -48,7 +47,11 @@ pub fn play_loop(
         Arc::clone(&sample_buffer),
     );
     while running() {
-        let is_microphone_running = is_microphone_running(&running, &pw_stream_state_arc);
+        let is_microphone_running = || {
+            pw_stream_state_arc
+                .try_lock()
+                .is_some_and(|stream_state| *stream_state == StreamState::Streaming && running())
+        };
         crate::receive_samples_loop(
             is_microphone_running,
             receiver,
@@ -75,7 +78,7 @@ pub fn play_loop(
 
 fn terminate_pipewire(
     pw_sender: &pipewire::channel::Sender<Terminate>,
-    thread: thread::JoinHandle<()>,
+    thread_handle: thread::JoinHandle<()>,
 ) {
     if pw_sender.send(Terminate).is_err() {
         error!(
@@ -85,24 +88,11 @@ fn terminate_pipewire(
         unsafe { pipewire::deinit() };
     }
 
-    match thread.join() {
+    match thread_handle.join() {
         Ok(()) => debug!("Pipewire microphone thread joined"),
         Err(_) => {
             error!("Couldn't wait for pipewire microphone thread to finish.");
         }
-    }
-}
-
-fn is_microphone_running(
-    running: &impl Fn() -> bool,
-    pw_stream_state_arc: &Arc<
-        alvr_common::parking_lot::lock_api::Mutex<alvr_common::parking_lot::RawMutex, StreamState>,
-    >,
-) -> impl Fn() -> bool {
-    || {
-        pw_stream_state_arc
-            .try_lock()
-            .is_some_and(|stream_state| *stream_state == StreamState::Streaming && running())
     }
 }
 

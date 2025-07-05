@@ -1,4 +1,3 @@
-#![warn(clippy::pedantic, clippy::nursery, clippy::cargo)]
 use alvr_common::{anyhow::Result, debug, error};
 use std::{io, sync::Arc, thread, time::Duration};
 

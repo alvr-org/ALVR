@@ -846,15 +846,22 @@ fn connection_pipeline(
     *ctx.haptics_sender.lock() = Some(haptics_sender);
 
     let video_send_thread = thread::spawn({
+        let ctx = Arc::clone(&ctx);
         let client_hostname = client_hostname.clone();
         move || {
             while is_streaming(&client_hostname) {
-                let VideoPacket { header, payload } =
-                    match video_channel_receiver.recv_timeout(STREAMING_RECV_TIMEOUT) {
-                        Ok(packet) => packet,
-                        Err(RecvTimeoutError::Timeout) => continue,
-                        Err(RecvTimeoutError::Disconnected) => return,
-                    };
+                let VideoPacket {
+                    mut header,
+                    payload,
+                } = match video_channel_receiver.recv_timeout(STREAMING_RECV_TIMEOUT) {
+                    Ok(packet) => packet,
+                    Err(RecvTimeoutError::Timeout) => continue,
+                    Err(RecvTimeoutError::Disconnected) => return,
+                };
+
+                ctx.tracking_manager
+                    .read()
+                    .unrecenter_view_params(&mut header.global_view_params);
 
                 let mut buffer = video_sender.get_buffer(&header).unwrap();
                 // todo: make encoder write to socket buffers directly to avoid copy

@@ -324,7 +324,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
 
             #[cfg_attr(not(debug_assertions), expect(unused_variables))]
             if let WiredConnectionStatus::NotReady(s) = status {
-                dbg_connection!("handshake_loop: Wired connection not ready: {s}");
+                info!("handshake_loop: Wired connection not ready: {s}");
                 thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                 continue;
             }
@@ -865,10 +865,16 @@ fn connection_pipeline(
             }
         }
     });
+    let mut abort_audio_early = false;
+    #[cfg_attr(target_os = "linux", allow(unused_variables))]
+    if let Err(e) = alvr_audio::linux::try_load_pipewire() {
+        error!("Pipewire error: {e}, aborting audio startup");
+        abort_audio_early = true;
+    }
 
     #[cfg_attr(target_os = "linux", allow(unused_variables))]
-    let game_audio_thread = if let Switch::Enabled(config) =
-        initial_settings.audio.game_audio.clone()
+    let game_audio_thread = if !abort_audio_early
+        && let Switch::Enabled(config) = initial_settings.audio.game_audio.clone()
     {
         #[cfg(windows)]
         let ctx = Arc::clone(&ctx);
@@ -878,10 +884,6 @@ fn connection_pipeline(
             while is_streaming(&client_hostname) {
                 #[cfg(target_os = "linux")]
                 {
-                    if let Err(e) = alvr_audio::linux::try_load_pipewire() {
-                        error!("Pipewire error: {e}, aborting audio thread");
-                        break;
-                    }
                     if let Err(e) = alvr_audio::linux::audio::record_audio_blocking(
                         Arc::new({
                             let client_hostname = client_hostname.clone();
@@ -957,61 +959,58 @@ fn connection_pipeline(
         thread::spawn(|| ())
     };
 
-    let microphone_thread =
-        if let Switch::Enabled(config) = initial_settings.audio.microphone.clone() {
+    let microphone_thread = if !abort_audio_early
+        && let Switch::Enabled(config) = initial_settings.audio.microphone.clone()
+    {
+        #[cfg(not(target_os = "linux"))]
+        #[allow(unused_variables)]
+        let (sink, source) =
+            alvr_audio::AudioDevice::new_virtual_microphone_pair(config.devices).to_con()?;
+
+        #[cfg(windows)]
+        if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
+            ctx.events_sender
+                .send(ServerCoreEvent::SetOpenvrProperty {
+                    device_id: *alvr_common::HEAD_ID,
+                    prop: alvr_session::OpenvrProperty {
+                        key: alvr_session::OpenvrPropKey::AudioDefaultRecordingDeviceIdString,
+                        value: id,
+                    },
+                })
+                .ok();
+        }
+
+        let client_hostname = client_hostname.clone();
+        thread::spawn(move || {
             #[cfg(not(target_os = "linux"))]
-            #[allow(unused_variables)]
-            let (sink, source) =
-                alvr_audio::AudioDevice::new_virtual_microphone_pair(config.devices).to_con()?;
-
-            #[cfg(windows)]
-            if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
-                ctx.events_sender
-                    .send(ServerCoreEvent::SetOpenvrProperty {
-                        device_id: *alvr_common::HEAD_ID,
-                        prop: alvr_session::OpenvrProperty {
-                            key: alvr_session::OpenvrPropKey::AudioDefaultRecordingDeviceIdString,
-                            value: id,
-                        },
-                    })
-                    .ok();
-            }
-
-            let client_hostname = client_hostname.clone();
-            thread::spawn(move || {
-                #[cfg(not(target_os = "linux"))]
-                alvr_common::show_err(alvr_audio::play_audio_loop(
+            alvr_common::show_err(alvr_audio::play_audio_loop(
+                {
+                    let client_hostname = client_hostname.clone();
+                    move || is_streaming(&client_hostname)
+                },
+                &sink,
+                1,
+                streaming_caps.microphone_sample_rate,
+                config.buffering,
+                &mut microphone_receiver,
+            ));
+            #[cfg(target_os = "linux")]
+            {
+                alvr_common::show_err(alvr_audio::linux::microphone::play_loop(
                     {
                         let client_hostname = client_hostname.clone();
                         move || is_streaming(&client_hostname)
                     },
-                    &sink,
                     1,
                     streaming_caps.microphone_sample_rate,
                     config.buffering,
                     &mut microphone_receiver,
                 ));
-                #[cfg(target_os = "linux")]
-                {
-                    if let Err(e) = alvr_audio::linux::try_load_pipewire() {
-                        error!("Pipewire error: {e}, aborting microphone thread");
-                        return;
-                    }
-                    alvr_common::show_err(alvr_audio::linux::microphone::play_loop(
-                        {
-                            let client_hostname = client_hostname.clone();
-                            move || is_streaming(&client_hostname)
-                        },
-                        1,
-                        streaming_caps.microphone_sample_rate,
-                        config.buffering,
-                        &mut microphone_receiver,
-                    ));
-                }
-            })
-        } else {
-            thread::spawn(|| ())
-        };
+            }
+        })
+    } else {
+        thread::spawn(|| ())
+    };
 
     *ctx.tracking_manager.write() =
         TrackingManager::new(initial_settings.connection.statistics_history_size);

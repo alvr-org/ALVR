@@ -40,7 +40,7 @@ pub fn record_audio_blocking(
             debug!("Pipewire audio loop exiting");
         }
         Err(e) => {
-            error!("Unhandled pipewire microphone device error, please report it to GitHub: {e}");
+            error!("Unhandled pipewire audio device error, please report it to GitHub: {e}");
         }
     }
     match thread_handle.join() {

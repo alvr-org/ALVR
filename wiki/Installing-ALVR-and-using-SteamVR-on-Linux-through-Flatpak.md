@@ -62,8 +62,7 @@ On system installation of steam flatpak: `flatpak override --filesystem="xdg-run
 Press enter to apply it and restart SteamVR (and close Flatpak Steam) from ALVR to apply the fix.
 
 #### Using Flatseal
-GUI app for managing Flatpak application's permissions
-[Flathub](https://flathub.org/apps/com.github.tchx84.Flatseal)
+GUI app for managing Flatpak application permissions: [Flathub](https://flathub.org/apps/com.github.tchx84.Flatseal)
 1. Find Steam in app's list on the left, left click on it
 2. Inside Steam app on the right -> scroll down to Filesystem section
 3. In Filesystem section -> find Other files sub-section

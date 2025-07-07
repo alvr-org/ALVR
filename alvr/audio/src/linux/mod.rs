@@ -10,20 +10,18 @@ struct Terminate;
 
 pub fn try_load_pipewire() -> Result<()> {
     if let Err(e) = probe_pipewire() {
-        if matches!(e, pipewire::Error::CreationFailed) {
-            error!("Could not initialize PipeWire.");
-            if is_currently_under_flatpak() && !is_pipewire_socket_available() {
-                error!(
-                    "Please visit following page to find help on how fix broken audio on flatpak."
-                );
-                error!(
-                    "https://github.com/alvr-org/ALVR/wiki/Installing-ALVR-and-using-SteamVR-on-Linux-through-Flatpak#failed-to-create-pipewire-errors"
-                );
-            }
-            error!("Make sure PipeWire is installed on your system, running and it's version is at least 0.3.49.
-            To retry, please restart SteamVR with ALVR.");
+        if !matches!(e, pipewire::Error::CreationFailed) {
+            return Err(e.into());
         }
-        return Err(e.into());
+        error!("Could not initialize PipeWire.");
+        if is_currently_under_flatpak() && !is_pipewire_socket_available() {
+            error!("Please visit following page to find help on how fix broken audio on flatpak.");
+            error!(
+                "https://github.com/alvr-org/ALVR/wiki/Installing-ALVR-and-using-SteamVR-on-Linux-through-Flatpak#failed-to-create-pipewire-errors"
+            );
+        }
+        error!("Make sure PipeWire is installed on your system, running and it's version is at least 0.3.49.
+        To retry, please restart SteamVR with ALVR.");
     }
     Ok(())
 }

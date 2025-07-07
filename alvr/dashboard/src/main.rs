@@ -8,6 +8,7 @@ mod data_sources;
 #[cfg(target_arch = "wasm32")]
 mod data_sources_wasm;
 #[cfg(not(target_arch = "wasm32"))]
+#[cfg(target_os = "linux")]
 mod linux_checks;
 #[cfg(not(target_arch = "wasm32"))]
 mod logging_backend;

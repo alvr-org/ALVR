@@ -876,12 +876,9 @@ pub enum HeadsetEmulationMode {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-pub struct FaceTrackingSourcesConfig {
-    pub eye_tracking_fb: bool,
-    pub face_tracking_fb: bool,
-    pub eye_expressions_htc: bool,
-    pub lip_expressions_htc: bool,
-    pub face_tracking_pico: bool,
+pub enum FaceTrackingSourcesConfig {
+    PreferEyeTrackingOnly,
+    PreferFullFaceTracking,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -899,22 +896,9 @@ pub struct FaceTrackingConfig {
     pub sink: FaceTrackingSinkConfig,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-pub struct BodyTrackingSourcesConfig {
-    pub body_tracking_fb: Switch<BodyTrackingFBConfig>,
-    #[schema(strings(
-        help = "It's recommended to set Tracking Mode to Full-Body Tracking in Motion Tracker app settings on your Pico headset."
-    ))]
-    pub body_tracking_bd: Switch<BodyTrackingBDConfig>,
-    // todo:
-    // pub detached_controllers_as_feet: bool,
-    // unfortunately multimodal is incompatible with body tracking. To make this usable we need to
-    // at least add support for an android client as 3dof waist tracker.
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-pub struct BodyTrackingFBConfig {
-    pub full_body: bool,
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Default)]
+pub struct BodyTrackingMetaConfig {
+    pub prefer_full_body: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
@@ -933,6 +917,12 @@ pub enum BodyTrackingBDConfig {
     },
     #[schema(strings(display_name = "Object Tracking"))]
     ObjectTracking,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+pub struct BodyTrackingSourcesConfig {
+    pub meta: BodyTrackingMetaConfig,
+    pub bd: BodyTrackingBDConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1883,11 +1873,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: FaceTrackingConfigDefault {
                     gui_collapsed: true,
                     sources: FaceTrackingSourcesConfigDefault {
-                        eye_tracking_fb: true,
-                        face_tracking_fb: true,
-                        eye_expressions_htc: true,
-                        lip_expressions_htc: true,
-                        face_tracking_pico: true,
+                        variant: FaceTrackingSourcesConfigDefaultVariant::PreferFullFaceTracking,
                     },
                     sink: FaceTrackingSinkConfigDefault {
                         VrchatEyeOsc: FaceTrackingSinkConfigVrchatEyeOscDefault { port: 9000 },
@@ -1900,19 +1886,15 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: BodyTrackingConfigDefault {
                     gui_collapsed: true,
                     sources: BodyTrackingSourcesConfigDefault {
-                        body_tracking_fb: SwitchDefault {
-                            enabled: true,
-                            content: BodyTrackingFBConfigDefault { full_body: true },
+                        meta: BodyTrackingMetaConfigDefault {
+                            prefer_full_body: true,
                         },
-                        body_tracking_bd: SwitchDefault {
-                            enabled: true,
-                            content: BodyTrackingBDConfigDefault {
-                                BodyTracking: BodyTrackingBDConfigBodyTrackingDefault {
-                                    high_accuracy: true,
-                                    prompt_calibration_on_start: true,
-                                },
-                                variant: BodyTrackingBDConfigDefaultVariant::BodyTracking,
+                        bd: BodyTrackingBDConfigDefault {
+                            BodyTracking: BodyTrackingBDConfigBodyTrackingDefault {
+                                high_accuracy: true,
+                                prompt_calibration_on_start: true,
                             },
+                            variant: BodyTrackingBDConfigDefaultVariant::BodyTracking,
                         },
                     },
                     sink: BodyTrackingSinkConfigDefault {

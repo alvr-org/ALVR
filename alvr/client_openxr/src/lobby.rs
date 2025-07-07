@@ -1,12 +1,9 @@
 use crate::{
-    from_xr_time,
     graphics::{self, ProjectionLayerAlphaConfig, ProjectionLayerBuilder},
     interaction::{self, InteractionContext},
 };
 use alvr_common::{Pose, ViewParams, glam::UVec2, parking_lot::RwLock};
-use alvr_graphics::{
-    BodyTrackingType, GraphicsContext, LobbyRenderer, LobbyViewParams, SDR_FORMAT_GL,
-};
+use alvr_graphics::{GraphicsContext, LobbyRenderer, LobbyViewParams, SDR_FORMAT_GL};
 use alvr_system_info::Platform;
 use openxr as xr;
 use std::{rc::Rc, sync::Arc, time::Duration};
@@ -89,7 +86,7 @@ impl Lobby {
     }
 
     pub fn render(&mut self, vsync_time: Duration) -> ProjectionLayerBuilder {
-        let xr_vsync_time = xr::Time::from_nanos(vsync_time.as_nanos() as _);
+        let xr_vsync_time = crate::to_xr_time(vsync_time);
 
         let (flags, maybe_views) = self
             .xr_session
@@ -136,48 +133,23 @@ impl Lobby {
         let additional_motions = self
             .interaction_ctx
             .read()
-            .body_sources
-            .motion_tracker_bd
+            .body_source
             .as_ref()
-            .map(|tracker| {
-                interaction::get_bd_motion_trackers(from_xr_time(xr_vsync_time), tracker)
-            })
-            .map(|vec| vec.iter().map(|(_, motion)| *motion).collect());
-
-        let body_skeleton_fb = self
-            .interaction_ctx
-            .read()
-            .body_sources
-            .body_tracker_fb
-            .as_ref()
-            .and_then(|(tracker, joint_count)| {
-                interaction::get_fb_body_skeleton(
-                    &self.reference_space,
-                    xr_vsync_time,
-                    tracker,
-                    *joint_count,
-                )
+            .map(|source| {
+                interaction::get_bd_motion_trackers(source, vsync_time)
+                    .iter()
+                    .map(|(_, motion)| *motion)
+                    .collect()
             });
 
-        let body_skeleton_bd = self
+        let body_skeleton = self
             .interaction_ctx
             .read()
-            .body_sources
-            .body_tracker_bd
+            .body_source
             .as_ref()
-            .and_then(|tracker| {
-                interaction::get_bd_body_skeleton(&self.reference_space, xr_vsync_time, tracker)
+            .and_then(|source| {
+                interaction::get_body_skeleton(source, &self.reference_space, vsync_time)
             });
-
-        let (body_skeleton, body_tracking_type) = {
-            if body_skeleton_fb.is_some() {
-                (body_skeleton_fb, Some(BodyTrackingType::Meta))
-            } else if body_skeleton_bd.is_some() {
-                (body_skeleton_bd, Some(BodyTrackingType::Pico))
-            } else {
-                (None, None)
-            }
-        };
 
         let left_swapchain_idx = self.swapchains[0].acquire_image().unwrap();
         let right_swapchain_idx = self.swapchains[1].acquire_image().unwrap();
@@ -207,9 +179,8 @@ impl Lobby {
                 },
             ],
             [left_hand_data, right_hand_data],
-            additional_motions,
             body_skeleton,
-            body_tracking_type,
+            additional_motions,
             false,
             cfg!(debug_assertions),
         );

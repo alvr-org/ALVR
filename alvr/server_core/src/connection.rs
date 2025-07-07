@@ -22,11 +22,11 @@ use alvr_packets::{
     AUDIO, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
     HAPTICS, NegotiatedStreamingConfig, NegotiatedStreamingConfigExt, RealTimeConfig,
     ReservedClientControlPacket, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING,
-    Tracking, VIDEO, VideoPacketHeader,
+    TrackingData, VIDEO, VideoPacketHeader,
 };
 use alvr_session::{
-    BodyTrackingBDConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize,
-    H264Profile, OpenvrConfig, SessionConfig, SocketProtocol,
+    BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile,
+    OpenvrConfig, SessionConfig, SocketProtocol,
 };
 use alvr_sockets::{
     CONTROL_PORT, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, PeerType, ProtoControlSocket,
@@ -111,16 +111,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         .headset
         .body_tracking
         .as_option()
-        .and_then(|c| c.sources.body_tracking_fb.as_option().cloned())
-        .map(|c| c.full_body)
-        .or_else(|| {
-            settings.headset.body_tracking.as_option().map(|c| {
-                matches!(
-                    c.sources.body_tracking_bd.as_option(),
-                    Some(BodyTrackingBDConfig::BodyTracking { .. })
-                )
-            })
-        })
+        .map(|c| c.sources.meta.prefer_full_body)
         .unwrap_or(false);
 
     let mut foveation_center_size_x = 0.0;
@@ -835,7 +826,7 @@ fn connection_pipeline(
     let mut microphone_receiver: alvr_sockets::StreamReceiver<()> =
         stream_socket.subscribe_to_stream(AUDIO, MAX_UNREAD_PACKETS);
     let tracking_receiver =
-        stream_socket.subscribe_to_stream::<Tracking>(TRACKING, MAX_UNREAD_PACKETS);
+        stream_socket.subscribe_to_stream::<TrackingData>(TRACKING, MAX_UNREAD_PACKETS);
     let haptics_sender = stream_socket.request_stream(HAPTICS);
     let mut statics_receiver =
         stream_socket.subscribe_to_stream::<ClientStatistics>(STATISTICS, MAX_UNREAD_PACKETS);

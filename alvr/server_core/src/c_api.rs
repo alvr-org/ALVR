@@ -274,7 +274,9 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
                     alvr_common::to_capi_view_params(&config[1]),
                 ])
             },
-            ServerCoreEvent::Tracking { sample_timestamp } => unsafe {
+            ServerCoreEvent::Tracking {
+                poll_timestamp: sample_timestamp,
+            } => unsafe {
                 *out_event = AlvrEvent::TrackingUpdated {
                     sample_timestamp_ns: sample_timestamp.as_nanos() as u64,
                 };

@@ -13,10 +13,8 @@ use alvr_common::{
     glam::{UVec2, Vec2},
     parking_lot::RwLock,
 };
-use alvr_graphics::{
-    GraphicsContext, StreamRenderer, StreamViewParams, compute_target_view_resolution,
-};
-use alvr_packets::{FaceData, RealTimeConfig, StreamConfig};
+use alvr_graphics::{GraphicsContext, StreamRenderer, StreamViewParams};
+use alvr_packets::{RealTimeConfig, StreamConfig, TrackingData};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, ClientsidePostProcessingConfig, CodecType,
     FoveatedEncodingConfig, MediacodecProperty, PassthroughMode, UpscalingConfig,
@@ -152,8 +150,10 @@ impl StreamContext {
             None
         };
 
-        let target_view_resolution =
-            compute_target_view_resolution(config.view_resolution, &config.upscaling);
+        let target_view_resolution = alvr_graphics::compute_target_view_resolution(
+            config.view_resolution,
+            &config.upscaling,
+        );
         let format = graphics::swapchain_format(&gfx_ctx, &xr_session, config.enable_hdr);
 
         let swapchains = [
@@ -594,47 +594,38 @@ fn stream_input_loop(
             device_motions.push((*HAND_RIGHT_ID, motion));
         }
 
-        let face_data = FaceData {
-            eye_gazes: interaction::get_eye_gazes(
-                &xr_session,
-                &int_ctx.face_sources,
-                stage_reference_space,
-                now,
-            ),
-            fb_face_expression: interaction::get_fb_face_expression(&int_ctx.face_sources, now).or(
-                interaction::get_pico_face_expression(&int_ctx.face_sources, now),
-            ),
-            htc_eye_expression: interaction::get_htc_eye_expression(&int_ctx.face_sources, now),
-            htc_lip_expression: interaction::get_htc_lip_expression(&int_ctx.face_sources, now),
-        };
-
-        if let Some((tracker, joint_count)) = &int_ctx.body_sources.body_tracker_fb {
-            device_motions.append(&mut interaction::get_fb_body_tracking_points(
-                stage_reference_space,
-                now,
-                tracker,
-                *joint_count,
-            ));
-        }
-
-        if let Some(tracker) = &int_ctx.body_sources.body_tracker_bd {
-            device_motions.append(&mut interaction::get_bd_body_tracking_points(
-                stage_reference_space,
-                now,
-                tracker,
-            ));
-        }
-
-        if let Some(tracker) = &int_ctx.body_sources.motion_tracker_bd {
-            device_motions.append(&mut interaction::get_bd_motion_trackers(now, tracker));
-        }
-
-        core_ctx.send_tracking(
-            Duration::from_nanos(now.as_nanos() as u64),
-            device_motions,
-            [left_hand_skeleton, right_hand_skeleton],
-            face_data,
+        let face = interaction::get_face_data(
+            &xr_session,
+            &int_ctx.face_sources,
+            view_reference_space,
+            now,
         );
+
+        let body = int_ctx
+            .body_source
+            .as_ref()
+            .and_then(|source| interaction::get_body_skeleton(source, stage_reference_space, now));
+
+        if let Some(source) = &int_ctx.body_source {
+            interaction::get_bd_motion_trackers(source, now);
+        }
+
+        if let Some(source) = &int_ctx.body_source {
+            device_motions.append(&mut interaction::get_bd_motion_trackers(source, now));
+        }
+
+        // Even though the server is already adding the motion-to-photon latency, here we use
+        // target_time as the poll_timestamp to compensate for the fact that video frames are sent
+        // with the poll timestamp instead of the vsync time. This is to ensure correctness when
+        // submitting frames to OpenXR. This won't cause any desync with the server because no time
+        // sync step is performed between client and server.
+        core_ctx.send_tracking(TrackingData {
+            poll_timestamp: target_time,
+            device_motions,
+            hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
+            face,
+            body,
+        });
 
         let button_entries = interaction::update_buttons(&xr_session, &int_ctx.button_actions);
         if !button_entries.is_empty() {

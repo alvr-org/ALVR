@@ -1,5 +1,5 @@
 use alvr_common::{DeviceMotion, LogEntry, LogSeverity, Pose, info};
-use alvr_packets::{AudioDevicesList, ButtonValue};
+use alvr_packets::{AudioDevicesList, ButtonValue, FaceData};
 use alvr_session::SessionConfig;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, time::Duration};
@@ -54,10 +54,7 @@ pub struct GraphStatistics {
 pub struct TrackingEvent {
     pub device_motions: Vec<(String, DeviceMotion)>,
     pub hand_skeletons: [Option<[Pose; 26]>; 2],
-    pub eye_gazes: [Option<Pose>; 2],
-    pub fb_face_expression: Option<Vec<f32>>,
-    pub htc_eye_expression: Option<Vec<f32>>,
-    pub htc_lip_expression: Option<Vec<f32>>,
+    pub face: FaceData,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

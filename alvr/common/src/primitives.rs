@@ -77,6 +77,12 @@ fn difference_seconds(from: Duration, to: Duration) -> f32 {
 }
 
 impl DeviceMotion {
+    pub const IDENTITY: Self = DeviceMotion {
+        pose: Pose::IDENTITY,
+        linear_velocity: Vec3::ZERO,
+        angular_velocity: Vec3::ZERO,
+    };
+
     pub fn predict(&self, from_timestamp: Duration, to_timestamp: Duration) -> Self {
         let delta_time_s = difference_seconds(from_timestamp, to_timestamp);
 
@@ -106,4 +112,19 @@ impl ViewParams {
         pose: Pose::IDENTITY,
         fov: Fov::DUMMY,
     };
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct BodySkeletonFb {
+    pub upper_body: [Option<Pose>; 18],
+    pub lower_body: Option<[Option<Pose>; 14]>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct BodySkeletonBd(pub [Option<Pose>; 24]);
+
+#[derive(Serialize, Deserialize, Clone)]
+pub enum BodySkeleton {
+    Fb(Box<BodySkeletonFb>),
+    Bd(Box<BodySkeletonBd>),
 }

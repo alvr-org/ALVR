@@ -8,6 +8,8 @@ mod data_sources;
 #[cfg(target_arch = "wasm32")]
 mod data_sources_wasm;
 #[cfg(not(target_arch = "wasm32"))]
+mod linux_checks;
+#[cfg(not(target_arch = "wasm32"))]
 mod logging_backend;
 #[cfg(not(target_arch = "wasm32"))]
 mod steamvr_launcher;
@@ -27,6 +29,7 @@ fn get_filesystem_layout() -> afs::Layout {
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
     use alvr_common::ALVR_VERSION;
+    use alvr_common::info;
     use alvr_filesystem as afs;
     use eframe::{
         NativeOptions,
@@ -36,18 +39,25 @@ fn main() {
     use std::{env, ffi::OsStr, fs};
     use std::{io::Cursor, sync::mpsc};
 
+    let (server_events_sender, server_events_receiver) = mpsc::channel();
+    logging_backend::init_logging(server_events_sender.clone());
+
     // Kill any other dashboard instance
     let self_path = std::env::current_exe().unwrap();
     for proc in sysinfo::System::new_all().processes_by_name(OsStr::new(&afs::dashboard_fname())) {
         if let Some(other_path) = proc.exe()
             && other_path != self_path
         {
+            info!(
+                "Killing other dashboard process with path {}",
+                other_path.display()
+            );
             proc.kill();
         }
     }
 
-    let (server_events_sender, server_events_receiver) = mpsc::channel();
-    logging_backend::init_logging(server_events_sender.clone());
+    #[cfg(target_os = "linux")]
+    linux_checks::audio_check();
 
     data_sources::clean_session();
 

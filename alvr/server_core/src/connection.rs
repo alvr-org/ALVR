@@ -866,7 +866,7 @@ fn connection_pipeline(
         }
     });
     let mut abort_audio_early = false;
-    #[cfg_attr(target_os = "linux", allow(unused_variables))]
+    #[cfg(target_os = "linux",)]
     if let Err(e) = alvr_audio::linux::try_load_pipewire() {
         error!("Pipewire error: {e}, aborting audio startup");
         abort_audio_early = true;

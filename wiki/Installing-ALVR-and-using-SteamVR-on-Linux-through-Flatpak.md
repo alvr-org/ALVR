@@ -55,7 +55,7 @@ To fix the most likely cause, please follow guidance bellow
 #### Using terminal
 Open terminal and paste commands from bellow depending on type of your Flatpak Steam installation:
 
-On user installation of steam flatpak (default) - `flatpak override --user --filesystem="xdg-run/pipewire-0" com.valvesoftware.Steam`
+On user installation of steam flatpak: `flatpak override --user --filesystem="xdg-run/pipewire-0" com.valvesoftware.Steam`
 
 On system installation of steam flatpak: `flatpak override --filesystem="xdg-run/pipewire-0" com.valvesoftware.Steam`
 

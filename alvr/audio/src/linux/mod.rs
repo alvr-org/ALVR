@@ -1,4 +1,6 @@
+#[cfg(target_os = "linux")]
 pub mod audio;
+#[cfg(target_os = "linux")]
 pub mod microphone;
 
 use std::path::Path;

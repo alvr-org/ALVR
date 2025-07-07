@@ -865,6 +865,7 @@ fn connection_pipeline(
             }
         }
     });
+    #[cfg_attr(not(target_os = "linux"), allow(unused_mut))]
     let mut abort_audio_early = false;
     #[cfg(target_os = "linux")]
     if let Err(e) = alvr_audio::linux::try_load_pipewire() {

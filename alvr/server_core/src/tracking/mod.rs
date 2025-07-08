@@ -20,7 +20,7 @@ use alvr_common::{
     parking_lot::Mutex,
 };
 use alvr_events::{EventType, TrackingEvent};
-use alvr_packets::{FaceData, TrackingData};
+use alvr_packets::TrackingData;
 use alvr_session::{
     BodyTrackingConfig, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode, Settings,
     VMCConfig, settings_schema::Switch,
@@ -56,7 +56,6 @@ pub struct TrackingManager {
     inverse_recentering_origin: Pose, // client's reference space
     device_motions_history: HashMap<u64, VecDeque<(Duration, DeviceMotion)>>,
     hand_skeletons_history: [VecDeque<(Duration, [Pose; 26])>; 2],
-    last_face_data: FaceData,
     max_history_size: usize,
 }
 
@@ -67,7 +66,6 @@ impl TrackingManager {
             inverse_recentering_origin: Pose::IDENTITY,
             device_motions_history: HashMap::new(),
             hand_skeletons_history: [VecDeque::new(), VecDeque::new()],
-            last_face_data: FaceData::default(),
             max_history_size,
         }
     }
@@ -291,20 +289,6 @@ impl TrackingManager {
             .map(|(_, skeleton)| skeleton)
     }
 
-    // todo: send eyes in head local space from client directly
-    pub fn report_face_data(&mut self, mut face_data: FaceData) {
-        face_data.eye_gazes = [
-            face_data.eye_gazes[0].map(|e| self.last_head_pose.inverse() * self.recenter_pose(e)),
-            face_data.eye_gazes[1].map(|e| self.last_head_pose.inverse() * self.recenter_pose(e)),
-        ];
-
-        self.last_face_data = face_data;
-    }
-
-    pub fn get_face_data(&self) -> &FaceData {
-        &self.last_face_data
-    }
-
     pub fn unrecenter_view_params(&self, view_params: &mut [ViewParams; 2]) {
         for params in view_params {
             params.pose = self.inverse_recentering_origin.inverse() * params.pose;
@@ -404,14 +388,11 @@ pub fn tracking_loop(
                 tracking_manager_lock.report_hand_skeleton(HandType::Right, timestamp, skeleton);
             }
 
-            tracking_manager_lock.report_face_data(tracking.face_data);
             if let Some(sink) = &mut face_tracking_sink {
-                sink.send_tracking(tracking_manager_lock.get_face_data().clone());
+                sink.send_tracking(&tracking.face);
             }
 
             if session_manager_lock.settings().extra.logging.log_tracking {
-                let face_data = tracking_manager_lock.get_face_data().clone();
-
                 let device_motions = device_motion_keys
                     .iter()
                     .filter_map(move |id| {
@@ -427,10 +408,7 @@ pub fn tracking_loop(
                 alvr_events::send_event(EventType::Tracking(Box::new(TrackingEvent {
                     device_motions,
                     hand_skeletons: tracking.hand_skeletons,
-                    eye_gazes: face_data.eye_gazes,
-                    fb_face_expression: face_data.fb_face_expression,
-                    htc_eye_expression: face_data.htc_eye_expression,
-                    htc_lip_expression: face_data.htc_lip_expression,
+                    face: tracking.face,
                 })))
             }
 

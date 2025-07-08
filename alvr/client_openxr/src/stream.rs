@@ -13,10 +13,8 @@ use alvr_common::{
     glam::{UVec2, Vec2},
     parking_lot::RwLock,
 };
-use alvr_graphics::{
-    GraphicsContext, StreamRenderer, StreamViewParams, compute_target_view_resolution,
-};
-use alvr_packets::{FaceData, RealTimeConfig, StreamConfig};
+use alvr_graphics::{GraphicsContext, StreamRenderer, StreamViewParams};
+use alvr_packets::{FaceData, RealTimeConfig, StreamConfig, TrackingData};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, ClientsidePostProcessingConfig, CodecType,
     FoveatedEncodingConfig, MediacodecProperty, PassthroughMode, UpscalingConfig,
@@ -152,8 +150,10 @@ impl StreamContext {
             None
         };
 
-        let target_view_resolution =
-            compute_target_view_resolution(config.view_resolution, &config.upscaling);
+        let target_view_resolution = alvr_graphics::compute_target_view_resolution(
+            config.view_resolution,
+            &config.upscaling,
+        );
         let format = graphics::swapchain_format(&gfx_ctx, &xr_session, config.enable_hdr);
 
         let swapchains = [
@@ -629,12 +629,17 @@ fn stream_input_loop(
             device_motions.append(&mut interaction::get_bd_motion_trackers(now, tracker));
         }
 
-        core_ctx.send_tracking(
-            Duration::from_nanos(now.as_nanos() as u64),
+        // Even though the server is already adding the motion-to-photon latency, here we use
+        // target_time as the poll_timestamp to compensate for the fact that video frames are sent
+        // with the poll timestamp instead of the vsync time. This is to ensure correctness when
+        // submitting frames to OpenXR. This won't cause any desync with the server because no time
+        // sync step is performed between client and server.
+        core_ctx.send_tracking(TrackingData {
+            poll_timestamp: target_time,
             device_motions,
-            [left_hand_skeleton, right_hand_skeleton],
+            hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
             face_data,
-        );
+        });
 
         let button_entries = interaction::update_buttons(&xr_session, &int_ctx.button_actions);
         if !button_entries.is_empty() {

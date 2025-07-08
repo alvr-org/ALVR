@@ -81,7 +81,7 @@ pub enum ServerCoreEvent {
     PlayspaceSync(Vec2),
     LocalViewParams([ViewParams; 2]), // In relation to head
     Tracking {
-        sample_timestamp: Duration,
+        poll_timestamp: Duration,
     },
     Buttons(Vec<ButtonEntry>), // Note: this is after mapping
     RequestIDR,
@@ -276,16 +276,26 @@ impl ServerCoreContext {
     }
 
     pub fn get_motion_to_photon_latency(&self) -> Duration {
-        dbg_server_core!("get_total_pipeline_latency");
+        dbg_server_core!("get_motion_to_photon_latency");
 
-        // self.connection_context
-        //     .statistics_manager
-        //     .read()
-        //     .as_ref()
-        //     .map(|stats| stats.motion_to_photon_latency_average())
-        //     .unwrap_or_default()
+        let latency = self
+            .connection_context
+            .statistics_manager
+            .read()
+            .as_ref()
+            .map(|stats| stats.motion_to_photon_latency_average())
+            .unwrap_or_default();
 
-        Duration::from_millis(0)
+        let max_prediction =
+            Duration::from_millis(SESSION_MANAGER.read().settings().headset.max_prediction_ms);
+
+        if latency > max_prediction {
+            warn!("Latency is too high. Clamping prediction");
+
+            max_prediction
+        } else {
+            latency
+        }
     }
 
     pub fn get_tracker_pose_time_offset(&self) -> Duration {
@@ -355,7 +365,7 @@ impl ServerCoreContext {
 
     pub fn send_video_nal(
         &self,
-        target_timestamp: Duration,
+        timestamp: Duration,
         global_view_params: [ViewParams; 2],
         is_idr: bool,
         nal_buffer: Vec<u8>,
@@ -414,7 +424,7 @@ impl ServerCoreContext {
 
                 let sender_result = sender.try_send(VideoPacket {
                     header: VideoPacketHeader {
-                        timestamp: target_timestamp,
+                        timestamp,
                         global_view_params,
                         is_idr,
                     },
@@ -433,12 +443,12 @@ impl ServerCoreContext {
             }
 
             if let Some(stats) = &mut *self.connection_context.statistics_manager.write() {
-                let encoder_latency = stats.report_frame_encoded(target_timestamp, buffer_size);
+                let encoder_latency = stats.report_frame_encoded(timestamp, buffer_size);
 
                 self.connection_context
                     .bitrate_manager
                     .lock()
-                    .report_frame_encoded(target_timestamp, encoder_latency, buffer_size);
+                    .report_frame_encoded(timestamp, encoder_latency, buffer_size);
             }
         }
     }

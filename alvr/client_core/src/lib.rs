@@ -18,15 +18,14 @@ mod audio;
 pub mod video_decoder;
 
 use alvr_common::{
-    ConnectionState, DeviceMotion, HEAD_ID, LifecycleState, Pose, ViewParams, dbg_client_core,
-    error,
-    glam::{UVec2, Vec2, Vec3},
+    ConnectionState, LifecycleState, ViewParams, dbg_client_core, error,
+    glam::{UVec2, Vec2},
     parking_lot::{Mutex, RwLock},
     warn,
 };
 use alvr_packets::{
-    BatteryInfo, ButtonEntry, ClientControlPacket, FaceData, RealTimeConfig,
-    ReservedClientControlPacket, StreamConfig, Tracking,
+    BatteryInfo, ButtonEntry, ClientControlPacket, RealTimeConfig, ReservedClientControlPacket,
+    StreamConfig, TrackingData,
 };
 use alvr_session::CodecType;
 use connection::{ConnectionContext, DecoderCallback};
@@ -221,60 +220,14 @@ impl ClientCoreContext {
         }
     }
 
-    pub fn send_tracking(
-        &self,
-        poll_timestamp: Duration,
-        mut device_motions: Vec<(u64, DeviceMotion)>,
-        hand_skeletons: [Option<[Pose; 26]>; 2],
-        face_data: FaceData,
-    ) {
+    pub fn send_tracking(&self, data: TrackingData) {
         dbg_client_core!("send_tracking");
 
-        let max_prediction = *self.connection_context.max_prediction.read();
-
-        let target_timestamp = if let Some(stats) =
-            &*self.connection_context.statistics_manager.lock()
-        {
-            poll_timestamp + Duration::min(stats.average_total_pipeline_latency(), max_prediction)
-        } else {
-            poll_timestamp
-        };
-
-        // Guarantee that sent timestamps never go backwards by sending the poll time
-        let reported_timestamp = poll_timestamp;
-
-        for (id, motion) in &mut device_motions {
-            let velocity_multiplier = *self.connection_context.velocities_multiplier.read();
-            motion.linear_velocity *= velocity_multiplier;
-            motion.angular_velocity *= velocity_multiplier;
-
-            if *id == *HEAD_ID {
-                *motion = motion.predict(poll_timestamp, target_timestamp);
-
-                // This is done for backward compatibiity for the v20 protocol. Will be removed with the
-                // tracking rewrite protocol extension.
-                motion.linear_velocity = Vec3::ZERO;
-                motion.angular_velocity = Vec3::ZERO;
-            } else if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
-                let tracker_timestamp = poll_timestamp
-                    + Duration::min(stats.tracker_prediction_offset(), max_prediction);
-
-                *motion = motion.predict(poll_timestamp, tracker_timestamp);
-            }
-        }
-
         if let Some(sender) = &mut *self.connection_context.tracking_sender.lock() {
-            sender
-                .send_header(&Tracking {
-                    target_timestamp: reported_timestamp,
-                    device_motions,
-                    hand_skeletons,
-                    face_data,
-                })
-                .ok();
+            sender.send_header(&data).ok();
 
             if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
-                stats.report_input_acquired(reported_timestamp);
+                stats.report_input_acquired(data.poll_timestamp);
             }
         }
     }
@@ -283,7 +236,10 @@ impl ClientCoreContext {
         dbg_client_core!("get_total_prediction_offset");
 
         if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
-            stats.average_total_pipeline_latency()
+            Duration::min(
+                stats.average_total_pipeline_latency(),
+                *self.connection_context.max_prediction.read(),
+            )
         } else {
             Duration::ZERO
         }

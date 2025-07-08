@@ -16,15 +16,10 @@ pub struct StatisticsManager {
     max_history_size: usize,
     prev_vsync: Instant,
     total_pipeline_latency_average: SlidingWindowAverage<Duration>,
-    steamvr_pipeline_latency: Duration,
 }
 
 impl StatisticsManager {
-    pub fn new(
-        max_history_size: usize,
-        nominal_server_frame_interval: Duration,
-        steamvr_pipeline_frames: f32,
-    ) -> Self {
+    pub fn new(max_history_size: usize) -> Self {
         Self {
             max_history_size,
             history_buffer: VecDeque::new(),
@@ -32,9 +27,6 @@ impl StatisticsManager {
             total_pipeline_latency_average: SlidingWindowAverage::new(
                 Duration::ZERO,
                 max_history_size,
-            ),
-            steamvr_pipeline_latency: Duration::from_secs_f32(
-                steamvr_pipeline_frames * nominal_server_frame_interval.as_secs_f32(),
             ),
         }
     }
@@ -131,12 +123,5 @@ impl StatisticsManager {
     // latency used for head prediction
     pub fn average_total_pipeline_latency(&self) -> Duration {
         self.total_pipeline_latency_average.get_average()
-    }
-
-    // latency used for controllers/trackers prediction
-    pub fn tracker_prediction_offset(&self) -> Duration {
-        self.total_pipeline_latency_average
-            .get_average()
-            .saturating_sub(self.steamvr_pipeline_latency)
     }
 }

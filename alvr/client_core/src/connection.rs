@@ -16,8 +16,8 @@ use alvr_common::{
 };
 use alvr_packets::{
     AUDIO, ClientConnectionResult, ClientControlPacket, ClientStatistics, HAPTICS, Haptics,
-    RealTimeConfig, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, Tracking, VIDEO,
-    VideoPacketHeader, VideoStreamingCapabilities, VideoStreamingCapabilitiesExt,
+    RealTimeConfig, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData,
+    VIDEO, VideoPacketHeader, VideoStreamingCapabilities, VideoStreamingCapabilitiesExt,
 };
 use alvr_session::{SocketProtocol, settings_schema::Switch};
 use alvr_sockets::{
@@ -61,7 +61,7 @@ pub struct ConnectionContext {
     pub state: RwLock<ConnectionState>,
     pub disconnected_notif: Condvar,
     pub control_sender: Mutex<Option<ControlSocketSender<ClientControlPacket>>>,
-    pub tracking_sender: Mutex<Option<StreamSender<Tracking>>>,
+    pub tracking_sender: Mutex<Option<StreamSender<TrackingData>>>,
     pub statistics_sender: Mutex<Option<StreamSender<ClientStatistics>>>,
     pub statistics_manager: Mutex<Option<StatisticsManager>>,
     pub decoder_callback: Mutex<Option<Box<DecoderCallback>>>,
@@ -203,12 +203,6 @@ fn connection_pipeline(
 
     *ctx.statistics_manager.lock() = Some(StatisticsManager::new(
         settings.connection.statistics_history_size,
-        Duration::from_secs_f32(1.0 / negotiated_config.refresh_rate_hint),
-        if let Switch::Enabled(config) = settings.headset.controllers {
-            config.steamvr_pipeline_frames
-        } else {
-            0.0
-        },
     ));
 
     let (mut control_sender, mut control_receiver) = proto_control_socket

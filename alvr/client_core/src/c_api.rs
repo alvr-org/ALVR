@@ -17,7 +17,7 @@ use alvr_graphics::{
     GraphicsContext, LobbyRenderer, LobbyViewParams, SDR_FORMAT_GL, StreamRenderer,
     StreamViewParams,
 };
-use alvr_packets::{ButtonEntry, ButtonValue, FaceData};
+use alvr_packets::{ButtonEntry, ButtonValue, FaceData, TrackingData};
 use alvr_session::{
     CodecType, FoveatedEncodingConfig, MediacodecPropType, MediacodecProperty, UpscalingConfig,
 };
@@ -502,15 +502,15 @@ pub extern "C" fn alvr_send_tracking(
     };
 
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
-        context.send_tracking(
-            Duration::from_nanos(poll_timestamp_ns),
+        context.send_tracking(TrackingData {
+            poll_timestamp: Duration::from_nanos(poll_timestamp_ns),
             device_motions,
             hand_skeletons,
-            FaceData {
+            face_data: FaceData {
                 eye_gazes,
                 ..Default::default()
             },
-        );
+        });
     }
 }
 

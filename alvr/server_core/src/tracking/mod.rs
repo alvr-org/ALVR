@@ -20,7 +20,7 @@ use alvr_common::{
     parking_lot::Mutex,
 };
 use alvr_events::{EventType, TrackingEvent};
-use alvr_packets::{FaceData, Tracking};
+use alvr_packets::{FaceData, TrackingData};
 use alvr_session::{
     BodyTrackingConfig, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode, Settings,
     VMCConfig, settings_schema::Switch,
@@ -316,7 +316,7 @@ pub fn tracking_loop(
     ctx: &ConnectionContext,
     initial_settings: Settings,
     hand_gesture_manager: Arc<Mutex<HandGestureManager>>,
-    mut tracking_receiver: StreamReceiver<Tracking>,
+    mut tracking_receiver: StreamReceiver<TrackingData>,
     is_streaming: impl Fn() -> bool,
 ) {
     let mut gestures_button_mapping_manager =
@@ -364,7 +364,7 @@ pub fn tracking_loop(
             return;
         };
 
-        let timestamp = tracking.target_timestamp;
+        let timestamp = tracking.poll_timestamp;
 
         if let Some(stats) = &mut *ctx.statistics_manager.write() {
             stats.report_tracking_received(timestamp);
@@ -486,7 +486,7 @@ pub fn tracking_loop(
 
         ctx.events_sender
             .send(ServerCoreEvent::Tracking {
-                sample_timestamp: tracking.target_timestamp,
+                poll_timestamp: tracking.poll_timestamp,
             })
             .ok();
 

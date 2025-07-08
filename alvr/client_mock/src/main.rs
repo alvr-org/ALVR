@@ -4,7 +4,7 @@ use alvr_common::{
     glam::{Quat, UVec2, Vec3},
     parking_lot::RwLock,
 };
-use alvr_packets::FaceData;
+use alvr_packets::TrackingData;
 use alvr_session::CodecType;
 use eframe::{
     Frame, NativeOptions,
@@ -160,9 +160,9 @@ fn tracking_thread(
 
         let position = Vec3::new(0.0, input_lock.height, 0.0);
 
-        context.send_tracking(
-            timestamp_origin.elapsed(),
-            vec![(
+        context.send_tracking(TrackingData {
+            poll_timestamp: timestamp_origin.elapsed(),
+            device_motions: vec![(
                 *HEAD_ID,
                 DeviceMotion {
                     pose: Pose {
@@ -173,14 +173,9 @@ fn tracking_thread(
                     angular_velocity: Vec3::ZERO,
                 },
             )],
-            [None, None],
-            FaceData {
-                eye_gazes: [None, None],
-                fb_face_expression: None,
-                htc_eye_expression: None,
-                htc_lip_expression: None,
-            },
-        );
+            hand_skeletons: [None, None],
+            face_data: Default::default(),
+        });
 
         drop(input_lock);
 

@@ -223,8 +223,8 @@ pub struct VideoPacketHeader {
 
 // Note: face_data does not respect target_timestamp.
 #[derive(Serialize, Deserialize, Default)]
-pub struct Tracking {
-    pub target_timestamp: Duration,
+pub struct TrackingData {
+    pub poll_timestamp: Duration,
     pub device_motions: Vec<(u64, DeviceMotion)>,
     pub hand_skeletons: [Option<[Pose; 26]>; 2],
     pub face_data: FaceData,

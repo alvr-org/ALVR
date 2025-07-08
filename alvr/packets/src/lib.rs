@@ -226,7 +226,6 @@ pub struct FaceData {
     pub face_expressions: Option<FaceExpressions>,
 }
 
-// Note: face_data does not respect target_timestamp.
 #[derive(Serialize, Deserialize)]
 pub struct TrackingData {
     pub poll_timestamp: Duration,

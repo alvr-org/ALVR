@@ -54,7 +54,6 @@ impl FaceTrackingSink {
     pub fn send_tracking(&mut self, face_data: &FaceData) {
         match self.config {
             FaceTrackingSinkConfig::VrchatEyeOsc { .. } => {
-                // if let Some()
                 if let [Some(left), Some(right)] = face_data.eyes_social {
                     let (left_pitch, left_yaw, _) = left.to_euler(EulerRot::XYZ);
                     let (right_pitch, right_yaw, _) = right.to_euler(EulerRot::XYZ);
@@ -80,26 +79,14 @@ impl FaceTrackingSink {
                     );
                 }
 
-                let left_eye_blink;
-                let right_eye_blink;
-                match &face_data.face_expressions {
-                    Some(FaceExpressions::Fb(items)) => {
-                        left_eye_blink = Some(items[12]);
-                        right_eye_blink = Some(items[13]);
-                    }
-                    Some(FaceExpressions::Pico(items)) => {
-                        left_eye_blink = Some(items[28]);
-                        right_eye_blink = Some(items[38]);
-                    }
+                let (left_eye_blink, right_eye_blink) = match &face_data.face_expressions {
+                    Some(FaceExpressions::Fb(items)) => (Some(items[12]), Some(items[13])),
+                    Some(FaceExpressions::Pico(items)) => (Some(items[28]), Some(items[38])),
                     Some(FaceExpressions::Htc { eye, .. }) => {
-                        left_eye_blink = eye.as_ref().map(|v| v[0]);
-                        right_eye_blink = eye.as_ref().map(|v| v[2]);
+                        (eye.as_ref().map(|v| v[0]), eye.as_ref().map(|v| v[2]))
                     }
-                    _ => {
-                        left_eye_blink = None;
-                        right_eye_blink = None;
-                    }
-                }
+                    _ => (None, None),
+                };
 
                 if let (Some(left), Some(right)) = (left_eye_blink, right_eye_blink) {
                     self.send_osc_message(

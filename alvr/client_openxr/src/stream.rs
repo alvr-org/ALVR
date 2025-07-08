@@ -607,10 +607,6 @@ fn stream_input_loop(
             .and_then(|source| interaction::get_body_skeleton(source, stage_reference_space, now));
 
         if let Some(source) = &int_ctx.body_source {
-            interaction::get_bd_motion_trackers(source, now);
-        }
-
-        if let Some(source) = &int_ctx.body_source {
             device_motions.append(&mut interaction::get_bd_motion_trackers(source, now));
         }
 

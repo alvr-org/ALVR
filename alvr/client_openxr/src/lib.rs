@@ -292,13 +292,14 @@ pub fn entry_point() {
             &last_lobby_message,
         );
 
+        // For Meta/Quest enabling body tracking would disable multimodal input
         let lobby_body_tracking_config = if platform.is_pico() {
             Some(BodyTrackingSourcesConfig {
-                meta: BodyTrackingMetaConfig::default(),
                 bd: BodyTrackingBDConfig::BodyTracking {
                     high_accuracy: true,
                     prompt_calibration_on_start: false,
                 },
+                ..Default::default()
             })
         } else {
             None

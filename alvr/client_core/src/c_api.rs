@@ -416,9 +416,7 @@ pub extern "C" fn alvr_send_view_params(view_params: *const AlvrViewParams) {
 /// * outer ptr: array of 2 (can be null);
 /// * inner ptr: array of 26 (can be null if hand is absent)
 ///
-/// eye_gazes:
-/// * outer ptr: array of 2 (can be null);
-/// * inner ptr: pose (can be null if eye gaze is absent)
+/// combined_eye_gaze: can be null if eye gaze is absent
 #[unsafe(no_mangle)]
 pub extern "C" fn alvr_send_tracking(
     poll_timestamp_ns: u64,

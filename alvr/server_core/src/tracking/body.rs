@@ -116,7 +116,7 @@ pub fn get_default_body_trackers_from_motion_trackers_bd(
         } else if *id == *GENERIC_TRACKER_2_ID {
             poses.push((*BODY_LEFT_FOOT_ID, *motion));
         } else if *id == *GENERIC_TRACKER_3_ID {
-            poses.push((*HEAD_ID, *motion));
+            poses.push((*BODY_RIGHT_FOOT_ID, *motion));
         }
     }
 

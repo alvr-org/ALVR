@@ -966,6 +966,16 @@ pub fn get_body_skeleton(
 ) -> Option<BodySkeleton> {
     let xr_time = crate::to_xr_time(time);
 
+    let check_and_convert_pose = |pose, location_flags: &xr::SpaceLocationFlags| {
+        if location_flags
+            .contains(SpaceLocationFlags::ORIENTATION_VALID | SpaceLocationFlags::POSITION_VALID)
+        {
+            Some(crate::from_xr_pose(pose))
+        } else {
+            None
+        }
+    };
+
     match source {
         BodyTracker::Fb {
             tracker,
@@ -976,17 +986,9 @@ pub fn get_body_skeleton(
                 .ok()
                 .flatten()
             {
-                let valid_flags: SpaceLocationFlags =
-                    SpaceLocationFlags::ORIENTATION_VALID | SpaceLocationFlags::POSITION_VALID;
-
                 let joints = joints
                     .iter()
-                    .map(|joint| {
-                        joint
-                            .location_flags
-                            .contains(valid_flags)
-                            .then(|| crate::from_xr_pose(joint.pose))
-                    })
+                    .map(|joint| check_and_convert_pose(joint.pose, &joint.location_flags))
                     .collect::<Vec<_>>();
 
                 Some(BodySkeleton::Fb(Box::new(BodySkeletonFb {
@@ -1003,17 +1005,9 @@ pub fn get_body_skeleton(
                 .ok()
                 .flatten()
             {
-                let valid_flags: SpaceLocationFlags =
-                    SpaceLocationFlags::ORIENTATION_VALID | SpaceLocationFlags::POSITION_VALID;
-
                 let joints = joints
                     .iter()
-                    .map(|joint| {
-                        joint
-                            .location_flags
-                            .contains(valid_flags)
-                            .then(|| crate::from_xr_pose(joint.pose))
-                    })
+                    .map(|joint| check_and_convert_pose(joint.pose, &joint.location_flags))
                     .collect::<Vec<_>>();
 
                 Some(BodySkeleton::Bd(Box::new(BodySkeletonBd(

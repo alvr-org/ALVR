@@ -276,7 +276,7 @@ impl ServerCoreContext {
     }
 
     pub fn get_motion_to_photon_latency(&self) -> Duration {
-        dbg_server_core!("get_total_pipeline_latency");
+        dbg_server_core!("get_motion_to_photon_latency");
 
         let latency = self
             .connection_context

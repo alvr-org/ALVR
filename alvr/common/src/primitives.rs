@@ -77,6 +77,12 @@ fn difference_seconds(from: Duration, to: Duration) -> f32 {
 }
 
 impl DeviceMotion {
+    pub const IDENTITY: Self = DeviceMotion {
+        pose: Pose::IDENTITY,
+        linear_velocity: Vec3::ZERO,
+        angular_velocity: Vec3::ZERO,
+    };
+
     pub fn predict(&self, from_timestamp: Duration, to_timestamp: Duration) -> Self {
         let delta_time_s = difference_seconds(from_timestamp, to_timestamp);
 

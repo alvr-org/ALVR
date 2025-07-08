@@ -89,7 +89,7 @@ impl Lobby {
     }
 
     pub fn render(&mut self, vsync_time: Duration) -> ProjectionLayerBuilder {
-        let xr_vsync_time = xr::Time::from_nanos(vsync_time.as_nanos() as _);
+        let xr_vsync_time = crate::to_xr_time(vsync_time);
 
         let (flags, maybe_views) = self
             .xr_session

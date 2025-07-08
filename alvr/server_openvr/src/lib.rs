@@ -82,7 +82,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                     ];
                     SetLocalViewParams(ffi_params.as_ptr());
                 },
-                ServerCoreEvent::Tracking { sample_timestamp } => {
+                ServerCoreEvent::Tracking { poll_timestamp } => {
                     let headset_config = &alvr_server_core::settings().headset;
 
                     let controllers_config = headset_config.controllers.clone().into_option();
@@ -91,13 +91,20 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                     let tracked = controllers_config.as_ref().is_some_and(|c| c.tracked);
 
                     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+                        let target_timestamp =
+                            poll_timestamp + context.get_motion_to_photon_latency();
                         let controllers_pose_time_offset = context.get_tracker_pose_time_offset();
+                        // We need to remove the additional offset that SteamVR adds
+                        let target_controller_timestamp =
+                            target_timestamp.saturating_sub(controllers_pose_time_offset);
 
                         let ffi_head_motion = if let Some(motion) =
-                            context.get_device_motion(*HEAD_ID, sample_timestamp)
+                            context.get_device_motion(*HEAD_ID, poll_timestamp)
                         {
+                            let motion = motion.predict(poll_timestamp, target_timestamp);
+
                             let mut head_pose_queue_lock = HEAD_POSE_QUEUE.lock();
-                            head_pose_queue_lock.push_back((sample_timestamp, motion.pose));
+                            head_pose_queue_lock.push_back((poll_timestamp, motion.pose));
                             while head_pose_queue_lock.len() > 360 {
                                 head_pose_queue_lock.pop_front();
                             }
@@ -108,12 +115,20 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                         };
 
                         let ffi_left_controller_motion = context
-                            .get_device_motion(*HAND_LEFT_ID, sample_timestamp)
-                            .map(|m| tracking::to_ffi_motion(*HAND_LEFT_ID, m))
+                            .get_device_motion(*HAND_LEFT_ID, poll_timestamp)
+                            .map(|motion| {
+                                let motion =
+                                    motion.predict(poll_timestamp, target_controller_timestamp);
+                                tracking::to_ffi_motion(*HAND_LEFT_ID, motion)
+                            })
                             .filter(|_| tracked);
                         let ffi_right_controller_motion = context
-                            .get_device_motion(*HAND_RIGHT_ID, sample_timestamp)
-                            .map(|m| tracking::to_ffi_motion(*HAND_RIGHT_ID, m))
+                            .get_device_motion(*HAND_RIGHT_ID, poll_timestamp)
+                            .map(|motion| {
+                                let motion =
+                                    motion.predict(poll_timestamp, target_controller_timestamp);
+                                tracking::to_ffi_motion(*HAND_RIGHT_ID, motion)
+                            })
                             .filter(|_| tracked);
 
                         let (
@@ -127,7 +142,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                         }) = controllers_config
                         {
                             let left_hand_skeleton = context
-                                .get_hand_skeleton(HandType::Left, sample_timestamp)
+                                .get_hand_skeleton(HandType::Left, poll_timestamp)
                                 .map(|s| {
                                     tracking::to_openvr_ffi_hand_skeleton(
                                         headset_config,
@@ -136,7 +151,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                     )
                                 });
                             let right_hand_skeleton = context
-                                .get_hand_skeleton(HandType::Right, sample_timestamp)
+                                .get_hand_skeleton(HandType::Right, poll_timestamp)
                                 .map(|s| {
                                     tracking::to_openvr_ffi_hand_skeleton(
                                         headset_config,
@@ -194,7 +209,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                 .filter_map(|id| {
                                     Some(tracking::to_ffi_motion(
                                         *id,
-                                        context.get_device_motion(*id, sample_timestamp)?,
+                                        context.get_device_motion(*id, poll_timestamp)?,
                                     ))
                                 })
                                 .collect::<Vec<_>>()
@@ -208,7 +223,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                         // independently. Selection is done by setting deviceIsConnected.
                         unsafe {
                             SetTracking(
-                                sample_timestamp.as_nanos() as _,
+                                poll_timestamp.as_nanos() as _,
                                 controllers_pose_time_offset.as_secs_f32(),
                                 ffi_head_motion,
                                 ffi_left_hand_data,

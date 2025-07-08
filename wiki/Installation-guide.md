@@ -22,7 +22,7 @@ For any problem visit the [Troubleshooting page](https://github.com/alvr-org/ALV
 
 ## Microphone Setup on Windows
 
-To use your microphone in ALVR on Windows you need to install **VB-Audio Cable** (or equivalent software). However if VB-Audio Cable is already installed but not working with ALVR **or if you encounter any issues**, it's worth following these steps to reinstall and configure it properly.
+To use your microphone in ALVR on Windows you need to install **Virtual Audio Cable** (or equivalent software). However if Virtual Audio Cable is already installed but not working with ALVR **or if you encounter any issues**, it's worth following these steps to reinstall and configure it properly.
 
 ### **1. Install or Reinstall Virtual Audio Cable**
 1. **Download** the latest Lite version of [Virtual Audio Cable](https://software.muzychenko.net/freeware/vac470lite.zip).

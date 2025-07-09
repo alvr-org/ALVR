@@ -865,38 +865,18 @@ fn connection_pipeline(
             }
         }
     });
-    #[cfg_attr(not(target_os = "linux"), allow(unused_mut))]
-    let mut abort_audio_early = false;
-    #[cfg(target_os = "linux")]
-    if let Err(e) = alvr_audio::linux::try_load_pipewire() {
-        error!("Pipewire error: {e}, aborting audio startup");
-        abort_audio_early = true;
-    }
 
     #[cfg_attr(target_os = "linux", allow(unused_variables))]
-    let game_audio_thread = if !abort_audio_early
-        && let Switch::Enabled(config) = initial_settings.audio.game_audio.clone()
+    let game_audio_thread = if let Switch::Enabled(config) =
+        initial_settings.audio.game_audio.clone()
     {
         #[cfg(windows)]
         let ctx = Arc::clone(&ctx);
 
         let client_hostname = client_hostname.clone();
         thread::spawn(move || {
+            #[cfg(not(target_os = "linux"))]
             while is_streaming(&client_hostname) {
-                #[cfg(target_os = "linux")]
-                if let Err(e) = alvr_audio::linux::audio::record_audio_blocking(
-                    Arc::new({
-                        let client_hostname = client_hostname.clone();
-                        move || is_streaming(&client_hostname)
-                    }),
-                    game_audio_sender.clone(),
-                    2,
-                    game_audio_sample_rate,
-                ) {
-                    error!("Audio record error: {e:?}");
-                }
-
-                #[cfg(not(target_os = "linux"))]
                 {
                     let device = match alvr_audio::AudioDevice::new_output(config.device.as_ref()) {
                         Ok(data) => data,
@@ -958,55 +938,85 @@ fn connection_pipeline(
         thread::spawn(|| ())
     };
 
-    let microphone_thread = if !abort_audio_early
-        && let Switch::Enabled(config) = initial_settings.audio.microphone.clone()
-    {
-        #[cfg(not(target_os = "linux"))]
-        #[allow(unused_variables)]
-        let (sink, source) =
-            alvr_audio::AudioDevice::new_virtual_microphone_pair(config.devices).to_con()?;
+    #[cfg(not(target_os = "linux"))]
+    let microphone_thread =
+        if let Switch::Enabled(config) = initial_settings.audio.microphone.clone() {
+            #[allow(unused_variables)]
+            let (sink, source) =
+                alvr_audio::AudioDevice::new_virtual_microphone_pair(config.devices).to_con()?;
 
-        #[cfg(windows)]
-        if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
-            ctx.events_sender
-                .send(ServerCoreEvent::SetOpenvrProperty {
-                    device_id: *alvr_common::HEAD_ID,
-                    prop: alvr_session::OpenvrProperty {
-                        key: alvr_session::OpenvrPropKey::AudioDefaultRecordingDeviceIdString,
-                        value: id,
+            #[cfg(windows)]
+            if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
+                ctx.events_sender
+                    .send(ServerCoreEvent::SetOpenvrProperty {
+                        device_id: *alvr_common::HEAD_ID,
+                        prop: alvr_session::OpenvrProperty {
+                            key: alvr_session::OpenvrPropKey::AudioDefaultRecordingDeviceIdString,
+                            value: id,
+                        },
+                    })
+                    .ok();
+            }
+
+            let client_hostname = client_hostname.clone();
+            thread::spawn(move || {
+                alvr_common::show_err(alvr_audio::play_audio_loop(
+                    {
+                        let client_hostname = client_hostname.clone();
+                        move || is_streaming(&client_hostname)
                     },
-                })
-                .ok();
-        }
+                    &sink,
+                    1,
+                    streaming_caps.microphone_sample_rate,
+                    config.buffering,
+                    &mut microphone_receiver,
+                ));
+            })
+        } else {
+            thread::spawn(|| ())
+        };
 
-        let client_hostname = client_hostname.clone();
-        thread::spawn(move || {
-            #[cfg(not(target_os = "linux"))]
-            alvr_common::show_err(alvr_audio::play_audio_loop(
-                {
-                    let client_hostname = client_hostname.clone();
-                    move || is_streaming(&client_hostname)
+    #[cfg(target_os = "linux")]
+    let microphone_thread = {
+        use alvr_audio::linux::{self, AudioInfo};
+        let mic = if let Switch::Enabled(config) = initial_settings.audio.microphone.clone() {
+            Some((
+                AudioInfo {
+                    sample_rate: streaming_caps.microphone_sample_rate,
+                    channel_count: 1,
                 },
-                &sink,
-                1,
-                streaming_caps.microphone_sample_rate,
                 config.buffering,
-                &mut microphone_receiver,
-            ));
-            #[cfg(target_os = "linux")]
-            alvr_common::show_err(alvr_audio::linux::microphone::play_loop(
-                {
-                    let client_hostname = client_hostname.clone();
-                    move || is_streaming(&client_hostname)
-                },
-                1,
-                streaming_caps.microphone_sample_rate,
-                config.buffering,
-                &mut microphone_receiver,
-            ));
-        })
-    } else {
-        thread::spawn(|| ())
+            ))
+        } else {
+            None
+        };
+
+        let audio_info = initial_settings
+            .audio
+            .game_audio
+            .enabled()
+            .then_some(AudioInfo {
+                sample_rate: game_audio_sample_rate,
+                channel_count: 2,
+            });
+
+        if mic.is_some() || audio_info.is_some() {
+            let client_hostname = client_hostname.clone();
+            thread::spawn(move || {
+                linux::audio_loop(
+                    {
+                        let client_hostname = client_hostname.clone();
+                        move || is_streaming(&client_hostname)
+                    },
+                    game_audio_sender,
+                    audio_info,
+                    &mut microphone_receiver,
+                    mic,
+                );
+            })
+        } else {
+            thread::spawn(|| ())
+        }
     };
 
     *ctx.tracking_manager.write() =

@@ -876,12 +876,9 @@ pub enum HeadsetEmulationMode {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-pub struct FaceTrackingSourcesConfig {
-    pub eye_tracking_fb: bool,
-    pub face_tracking_fb: bool,
-    pub eye_expressions_htc: bool,
-    pub lip_expressions_htc: bool,
-    pub face_tracking_pico: bool,
+pub enum FaceTrackingSourcesConfig {
+    PreferEyeTrackingOnly,
+    PreferFullFaceTracking,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1883,11 +1880,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: FaceTrackingConfigDefault {
                     gui_collapsed: true,
                     sources: FaceTrackingSourcesConfigDefault {
-                        eye_tracking_fb: true,
-                        face_tracking_fb: true,
-                        eye_expressions_htc: true,
-                        lip_expressions_htc: true,
-                        face_tracking_pico: true,
+                        variant: FaceTrackingSourcesConfigDefaultVariant::PreferFullFaceTracking,
                     },
                     sink: FaceTrackingSinkConfigDefault {
                         VrchatEyeOsc: FaceTrackingSinkConfigVrchatEyeOscDefault { port: 9000 },

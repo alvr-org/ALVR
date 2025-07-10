@@ -1,7 +1,7 @@
 use alvr_common::{
     ConnectionState, DeviceMotion, LogEntry, LogSeverity, Pose, ViewParams,
     anyhow::Result,
-    glam::{UVec2, Vec2},
+    glam::{Quat, UVec2, Vec2},
     semver::Version,
 };
 use alvr_session::{
@@ -206,12 +206,32 @@ pub enum ClientControlPacket {
     ReservedBuffer(Vec<u8>),
 }
 
-#[derive(Serialize, Deserialize, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum FaceExpressions {
+    Fb(Vec<f32>),   // 70 values
+    Pico(Vec<f32>), // 52 values
+    Htc {
+        eye: Option<Vec<f32>>, // 14 values
+        lip: Option<Vec<f32>>, // 37 values
+    },
+}
+
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct FaceData {
-    pub eye_gazes: [Option<Pose>; 2],
-    pub fb_face_expression: Option<Vec<f32>>, // issue: Serialize does not support [f32; 63]
-    pub htc_eye_expression: Option<Vec<f32>>,
-    pub htc_lip_expression: Option<Vec<f32>>, // issue: Serialize does not support [f32; 37]
+    // Can be used for foveated eye tracking
+    pub eyes_combined: Option<Quat>,
+    // Should be used only for social presence
+    pub eyes_social: [Option<Quat>; 2],
+
+    pub face_expressions: Option<FaceExpressions>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TrackingData {
+    pub poll_timestamp: Duration,
+    pub device_motions: Vec<(u64, DeviceMotion)>,
+    pub hand_skeletons: [Option<[Pose; 26]>; 2],
+    pub face: FaceData,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -219,15 +239,6 @@ pub struct VideoPacketHeader {
     pub timestamp: Duration,
     pub global_view_params: [ViewParams; 2],
     pub is_idr: bool,
-}
-
-// Note: face_data does not respect target_timestamp.
-#[derive(Serialize, Deserialize, Default)]
-pub struct TrackingData {
-    pub poll_timestamp: Duration,
-    pub device_motions: Vec<(u64, DeviceMotion)>,
-    pub hand_skeletons: [Option<[Pose; 26]>; 2],
-    pub face_data: FaceData,
 }
 
 #[derive(Serialize, Deserialize)]

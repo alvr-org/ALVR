@@ -15,7 +15,7 @@ use alvr_common::{
     glam::{Quat, Vec3},
     *,
 };
-use alvr_packets::{ButtonEntry, ButtonValue, StreamConfig};
+use alvr_packets::{ButtonEntry, ButtonValue, FaceData, FaceExpressions, StreamConfig};
 use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
 use std::{collections::HashMap, time::Duration};
@@ -73,26 +73,19 @@ fn get_controller_offset(platform: Platform, is_right_hand: bool) -> Pose {
     }
 }
 
-fn create_ext_object<T>(
-    name: &str,
-    enabled: Option<bool>,
-    create_cb: impl FnOnce() -> xr::Result<T>,
-) -> Option<T> {
-    enabled
-        .unwrap_or(false)
-        .then(|| match create_cb() {
-            Ok(obj) => Some(obj),
-            Err(xr::sys::Result::ERROR_FEATURE_UNSUPPORTED) => {
-                warn!("Cannot create unsupported {name}");
-                None
-            }
-            Err(xr::sys::Result::ERROR_EXTENSION_NOT_PRESENT) => None,
-            Err(e) => {
-                warn!("Failed to create {name}: {e}");
-                None
-            }
-        })
-        .flatten()
+fn check_ext_object<T>(name: &str, result: xr::Result<T>) -> Option<T> {
+    match result {
+        Ok(obj) => Some(obj),
+        Err(xr::sys::Result::ERROR_FEATURE_UNSUPPORTED) => {
+            warn!("Cannot create unsupported {name}");
+            None
+        }
+        Err(xr::sys::Result::ERROR_EXTENSION_NOT_PRESENT) => None,
+        Err(e) => {
+            warn!("Failed to create {name}: {e}");
+            None
+        }
+    }
 }
 
 pub enum ButtonAction {
@@ -116,13 +109,19 @@ pub struct HandInteraction {
     pub skeleton_tracker: Option<xr::HandTracker>,
 }
 
+pub enum FaceExpressionsTracker {
+    Fb(FaceTracker2FB),
+    Pico(FaceTrackerPico),
+    Htc {
+        eye: Option<FacialTrackerHTC>,
+        lip: Option<FacialTrackerHTC>,
+    },
+}
+
 pub struct FaceSources {
-    pub combined_eyes_source: Option<(xr::Action<xr::Posef>, xr::Space)>,
-    pub eye_tracker_fb: Option<EyeTrackerSocial>,
-    pub face_tracker_fb: Option<FaceTracker2FB>,
-    pub eye_tracker_htc: Option<FacialTrackerHTC>,
-    pub lip_tracker_htc: Option<FacialTrackerHTC>,
-    pub face_tracker_pico: Option<FaceTrackerPico>,
+    eyes_combined: Option<(xr::Action<xr::Posef>, xr::Space)>,
+    eyes_social: Option<EyeTrackerSocial>,
+    face_expressions_tracker: Option<FaceExpressionsTracker>,
 }
 
 pub struct BodySources {
@@ -298,9 +297,10 @@ impl InteractionContext {
             "/user/hand/right/output/haptic",
         ));
 
-        let multimodal_handle = create_ext_object("MultimodalMeta", Some(true), || {
-            MultimodalMeta::new(xr_session.clone(), &extra_extensions, xr_system)
-        });
+        let multimodal_handle = check_ext_object(
+            "MultimodalMeta",
+            MultimodalMeta::new(xr_session.clone(), &extra_extensions, xr_system),
+        );
 
         let left_detached_controller_pose_action;
         let right_detached_controller_pose_action;
@@ -344,48 +344,6 @@ impl InteractionContext {
             )
             .unwrap();
 
-        // Pico headsets require calling get_system_properties to test for extensions, because all
-        // extensions function pointers are available even if the feature is not supported by the
-        // hardware. The full checks are done in supports_eye_gaze_interaction. This is required
-        // to avoid a crash when requesting the EYE_TRACKING permission.
-        let combined_eyes_source = if !platform.is_quest()
-            && !platform.is_vive()
-            && extra_extensions::supports_eye_gaze_interaction(&xr_session, xr_system)
-        {
-            // todo: research Pico Neo 3 Pro Eye platform detection
-            #[cfg(target_os = "android")]
-            if matches!(
-                platform,
-                Platform::PicoNeo3 | Platform::Pico4Pro | Platform::Pico4Enterprise
-            ) {
-                alvr_system_info::try_get_permission("com.picovr.permission.EYE_TRACKING")
-            }
-
-            let action = action_set
-                .create_action("combined_eye_gaze", "Combined eye gaze", &[])
-                .unwrap();
-
-            let res = xr_instance.suggest_interaction_profile_bindings(
-                xr_instance
-                    .string_to_path("/interaction_profiles/ext/eye_gaze_interaction")
-                    .unwrap(),
-                &[binding(&action, "/user/eyes_ext/input/gaze_ext/pose")],
-            );
-            if res.is_err() {
-                warn!("Failed to register combined eye gaze input: {res:?}");
-            }
-
-            let space = action
-                .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
-                .unwrap();
-
-            Some((action, space))
-        } else {
-            None
-        };
-
-        xr_session.attach_action_sets(&[&action_set]).unwrap();
-
         let left_grip_space = left_grip_action
             .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
             .unwrap();
@@ -400,29 +358,77 @@ impl InteractionContext {
             .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
             .unwrap();
 
-        let left_hand_tracker = create_ext_object("HandTracker (left)", Some(true), || {
-            xr_session.create_hand_tracker(xr::Hand::LEFT)
-        });
-        let right_hand_tracker = create_ext_object("HandTracker (right)", Some(true), || {
-            xr_session.create_hand_tracker(xr::Hand::RIGHT)
-        });
+        let left_hand_tracker = check_ext_object(
+            "HandTracker (left)",
+            xr_session.create_hand_tracker(xr::Hand::LEFT),
+        );
+        let right_hand_tracker = check_ext_object(
+            "HandTracker (right)",
+            xr_session.create_hand_tracker(xr::Hand::RIGHT),
+        );
+
+        let eyes_combined =
+            if extra_extensions::supports_eye_gaze_interaction(&xr_session, xr_system) {
+                if matches!(platform, Platform::QuestPro) {
+                    #[cfg(target_os = "android")]
+                    alvr_system_info::try_get_permission("com.oculus.permission.EYE_TRACKING");
+                } else if matches!(
+                    platform,
+                    Platform::PicoNeo3 | Platform::Pico4Pro | Platform::Pico4Enterprise
+                ) {
+                    #[cfg(target_os = "android")]
+                    alvr_system_info::try_get_permission("com.picovr.permission.EYE_TRACKING");
+                }
+
+                let action = action_set
+                    .create_action("combined_eye_gaze", "Combined eye gaze", &[])
+                    .unwrap();
+
+                let res = xr_instance.suggest_interaction_profile_bindings(
+                    xr_instance
+                        .string_to_path("/interaction_profiles/ext/eye_gaze_interaction")
+                        .unwrap(),
+                    &[binding(&action, "/user/eyes_ext/input/gaze_ext/pose")],
+                );
+                if res.is_err() {
+                    warn!("Failed to register combined eye gaze input: {res:?}");
+                }
+
+                let space = action
+                    .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+                    .unwrap();
+
+                Some((action, space))
+            } else {
+                None
+            };
 
         // Note: HTC facial tracking can only be created at startup before xrBeginSession. We don't
         // know the reason.
-        let eye_tracker_htc = create_ext_object("FacialTrackerHTC (eyes)", Some(true), || {
-            FacialTrackerHTC::new(
-                xr_session.clone(),
-                xr_system,
-                xr::FacialTrackingTypeHTC::EYE_DEFAULT,
-            )
-        });
-        let lip_tracker_htc = create_ext_object("FacialTrackerHTC (lips)", Some(true), || {
-            FacialTrackerHTC::new(
-                xr_session.clone(),
-                xr_system,
-                xr::FacialTrackingTypeHTC::LIP_DEFAULT,
-            )
-        });
+        let face_expressions_tracker = if platform.is_vive() {
+            let eye = check_ext_object(
+                "FacialTrackerHTC (eyes)",
+                FacialTrackerHTC::new(
+                    xr_session.clone(),
+                    xr_system,
+                    xr::FacialTrackingTypeHTC::EYE_DEFAULT,
+                ),
+            );
+            let lip = check_ext_object(
+                "FacialTrackerHTC (lips)",
+                FacialTrackerHTC::new(
+                    xr_session.clone(),
+                    xr_system,
+                    xr::FacialTrackingTypeHTC::LIP_DEFAULT,
+                ),
+            );
+
+            Some(FaceExpressionsTracker::Htc { eye, lip })
+        } else {
+            None
+        };
+
+        xr_session.attach_action_sets(&[&action_set]).unwrap();
 
         Self {
             xr_session,
@@ -456,12 +462,9 @@ impl InteractionContext {
             multimodal_handle,
             multimodal_hands_enabled: false,
             face_sources: FaceSources {
-                combined_eyes_source,
-                eye_tracker_fb: None,
-                face_tracker_fb: None,
-                eye_tracker_htc,
-                lip_tracker_htc,
-                face_tracker_pico: None,
+                eyes_combined,
+                eyes_social: None,
+                face_expressions_tracker,
             },
             body_sources: BodySources {
                 body_tracker_fb: None,
@@ -476,31 +479,45 @@ impl InteractionContext {
         if let Some(handle) = &mut self.multimodal_handle {
             handle.pause().ok();
         }
-        if let Some(face_tracker) = &self.face_sources.face_tracker_pico {
-            face_tracker.stop_face_tracking().ok();
+
+        if let Some(FaceExpressionsTracker::Pico(tracker)) =
+            &self.face_sources.face_expressions_tracker
+        {
+            tracker.stop_face_tracking().ok();
         }
+
         self.multimodal_hands_enabled = false;
-        self.face_sources.eye_tracker_fb = None;
-        self.face_sources.face_tracker_fb = None;
-        self.face_sources.face_tracker_pico = None;
+        self.face_sources.eyes_social = None;
+
+        // HTC trackers must not be destroyed or the app will crash
+        if !matches!(
+            self.face_sources.face_expressions_tracker,
+            Some(FaceExpressionsTracker::Htc { .. })
+        ) {
+            self.face_sources.face_expressions_tracker = None;
+        }
+
         self.body_sources.body_tracker_fb = None;
         self.body_sources.body_tracker_bd = None;
         self.body_sources.motion_tracker_bd = None;
 
-        // todo: check which permissions are needed for htc
         if let Some(config) = &config.face_tracking {
-            if (config.eye_tracking_fb) && matches!(self.platform, Platform::QuestPro) {
-                #[cfg(target_os = "android")]
-                alvr_system_info::try_get_permission("com.oculus.permission.EYE_TRACKING")
-            }
-            if config.face_tracking_fb && matches!(self.platform, Platform::QuestPro) {
+            if matches!(self.platform, Platform::QuestPro)
+                && matches!(config, FaceTrackingSourcesConfig::PreferFullFaceTracking)
+            {
                 #[cfg(target_os = "android")]
                 {
                     alvr_system_info::try_get_permission("android.permission.RECORD_AUDIO");
                     alvr_system_info::try_get_permission("com.oculus.permission.FACE_TRACKING")
                 }
             }
-            if config.face_tracking_pico && self.platform.is_pico() {
+
+            if matches!(
+                self.platform,
+                Platform::PicoNeo3 | Platform::Pico4Pro | Platform::Pico4Enterprise
+            ) && matches!(config, FaceTrackingSourcesConfig::PreferFullFaceTracking)
+                && extra_extensions::supports_eye_gaze_interaction(&self.xr_session, self.xr_system)
+            {
                 #[cfg(target_os = "android")]
                 {
                     alvr_system_info::try_get_permission("android.permission.RECORD_AUDIO");
@@ -528,92 +545,88 @@ impl InteractionContext {
             self.multimodal_hands_enabled = true;
         }
 
-        self.face_sources.eye_tracker_fb = create_ext_object(
-            "EyeTrackerSocial",
-            config.face_tracking.as_ref().map(|s| s.eye_tracking_fb),
-            || EyeTrackerSocial::new(&self.xr_session),
-        );
+        if let Some(config) = &config.face_tracking {
+            // Note: this is actually used by multiple vendors
+            self.face_sources.eyes_social =
+                check_ext_object("EyeTrackerSocial", EyeTrackerSocial::new(&self.xr_session));
 
-        self.face_sources.face_tracker_fb = create_ext_object(
-            "FaceTracker2FB",
-            config.face_tracking.as_ref().map(|s| s.face_tracking_fb),
-            || FaceTracker2FB::new(self.xr_session.clone(), true, true),
-        );
+            if matches!(config, FaceTrackingSourcesConfig::PreferFullFaceTracking) {
+                if let Some(tracker) = check_ext_object(
+                    "FaceTracker2FB",
+                    FaceTracker2FB::new(self.xr_session.clone(), true, true),
+                ) {
+                    self.face_sources.face_expressions_tracker =
+                        Some(FaceExpressionsTracker::Fb(tracker))
+                } else if let Some(tracker) = check_ext_object(
+                    "FaceTrackerPico",
+                    FaceTrackerPico::new(self.xr_session.clone()),
+                ) {
+                    tracker.start_face_tracking().ok();
 
-        self.face_sources.face_tracker_pico = create_ext_object(
-            "FaceTrackerPico",
-            config.face_tracking.as_ref().map(|s| s.face_tracking_pico),
-            || FaceTrackerPico::new(self.xr_session.clone()),
-        );
-
-        self.body_sources.body_tracker_fb = create_ext_object(
-            "BodyTrackerFB (full set)",
-            config
-                .body_tracking
-                .as_ref()
-                .and_then(|s| s.body_tracking_fb.as_option())
-                .map(|c| c.full_body),
-            || BodyTrackerFB::new(&self.xr_session, *BODY_JOINT_SET_FULL_BODY_META),
-        )
-        .map(|tracker| (tracker, FULL_BODY_JOINT_COUNT_META))
-        .or_else(|| {
-            create_ext_object(
-                "BodyTrackerFB (default set)",
-                config
-                    .body_tracking
-                    .as_ref()
-                    .map(|s| s.body_tracking_fb.enabled()),
-                || BodyTrackerFB::new(&self.xr_session, xr::BodyJointSetFB::DEFAULT),
-            )
-            .map(|tracker| (tracker, xr::BodyJointFB::COUNT.into_raw() as usize))
-        });
-
-        if let Some(body_tracking_config) = config
-            .body_tracking
-            .as_ref()
-            .and_then(|s| s.body_tracking_bd.as_option())
-        {
-            match body_tracking_config {
-                BodyTrackingBDConfig::BodyTracking {
-                    high_accuracy,
-                    prompt_calibration_on_start,
-                } => {
-                    self.body_sources.body_tracker_bd = create_ext_object(
-                        "BodyTrackerBD (high accuracy)",
-                        Some(*high_accuracy),
-                        || {
-                            BodyTrackerBD::new(
-                                self.xr_session.clone(),
-                                BodyJointSetBD::FULL_BODY_JOINTS,
-                                &self.extra_extensions,
-                                self.xr_system,
-                                *prompt_calibration_on_start,
-                            )
-                        },
-                    )
-                    .or_else(|| {
-                        create_ext_object("BodyTrackerBD (low accuracy)", Some(true), || {
-                            BodyTrackerBD::new(
-                                self.xr_session.clone(),
-                                BodyJointSetBD::BODY_WITHOUT_ARM,
-                                &self.extra_extensions,
-                                self.xr_system,
-                                *prompt_calibration_on_start,
-                            )
-                        })
-                    })
+                    self.face_sources.face_expressions_tracker =
+                        Some(FaceExpressionsTracker::Pico(tracker));
                 }
-                BodyTrackingBDConfig::ObjectTracking => {
-                    self.body_sources.motion_tracker_bd =
-                        create_ext_object("MotionTrackerBD (object tracking)", Some(true), || {
-                            MotionTrackerBD::new(self.xr_session.clone(), &self.extra_extensions)
-                        });
-                }
+                // For vive, face trackers are always created at startup regardless of settings, and
+                // also cannot be destroyed early.
             }
         }
 
-        if let Some(face_tracker) = &self.face_sources.face_tracker_pico {
-            face_tracker.start_face_tracking().ok();
+        if let Some(config) = &config.body_tracking {
+            if let Some(config) = config.body_tracking_fb.as_option() {
+                if config.full_body {
+                    self.body_sources.body_tracker_fb = check_ext_object(
+                        "BodyTrackerFB (full set)",
+                        BodyTrackerFB::new(&self.xr_session, *BODY_JOINT_SET_FULL_BODY_META),
+                    )
+                    .map(|tracker| (tracker, FULL_BODY_JOINT_COUNT_META));
+                }
+                if self.body_sources.body_tracker_fb.is_none() {
+                    self.body_sources.body_tracker_fb = check_ext_object(
+                        "BodyTrackerFB (default set)",
+                        BodyTrackerFB::new(&self.xr_session, xr::BodyJointSetFB::DEFAULT),
+                    )
+                    .map(|tracker| (tracker, xr::BodyJointFB::COUNT.into_raw() as usize));
+                }
+            } else {
+                match config.body_tracking_bd.as_option() {
+                    Some(BodyTrackingBDConfig::BodyTracking {
+                        high_accuracy,
+                        prompt_calibration_on_start,
+                    }) => {
+                        if *high_accuracy {
+                            self.body_sources.body_tracker_bd = check_ext_object(
+                                "BodyTrackerBD (high accuracy)",
+                                BodyTrackerBD::new(
+                                    self.xr_session.clone(),
+                                    BodyJointSetBD::FULL_BODY_JOINTS,
+                                    &self.extra_extensions,
+                                    self.xr_system,
+                                    *prompt_calibration_on_start,
+                                ),
+                            );
+                        }
+                        if self.body_sources.body_tracker_bd.is_none() {
+                            self.body_sources.body_tracker_bd = check_ext_object(
+                                "BodyTrackerBD (low accuracy)",
+                                BodyTrackerBD::new(
+                                    self.xr_session.clone(),
+                                    BodyJointSetBD::BODY_WITHOUT_ARM,
+                                    &self.extra_extensions,
+                                    self.xr_system,
+                                    *prompt_calibration_on_start,
+                                ),
+                            )
+                        }
+                    }
+                    Some(BodyTrackingBDConfig::ObjectTracking) => {
+                        self.body_sources.motion_tracker_bd = check_ext_object(
+                            "MotionTrackerBD (object tracking)",
+                            MotionTrackerBD::new(self.xr_session.clone(), &self.extra_extensions),
+                        );
+                    }
+                    None => (),
+                }
+            }
         }
     }
 }
@@ -883,82 +896,72 @@ pub fn update_buttons(
     button_entries
 }
 
-pub fn get_eye_gazes(
+// Note: Using the headset view space in order to get heading-independent eye gazes
+pub fn get_face_data(
     xr_session: &xr::Session<xr::OpenGlEs>,
     sources: &FaceSources,
-    reference_space: &xr::Space,
+    view_reference_space: &xr::Space,
     time: Duration,
-) -> [Option<Pose>; 2] {
+) -> FaceData {
     let xr_time = crate::to_xr_time(time);
 
-    if let Some(tracker) = &sources.eye_tracker_fb
-        && let Ok(gazes) = tracker.get_eye_gazes(reference_space, xr_time)
+    let eyes_combined = if let Some((action, space)) = &sources.eyes_combined
+        && action
+            .is_active(xr_session, xr::Path::NULL)
+            .unwrap_or(false)
+        && let Ok(location) = space.locate(view_reference_space, xr_time)
+        && location
+            .location_flags
+            .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
     {
-        return [
-            gazes[0].map(crate::from_xr_pose),
-            gazes[1].map(crate::from_xr_pose),
-        ];
+        Some(crate::from_xr_quat(location.pose.orientation))
+    } else {
+        None
     };
 
-    let Some((eyes_action, eyes_space)) = &sources.combined_eyes_source else {
-        return [None, None];
-    };
-    if !eyes_action
-        .is_active(xr_session, xr::Path::NULL)
-        .unwrap_or(false)
+    let eyes_social = if let Some(tracker) = &sources.eyes_social
+        && let Ok(gazes) = tracker.get_eye_gazes(view_reference_space, xr_time)
     {
-        return [None, None];
-    }
-
-    if let Ok(location) = eyes_space.locate(reference_space, xr_time) {
         [
-            location
-                .location_flags
-                .contains(xr::SpaceLocationFlags::ORIENTATION_TRACKED)
-                .then(|| crate::from_xr_pose(location.pose)),
-            None,
+            gazes[0].map(|p| crate::from_xr_quat(p.orientation)),
+            gazes[1].map(|p| crate::from_xr_quat(p.orientation)),
         ]
     } else {
         [None, None]
+    };
+
+    let face_expressions = if let Some(tracker) = &sources.face_expressions_tracker {
+        match tracker {
+            FaceExpressionsTracker::Fb(tracker) => tracker
+                .get_face_expression_weights(xr_time)
+                .ok()
+                .flatten()
+                .map(|weights| FaceExpressions::Fb(weights.into_iter().collect())),
+            FaceExpressionsTracker::Pico(face_tracker_pico) => face_tracker_pico
+                .get_face_tracking_data(xr_time)
+                .ok()
+                .flatten()
+                .map(|weights| FaceExpressions::Pico(weights.into_iter().collect())),
+            FaceExpressionsTracker::Htc { eye, lip } => {
+                let eye = eye
+                    .as_ref()
+                    .and_then(|tracker| tracker.get_facial_expressions(xr_time).ok().flatten());
+                let lip = lip
+                    .as_ref()
+                    .and_then(|tracker| tracker.get_facial_expressions(xr_time).ok().flatten());
+
+                Some(FaceExpressions::Htc { eye, lip })
+            }
+        }
+    } else {
+        None
+    };
+
+    FaceData {
+        eyes_combined,
+        eyes_social,
+        face_expressions,
     }
-}
-
-pub fn get_fb_face_expression(context: &FaceSources, time: Duration) -> Option<Vec<f32>> {
-    let xr_time = crate::to_xr_time(time);
-
-    context
-        .face_tracker_fb
-        .as_ref()
-        .and_then(|t| t.get_face_expression_weights(xr_time).ok().flatten())
-        .map(|weights| weights.into_iter().collect())
-}
-
-pub fn get_pico_face_expression(context: &FaceSources, time: Duration) -> Option<Vec<f32>> {
-    let xr_time = crate::to_xr_time(time);
-
-    context
-        .face_tracker_pico
-        .as_ref()
-        .and_then(|t| t.get_face_tracking_data(xr_time).ok().flatten())
-        .map(|weights| weights.into_iter().collect())
-}
-
-pub fn get_htc_eye_expression(context: &FaceSources, time: Duration) -> Option<Vec<f32>> {
-    let xr_time = crate::to_xr_time(time);
-
-    context
-        .eye_tracker_htc
-        .as_ref()
-        .and_then(|t| t.get_facial_expressions(xr_time).ok().flatten())
-}
-
-pub fn get_htc_lip_expression(context: &FaceSources, time: Duration) -> Option<Vec<f32>> {
-    let xr_time = crate::to_xr_time(time);
-
-    context
-        .lip_tracker_htc
-        .as_ref()
-        .and_then(|t| t.get_facial_expressions(xr_time).ok().flatten())
 }
 
 pub fn get_fb_body_skeleton(

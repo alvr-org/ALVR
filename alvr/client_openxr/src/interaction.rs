@@ -113,7 +113,7 @@ pub enum FaceExpressionsTracker {
     Fb(FaceTracker2FB),
     Pico(FaceTrackerPico),
     Htc {
-        eye: FacialTrackerHTC,
+        eye: Option<FacialTrackerHTC>,
         lip: Option<FacialTrackerHTC>,
     },
 }
@@ -405,15 +405,15 @@ impl InteractionContext {
 
         // Note: HTC facial tracking can only be created at startup before xrBeginSession. We don't
         // know the reason.
-        let face_expressions_tracker = if platform.is_vive()
-            && let Some(eye) = check_ext_object(
+        let face_expressions_tracker = if platform.is_vive() {
+            let eye = check_ext_object(
                 "FacialTrackerHTC (eyes)",
                 FacialTrackerHTC::new(
                     xr_session.clone(),
                     xr_system,
                     xr::FacialTrackingTypeHTC::EYE_DEFAULT,
                 ),
-            ) {
+            );
             let lip = check_ext_object(
                 "FacialTrackerHTC (lips)",
                 FacialTrackerHTC::new(
@@ -422,6 +422,7 @@ impl InteractionContext {
                     xr::FacialTrackingTypeHTC::LIP_DEFAULT,
                 ),
             );
+
             Some(FaceExpressionsTracker::Htc { eye, lip })
         } else {
             None
@@ -571,9 +572,7 @@ impl InteractionContext {
         }
 
         if let Some(config) = &config.body_tracking {
-            if self.platform.is_quest()
-                && let Some(config) = config.body_tracking_fb.as_option()
-            {
+            if let Some(config) = config.body_tracking_fb.as_option() {
                 if config.full_body {
                     self.body_sources.body_tracker_fb = check_ext_object(
                         "BodyTrackerFB (full set)",
@@ -588,7 +587,7 @@ impl InteractionContext {
                     )
                     .map(|tracker| (tracker, xr::BodyJointFB::COUNT.into_raw() as usize));
                 }
-            } else if self.platform.is_pico() {
+            } else {
                 match config.body_tracking_bd.as_option() {
                     Some(BodyTrackingBDConfig::BodyTracking {
                         high_accuracy,
@@ -944,8 +943,9 @@ pub fn get_face_data(
                 .flatten()
                 .map(|weights| FaceExpressions::Pico(weights.into_iter().collect())),
             FaceExpressionsTracker::Htc { eye, lip } => {
-                let eye = eye.get_facial_expressions(xr_time).ok().flatten();
-
+                let eye = eye
+                    .as_ref()
+                    .and_then(|tracker| tracker.get_facial_expressions(xr_time).ok().flatten());
                 let lip = lip
                     .as_ref()
                     .and_then(|tracker| tracker.get_facial_expressions(xr_time).ok().flatten());

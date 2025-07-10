@@ -39,10 +39,19 @@ static VIRTUAL_MICROPHONE_PAIRS: LazyLock<HashMap<&str, &str>> = LazyLock::new(|
     .collect()
 });
 
-fn device_from_custom_config(host: &Host, config: &CustomAudioDeviceConfig) -> Result<Device> {
+fn device_from_custom_config(
+    host: &Host,
+    config: &CustomAudioDeviceConfig,
+    is_output: bool,
+) -> Result<Device> {
+    let mut devices = if is_output {
+        host.output_devices()?
+    } else {
+        host.input_devices()?
+    };
+
     Ok(match config {
-        CustomAudioDeviceConfig::NameSubstring(name_substring) => host
-            .devices()?
+        CustomAudioDeviceConfig::NameSubstring(name_substring) => devices
             .find(|d| {
                 d.name()
                     .map(|name| name.to_lowercase().contains(&name_substring.to_lowercase()))
@@ -51,8 +60,7 @@ fn device_from_custom_config(host: &Host, config: &CustomAudioDeviceConfig) -> R
             .with_context(|| {
                 format!("Cannot find audio device which name contains \"{name_substring}\"")
             })?,
-        CustomAudioDeviceConfig::Index(index) => host
-            .devices()?
+        CustomAudioDeviceConfig::Index(index) => devices
             .nth(*index)
             .with_context(|| format!("Cannot find audio device at index {index}"))?,
     })
@@ -92,7 +100,7 @@ impl AudioDevice {
             None => host
                 .default_output_device()
                 .context("No output audio device found")?,
-            Some(config) => device_from_custom_config(&host, config)?,
+            Some(config) => device_from_custom_config(&host, config, true)?,
         };
 
         Ok(Self {
@@ -108,7 +116,7 @@ impl AudioDevice {
             None => host
                 .default_input_device()
                 .context("No input audio device found")?,
-            Some(config) => device_from_custom_config(&host, &config)?,
+            Some(config) => device_from_custom_config(&host, &config, false)?,
         };
 
         Ok(Self {
@@ -147,8 +155,8 @@ impl AudioDevice {
                 microphone_pair_from_sink_name(&host, "VoiceMeeter VAIO3 Input")?
             }
             MicrophoneDevicesConfig::Custom { sink, source } => (
-                device_from_custom_config(&host, &sink)?,
-                device_from_custom_config(&host, &source)?,
+                device_from_custom_config(&host, &sink, true)?,
+                device_from_custom_config(&host, &source, false)?,
             ),
         };
 
@@ -179,7 +187,7 @@ pub fn is_same_device(device1: &AudioDevice, device2: &AudioDevice) -> bool {
     if let Ok(name1) = device1.inner.name()
         && let Ok(name2) = device2.inner.name()
     {
-        name1 == name2
+        name1 == name2 && device1.is_output == device2.is_output
     } else {
         false
     }
@@ -208,9 +216,12 @@ pub enum AudioChannel {
     LowFrequency,
 }
 
-macro_rules! channel_mix {
-    ( $x:expr ) => {
-        match $x {
+fn downmix_channels(channels: &[AudioChannel], data: &[u8], out_channels: u16) -> Vec<u8> {
+    let mut left = 0.0;
+    let mut right = 0.0;
+
+    for i in 0..channels.len() {
+        let [l, r] = match &channels[i] {
             AudioChannel::FrontLeft => [1.0, 0.0],
             AudioChannel::FrontRight => [0.0, 1.0],
             AudioChannel::Center => [0.707, 0.707],
@@ -225,17 +236,7 @@ macro_rules! channel_mix {
             AudioChannel::HighBackLeft => [0.5, 0.0],
             AudioChannel::HighBackRight => [0.0, 0.5],
             _ => [0.0, 0.0],
-        }
-    };
-}
-
-fn downmix_channels(channels: &[AudioChannel], data: &[u8], out_channels: u16) -> Vec<u8> {
-    let mut left = 0.0;
-    let mut right = 0.0;
-
-    for i in 0..channels.len() {
-        let chan = &channels[i];
-        let [l, r] = channel_mix!(chan);
+        };
         let val = i16::from_ne_bytes([data[i * 2], data[i * 2 + 1]]).to_sample::<f32>();
         left += val * l;
         right += val * r;

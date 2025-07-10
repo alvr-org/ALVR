@@ -1,5 +1,5 @@
 use alvr_common::{
-    ConnectionState, DeviceMotion, LogEntry, LogSeverity, Pose, ViewParams,
+    BodySkeleton, ConnectionState, DeviceMotion, LogEntry, LogSeverity, Pose, ViewParams,
     anyhow::Result,
     glam::{Quat, UVec2, Vec2},
     semver::Version,
@@ -232,6 +232,7 @@ pub struct TrackingData {
     pub device_motions: Vec<(u64, DeviceMotion)>,
     pub hand_skeletons: [Option<[Pose; 26]>; 2],
     pub face: FaceData,
+    pub body: Option<BodySkeleton>,
 }
 
 #[derive(Serialize, Deserialize)]

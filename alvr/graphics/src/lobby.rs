@@ -1,6 +1,6 @@
 use super::{GraphicsContext, MAX_PUSH_CONSTANTS_SIZE, SDR_FORMAT};
 use alvr_common::{
-    DeviceMotion, Pose, ViewParams,
+    BodySkeleton, DeviceMotion, Pose, ViewParams,
     glam::{IVec2, Mat4, Quat, UVec2, Vec3},
 };
 use glyph_brush_layout::{
@@ -84,7 +84,7 @@ const HAND_SKELETON_BONES: [(usize, usize); 19] = [
     (24, 25),
 ];
 
-const BODY_SKELETON_BONES_FB: [(usize, usize); 30] = [
+const BODY_JOINT_RELATIONS_FB: [(usize, usize); 30] = [
     // Spine
     (1, 2),
     (2, 3),
@@ -105,24 +105,24 @@ const BODY_SKELETON_BONES_FB: [(usize, usize); 30] = [
     (15, 16),
     (16, 17),
     // Left leg
-    (1, 70),
-    (70, 71),
-    (71, 72),
-    (72, 73),
-    (73, 74),
-    (74, 75),
-    (75, 76),
+    (1, 18),
+    (18, 19),
+    (19, 20),
+    (20, 21),
+    (21, 22),
+    (22, 23),
+    (23, 24),
     // Right leg
-    (1, 77),
-    (77, 78),
-    (78, 79),
-    (79, 80),
-    (80, 81),
-    (81, 82),
-    (82, 83),
+    (1, 25),
+    (25, 26),
+    (26, 27),
+    (27, 28),
+    (28, 29),
+    (29, 30),
+    (30, 31),
 ];
 
-const BODY_SKELETON_BONES_BD: [(usize, usize); 23] = [
+const BODY_JOINT_RELATIONS_BD: [(usize, usize); 23] = [
     // Left leg
     (0, 1),
     (1, 4),
@@ -152,11 +152,6 @@ const BODY_SKELETON_BONES_BD: [(usize, usize); 23] = [
     (19, 21),
     (21, 23),
 ];
-
-pub enum BodyTrackingType {
-    Meta,
-    Pico,
-}
 
 fn create_pipeline(
     device: &Device,
@@ -404,14 +399,12 @@ impl LobbyRenderer {
         );
     }
 
-    #[expect(clippy::too_many_arguments)]
     pub fn render(
         &self,
         view_params: [LobbyViewParams; 2],
         hand_data: [(Option<DeviceMotion>, Option<[Pose; 26]>); 2],
+        body_skeleton: Option<BodySkeleton>,
         additional_motions: Option<Vec<DeviceMotion>>,
-        body_skeleton: Option<Vec<Option<Pose>>>,
-        body_tracking_type: Option<BodyTrackingType>,
         render_background: bool,
         show_velocities: bool,
     ) {
@@ -599,16 +592,26 @@ impl LobbyRenderer {
                 }
             }
 
-            let body_skeleton_bones = match body_tracking_type {
-                Some(BodyTrackingType::Meta) => Some(BODY_SKELETON_BONES_FB.as_slice()),
-                Some(BodyTrackingType::Pico) => Some(BODY_SKELETON_BONES_BD.as_slice()),
-                _ => None,
-            };
+            if let Some(skeleton) = &body_skeleton {
+                let (joints, relations) = match skeleton {
+                    BodySkeleton::Fb(skeleton) => {
+                        let mut joints = skeleton.upper_body.to_vec();
+                        if let Some(lower_body) = skeleton.lower_body {
+                            joints.extend(lower_body);
+                        }
 
-            if let (Some(skeleton), Some(skeleton_bones)) = (&body_skeleton, body_skeleton_bones) {
-                for (joint1_idx, joint2_idx) in skeleton_bones {
+                        let relations = BODY_JOINT_RELATIONS_FB.as_slice();
+
+                        (joints, relations)
+                    }
+                    BodySkeleton::Bd(joints) => {
+                        (joints.0.to_vec(), BODY_JOINT_RELATIONS_BD.as_slice())
+                    }
+                };
+
+                for (joint1_idx, joint2_idx) in relations {
                     if let (Some(Some(j1_pose)), Some(Some(j2_pose))) =
-                        (skeleton.get(*joint1_idx), skeleton.get(*joint2_idx))
+                        (joints.get(*joint1_idx), joints.get(*joint2_idx))
                     {
                         let transform = Mat4::from_scale_rotation_translation(
                             Vec3::ONE * Vec3::distance(j1_pose.position, j2_pose.position),

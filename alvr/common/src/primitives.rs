@@ -113,3 +113,18 @@ impl ViewParams {
         fov: Fov::DUMMY,
     };
 }
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct BodySkeletonFb {
+    pub upper_body: [Option<Pose>; 18],
+    pub lower_body: Option<[Option<Pose>; 14]>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct BodySkeletonBd(pub [Option<Pose>; 24]);
+
+#[derive(Serialize, Deserialize, Clone)]
+pub enum BodySkeleton {
+    Fb(Box<BodySkeletonFb>),
+    Bd(Box<BodySkeletonBd>),
+}

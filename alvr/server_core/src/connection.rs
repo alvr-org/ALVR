@@ -25,8 +25,8 @@ use alvr_packets::{
     TrackingData, VIDEO, VideoPacketHeader,
 };
 use alvr_session::{
-    BodyTrackingBDConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize,
-    H264Profile, OpenvrConfig, SessionConfig, SocketProtocol,
+    BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile,
+    OpenvrConfig, SessionConfig, SocketProtocol,
 };
 use alvr_sockets::{
     CONTROL_PORT, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, PeerType, ProtoControlSocket,
@@ -111,16 +111,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         .headset
         .body_tracking
         .as_option()
-        .and_then(|c| c.sources.body_tracking_fb.as_option().cloned())
-        .map(|c| c.full_body)
-        .or_else(|| {
-            settings.headset.body_tracking.as_option().map(|c| {
-                matches!(
-                    c.sources.body_tracking_bd.as_option(),
-                    Some(BodyTrackingBDConfig::BodyTracking { .. })
-                )
-            })
-        })
+        .map(|c| c.sources.meta.prefer_full_body)
         .unwrap_or(false);
 
     let mut foveation_center_size_x = 0.0;

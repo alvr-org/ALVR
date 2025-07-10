@@ -4,7 +4,7 @@ use alvr_common::{
     glam::{Quat, UVec2, Vec3},
     parking_lot::RwLock,
 };
-use alvr_packets::TrackingData;
+use alvr_packets::{FaceData, TrackingData};
 use alvr_session::CodecType;
 use eframe::{
     Frame, NativeOptions,
@@ -174,7 +174,8 @@ fn tracking_thread(
                 },
             )],
             hand_skeletons: [None, None],
-            face: Default::default(),
+            face: FaceData::default(),
+            body: None,
         });
 
         drop(input_lock);

@@ -113,11 +113,10 @@ impl SettingsTab {
     }
 
     pub fn update_audio_devices(&mut self, list: AudioDevicesList) {
-        let mut all_devices = list.output.clone();
-        all_devices.extend(list.input);
+        let output_devices = list.output.clone();
 
         if let Some(json) = &self.session_settings_json {
-            let mut preset = PresetControl::new(builtin_schema::game_audio_schema(all_devices));
+            let mut preset = PresetControl::new(builtin_schema::game_audio_schema(output_devices));
             preset.update_session_settings(json);
             self.game_audio_preset = Some(preset);
 

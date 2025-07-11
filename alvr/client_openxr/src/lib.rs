@@ -299,7 +299,7 @@ pub fn entry_point() {
                     high_accuracy: true,
                     prompt_calibration_on_start: false,
                 },
-                ..Default::default()
+                meta: Default::default(),
             })
         } else {
             None

@@ -901,7 +901,7 @@ pub struct BodyTrackingMetaConfig {
     pub prefer_full_body: bool,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Default)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(gui = "button_group")]
 pub enum BodyTrackingBDConfig {
     #[schema(strings(display_name = "Body Tracking"))]
@@ -916,12 +916,11 @@ pub enum BodyTrackingBDConfig {
         prompt_calibration_on_start: bool,
     },
 
-    #[default]
     #[schema(strings(display_name = "Object Tracking"))]
     ObjectTracking,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Default)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BodyTrackingSourcesConfig {
     pub meta: BodyTrackingMetaConfig,
     pub bd: BodyTrackingBDConfig,

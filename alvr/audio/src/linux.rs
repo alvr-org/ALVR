@@ -36,7 +36,12 @@ pub fn try_load_pipewire() -> Result<()> {
             return Err(e.into());
         }
         error!("Could not initialize PipeWire.");
-        if is_currently_under_flatpak() && !is_pipewire_socket_available() {
+
+        let is_under_flatpak = std::env::var("FLATPAK_ID").is_ok();
+        let is_pw_socket_available = std::env::var("XDG_RUNTIME_DIR")
+            .is_ok_and(|xdg_runtime_dir| Path::new(&xdg_runtime_dir).join("pipewire-0").exists());
+
+        if is_under_flatpak && is_pw_socket_available {
             error!(
                 "Please visit the following page to find help on how to fix broken audio on flatpak."
             );
@@ -57,17 +62,6 @@ fn probe_pipewire() -> Result<(), pipewire::Error> {
     Ok(())
 }
 
-fn is_currently_under_flatpak() -> bool {
-    std::env::var("FLATPAK_ID").is_ok()
-}
-fn is_pipewire_socket_available() -> bool {
-    std::env::var("XDG_RUNTIME_DIR").is_ok_and(|meow| {
-        let xdg_runtime_dir = Path::new(&meow);
-        let pipewire_path = xdg_runtime_dir.join("pipewire-0");
-        xdg_runtime_dir.exists() && pipewire_path.exists()
-    })
-}
-
 #[derive(Clone, Copy)]
 pub struct AudioInfo {
     pub sample_rate: u32,
@@ -80,10 +74,8 @@ static MIC_STREAMING: AtomicBool = AtomicBool::new(false);
 
 pub fn audio_loop(
     is_running: impl Fn() -> bool,
-
     sender: StreamSender<()>,
     speaker_info: Option<AudioInfo>,
-
     receiver: &mut StreamReceiver<()>,
     mic_info: Option<(AudioInfo, AudioBufferingConfig)>,
 ) {
@@ -155,10 +147,8 @@ pub fn audio_loop(
 
 fn pw_main_loop(
     pw_receiver: Receiver<Terminate>,
-
     audio_sender: StreamSender<()>,
     speaker_info: Option<AudioInfo>,
-
     sample_queue: Arc<Mutex<VecDeque<f32>>>,
     mic_info: Option<AudioInfo>,
 ) -> Result<(), pipewire::Error> {

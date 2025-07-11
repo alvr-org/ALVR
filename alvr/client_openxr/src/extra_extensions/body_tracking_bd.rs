@@ -17,14 +17,6 @@ static TYPE_BODY_JOINT_LOCATIONS_BD: LazyLock<xr::StructureType> =
 static TYPE_SYSTEM_BODY_TRACKING_PROPERTIES_BD: LazyLock<xr::StructureType> =
     LazyLock::new(|| xr::StructureType::from_raw(1000385004));
 
-pub const BODY_JOINT_PELVIS_BD: usize = 0;
-pub const BODY_JOINT_LEFT_KNEE_BD: usize = 4;
-pub const BODY_JOINT_RIGHT_KNEE_BD: usize = 5;
-pub const BODY_JOINT_SPINE3_BD: usize = 9;
-pub const BODY_JOINT_LEFT_FOOT_BD: usize = 10;
-pub const BODY_JOINT_RIGHT_FOOT_BD: usize = 11;
-pub const BODY_JOINT_LEFT_ELBOW_BD: usize = 18;
-pub const BODY_JOINT_RIGHT_ELBOW_BD: usize = 19;
 pub const BODY_JOINT_COUNT_BD: usize = 24;
 
 #[repr(transparent)]

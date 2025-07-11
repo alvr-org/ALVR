@@ -344,7 +344,7 @@ pub fn tracking_loop(
             Err(ConnectionError::TryAgain(_)) => continue,
             Err(ConnectionError::Other(_)) => return,
         };
-        let Ok(tracking) = data.get_header() else {
+        let Ok(mut tracking) = data.get_header() else {
             return;
         };
 
@@ -368,6 +368,15 @@ pub fn tracking_loop(
             let mut tracking_manager_lock = ctx.tracking_manager.write();
             let session_manager_lock = SESSION_MANAGER.read();
             let headset_config = &session_manager_lock.settings().headset;
+
+            tracking.device_motions.extend_from_slice(
+                &body::get_default_body_trackers_from_motion_trackers_bd(&tracking.device_motions),
+            );
+            if let Some(skeleton) = &tracking.body {
+                tracking
+                    .device_motions
+                    .extend_from_slice(&body::extract_default_trackers(skeleton));
+            }
 
             let device_motion_keys = tracking
                 .device_motions

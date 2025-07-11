@@ -60,6 +60,9 @@ devices! {
     (BODY_RIGHT_FOOT, "/user/body/right_foot"),
     (DETACHED_CONTROLLER_LEFT, "/user/detached_controller_meta/left"),
     (DETACHED_CONTROLLER_RIGHT, "/user/detached_controller_meta/right"),
+    (GENERIC_TRACKER_1, "/user/generic_tracker/1"),
+    (GENERIC_TRACKER_2, "/user/generic_tracker/2"),
+    (GENERIC_TRACKER_3, "/user/generic_tracker/3"),
 }
 
 pub enum ButtonType {

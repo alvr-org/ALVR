@@ -8,7 +8,6 @@ mod stream;
 
 use crate::stream::ParsedStreamConfig;
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
-use alvr_common::settings_schema::Switch;
 use alvr_common::{
     Fov, HAND_LEFT_ID, Pose, error,
     glam::{Quat, UVec2, Vec3},
@@ -292,16 +291,22 @@ pub fn entry_point() {
             default_view_resolution,
             &last_lobby_message,
         );
-        let lobby_body_tracking_config = BodyTrackingSourcesConfig {
-            body_tracking_fb: Switch::Disabled,
-            body_tracking_bd: Switch::Enabled(BodyTrackingBDConfig::BodyTracking {
-                high_accuracy: true,
-                prompt_calibration_on_start: false,
-            }),
+
+        // For Meta/Quest enabling body tracking would disable multimodal input
+        let lobby_body_tracking_config = if platform.is_pico() {
+            Some(BodyTrackingSourcesConfig {
+                bd: BodyTrackingBDConfig::BodyTracking {
+                    high_accuracy: true,
+                    prompt_calibration_on_start: false,
+                },
+                meta: Default::default(),
+            })
+        } else {
+            None
         };
         let lobby_interaction_sources = InteractionSourcesConfig {
             face_tracking: None,
-            body_tracking: Some(lobby_body_tracking_config),
+            body_tracking: lobby_body_tracking_config,
             prefers_multimodal_input: true,
         };
         interaction_context

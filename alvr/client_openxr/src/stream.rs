@@ -601,25 +601,13 @@ fn stream_input_loop(
             now,
         );
 
-        if let Some((tracker, joint_count)) = &int_ctx.body_sources.body_tracker_fb {
-            device_motions.append(&mut interaction::get_fb_body_tracking_points(
-                stage_reference_space,
-                now,
-                tracker,
-                *joint_count,
-            ));
-        }
+        let body = int_ctx
+            .body_source
+            .as_ref()
+            .and_then(|source| interaction::get_body_skeleton(source, stage_reference_space, now));
 
-        if let Some(tracker) = &int_ctx.body_sources.body_tracker_bd {
-            device_motions.append(&mut interaction::get_bd_body_tracking_points(
-                stage_reference_space,
-                now,
-                tracker,
-            ));
-        }
-
-        if let Some(tracker) = &int_ctx.body_sources.motion_tracker_bd {
-            device_motions.append(&mut interaction::get_bd_motion_trackers(now, tracker));
+        if let Some(source) = &int_ctx.body_source {
+            device_motions.append(&mut interaction::get_bd_motion_trackers(source, now));
         }
 
         // Even though the server is already adding the motion-to-photon latency, here we use
@@ -632,6 +620,7 @@ fn stream_input_loop(
             device_motions,
             hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
             face,
+            body,
         });
 
         let button_entries = interaction::update_buttons(&xr_session, &int_ctx.button_actions);

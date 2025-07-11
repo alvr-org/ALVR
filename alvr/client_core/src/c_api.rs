@@ -490,6 +490,7 @@ pub extern "C" fn alvr_send_tracking(
                 eyes_combined,
                 ..Default::default()
             },
+            body: None,
         });
     }
 }
@@ -730,7 +731,6 @@ pub extern "C" fn alvr_render_lobby_opengl(
             renderer.render(
                 view_inputs,
                 [(None, None), (None, None)],
-                None,
                 None,
                 None,
                 render_background,

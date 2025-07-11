@@ -2,12 +2,12 @@ use crate::AudioDevice;
 use alvr_common::anyhow::{bail, Result};
 use rodio::DeviceTrait;
 use windows::{
-    core::GUID,
+    core::{Interface, GUID},
     Win32::{
         Devices::FunctionDiscovery::PKEY_Device_FriendlyName,
         Media::Audio::{
-            eAll, Endpoints::IAudioEndpointVolume, IMMDevice, IMMDeviceEnumerator,
-            MMDeviceEnumerator, DEVICE_STATE_ACTIVE,
+            eAll, eRender, Endpoints::IAudioEndpointVolume, IMMDevice, IMMDeviceEnumerator,
+            IMMEndpoint, MMDeviceEnumerator, DEVICE_STATE_ACTIVE,
         },
         System::Com::{self, CLSCTX_ALL, COINIT_MULTITHREADED, STGM_READ},
     },
@@ -34,7 +34,9 @@ fn get_windows_device(device: &AudioDevice) -> Result<IMMDevice> {
                 .GetValue(&PKEY_Device_FriendlyName)?
                 .to_string();
 
-            if imm_device_name == device_name {
+            let is_output = imm_device.cast::<IMMEndpoint>()?.GetDataFlow()? == eRender;
+
+            if imm_device_name == device_name && device.is_output == is_output {
                 return Ok(imm_device);
             }
         }

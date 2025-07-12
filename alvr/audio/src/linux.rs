@@ -74,7 +74,7 @@ pub struct AudioInfo {
 struct Terminate;
 
 // fixme: Opening pavucontrol while audio is actively streaming
-//  will cause audio cut out for short time, 
+//  will cause audio cut out for short time,
 //  possibly related to fast state changes intorudced by pavucontrol
 static MIC_STREAMING: AtomicBool = AtomicBool::new(false);
 

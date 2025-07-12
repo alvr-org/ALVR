@@ -24,8 +24,7 @@ use alvr_common::{
     warn,
 };
 use alvr_packets::{
-    BatteryInfo, ButtonEntry, ClientControlPacket, RealTimeConfig, ReservedClientControlPacket,
-    StreamConfig, TrackingData,
+    BatteryInfo, ButtonEntry, ClientControlPacket, RealTimeConfig, StreamConfig, TrackingData,
 };
 use alvr_session::CodecType;
 use connection::{ConnectionContext, DecoderCallback};
@@ -173,7 +172,12 @@ impl ClientCoreContext {
         }
     }
 
-    pub fn send_active_interaction_profile(&self, device_id: u64, profile_id: u64) {
+    pub fn send_active_interaction_profile(
+        &self,
+        device_id: u64,
+        profile_id: u64,
+        input_ids: HashSet<u64>,
+    ) {
         dbg_client_core!("send_active_interaction_profile");
 
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
@@ -181,22 +185,8 @@ impl ClientCoreContext {
                 .send(&ClientControlPacket::ActiveInteractionProfile {
                     device_id,
                     profile_id,
+                    input_ids,
                 })
-                .ok();
-        }
-    }
-
-    pub fn send_custom_interaction_profile(&self, device_id: u64, input_ids: HashSet<u64>) {
-        dbg_client_core!("send_custom_interaction_profile");
-
-        if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
-            sender
-                .send(&alvr_packets::encode_reserved_client_control_packet(
-                    &ReservedClientControlPacket::CustomInteractionProfile {
-                        device_id,
-                        input_ids,
-                    },
-                ))
                 .ok();
         }
     }

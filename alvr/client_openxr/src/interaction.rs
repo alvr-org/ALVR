@@ -13,7 +13,10 @@ use alvr_common::{
 use alvr_packets::{ButtonEntry, ButtonValue, FaceData, FaceExpressions, StreamConfig};
 use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    time::Duration,
+};
 use xr::SpaceLocationFlags;
 
 const IPD_CHANGE_EPS: f32 = 0.001;
@@ -90,6 +93,7 @@ pub enum ButtonAction {
 
 pub struct HandInteraction {
     pub controllers_profile_id: u64,
+    pub input_ids: HashSet<u64>,
     pub pose_offset: Pose,
 
     pub grip_action: xr::Action<xr::Posef>,
@@ -211,11 +215,12 @@ impl InteractionContext {
         // Create actions:
 
         let mut button_actions = HashMap::new();
-        for button_id in &CONTROLLER_PROFILE_INFO
+        let button_set = CONTROLLER_PROFILE_INFO
             .get(&controllers_profile_id)
             .unwrap()
             .button_set
-        {
+            .clone();
+        for button_id in &button_set {
             let info = BUTTON_INFO.get(button_id).unwrap();
 
             let name = info.path[1..].replace('/', "_");
@@ -437,6 +442,7 @@ impl InteractionContext {
             hands_interaction: [
                 HandInteraction {
                     controllers_profile_id,
+                    input_ids: button_set.clone(),
                     pose_offset: get_controller_offset(platform, false),
                     grip_action: left_grip_action,
                     grip_space: left_grip_space,
@@ -447,6 +453,7 @@ impl InteractionContext {
                 },
                 HandInteraction {
                     controllers_profile_id,
+                    input_ids: button_set,
                     pose_offset: get_controller_offset(platform, true),
                     grip_action: right_grip_action,
                     grip_space: right_grip_space,

@@ -2,9 +2,10 @@ use alvr_common::{ConnectionError, anyhow::Result, debug, error, parking_lot::Mu
 use alvr_session::AudioBufferingConfig;
 use alvr_sockets::{StreamReceiver, StreamSender};
 
+use std::os::unix::fs::FileTypeExt;
 use std::{
     collections::VecDeque,
-    io,
+    fs, io,
     path::Path,
     sync::{
         Arc,
@@ -37,8 +38,16 @@ pub fn try_load_pipewire() -> Result<()> {
         error!("Could not initialize PipeWire.");
 
         let is_under_flatpak = std::env::var("FLATPAK_ID").is_ok();
-        let is_pw_socket_unavailable = std::env::var("XDG_RUNTIME_DIR")
-            .is_ok_and(|xdg_runtime_dir| !Path::new(&xdg_runtime_dir).join("pipewire-0").exists());
+        let is_pw_socket_unavailable =
+            std::env::var("XDG_RUNTIME_DIR").is_ok_and(|xdg_runtime_dir| {
+                let pw_socket_path = Path::new(&xdg_runtime_dir).join("pipewire-0");
+                if let Ok(metadata) = fs::metadata(&pw_socket_path) {
+                    let file_type = metadata.file_type();
+                    !pw_socket_path.exists() || !file_type.is_socket()
+                } else {
+                    false
+                }
+            });
 
         if is_under_flatpak && is_pw_socket_unavailable {
             error!(

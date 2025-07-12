@@ -37,10 +37,10 @@ pub fn try_load_pipewire() -> Result<()> {
         error!("Could not initialize PipeWire.");
 
         let is_under_flatpak = std::env::var("FLATPAK_ID").is_ok();
-        let is_pw_socket_available = std::env::var("XDG_RUNTIME_DIR")
-            .is_ok_and(|xdg_runtime_dir| Path::new(&xdg_runtime_dir).join("pipewire-0").exists());
+        let is_pw_socket_unavailable = std::env::var("XDG_RUNTIME_DIR")
+            .is_ok_and(|xdg_runtime_dir| !Path::new(&xdg_runtime_dir).join("pipewire-0").exists());
 
-        if is_under_flatpak && is_pw_socket_available {
+        if is_under_flatpak && is_pw_socket_unavailable {
             error!(
                 "Please visit the following page to find help on how to fix broken audio on flatpak."
             );

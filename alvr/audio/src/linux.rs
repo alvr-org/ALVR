@@ -38,19 +38,13 @@ pub fn try_load_pipewire() -> Result<()> {
         error!("Could not initialize PipeWire.");
 
         let is_under_flatpak = std::env::var("FLATPAK_ID").is_ok();
-        let is_pw_socket_unavailable =
+        let is_pw_socket_available =
             std::env::var("XDG_RUNTIME_DIR").is_ok_and(|xdg_runtime_dir| {
                 let pw_socket_path = Path::new(&xdg_runtime_dir).join("pipewire-0");
-                if pw_socket_path.exists()
-                    && let Ok(metadata) = fs::metadata(&pw_socket_path)
-                {
-                    !metadata.file_type().is_socket()
-                } else {
-                    false
-                }
+                fs::metadata(&pw_socket_path).is_ok_and(|m| m.file_type().is_socket())
             });
 
-        if is_under_flatpak && is_pw_socket_unavailable {
+        if is_under_flatpak && !is_pw_socket_available {
             error!(
                 "Please visit the following page to find help on how to fix broken audio on flatpak."
             );
@@ -79,6 +73,9 @@ pub struct AudioInfo {
 
 struct Terminate;
 
+// fixme: Opening pavucontrol while audio is actively streaming
+//  will cause audio cut out for short time, 
+//  possibly related to fast state changes intorudced by pavucontrol
 static MIC_STREAMING: AtomicBool = AtomicBool::new(false);
 
 pub fn audio_loop(

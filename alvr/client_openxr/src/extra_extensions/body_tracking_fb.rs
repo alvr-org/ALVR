@@ -51,7 +51,6 @@ struct SystemPropertiesBodyTrackingFidelityMETA {
 enum BodyTrackingFidelityMode {
     Low = 1,
     High = 2,
-    MaxEnum = 0x7FFFFFFF,
 }
 
 type RequestBodyTrackingFidelityMETA =

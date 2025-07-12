@@ -41,9 +41,10 @@ pub fn try_load_pipewire() -> Result<()> {
         let is_pw_socket_unavailable =
             std::env::var("XDG_RUNTIME_DIR").is_ok_and(|xdg_runtime_dir| {
                 let pw_socket_path = Path::new(&xdg_runtime_dir).join("pipewire-0");
-                if let Ok(metadata) = fs::metadata(&pw_socket_path) {
-                    let file_type = metadata.file_type();
-                    !pw_socket_path.exists() || !file_type.is_socket()
+                if pw_socket_path.exists()
+                    && let Ok(metadata) = fs::metadata(&pw_socket_path)
+                {
+                    !metadata.file_type().is_socket()
                 } else {
                     false
                 }

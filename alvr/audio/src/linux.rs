@@ -3,7 +3,6 @@ use alvr_session::AudioBufferingConfig;
 use alvr_sockets::{StreamReceiver, StreamSender};
 
 use std::{
-    cmp,
     collections::VecDeque,
     io,
     path::Path,
@@ -328,17 +327,21 @@ fn fill_pw_buf(
             // TODO: Would it be more correct to try to split it up over multiple datas?
             // Or is the requested size already right for the first data chunk?
 
-            // total amount of samples across all channels
-            let sample_count = cmp::min(
-                cmp::min(requested * chan_count, slice.len() / chan_size),
-                samples.len() / chan_count,
-            );
+            let mut it = slice
+                .chunks_exact_mut(chan_size)
+                .take(requested * chan_count);
+            let pw_sample_count = it.len();
 
-            for (i, sample) in samples.drain(0..sample_count).enumerate() {
-                let start = i * chan_size;
+            let (front, back) = samples.as_slices();
+            let copy_sample =
+                |(chunk, sample): (&mut [u8], &f32)| chunk.copy_from_slice(&sample.to_le_bytes());
 
-                slice[start..start + chan_size].copy_from_slice(&sample.to_le_bytes());
-            }
+            // Split up so the compiler actually optimizes this properly
+            it.by_ref().zip(front).for_each(copy_sample);
+            it.zip(back).for_each(copy_sample);
+
+            let sample_count = pw_sample_count.min(samples.len());
+            drop(samples.drain(..sample_count));
 
             let chunk = pw_data.chunk_mut();
             *chunk.offset_mut() = 0;

@@ -367,21 +367,19 @@ pub extern "C" fn alvr_send_playspace(width: f32, height: f32) {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn alvr_send_active_interaction_profile(device_id: u64, profile_id: u64) {
-    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
-        context.send_active_interaction_profile(device_id, profile_id);
-    }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn alvr_send_custom_interaction_profile(
+pub extern "C" fn alvr_send_active_interaction_profile(
     device_id: u64,
+    profile_id: u64,
     input_ids_ptr: *const u64,
     input_ids_count: u64,
 ) {
     let input_ids = unsafe { slice::from_raw_parts(input_ids_ptr, input_ids_count as usize) };
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
-        context.send_custom_interaction_profile(device_id, input_ids.iter().cloned().collect());
+        context.send_active_interaction_profile(
+            device_id,
+            profile_id,
+            input_ids.iter().cloned().collect(),
+        );
     }
 }
 

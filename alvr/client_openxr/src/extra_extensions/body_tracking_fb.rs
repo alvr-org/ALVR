@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
+use crate::extra_extensions::get_instance_proc;
 use openxr::{self as xr, raw, sys};
 use std::{ptr, sync::LazyLock};
-use crate::extra_extensions::get_instance_proc;
 
 pub const META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME: &str = "XR_META_body_tracking_full_body";
 pub const META_BODY_TRACKING_FIDELITY_EXTENSION_NAME: &str = "XR_META_body_tracking_fidelity";

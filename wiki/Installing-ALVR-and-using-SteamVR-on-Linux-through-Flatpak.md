@@ -46,9 +46,28 @@ For native steam
 ```
 
 ### failed to create pipewire errors
-Use flatseal to add permissions to steam - in Filesystem section - "otherfiles" - add new entry with content: "xdg-run/pipewire-0"
-Should see some other permissions there "xdg-music:ro", "xdg-pictures:ro" and maybe more for other integration (like discord).
-TODO: add nice picture of what exactly this looks like, or shell command to do it
+This is most likely caused by missing pipewire socket which is required for audio to work. 
+
+It's also possible to have this error even after applying fixes bellow. Which might suggest issues on host system (mainly - missing pipewire, a requirement for audio to work)
+
+To fix the most likely cause, please follow guidance bellow
+
+#### Using terminal
+Open terminal and paste commands from bellow depending on type of your Flatpak Steam installation:
+
+On user installation of steam flatpak: `flatpak override --user --filesystem="xdg-run/pipewire-0" com.valvesoftware.Steam`
+
+On system installation of steam flatpak: `flatpak override --filesystem="xdg-run/pipewire-0" com.valvesoftware.Steam`
+
+Press enter to apply it and restart SteamVR (and close Flatpak Steam) from ALVR to apply the fix.
+
+#### Using Flatseal
+GUI app for managing Flatpak application permissions: [Flathub](https://flathub.org/apps/com.github.tchx84.Flatseal)
+1. Find Steam in app's list on the left, left click on it
+2. Inside Steam app on the right -> scroll down to Filesystem section
+3. In Filesystem section -> find Other files sub-section
+4. In Other files subsection -> add new entry with content: `xdg-run/pipewire-0`
+You should also see some other permissions there `xdg-music:ro`, `xdg-pictures:ro` and maybe more for other integration (like discord).
 
 ## Install
 

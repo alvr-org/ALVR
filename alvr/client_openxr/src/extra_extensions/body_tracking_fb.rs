@@ -2,8 +2,10 @@
 
 use openxr::{self as xr, raw, sys};
 use std::{ptr, sync::LazyLock};
+use crate::extra_extensions::get_instance_proc;
 
 pub const META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME: &str = "XR_META_body_tracking_full_body";
+pub const META_BODY_TRACKING_FIDELITY_EXTENSION_NAME: &str = "XR_META_body_tracking_fidelity";
 pub static BODY_JOINT_SET_FULL_BODY_META: LazyLock<xr::BodyJointSetFB> =
     LazyLock::new(|| xr::BodyJointSetFB::from_raw(1000274000));
 
@@ -35,10 +37,31 @@ pub struct BodyTrackerFB {
     ext_fns: raw::BodyTrackingFB,
 }
 
+static TYPE_SYSTEM_PROPERTIES_BODY_TRACKING_FIDELITY_META: LazyLock<xr::StructureType> =
+    LazyLock::new(|| xr::StructureType::from_raw(1000284001));
+
+#[repr(C)]
+struct SystemPropertiesBodyTrackingFidelityMETA {
+    ty: xr::StructureType,
+    next: *mut std::ffi::c_void,
+    supports_body_tracking_fidelity: sys::Bool32,
+}
+
+#[repr(C)]
+enum BodyTrackingFidelityMode {
+    BodyTrackingFidelityLowMeta = 1,
+    BodyTrackingFidelityHighMeta = 2,
+    BodyTrackingFidelityMaxEnumMeta = 0x7FFFFFFF,
+}
+
+type RequestBodyTrackingFidelityMETA =
+    unsafe extern "system" fn(sys::BodyTrackerFB, BodyTrackingFidelityMode) -> sys::Result;
+
 impl BodyTrackerFB {
     pub fn new<G>(
         session: &xr::Session<G>,
         body_joint_set: xr::BodyJointSetFB,
+        system: xr::SystemId,
     ) -> xr::Result<Self> {
         let ext_fns = session
             .instance()
@@ -58,6 +81,26 @@ impl BodyTrackerFB {
                 &info,
                 &mut handle,
             ))?;
+
+            let props = super::get_props(
+                &session,
+                system,
+                SystemPropertiesBodyTrackingFidelityMETA {
+                    ty: *TYPE_SYSTEM_PROPERTIES_BODY_TRACKING_FIDELITY_META,
+                    next: ptr::null_mut(),
+                    supports_body_tracking_fidelity: sys::FALSE,
+                },
+            )?;
+
+            if props.supports_body_tracking_fidelity == sys::TRUE {
+                let request: RequestBodyTrackingFidelityMETA =
+                    get_instance_proc(&session, "xrRequestBodyTrackingFidelityMETA")?;
+
+                super::xr_res(request(
+                    handle,
+                    BodyTrackingFidelityMode::BodyTrackingFidelityHighMeta, // Could probably be a configuration option, Quest 3 only.
+                ))?;
+            }
         };
 
         Ok(Self { handle, ext_fns })

@@ -565,7 +565,7 @@ impl InteractionContext {
             if config.meta.prefer_full_body {
                 self.body_source = check_ext_object(
                     "BodyTrackerFB (full set)",
-                    BodyTrackerFB::new(&self.xr_session, *BODY_JOINT_SET_FULL_BODY_META),
+                    BodyTrackerFB::new(&self.xr_session, *BODY_JOINT_SET_FULL_BODY_META, self.xr_system),
                 )
                 .map(|tracker| BodyTracker::Fb {
                     tracker,
@@ -575,7 +575,7 @@ impl InteractionContext {
             if self.body_source.is_none() {
                 self.body_source = check_ext_object(
                     "BodyTrackerFB (default set)",
-                    BodyTrackerFB::new(&self.xr_session, xr::BodyJointSetFB::DEFAULT),
+                    BodyTrackerFB::new(&self.xr_session, xr::BodyJointSetFB::DEFAULT, self.xr_system),
                 )
                 .map(|tracker| BodyTracker::Fb {
                     tracker,

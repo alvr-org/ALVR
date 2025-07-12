@@ -49,9 +49,9 @@ struct SystemPropertiesBodyTrackingFidelityMETA {
 
 #[repr(C)]
 enum BodyTrackingFidelityMode {
-    BodyTrackingFidelityLowMeta = 1,
-    BodyTrackingFidelityHighMeta = 2,
-    BodyTrackingFidelityMaxEnumMeta = 0x7FFFFFFF,
+    Low = 1,
+    High = 2,
+    MaxEnum = 0x7FFFFFFF,
 }
 
 type RequestBodyTrackingFidelityMETA =
@@ -83,7 +83,7 @@ impl BodyTrackerFB {
             ))?;
 
             let props = super::get_props(
-                &session,
+                session,
                 system,
                 SystemPropertiesBodyTrackingFidelityMETA {
                     ty: *TYPE_SYSTEM_PROPERTIES_BODY_TRACKING_FIDELITY_META,
@@ -94,11 +94,11 @@ impl BodyTrackerFB {
 
             if props.supports_body_tracking_fidelity == sys::TRUE {
                 let request: RequestBodyTrackingFidelityMETA =
-                    get_instance_proc(&session, "xrRequestBodyTrackingFidelityMETA")?;
+                    get_instance_proc(session, "xrRequestBodyTrackingFidelityMETA")?;
 
                 super::xr_res(request(
                     handle,
-                    BodyTrackingFidelityMode::BodyTrackingFidelityHighMeta, // Could probably be a configuration option, Quest 3 only.
+                    BodyTrackingFidelityMode::High, // Could probably be a configuration option, Quest 3 only.
                 ))?;
             }
         };

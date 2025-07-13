@@ -222,11 +222,6 @@ async fn http_api(
 
                         session_manager.update_client_list(hostname, action);
                     }
-                    ServerRequest::GetAudioDevices => {
-                        if let Ok(list) = crate::SESSION_MANAGER.read().get_audio_devices_list() {
-                            alvr_events::send_event(EventType::AudioDevices(list));
-                        }
-                    }
                     ServerRequest::CaptureFrame => {
                         connection_context
                             .events_sender

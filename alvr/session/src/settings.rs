@@ -899,9 +899,7 @@ pub struct FaceTrackingConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct BodyTrackingMetaConfig {
     pub prefer_full_body: bool,
-    #[schema(strings(
-        help = "Prefer active upper body tracking, Quest 3 only"
-    ))]
+    #[schema(strings(help = "Prefer active upper body tracking, Quest 3 only"))]
     pub prefer_high_fidelity: bool,
 }
 

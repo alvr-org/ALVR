@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use super::schema::{HigherOrderChoiceSchema, PresetModifierOperation};
-use crate::dashboard::components::{self, NestingInfo, SettingControl, INDENTATION_STEP};
+use crate::dashboard::components::{self, notice, NestingInfo, SettingControl, INDENTATION_STEP};
 use alvr_gui_common::theme::{
     log_colors::{INFO_LIGHT, WARNING_LIGHT},
     OK_GREEN,
@@ -14,6 +14,7 @@ use settings_schema::{SchemaEntry, SchemaNode};
 pub struct Control {
     name: String,
     help: Option<String>,
+    notice: Option<String>,
     steamvr_restart_flag: bool,
     real_time_flag: bool,
     modifiers: HashMap<String, Vec<PathValuePair>>,
@@ -25,7 +26,7 @@ impl Control {
     pub fn new(schema: HigherOrderChoiceSchema) -> Self {
         let name = components::get_display_name(&schema.name, &schema.strings);
         let help = schema.strings.get("help").cloned();
-        // let notice = entry.strings.get("notice").cloned();
+        let notice = schema.strings.get("notice").cloned();
         let steamvr_restart_flag = schema.flags.contains("steamvr-restart");
         let real_time_flag = schema.flags.contains("real-time");
 
@@ -86,6 +87,7 @@ impl Control {
         Self {
             name,
             help,
+            notice,
             steamvr_restart_flag,
             real_time_flag,
             modifiers,
@@ -168,6 +170,15 @@ impl Control {
                 );
             }
         });
+
+        if let Some(string) = &self.notice {
+            notice::notice(ui, string);
+
+            ui.end_row();
+
+            ui.label(" ");
+        }
+
         response = self
             .control
             .ui(ui, &mut self.preset_json, true)

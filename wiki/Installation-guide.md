@@ -37,7 +37,7 @@ To use your microphone in ALVR on Windows you need to install **Virtual Audio Ca
 ### **3. Configure ALVR**
 1. **Open ALVR** and go to **Settings**.
 2. Set **Headset Speaker** → **System Default**.
-3. Set **Headset Microphone** → **VB Cable**.
+3. Set **Headset Microphone** → **Automatic** or **Virtual Audio Cable**.
 
 ## Advanced installation
 

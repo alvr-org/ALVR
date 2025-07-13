@@ -304,12 +304,6 @@ pub struct Haptics {
     pub amplitude: f32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct AudioDevicesList {
-    pub output: Vec<String>,
-    pub input: Vec<String>,
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 pub enum PathSegment {
     Name(String),
@@ -395,7 +389,6 @@ pub enum ServerRequest {
         hostname: String,
         action: ClientListAction,
     },
-    GetAudioDevices,
     CaptureFrame,
     InsertIdr,
     StartRecording,

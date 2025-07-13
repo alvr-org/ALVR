@@ -11,7 +11,7 @@ use alvr_common::{
     error, info, ConnectionState,
 };
 use alvr_events::EventType;
-use alvr_packets::{AudioDevicesList, ClientListAction, PathSegment, PathValuePair};
+use alvr_packets::{ClientListAction, PathSegment, PathValuePair};
 use alvr_session::{ClientConnectionConfig, SessionConfig, Settings};
 use serde_json as json;
 use std::{
@@ -301,33 +301,6 @@ impl ServerSessionManager {
 
         for hostname in self.client_hostnames() {
             self.update_client_list(hostname.clone(), ClientListAction::UpdateCurrentIp(None));
-        }
-    }
-
-    pub fn get_audio_devices_list(&self) -> Result<AudioDevicesList> {
-        #[cfg(not(target_os = "linux"))]
-        {
-            use cpal::traits::{DeviceTrait, HostTrait};
-
-            let host = cpal::default_host();
-
-            let output = host
-                .output_devices()?
-                .filter_map(|d| d.name().ok())
-                .collect::<Vec<_>>();
-            let input = host
-                .input_devices()?
-                .filter_map(|d| d.name().ok())
-                .collect::<Vec<_>>();
-
-            Ok(AudioDevicesList { output, input })
-        }
-        #[cfg(target_os = "linux")]
-        {
-            Ok(AudioDevicesList {
-                input: vec![],
-                output: vec![],
-            })
         }
     }
 }

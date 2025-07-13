@@ -899,6 +899,10 @@ pub struct FaceTrackingConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct BodyTrackingMetaConfig {
     pub prefer_full_body: bool,
+    #[schema(strings(
+        help = "Prefer active upper body tracking, Quest 3 only"
+    ))]
+    pub prefer_high_fidelity: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
@@ -1889,6 +1893,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     sources: BodyTrackingSourcesConfigDefault {
                         meta: BodyTrackingMetaConfigDefault {
                             prefer_full_body: true,
+                            prefer_high_fidelity: true,
                         },
                         bd: BodyTrackingBDConfigDefault {
                             BodyTracking: BodyTrackingBDConfigBodyTrackingDefault {

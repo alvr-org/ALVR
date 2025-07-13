@@ -57,8 +57,9 @@ type RequestBodyTrackingFidelityMETA =
 impl BodyTrackerFB {
     pub fn new<G>(
         session: &xr::Session<G>,
-        body_joint_set: xr::BodyJointSetFB,
         system: xr::SystemId,
+        body_joint_set: xr::BodyJointSetFB,
+        prefer_high_fidelity: bool,
     ) -> xr::Result<Self> {
         let ext_fns = session
             .instance()
@@ -88,13 +89,15 @@ impl BodyTrackerFB {
                 &mut handle,
             ))?;
 
-            if body_tracking_fidelity_props.supports_body_tracking_fidelity == sys::TRUE {
+            if body_tracking_fidelity_props.supports_body_tracking_fidelity == sys::TRUE
+                && prefer_high_fidelity
+            {
                 let request_body_tracking_fidelity: RequestBodyTrackingFidelityMETA =
                     get_instance_proc(session, "xrRequestBodyTrackingFidelityMETA")?;
 
                 super::xr_res(request_body_tracking_fidelity(
                     handle,
-                    BodyTrackingFidelityMode::High, // Could probably be a configuration option, Quest 3 only.
+                    BodyTrackingFidelityMode::High, // Low is default behavior
                 ))?;
             }
         };

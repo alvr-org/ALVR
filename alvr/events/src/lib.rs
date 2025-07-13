@@ -1,5 +1,5 @@
 use alvr_common::{DeviceMotion, LogEntry, LogSeverity, Pose, info};
-use alvr_packets::{AudioDevicesList, ButtonValue, FaceData};
+use alvr_packets::{ButtonValue, FaceData};
 use alvr_session::SessionConfig;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, time::Duration};
@@ -87,7 +87,6 @@ pub enum EventType {
     Tracking(Box<TrackingEvent>),
     Buttons(Vec<ButtonEvent>),
     Haptics(HapticsEvent),
-    AudioDevices(AudioDevicesList),
     DriversList(Vec<PathBuf>),
     ServerRequestsSelfRestart,
     Adb(AdbEvent),
@@ -116,7 +115,6 @@ impl Event {
             EventType::Tracking(_) => "TRACKING".to_string(),
             EventType::Buttons(_) => "BUTTONS".to_string(),
             EventType::Haptics(_) => "HAPTICS".to_string(),
-            EventType::AudioDevices(_) => "AUDIO DEV".to_string(),
             EventType::DriversList(_) => "DRV LIST".to_string(),
             EventType::ServerRequestsSelfRestart => "RESTART".to_string(),
             EventType::Adb(_) => "ADB".to_string(),
@@ -133,7 +131,6 @@ impl Event {
             EventType::Tracking(tracking) => serde_json::to_string(tracking).unwrap(),
             EventType::Buttons(buttons) => serde_json::to_string(buttons).unwrap(),
             EventType::Haptics(haptics) => serde_json::to_string(haptics).unwrap(),
-            EventType::AudioDevices(devices) => serde_json::to_string(devices).unwrap(),
             EventType::DriversList(drivers) => serde_json::to_string(drivers).unwrap(),
             EventType::ServerRequestsSelfRestart => "Request for server restart".into(),
             EventType::Adb(adb) => serde_json::to_string(adb).unwrap(),

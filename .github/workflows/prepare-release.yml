@@ -13,7 +13,7 @@ on:
 
 jobs:
   prepare_release:
-    runs-on: windows-2019
+    runs-on: windows-2022
     outputs:
       release_ref: ${{ steps.output_ref.outputs.release_ref }}
       upload_url: ${{ steps.create_release.outputs.upload_url }}
@@ -62,12 +62,8 @@ jobs:
           commitish: ${{ steps.output_ref.outputs.release_ref }}
 
   build_windows_streamer:
-    runs-on: windows-2019
+    runs-on: windows-2022
     needs: [prepare_release]
-    env:
-      # For bindgen to find libclang.dll, we need to give it the path to the Visual Studio package.
-      # This is specific to the GitHub windows-2019 runner.
-      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
       - uses: actions/checkout@v2
         with:

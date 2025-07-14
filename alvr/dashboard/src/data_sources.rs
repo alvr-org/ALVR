@@ -239,15 +239,6 @@ impl DataSources {
 
                                     report_session_local(&context, &events_sender, session_manager);
                                 }
-                                ServerRequest::GetAudioDevices => {
-                                    if let Ok(list) = session_manager.get_audio_devices_list() {
-                                        report_event_local(
-                                            &context,
-                                            &events_sender,
-                                            EventType::AudioDevices(list),
-                                        )
-                                    }
-                                }
                                 ServerRequest::FirewallRules(action) => {
                                     if alvr_server_io::firewall_rules(action, &filesystem_layout)
                                         .is_ok()

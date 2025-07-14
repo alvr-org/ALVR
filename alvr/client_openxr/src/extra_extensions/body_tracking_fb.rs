@@ -96,19 +96,18 @@ impl BodyTrackerFB {
             ))?;
 
             if body_tracking_fidelity_props.supports_body_tracking_fidelity == sys::TRUE {
-                let maybe_set_fidelity_mode = || -> xr::Result<()> {
-                    let request_body_tracking_fidelity: RequestBodyTrackingFidelityMETA =
-                        get_instance_proc(session, "xrRequestBodyTrackingFidelityMETA")?;
-
-                    super::xr_res(request_body_tracking_fidelity(
-                        handle,
-                        preferred_fidelity_mode,
-                    ))?;
-                    Ok(())
-                };
-                if let Err(e) = maybe_set_fidelity_mode() {
+                if let Err(e) = get_instance_proc(session, "xrRequestBodyTrackingFidelityMETA")
+                    .and_then(
+                        |request_body_tracking_fidelity: RequestBodyTrackingFidelityMETA| {
+                            super::xr_res(request_body_tracking_fidelity(
+                                handle,
+                                preferred_fidelity_mode,
+                            ))
+                        },
+                    )
+                {
                     warn!("Failed to set Meta IOBT fidelity mode. Reason: {e}");
-                }
+                };
             }
         };
 

@@ -12,8 +12,6 @@ env:
 jobs:
   check-windows:
     runs-on: windows-latest
-    env:
-      LIBCLANG_PATH: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -153,8 +151,6 @@ jobs:
 
   check-msrv-windows:
     runs-on: windows-latest
-    env:
-      LIBCLANG_PATH: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
       - uses: actions/checkout@v4
         with:

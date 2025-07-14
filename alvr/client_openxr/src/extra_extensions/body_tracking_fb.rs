@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use crate::extra_extensions::get_instance_proc;
+use alvr_common::warn;
 use openxr::{self as xr, raw, sys};
 use std::{ptr, sync::LazyLock};
 
@@ -82,6 +83,11 @@ impl BodyTrackerFB {
                 supports_body_tracking_fidelity: sys::FALSE,
             },
         )?;
+        let preferred_fidelity_mode: BodyTrackingFidelityMode = if prefer_high_fidelity {
+            BodyTrackingFidelityMode::High
+        } else {
+            BodyTrackingFidelityMode::Low
+        };
         unsafe {
             super::xr_res((ext_fns.create_body_tracker)(
                 session.as_raw(),
@@ -89,16 +95,20 @@ impl BodyTrackerFB {
                 &mut handle,
             ))?;
 
-            if body_tracking_fidelity_props.supports_body_tracking_fidelity == sys::TRUE
-                && prefer_high_fidelity
-            {
-                let request_body_tracking_fidelity: RequestBodyTrackingFidelityMETA =
-                    get_instance_proc(session, "xrRequestBodyTrackingFidelityMETA")?;
+            if body_tracking_fidelity_props.supports_body_tracking_fidelity == sys::TRUE {
+                let maybe_set_fidelity_mode = || -> xr::Result<()> {
+                    let request_body_tracking_fidelity: RequestBodyTrackingFidelityMETA =
+                        get_instance_proc(session, "xrRequestBodyTrackingFidelityMETA")?;
 
-                super::xr_res(request_body_tracking_fidelity(
-                    handle,
-                    BodyTrackingFidelityMode::High, // Low is default behavior
-                ))?;
+                    super::xr_res(request_body_tracking_fidelity(
+                        handle,
+                        preferred_fidelity_mode,
+                    ))?;
+                    Ok(())
+                };
+                if let Err(e) = maybe_set_fidelity_mode() {
+                    warn!("Failed to set Meta IOBT fidelity mode. Reason: {e}");
+                }
             }
         };
 

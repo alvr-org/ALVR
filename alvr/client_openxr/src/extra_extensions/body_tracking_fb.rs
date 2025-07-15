@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use crate::extra_extensions::get_instance_proc;
-use alvr_common::warn;
 use openxr::{self as xr, raw, sys};
 use std::{ptr, sync::LazyLock};
 
@@ -96,18 +95,13 @@ impl BodyTrackerFB {
             ))?;
 
             if body_tracking_fidelity_props.supports_body_tracking_fidelity == sys::TRUE {
-                if let Err(e) = get_instance_proc(session, "xrRequestBodyTrackingFidelityMETA")
-                    .and_then(
-                        |request_body_tracking_fidelity: RequestBodyTrackingFidelityMETA| {
-                            super::xr_res(request_body_tracking_fidelity(
-                                handle,
-                                preferred_fidelity_mode,
-                            ))
-                        },
-                    )
-                {
-                    warn!("Failed to set Meta IOBT fidelity mode. Reason: {e}");
-                };
+                let request_body_tracking_fidelity: RequestBodyTrackingFidelityMETA =
+                    get_instance_proc(session, "xrRequestBodyTrackingFidelityMETA")?;
+                super::xr_res(request_body_tracking_fidelity(
+                    handle,
+                    preferred_fidelity_mode,
+                ))
+                .ok(); // This is very unlikely to fail as the void falls back to Low on an invalid call.
             }
         };
 

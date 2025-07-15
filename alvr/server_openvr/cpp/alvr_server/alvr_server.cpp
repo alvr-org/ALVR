@@ -512,6 +512,12 @@ void SetButton(unsigned long long buttonID, FfiButtonValue value) {
     }
 }
 
+void SetUserPresence(bool is_user_present) {
+    if (g_driver_provider.hmd) {
+        g_driver_provider.hmd->SetUserPresence(is_user_present);
+    }
+}
+
 void SetChaperoneArea(float areaWidth, float areaHeight) {
     _SetChaperoneArea(areaWidth, areaHeight);
 }

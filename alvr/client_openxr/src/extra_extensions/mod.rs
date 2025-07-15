@@ -9,6 +9,7 @@ mod motion_tracking_bd;
 mod multimodal_input;
 mod passthrough_fb;
 mod passthrough_htc;
+mod user_presence;
 
 pub use body_tracking_bd::*;
 pub use body_tracking_fb::*;
@@ -23,6 +24,7 @@ pub use passthrough_fb::*;
 pub use passthrough_htc::*;
 use std::ffi::CString;
 use std::mem;
+pub use user_presence::*;
 
 use openxr::{self as xr, sys};
 

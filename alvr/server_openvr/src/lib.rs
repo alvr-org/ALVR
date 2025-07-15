@@ -16,7 +16,7 @@ use bindings::*;
 
 use alvr_common::{
     BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
-    Pose, ViewParams, error,
+    Pose, ViewParams, error, info,
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
     warn,
@@ -292,6 +292,10 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                     }
 
                     unsafe { ShutdownSteamvr() };
+                }
+                ServerCoreEvent::UserPresence(is_user_present) => {
+                    info!("ServerCoreEvent::UserPresence: {is_user_present}");
+                    unsafe { SetUserPresence(is_user_present) }
                 }
             }
         }

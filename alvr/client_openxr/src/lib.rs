@@ -162,6 +162,7 @@ pub fn entry_point() {
     assert!(available_extensions.khr_opengl_es_enable);
 
     let mut exts = xr::ExtensionSet::default();
+    exts.ext_user_presence = available_extensions.ext_user_presence;
     exts.bd_controller_interaction = available_extensions.bd_controller_interaction;
     exts.ext_eye_gaze_interaction = available_extensions.ext_eye_gaze_interaction;
     exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
@@ -235,6 +236,12 @@ pub fn entry_point() {
 
         let (xr_session, mut xr_frame_waiter, mut xr_frame_stream) =
             create_session(&xr_instance, xr_system, &graphics_context);
+
+        if extra_extensions::supports_user_presence(&xr_session, xr_system) {
+            alvr_common::info!("user presence supported");
+        } else {
+            alvr_common::info!("user presence NOT supported");
+        }
 
         let views_config = xr_instance
             .enumerate_view_configuration_views(
@@ -320,6 +327,7 @@ pub fn entry_point() {
         let mut passthrough_layer = None;
 
         let mut event_storage = xr::EventDataBuffer::new();
+        let mut user_is_present = true;
         'render_loop: loop {
             while let Some(event) = xr_instance.poll_event(&mut event_storage).unwrap() {
                 match event {
@@ -378,6 +386,12 @@ pub fn entry_point() {
                     | xr::Event::PassthroughStateChangedFB(_) => {
                         // todo
                     }
+                    xr::Event::UserPresenceChangedEXT(event) => {
+                        alvr_common::info!("user present: {:?}", event.is_user_present());
+                        user_is_present = event.is_user_present();
+
+                        core_context.send_user_presence(event.is_user_present());
+                    }
                     _ => (),
                 }
             }
@@ -410,6 +424,8 @@ pub fn entry_point() {
                         }
 
                         stream_context = Some(context);
+
+                        core_context.send_user_presence(user_is_present);
                     }
                     ClientCoreEvent::StreamingStopped => {
                         if passthrough_layer.is_none() {

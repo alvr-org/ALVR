@@ -296,6 +296,10 @@ void Hmd::SetViewParams(const FfiViewParams params[2]) {
     );
 }
 
+void Hmd::SetUserPresence(bool isUserPresent) {
+    vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, isUserPresent, 0.0);
+}
+
 void Hmd::GetWindowBounds(int32_t* pnX, int32_t* pnY, uint32_t* pnWidth, uint32_t* pnHeight) {
     Debug(
         "Hmd::GetWindowBounds %dx%d - %dx%d\n",

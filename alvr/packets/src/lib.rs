@@ -195,6 +195,7 @@ pub enum ClientControlPacket {
     },
     Reserved(String),
     ReservedBuffer(Vec<u8>),
+    UserPresence(bool),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

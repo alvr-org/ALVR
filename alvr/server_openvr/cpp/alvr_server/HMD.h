@@ -29,6 +29,7 @@ public:
     void StartStreaming();
     void StopStreaming();
     void SetViewParams(const FfiViewParams params[2]);
+    void SetUserPresence(bool isUserPresent);
 
 private:
     vr::VRInputComponentHandle_t m_proximity;

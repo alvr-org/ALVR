@@ -199,14 +199,19 @@ impl StreamContext {
             config.upscaling.clone(),
         );
 
-        core_ctx.send_active_interaction_profile(
-            *HAND_LEFT_ID,
-            interaction_ctx.read().hands_interaction[0].controllers_profile_id,
-        );
-        core_ctx.send_active_interaction_profile(
-            *HAND_RIGHT_ID,
-            interaction_ctx.read().hands_interaction[1].controllers_profile_id,
-        );
+        {
+            let int_ctx = interaction_ctx.read();
+            core_ctx.send_active_interaction_profile(
+                *HAND_LEFT_ID,
+                int_ctx.hands_interaction[0].controllers_profile_id,
+                int_ctx.hands_interaction[0].input_ids.clone(),
+            );
+            core_ctx.send_active_interaction_profile(
+                *HAND_RIGHT_ID,
+                int_ctx.hands_interaction[1].controllers_profile_id,
+                int_ctx.hands_interaction[1].input_ids.clone(),
+            );
+        }
 
         let input_thread_running = Arc::new(RelaxedAtomic::new(false));
 

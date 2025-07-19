@@ -281,6 +281,7 @@ name = "alvr_dashboard"
 version = "21.0.0-dev08"
 dependencies = [
  "alvr_adb",
+ "alvr_audio",
  "alvr_common",
  "alvr_events",
  "alvr_filesystem",

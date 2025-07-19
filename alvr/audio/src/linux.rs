@@ -75,7 +75,7 @@ struct Terminate;
 
 // fixme: Opening pavucontrol while audio is actively streaming
 //  will cause audio cut out for short time,
-//  possibly related to fast state changes intorudced by pavucontrol
+//  possibly related to fast state changes caused by pavucontrol
 static MIC_STREAMING: AtomicBool = AtomicBool::new(false);
 
 pub fn audio_loop(

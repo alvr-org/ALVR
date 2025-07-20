@@ -64,6 +64,12 @@ pub fn clean_session() {
         session_ref.server_version = ALVR_VERSION.clone();
         session_ref.client_connections.clear();
         session_ref.session_settings.extra.open_setup_wizard = true;
+        session_ref
+            .session_settings
+            .extra
+            .new_version_popup
+            .content
+            .hide_while_version = ALVR_VERSION.to_string();
     }
 }
 

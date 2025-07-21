@@ -373,7 +373,12 @@ pub extern "C" fn alvr_send_active_interaction_profile(
     input_ids_ptr: *const u64,
     input_ids_count: u64,
 ) {
-    let input_ids = unsafe { slice::from_raw_parts(input_ids_ptr, input_ids_count as usize) };
+    let input_ids = if !input_ids_ptr.is_null() {
+        unsafe { slice::from_raw_parts(input_ids_ptr, input_ids_count as usize) }
+    } else {
+        &[]
+    };
+
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
         context.send_active_interaction_profile(
             device_id,

@@ -1068,20 +1068,17 @@ fn connection_pipeline(
                     RealTimeConfig::from_settings(settings)
                 };
 
-                if let Some(previous_config) = &previous_config
-                    && config != *previous_config
-                {
-                    thread::sleep(REAL_TIME_UPDATE_INTERVAL);
-                } else {
+                let same_config = previous_config.as_ref().is_some_and(|prev| config == *prev);
+                if !same_config {
                     previous_config = Some(config.clone());
 
                     control_sender
                         .lock()
                         .send(&ServerControlPacket::RealTimeConfig(config))
                         .ok();
-
-                    thread::sleep(REAL_TIME_UPDATE_INTERVAL);
                 }
+
+                thread::sleep(REAL_TIME_UPDATE_INTERVAL);
             }
         }
     });

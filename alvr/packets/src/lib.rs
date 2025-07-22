@@ -152,7 +152,7 @@ pub enum ServerControlPacket {
     DecoderConfig(DecoderInitializationConfig),
     Restarting,
     KeepAlive,
-    ServerPredictionAverage(Duration), // todo: remove
+    RealTimeConfig(RealTimeConfig),
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }
@@ -176,32 +176,24 @@ pub struct ButtonEntry {
     pub value: ButtonValue,
 }
 
-// to be de/serialized with ClientControlPacket::Reserved()
-#[derive(Serialize, Deserialize)]
-pub enum ReservedClientControlPacket {
-    CustomInteractionProfile {
-        device_id: u64,
-        input_ids: HashSet<u64>,
-    },
-}
-
-pub fn encode_reserved_client_control_packet(
-    packet: &ReservedClientControlPacket,
-) -> ClientControlPacket {
-    ClientControlPacket::Reserved(json::to_string(packet).unwrap())
-}
-
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
     PlayspaceSync(Option<Vec2>),
     RequestIdr,
     KeepAlive,
     StreamReady, // This flag notifies the server the client streaming socket is ready listening
-    LocalViewParams([ViewParams; 2]), // Head-to_view
+    LocalViewParams([ViewParams; 2]), // In relation to head
     Battery(BatteryInfo),
     Buttons(Vec<ButtonEntry>),
-    ActiveInteractionProfile { device_id: u64, profile_id: u64 },
-    Log { level: LogSeverity, message: String },
+    ActiveInteractionProfile {
+        device_id: u64,
+        profile_id: u64,
+        input_ids: HashSet<u64>,
+    },
+    Log {
+        level: LogSeverity,
+        message: String,
+    },
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }
@@ -349,23 +341,14 @@ pub enum ServerRequest {
 
 // Note: server sends a packet to the client at low frequency, binary encoding, without ensuring
 // compatibility between different versions, even if within the same major version.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct RealTimeConfig {
     pub passthrough: Option<PassthroughMode>,
     pub clientside_post_processing: Option<ClientsidePostProcessingConfig>,
+    pub ext_str: String,
 }
 
 impl RealTimeConfig {
-    pub fn encode(&self) -> Result<ServerControlPacket> {
-        Ok(ServerControlPacket::ReservedBuffer(bincode::serialize(
-            self,
-        )?))
-    }
-
-    pub fn decode(buffer: &[u8]) -> Result<Self> {
-        Ok(bincode::deserialize(buffer)?)
-    }
-
     pub fn from_settings(settings: &Settings) -> Self {
         Self {
             passthrough: settings.video.passthrough.clone().into_option(),
@@ -374,6 +357,7 @@ impl RealTimeConfig {
                 .clientside_post_processing
                 .clone()
                 .into_option(),
+            ext_str: String::new(), // No extensions for now
         }
     }
 }

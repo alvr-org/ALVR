@@ -16,8 +16,8 @@ use alvr_common::{
 };
 use alvr_packets::{
     AUDIO, ClientConnectionResult, ClientControlPacket, ClientStatistics, HAPTICS, Haptics,
-    RealTimeConfig, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData,
-    VIDEO, VideoPacketHeader, VideoStreamingCapabilities, VideoStreamingCapabilitiesExt,
+    STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData, VIDEO,
+    VideoPacketHeader, VideoStreamingCapabilities, VideoStreamingCapabilitiesExt,
 };
 use alvr_session::{SocketProtocol, settings_schema::Switch};
 use alvr_sockets::{
@@ -490,16 +490,18 @@ fn connection_pipeline(
                         set_hud_message(&event_queue, SERVER_RESTART_MESSAGE);
                         disconnect_notif.notify_one();
                     }
-                    Ok(ServerControlPacket::ReservedBuffer(buffer)) => {
-                        // NB: it's normal for deserialization to fail if server has different
-                        // version
-                        if let Ok(config) = RealTimeConfig::decode(&buffer) {
-                            event_queue
-                                .lock()
-                                .push_back(ClientCoreEvent::RealTimeConfig(config));
-                        }
+                    Ok(ServerControlPacket::RealTimeConfig(config)) => {
+                        event_queue
+                            .lock()
+                            .push_back(ClientCoreEvent::RealTimeConfig(config));
                     }
-                    Ok(_) => (),
+                    Ok(ServerControlPacket::StartStream) => {
+                        error!("Unexpected StartStream paceket");
+                    }
+                    Ok(ServerControlPacket::KeepAlive) => (),
+                    Ok(
+                        ServerControlPacket::Reserved(_) | ServerControlPacket::ReservedBuffer(_),
+                    ) => {}
                     Err(ConnectionError::TryAgain(_)) => {
                         if Instant::now() > disconnection_deadline {
                             info!("{CONNECTION_TIMEOUT_MESSAGE}");

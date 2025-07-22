@@ -20,9 +20,8 @@ use alvr_common::{
 use alvr_events::{AdbEvent, ButtonEvent, EventType};
 use alvr_packets::{
     AUDIO, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
-    HAPTICS, NegotiatedStreamingConfig, NegotiatedStreamingConfigExt, RealTimeConfig,
-    ReservedClientControlPacket, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING,
-    TrackingData, VIDEO, VideoPacketHeader,
+    HAPTICS, NegotiatedStreamingConfig, NegotiatedStreamingConfigExt, RealTimeConfig, STATISTICS,
+    ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData, VIDEO, VideoPacketHeader,
 };
 use alvr_session::{
     BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile,
@@ -1078,6 +1077,7 @@ fn connection_pipeline(
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
         move || {
+            let mut previous_config = None;
             while is_streaming(&client_hostname) {
                 let config = {
                     let session_manager_lock = SESSION_MANAGER.read();
@@ -1086,8 +1086,14 @@ fn connection_pipeline(
                     RealTimeConfig::from_settings(settings)
                 };
 
-                if let Ok(config) = config.encode() {
-                    control_sender.lock().send(&config).ok();
+                let same_config = previous_config.as_ref().is_some_and(|prev| config == *prev);
+                if !same_config {
+                    previous_config = Some(config.clone());
+
+                    control_sender
+                        .lock()
+                        .send(&ServerControlPacket::RealTimeConfig(config))
+                        .ok();
                 }
 
                 thread::sleep(REAL_TIME_UPDATE_INTERVAL);
@@ -1250,23 +1256,20 @@ fn connection_pipeline(
                             }
                         };
                     }
-                    ClientControlPacket::ActiveInteractionProfile { profile_id, .. } => {
+                    ClientControlPacket::ActiveInteractionProfile { input_ids, .. } => {
                         controller_button_mapping_manager = if let Switch::Enabled(config) =
                             &SESSION_MANAGER.read().settings().headset.controllers
                         {
                             if let Some(mappings) = &config.button_mappings {
                                 Some(ButtonMappingManager::new_manual(mappings))
-                            } else if let Some(profile_info) =
-                                CONTROLLER_PROFILE_INFO.get(&profile_id)
-                                && let Some(emulation_mode) = &controllers_emulation_mode
-                            {
-                                Some(ButtonMappingManager::new_automatic(
-                                    &profile_info.button_set,
-                                    emulation_mode,
-                                    &config.button_mapping_config,
-                                ))
                             } else {
-                                None
+                                controllers_emulation_mode.as_ref().map(|emulation_mode| {
+                                    ButtonMappingManager::new_automatic(
+                                        &input_ids,
+                                        emulation_mode,
+                                        &config.button_mapping_config,
+                                    )
+                                })
                             }
                         } else {
                             None
@@ -1275,45 +1278,8 @@ fn connection_pipeline(
                     ClientControlPacket::Log { level, message } => {
                         info!("Client {client_hostname}: [{level:?}] {message}")
                     }
-                    ClientControlPacket::Reserved(json_string) => {
-                        let reserved: ReservedClientControlPacket = match serde_json::from_str(
-                            &json_string,
-                        ) {
-                            Ok(reserved) => reserved,
-                            Err(e) => {
-                                info!(
-                                    "Failed to parse reserved packet: {e}. Packet: {json_string}"
-                                );
-                                continue;
-                            }
-                        };
-
-                        match reserved {
-                            ReservedClientControlPacket::CustomInteractionProfile {
-                                input_ids,
-                                ..
-                            } => {
-                                controller_button_mapping_manager = if let Switch::Enabled(config) =
-                                    &SESSION_MANAGER.read().settings().headset.controllers
-                                {
-                                    if let Some(mappings) = &config.button_mappings {
-                                        Some(ButtonMappingManager::new_manual(mappings))
-                                    } else {
-                                        controllers_emulation_mode.as_ref().map(|emulation_mode| {
-                                            ButtonMappingManager::new_automatic(
-                                                &input_ids,
-                                                emulation_mode,
-                                                &config.button_mapping_config,
-                                            )
-                                        })
-                                    }
-                                } else {
-                                    None
-                                };
-                            }
-                        }
-                    }
-                    _ => (),
+                    ClientControlPacket::KeepAlive | ClientControlPacket::StreamReady => (),
+                    ClientControlPacket::Reserved(_) | ClientControlPacket::ReservedBuffer(_) => (),
                 }
 
                 disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;

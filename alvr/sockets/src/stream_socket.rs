@@ -18,9 +18,13 @@
 
 use crate::backend::{SocketReader, SocketWriter, tcp, udp};
 use alvr_common::{
-    AnyhowToCon, ConResult, HandleTryAgain, ToCon, anyhow::Result, debug, parking_lot::Mutex,
+    AnyhowToCon, ConResult, HandleTryAgain, ToCon,
+    anyhow::{Result, bail},
+    debug,
+    parking_lot::Mutex,
 };
 use alvr_session::{DscpTos, SocketBufferSize, SocketProtocol};
+use bincode::{config, enc::write::SizeWriter, error::EncodeError};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
     cmp::Ordering,
@@ -116,14 +120,12 @@ impl<H> StreamSender<H> {
                 actual_buffer_size - packet_start_position,
             );
 
-            // todo: switch to little endian
             // todo: do not remove sizeof<u32> for packet length
-            sub_buffer[0..4]
-                .copy_from_slice(&((packet_length - mem::size_of::<u32>()) as u32).to_be_bytes());
-            sub_buffer[4..6].copy_from_slice(&self.stream_id.to_be_bytes());
-            sub_buffer[6..10].copy_from_slice(&self.next_packet_index.to_be_bytes());
-            sub_buffer[10..14].copy_from_slice(&(shards_count as u32).to_be_bytes());
-            sub_buffer[14..18].copy_from_slice(&(idx as u32).to_be_bytes());
+            sub_buffer[0..4].copy_from_slice(&(packet_length as u32).to_le_bytes());
+            sub_buffer[4..6].copy_from_slice(&self.stream_id.to_le_bytes());
+            sub_buffer[6..10].copy_from_slice(&self.next_packet_index.to_le_bytes());
+            sub_buffer[10..14].copy_from_slice(&(shards_count as u32).to_le_bytes());
+            sub_buffer[14..18].copy_from_slice(&(idx as u32).to_le_bytes());
 
             self.inner.lock().send(&sub_buffer[..packet_length])?;
         }
@@ -140,18 +142,39 @@ impl<H: Serialize> StreamSender<H> {
     pub fn get_buffer(&mut self, header: &H) -> Result<Buffer<H>> {
         let mut buffer = self.used_buffers.pop().unwrap_or_default();
 
-        let header_size = bincode::serialized_size(header)? as usize;
-        let hidden_offset = SHARD_PREFIX_SIZE + header_size;
+        let maybe_size = bincode::serde::encode_into_slice(
+            header,
+            &mut buffer[SHARD_PREFIX_SIZE..],
+            config::standard(),
+        );
 
-        if buffer.len() < hidden_offset {
-            buffer.resize(hidden_offset, 0);
-        }
+        let encoded_size = match maybe_size {
+            Ok(size) => size,
+            Err(EncodeError::UnexpectedEnd) => {
+                // Obtaining the size of the encoded data is expensive, as the data would need to be
+                // encoded twice. If the buffer is not large enough, we will pay for 3 encoding
+                // times, but this should happen rarely at steady state.
 
-        bincode::serialize_into(&mut buffer[SHARD_PREFIX_SIZE..hidden_offset], header)?;
+                let mut size_writer = SizeWriter::default();
+                bincode::serde::encode_into_writer(header, &mut size_writer, config::standard())?;
+
+                let packet_size = SHARD_PREFIX_SIZE + size_writer.bytes_written;
+                if buffer.len() < packet_size {
+                    buffer.resize(packet_size, 0);
+                }
+
+                bincode::serde::encode_into_slice(
+                    header,
+                    &mut buffer[SHARD_PREFIX_SIZE..],
+                    config::standard(),
+                )?
+            }
+            Err(e) => bail!("Failed to encode header: {}", e),
+        };
 
         Ok(Buffer {
             inner: buffer,
-            hidden_offset,
+            hidden_offset: SHARD_PREFIX_SIZE + encoded_size,
             length: 0,
             _phantom: PhantomData,
         })
@@ -179,11 +202,11 @@ impl<H> ReceiverData<H> {
 
 impl<H: DeserializeOwned> ReceiverData<H> {
     pub fn get(&self) -> Result<(H, &[u8])> {
-        let mut data: &[u8] = &self.buffer.as_ref().unwrap()[SHARD_PREFIX_SIZE..self.size];
-        // This will partially consume the slice, leaving only the actual payload
-        let header = bincode::deserialize_from(&mut data)?;
+        let data = &self.buffer.as_ref().unwrap()[SHARD_PREFIX_SIZE..self.size];
 
-        Ok((header, data))
+        let (header, decoded_size) = bincode::serde::decode_from_slice(data, config::standard())?;
+
+        Ok((header, &data[SHARD_PREFIX_SIZE + decoded_size..]))
     }
     pub fn get_header(&self) -> Result<H> {
         Ok(self.get()?.0)
@@ -316,9 +339,7 @@ impl StreamSocketBuilder {
             };
 
         Ok(StreamSocket {
-            // +4 is a workaround to retain compatibilty with old protocol
-            // todo: remove +4
-            max_packet_size: max_packet_size + 4,
+            max_packet_size,
             send_socket: Arc::new(Mutex::new(send_socket)),
             receive_socket,
             shard_recv_state: None,
@@ -361,9 +382,7 @@ impl StreamSocketBuilder {
             };
 
         Ok(StreamSocket {
-            // +4 is a workaround to retain compatibilty with old protocol
-            // todo: remove +4
-            max_packet_size: max_packet_size + 4,
+            max_packet_size,
             send_socket: Arc::new(Mutex::new(send_socket)),
             receive_socket,
             shard_recv_state: None,
@@ -467,14 +486,11 @@ impl StreamSocket {
                 return alvr_common::try_again();
             }
 
-            // todo: switch to little endian
-            // todo: do not remove sizeof<u32> for packet length
-            let shard_length = mem::size_of::<u32>()
-                + u32::from_be_bytes(bytes[0..4].try_into().unwrap()) as usize;
-            let stream_id = u16::from_be_bytes(bytes[4..6].try_into().unwrap());
-            let packet_index = u32::from_be_bytes(bytes[6..10].try_into().unwrap());
-            let shards_count = u32::from_be_bytes(bytes[10..14].try_into().unwrap()) as usize;
-            let shard_index = u32::from_be_bytes(bytes[14..18].try_into().unwrap()) as usize;
+            let shard_length = u32::from_le_bytes(bytes[0..4].try_into().unwrap()) as usize;
+            let stream_id = u16::from_le_bytes(bytes[4..6].try_into().unwrap());
+            let packet_index = u32::from_le_bytes(bytes[6..10].try_into().unwrap());
+            let shards_count = u32::from_le_bytes(bytes[10..14].try_into().unwrap()) as usize;
+            let shard_index = u32::from_le_bytes(bytes[14..18].try_into().unwrap()) as usize;
 
             self.shard_recv_state.insert(RecvState {
                 shard_length,

@@ -1,8 +1,12 @@
 use crate::backend::{SocketReader, SocketWriter, tcp};
 
 use super::CONTROL_PORT;
-use alvr_common::{ConResult, HandleTryAgain, ToCon, anyhow::Result};
+use alvr_common::{
+    ConResult, HandleTryAgain, ToCon,
+    anyhow::{Result, bail},
+};
 use alvr_session::SocketBufferSize;
+use bincode::{config, enc::write::SizeWriter, error::EncodeError};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
     marker::PhantomData,
@@ -24,17 +28,39 @@ fn framed_send<S: Serialize>(
     buffer: &mut Vec<u8>,
     packet: &S,
 ) -> Result<()> {
-    let serialized_size = bincode::serialized_size(&packet)? as usize;
-    let packet_size = serialized_size + FRAMED_PREFIX_LENGTH;
+    let maybe_size = bincode::serde::encode_into_slice(
+        packet,
+        &mut buffer[FRAMED_PREFIX_LENGTH..],
+        config::standard(),
+    );
 
-    if buffer.len() < packet_size {
-        buffer.resize(packet_size, 0);
-    }
+    let encoded_size = match maybe_size {
+        Ok(size) => size,
+        Err(EncodeError::UnexpectedEnd) => {
+            // Obtaining the size of the encoded data is expensive, as the data would need to be
+            // encoded twice. If the buffer is not large enough, we will pay for 3 encoding times,
+            // but this should happen rarely at steady state.
 
-    buffer[0..FRAMED_PREFIX_LENGTH].copy_from_slice(&(serialized_size as u32).to_be_bytes());
-    bincode::serialize_into(&mut buffer[FRAMED_PREFIX_LENGTH..packet_size], &packet)?;
+            let mut size_writer = SizeWriter::default();
+            bincode::serde::encode_into_writer(packet, &mut size_writer, config::standard())?;
 
-    socket.send(&buffer[0..packet_size])?;
+            let packet_size = FRAMED_PREFIX_LENGTH + size_writer.bytes_written;
+            if buffer.len() < packet_size {
+                buffer.resize(packet_size, 0);
+            }
+
+            bincode::serde::encode_into_slice(
+                packet,
+                &mut buffer[FRAMED_PREFIX_LENGTH..],
+                config::standard(),
+            )?
+        }
+        Err(e) => bail!("Failed to encode packet: {}", e),
+    };
+
+    buffer[0..FRAMED_PREFIX_LENGTH].copy_from_slice(&(encoded_size as u32).to_le_bytes());
+
+    socket.send(&buffer[0..FRAMED_PREFIX_LENGTH + encoded_size])?;
 
     Ok(())
 }
@@ -62,7 +88,7 @@ fn framed_recv<R: DeserializeOwned>(
         }
 
         let packet_length =
-            FRAMED_PREFIX_LENGTH + u32::from_be_bytes(payload_length_bytes) as usize;
+            FRAMED_PREFIX_LENGTH + u32::from_le_bytes(payload_length_bytes) as usize;
 
         if buffer.len() < packet_length {
             buffer.resize(packet_length, 0);
@@ -85,8 +111,11 @@ fn framed_recv<R: DeserializeOwned>(
         }
     }
 
-    let packet = bincode::deserialize(&buffer[FRAMED_PREFIX_LENGTH..recv_state_mut.packet_length])
-        .to_con()?;
+    let (packet, _) = bincode::serde::decode_from_slice(
+        &buffer[FRAMED_PREFIX_LENGTH..recv_state_mut.packet_length],
+        config::standard(),
+    )
+    .to_con()?;
 
     *maybe_recv_state = None;
 
@@ -168,7 +197,7 @@ impl ProtoControlSocket {
     }
 
     pub fn send<S: Serialize>(&mut self, packet: &S) -> Result<()> {
-        framed_send(&mut self.inner, &mut vec![], packet)
+        framed_send(&mut self.inner, &mut vec![0; FRAMED_PREFIX_LENGTH], packet)
     }
 
     pub fn recv<R: DeserializeOwned>(&mut self, timeout: Duration) -> ConResult<R> {
@@ -184,12 +213,12 @@ impl ProtoControlSocket {
         Ok((
             ControlSocketSender {
                 inner: self.inner.try_clone()?,
-                buffer: vec![],
+                buffer: vec![0; FRAMED_PREFIX_LENGTH],
                 _phantom: PhantomData,
             },
             ControlSocketReceiver {
                 inner: self.inner,
-                buffer: vec![],
+                buffer: vec![0; FRAMED_PREFIX_LENGTH],
                 recv_state: None,
                 _phantom: PhantomData,
             },

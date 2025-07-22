@@ -24,7 +24,6 @@ alvr_session.workspace = true
 alvr_sockets.workspace = true
 
 ash = "0.38"
-bincode = "1"
 bytes = "1"
 chrono = "0.4"
 fern = "0.7"

@@ -748,7 +748,7 @@ fn connection_pipeline(
                 ) {
                     // VoiceMeeter and Custom devices may have arbitrary internal routing.
                     // Therefore, we cannot detect the loopback issue without knowing the routing.
-                    if alvr_audio::is_same_device(&game_audio_device, &sink)
+                    if game_audio_config.disable_loopback_detection && alvr_audio::is_same_device(&game_audio_device, &sink)
                         || alvr_audio::is_same_device(&game_audio_device, &source)
                     {
                         con_bail!("Game audio and microphone cannot point to the same device!");

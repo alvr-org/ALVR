@@ -811,6 +811,9 @@ pub struct GameAudioConfig {
     pub mute_when_streaming: bool,
 
     pub buffering: AudioBufferingConfig,
+
+    #[schema(strings(display_name = "Disable loopback detection, debug only !!!!!!!"))]
+    pub disable_loopback_detection: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1840,6 +1843,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         average_buffering_ms: 50,
                         batch_ms: 10,
                     },
+                    disable_loopback_detection: true,
                 },
             },
             microphone: SwitchDefault {

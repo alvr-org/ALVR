@@ -28,6 +28,36 @@ jobs:
 
       - run: cargo xtask clippy --ci
 
+  artifact-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: crazy-max/ghaction-chocolatey@v1
+        with:
+          args: install zip unzip pkgconfiglite
+
+      - name: Build and package ALVR
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          cargo xtask prepare-deps --platform windows --gpl --ci
+          cargo xtask build-streamer --gpl
+          cd build
+          zip -r9X alvr_streamer_windows .
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alvr_streamer_windows_debug.zip
+          path: ./build/alvr_streamer_windows.zip
+    
+
   check-linux-latest:
     runs-on: ubuntu-latest
     steps:

@@ -9,7 +9,7 @@ pub use crate::windows::*;
 
 use alvr_common::{
     ConnectionError, ToAny,
-    anyhow::{self, Context, Result, anyhow, bail},
+    anyhow::{self, Context, Result, bail},
     info,
     parking_lot::Mutex,
 };
@@ -19,25 +19,8 @@ use cpal::{
     BufferSize, Device, Host, Sample, SampleFormat, StreamConfig,
     traits::{DeviceTrait, HostTrait, StreamTrait},
 };
-use rodio::{OutputStream, Source};
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::{Arc, LazyLock},
-    thread,
-    time::Duration,
-};
-
-static VIRTUAL_MICROPHONE_PAIRS: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
-    [
-        ("Line 1", "Line 1"),
-        ("CABLE Input", "CABLE Output"),
-        ("VoiceMeeter Input", "VoiceMeeter Output"),
-        ("VoiceMeeter Aux Input", "VoiceMeeter Aux Output"),
-        ("VoiceMeeter VAIO3 Input", "VoiceMeeter VAIO3 Output"),
-    ]
-    .into_iter()
-    .collect()
-});
+use rodio::{OutputStreamBuilder, Source};
+use std::{collections::VecDeque, sync::Arc, thread, time::Duration};
 
 fn device_from_custom_config(
     host: &Host,
@@ -66,29 +49,9 @@ fn device_from_custom_config(
     })
 }
 
-// Input and output devices may have the same name.
-fn microphone_pair_from_sink_name(host: &Host, sink_name: &str) -> Result<(Device, Device)> {
-    let sink = host
-        .output_devices()?
-        .find(|d| d.name().unwrap_or_default().contains(sink_name))
-        .context("Virtual Audio Cable, VB-CABLE or VoiceMeeter not found. Please install or reinstall one")?;
-
-    if let Some(source_name) = VIRTUAL_MICROPHONE_PAIRS.get(sink_name) {
-        Ok((
-            sink,
-            host.input_devices()?
-                .find(|d| d.name().unwrap_or_default().contains(source_name))
-                .context("Matching output microphone not found. Did you rename it?")?,
-        ))
-    } else {
-        unreachable!("Invalid argument")
-    }
-}
-
 #[allow(dead_code)]
 pub struct AudioDevice {
     inner: Device,
-    is_output: bool,
 }
 
 #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
@@ -103,10 +66,7 @@ impl AudioDevice {
             Some(config) => device_from_custom_config(&host, config, true)?,
         };
 
-        Ok(Self {
-            inner: device,
-            is_output: true,
-        })
+        Ok(Self { inner: device })
     }
 
     pub fn new_input(config: Option<CustomAudioDeviceConfig>) -> Result<Self> {
@@ -119,57 +79,63 @@ impl AudioDevice {
             Some(config) => device_from_custom_config(&host, &config, false)?,
         };
 
-        Ok(Self {
-            inner: device,
-            is_output: false,
-        })
+        Ok(Self { inner: device })
     }
 
     // returns (sink, source)
     pub fn new_virtual_microphone_pair(config: MicrophoneDevicesConfig) -> Result<(Self, Self)> {
+        // No-op on Windows (this is windows specific code)
         let host = cpal::default_host();
 
-        let (sink, source) = match config {
+        let (sink_name, source_name) = match config {
             MicrophoneDevicesConfig::Automatic => {
-                let mut pair = Err(anyhow!("No microphones found"));
-                for sink_name in VIRTUAL_MICROPHONE_PAIRS.keys() {
-                    pair = microphone_pair_from_sink_name(&host, sink_name);
-                    if pair.is_ok() {
-                        break;
-                    }
-                }
+                // NOTE: This will iterate over all devices for every option it tries, if the audio
+                // code is slow, change that first
+                return [
+                    MicrophoneDevicesConfig::VAC,
+                    MicrophoneDevicesConfig::VBCable,
+                    MicrophoneDevicesConfig::VoiceMeeter,
+                    MicrophoneDevicesConfig::VoiceMeeterAux,
+                    MicrophoneDevicesConfig::VoiceMeeterVaio3,
+                ]
+                .into_iter()
+                .find_map(|cable_type| AudioDevice::new_virtual_microphone_pair(cable_type).ok())
+                .context("No microphones found");
+            }
 
-                pair?
-            }
-            MicrophoneDevicesConfig::VAC => microphone_pair_from_sink_name(&host, "Line 1")?,
-            MicrophoneDevicesConfig::VBCable => {
-                microphone_pair_from_sink_name(&host, "CABLE Input")?
-            }
-            MicrophoneDevicesConfig::VoiceMeeter => {
-                microphone_pair_from_sink_name(&host, "VoiceMeeter Input")?
-            }
+            MicrophoneDevicesConfig::VAC => ("Line 1", "Line 1"),
+            MicrophoneDevicesConfig::VBCable => ("CABLE Input", "CABLE Output"),
+            MicrophoneDevicesConfig::VoiceMeeter => ("VoiceMeeter Input", "VoiceMeeter Output"),
             MicrophoneDevicesConfig::VoiceMeeterAux => {
-                microphone_pair_from_sink_name(&host, "VoiceMeeter Aux Input")?
+                ("VoiceMeeter Aux Input", "VoiceMeeter Aux Output")
             }
             MicrophoneDevicesConfig::VoiceMeeterVaio3 => {
-                microphone_pair_from_sink_name(&host, "VoiceMeeter VAIO3 Input")?
+                ("VoiceMeeter VAIO3 Input", "VoiceMeeter VAIO3 Output")
             }
-            MicrophoneDevicesConfig::Custom { sink, source } => (
-                device_from_custom_config(&host, &sink, true)?,
-                device_from_custom_config(&host, &source, false)?,
-            ),
+
+            MicrophoneDevicesConfig::Custom { sink, source } => {
+                return Ok((
+                    Self {
+                        inner: device_from_custom_config(&host, &sink, true)?,
+                    },
+                    Self {
+                        inner: device_from_custom_config(&host, &source, false)?,
+                    },
+                ));
+            }
         };
 
-        Ok((
-            Self {
-                inner: sink,
-                is_output: true,
-            },
-            Self {
-                inner: source,
-                is_output: false,
-            },
-        ))
+        let sink = host
+            .output_devices()?
+            .find(|d| d.name().unwrap_or_default().contains(sink_name))
+            .context("Virtual Audio Cable, VB-CABLE or VoiceMeeter not found. Please install or reinstall one")?;
+
+        let source = host
+            .input_devices()?
+            .find(|d| d.name().unwrap_or_default().contains(source_name))
+            .context("Matching output microphone not found. Did you rename it?")?;
+
+        Ok((Self { inner: sink }, Self { inner: source }))
     }
 
     pub fn input_sample_rate(&self) -> Result<u32> {
@@ -180,16 +146,6 @@ impl AudioDevice {
             .or_else(|_| self.inner.default_output_config())?;
 
         Ok(config.sample_rate().0)
-    }
-}
-
-pub fn is_same_device(device1: &AudioDevice, device2: &AudioDevice) -> bool {
-    if let Ok(name1) = device1.inner.name()
-        && let Ok(name2) = device2.inner.name()
-    {
-        name1 == name2 && device1.is_output == device2.is_output
-    } else {
-        false
     }
 }
 
@@ -373,7 +329,7 @@ pub fn record_audio_blocking(
     )?;
 
     #[cfg(windows)]
-    if mute && device.is_output {
+    if mute && device.inner.supports_output() {
         crate::windows::set_mute_windows_device(device, true).ok();
     }
 
@@ -390,7 +346,7 @@ pub fn record_audio_blocking(
     }
 
     #[cfg(windows)]
-    if mute && device.is_output {
+    if mute && device.inner.supports_output() {
         set_mute_windows_device(device, false).ok();
     }
 
@@ -542,7 +498,7 @@ struct StreamingSource {
 }
 
 impl Source for StreamingSource {
-    fn current_frame_len(&self) -> Option<usize> {
+    fn current_span_len(&self) -> Option<usize> {
         None
     }
 
@@ -598,16 +554,16 @@ pub fn play_audio_loop(
 
     let sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
 
-    let (_stream, handle) = OutputStream::try_from_device(&device.inner)?;
+    let stream = OutputStreamBuilder::from_device(device.inner.clone())?.open_stream()?;
 
-    handle.play_raw(StreamingSource {
+    stream.mixer().add(StreamingSource {
         sample_buffer: Arc::clone(&sample_buffer),
         current_batch: vec![],
         current_batch_cursor: 0,
         channels_count: channels_count as _,
         sample_rate,
         batch_frames_count,
-    })?;
+    });
 
     receive_samples_loop(
         is_running,

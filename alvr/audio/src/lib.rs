@@ -20,7 +20,7 @@ use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     BufferSize, Device, Host, Sample, SampleFormat, StreamConfig,
 };
-use rodio::{OutputStream, Source};
+use rodio::{OutputStreamBuilder, Source};
 use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,
@@ -541,7 +541,7 @@ struct StreamingSource {
 }
 
 impl Source for StreamingSource {
-    fn current_frame_len(&self) -> Option<usize> {
+    fn current_span_len(&self) -> Option<usize> {
         None
     }
 
@@ -597,16 +597,16 @@ pub fn play_audio_loop(
 
     let sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
 
-    let (_stream, handle) = OutputStream::try_from_device(&device.inner)?;
+    let stream = OutputStreamBuilder::from_device(device.inner.clone())?.open_stream()?;
 
-    handle.play_raw(StreamingSource {
+    stream.mixer().add(StreamingSource {
         sample_buffer: Arc::clone(&sample_buffer),
         current_batch: vec![],
         current_batch_cursor: 0,
         channels_count: channels_count as _,
         sample_rate,
         batch_frames_count,
-    })?;
+    });
 
     receive_samples_loop(
         is_running,

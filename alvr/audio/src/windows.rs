@@ -1,20 +1,20 @@
-use crate::AudioDevice;
 use alvr_common::anyhow::{Result, bail};
+use cpal::{Device, platform::DeviceInner};
 use rodio::DeviceTrait;
 use windows::{
     Win32::{
         Devices::FunctionDiscovery::PKEY_Device_FriendlyName,
         Media::Audio::{
             DEVICE_STATE_ACTIVE, Endpoints::IAudioEndpointVolume, IMMDevice, IMMDeviceEnumerator,
-            IMMEndpoint, MMDeviceEnumerator, eAll, eRender,
+            MMDeviceEnumerator, eCapture, eRender,
         },
         System::Com::{self, CLSCTX_ALL, COINIT_MULTITHREADED, STGM_READ},
     },
-    core::{GUID, Interface},
+    core::GUID,
 };
 
-fn get_windows_device(device: &AudioDevice) -> Result<IMMDevice> {
-    let device_name = device.inner.name()?;
+fn get_windows_device(device: &Device) -> Result<IMMDevice> {
+    let device_name = device.name()?;
 
     unsafe {
         // This will fail the second time is called, ignore the error
@@ -23,8 +23,13 @@ fn get_windows_device(device: &AudioDevice) -> Result<IMMDevice> {
         let imm_device_enumerator: IMMDeviceEnumerator =
             Com::CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)?;
 
+        let direction = if device.supports_output() {
+            eRender
+        } else {
+            eCapture
+        };
         let imm_device_collection =
-            imm_device_enumerator.EnumAudioEndpoints(eAll, DEVICE_STATE_ACTIVE)?;
+            imm_device_enumerator.EnumAudioEndpoints(direction, DEVICE_STATE_ACTIVE)?;
 
         for i in 0..imm_device_collection.GetCount()? {
             let imm_device = imm_device_collection.Item(i)?;
@@ -34,9 +39,7 @@ fn get_windows_device(device: &AudioDevice) -> Result<IMMDevice> {
                 .GetValue(&PKEY_Device_FriendlyName)?
                 .to_string();
 
-            let is_output = imm_device.cast::<IMMEndpoint>()?.GetDataFlow()? == eRender;
-
-            if imm_device_name == device_name && device.is_output == is_output {
+            if imm_device_name == device_name {
                 return Ok(imm_device);
             }
         }
@@ -45,7 +48,7 @@ fn get_windows_device(device: &AudioDevice) -> Result<IMMDevice> {
     }
 }
 
-pub fn get_windows_device_id(device: &AudioDevice) -> Result<String> {
+pub fn get_windows_device_id(device: &Device) -> Result<String> {
     unsafe {
         let imm_device = get_windows_device(device)?;
 
@@ -58,7 +61,7 @@ pub fn get_windows_device_id(device: &AudioDevice) -> Result<String> {
 }
 
 // device must be an output device
-pub fn set_mute_windows_device(device: &AudioDevice, mute: bool) -> Result<()> {
+pub fn set_mute_windows_device(device: &Device, mute: bool) -> Result<()> {
     unsafe {
         let imm_device = get_windows_device(device)?;
 
@@ -68,4 +71,11 @@ pub fn set_mute_windows_device(device: &AudioDevice, mute: bool) -> Result<()> {
     }
 
     Ok(())
+}
+
+pub fn is_same_device(device1: &Device, device2: &Device) -> bool {
+    let DeviceInner::Wasapi(dev1) = device1.as_inner();
+    let DeviceInner::Wasapi(dev2) = device2.as_inner();
+
+    dev1 == dev2
 }

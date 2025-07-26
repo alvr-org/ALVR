@@ -17,6 +17,3 @@ encoding_rs_io = "0.1"
 dirs = "6"
 runas = "^1.2" # version 1.1 is broken
 serde_json = "1"
-
-[target.'cfg(not(target_os = "linux"))'.dependencies]
-cpal = "0.15"

@@ -696,12 +696,12 @@ fn connection_pipeline(
         initial_settings.video.preferred_codec
     };
 
-    #[cfg_attr(target_os = "linux", allow(unused_variables))]
-    let game_audio_sample_rate = if let Switch::Enabled(game_audio_config) =
-        &initial_settings.audio.game_audio
-    {
-        #[cfg(not(target_os = "linux"))]
-        {
+    #[cfg(not(target_os = "windows"))]
+    let game_audio_sample_rate = 44100;
+
+    #[cfg(target_os = "windows")]
+    let game_audio_sample_rate =
+        if let Switch::Enabled(game_audio_config) = &initial_settings.audio.game_audio {
             let game_audio_device =
                 alvr_audio::AudioDevice::new_output(game_audio_config.device.as_ref()).to_con()?;
 
@@ -727,12 +727,9 @@ fn connection_pipeline(
             }
 
             game_audio_device.input_sample_rate().to_con()?
-        }
-        #[cfg(target_os = "linux")]
-        44100
-    } else {
-        0
-    };
+        } else {
+            0
+        };
 
     let wired = client_ip.is_loopback();
 

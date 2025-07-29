@@ -1,12 +1,9 @@
 use crate::backend::{SocketReader, SocketWriter, tcp};
 
 use super::CONTROL_PORT;
-use alvr_common::{
-    ConResult, HandleTryAgain, ToCon,
-    anyhow::{Result, bail},
-};
+use alvr_common::{ConResult, HandleTryAgain, ToCon, anyhow::Result};
 use alvr_session::SocketBufferSize;
-use bincode::{config, enc::write::SizeWriter, error::EncodeError};
+use bincode::config;
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
     marker::PhantomData,
@@ -18,45 +15,14 @@ use std::{
 // This corresponds to the length of the payload
 const FRAMED_PREFIX_LENGTH: usize = mem::size_of::<u32>();
 
-struct RecvState {
-    packet_length: usize, // contains length prefix
-    packet_cursor: usize, // counts also the length prefix bytes
-}
-
 fn framed_send<S: Serialize>(
     socket: &mut TcpStream,
     buffer: &mut Vec<u8>,
     packet: &S,
 ) -> Result<()> {
-    let maybe_size = bincode::serde::encode_into_slice(
-        packet,
-        &mut buffer[FRAMED_PREFIX_LENGTH..],
-        config::standard(),
-    );
+    buffer.resize(FRAMED_PREFIX_LENGTH, 0);
 
-    let encoded_size = match maybe_size {
-        Ok(size) => size,
-        Err(EncodeError::UnexpectedEnd) => {
-            // Obtaining the size of the encoded data is expensive, as the data would need to be
-            // encoded twice. If the buffer is not large enough, we will pay for 3 encoding times,
-            // but this should happen rarely at steady state.
-
-            let mut size_writer = SizeWriter::default();
-            bincode::serde::encode_into_writer(packet, &mut size_writer, config::standard())?;
-
-            let packet_size = FRAMED_PREFIX_LENGTH + size_writer.bytes_written;
-            if buffer.len() < packet_size {
-                buffer.resize(packet_size, 0);
-            }
-
-            bincode::serde::encode_into_slice(
-                packet,
-                &mut buffer[FRAMED_PREFIX_LENGTH..],
-                config::standard(),
-            )?
-        }
-        Err(e) => bail!("Failed to encode packet: {}", e),
-    };
+    let encoded_size = bincode::serde::encode_into_std_write(packet, buffer, config::standard())?;
 
     buffer[0..FRAMED_PREFIX_LENGTH].copy_from_slice(&(encoded_size as u32).to_le_bytes());
 
@@ -68,13 +34,13 @@ fn framed_send<S: Serialize>(
 fn framed_recv<R: DeserializeOwned>(
     socket: &mut TcpStream,
     buffer: &mut Vec<u8>,
-    maybe_recv_state: &mut Option<RecvState>,
+    recv_cursor: &mut Option<usize>,
     timeout: Duration,
 ) -> ConResult<R> {
     let deadline = Instant::now() + timeout;
 
-    let recv_state_mut = if let Some(state) = maybe_recv_state {
-        state
+    let recv_cursor_ref = if let Some(cursor) = recv_cursor {
+        cursor
     } else {
         let mut payload_length_bytes = [0; FRAMED_PREFIX_LENGTH];
 
@@ -90,34 +56,26 @@ fn framed_recv<R: DeserializeOwned>(
         let packet_length =
             FRAMED_PREFIX_LENGTH + u32::from_le_bytes(payload_length_bytes) as usize;
 
-        if buffer.len() < packet_length {
-            buffer.resize(packet_length, 0);
-        }
+        buffer.resize(packet_length, 0);
 
-        maybe_recv_state.insert(RecvState {
-            packet_length,
-            packet_cursor: 0,
-        })
+        recv_cursor.insert(0)
     };
 
     loop {
-        recv_state_mut.packet_cursor +=
-            socket.recv(&mut buffer[recv_state_mut.packet_cursor..recv_state_mut.packet_length])?;
+        *recv_cursor_ref += socket.recv(&mut buffer[*recv_cursor_ref..])?;
 
-        if recv_state_mut.packet_cursor == recv_state_mut.packet_length {
+        if *recv_cursor_ref == buffer.len() {
             break;
         } else if Instant::now() > deadline {
             return alvr_common::try_again();
         }
     }
 
-    let (packet, _) = bincode::serde::decode_from_slice(
-        &buffer[FRAMED_PREFIX_LENGTH..recv_state_mut.packet_length],
-        config::standard(),
-    )
-    .to_con()?;
+    let (packet, _) =
+        bincode::serde::decode_from_slice(&buffer[FRAMED_PREFIX_LENGTH..], config::standard())
+            .to_con()?;
 
-    *maybe_recv_state = None;
+    *recv_cursor = None;
 
     Ok(packet)
 }
@@ -137,7 +95,7 @@ impl<S: Serialize> ControlSocketSender<S> {
 pub struct ControlSocketReceiver<T> {
     inner: TcpStream,
     buffer: Vec<u8>,
-    recv_state: Option<RecvState>,
+    recv_cursor: Option<usize>,
     _phantom: PhantomData<T>,
 }
 
@@ -146,7 +104,7 @@ impl<R: DeserializeOwned> ControlSocketReceiver<R> {
         framed_recv(
             &mut self.inner,
             &mut self.buffer,
-            &mut self.recv_state,
+            &mut self.recv_cursor,
             timeout,
         )
     }
@@ -219,7 +177,7 @@ impl ProtoControlSocket {
             ControlSocketReceiver {
                 inner: self.inner,
                 buffer: vec![0; FRAMED_PREFIX_LENGTH],
-                recv_state: None,
+                recv_cursor: None,
                 _phantom: PhantomData,
             },
         ))

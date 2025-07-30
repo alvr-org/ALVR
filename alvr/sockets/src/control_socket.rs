@@ -155,7 +155,7 @@ impl ProtoControlSocket {
     }
 
     pub fn send<S: Serialize>(&mut self, packet: &S) -> Result<()> {
-        framed_send(&mut self.inner, &mut vec![0; FRAMED_PREFIX_LENGTH], packet)
+        framed_send(&mut self.inner, &mut vec![], packet)
     }
 
     pub fn recv<R: DeserializeOwned>(&mut self, timeout: Duration) -> ConResult<R> {

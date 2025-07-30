@@ -132,10 +132,7 @@ impl<H> StreamSender<H> {
 
 impl<H: Serialize> StreamSender<H> {
     pub fn get_buffer(&mut self, header: &H) -> Result<Buffer<H>> {
-        let mut buffer = self
-            .used_buffers
-            .pop()
-            .unwrap_or(vec![0; SHARD_PREFIX_SIZE]);
+        let mut buffer = self.used_buffers.pop().unwrap_or_default();
 
         buffer.resize(SHARD_PREFIX_SIZE, 0);
 

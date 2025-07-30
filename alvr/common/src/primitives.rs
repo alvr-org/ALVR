@@ -91,7 +91,7 @@ impl DeviceMotion {
 
         DeviceMotion {
             pose: Pose {
-                orientation: delta_orientation * self.pose.orientation,
+                orientation: self.pose.orientation * delta_orientation,
                 position: self.pose.position + delta_position,
             },
             linear_velocity: self.linear_velocity,

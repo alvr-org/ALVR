@@ -192,8 +192,6 @@ impl TrackingManager {
                 motion.linear_velocity += motion
                     .angular_velocity
                     .cross(motion.pose.orientation * config.pose_offset.position);
-                motion.angular_velocity =
-                    motion.pose.orientation.conjugate() * motion.angular_velocity;
 
                 fn cutoff(v: Vec3, threshold: f32) -> Vec3 {
                     if v.length_squared() > threshold * threshold {

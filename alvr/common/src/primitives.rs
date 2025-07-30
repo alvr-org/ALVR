@@ -91,11 +91,19 @@ impl DeviceMotion {
 
         DeviceMotion {
             pose: Pose {
-                orientation: self.pose.orientation * delta_orientation,
+                orientation: delta_orientation * self.pose.orientation,
                 position: self.pose.position + delta_position,
             },
             linear_velocity: self.linear_velocity,
             angular_velocity: self.angular_velocity,
+        }
+    }
+
+    pub fn to_local(&self) -> Self {
+        Self {
+            pose: self.pose,
+            linear_velocity: self.pose.orientation.conjugate() * self.linear_velocity,
+            angular_velocity: self.pose.orientation.conjugate() * self.angular_velocity,
         }
     }
 }

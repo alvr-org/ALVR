@@ -101,7 +101,8 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                         let ffi_head_motion = if let Some(motion) =
                             context.get_device_motion(*HEAD_ID, poll_timestamp)
                         {
-                            let motion = motion.predict(poll_timestamp, target_timestamp).to_local();
+                            let motion =
+                                motion.predict(poll_timestamp, target_timestamp).to_local();
                             let predicted_motion = motion.predict(poll_timestamp, target_timestamp);
                             let local_motion = predicted_motion.to_local();
 

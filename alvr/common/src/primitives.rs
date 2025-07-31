@@ -99,7 +99,7 @@ impl DeviceMotion {
         }
     }
 
-    pub fn to_local(&self) -> Self {
+    pub fn to_local_velocity(&self) -> Self {
         Self {
             pose: self.pose,
             linear_velocity: self.pose.orientation.conjugate() * self.linear_velocity,

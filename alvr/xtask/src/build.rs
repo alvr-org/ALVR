@@ -220,6 +220,7 @@ pub fn build_streamer(
         let ufw = afs::crate_dir("xtask").join("firewall/ufw-alvr");
 
         // copy linux specific firewalls
+        sh.create_dir(build_layout.firewall_script()).unwrap();
         sh.copy_file(firewall_script, build_layout.firewall_script())
             .unwrap();
         sh.copy_file(firewalld, build_layout.firewalld_config())

@@ -70,7 +70,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
     uint32_t height
 ) 
     : v_ctx(v_ctx) {
-    vk_frame_ctx = std::make_unique<alvr::VkFrameCtx>(vk_ctx, nullptr);
+    // vk_frame_ctx = std::make_unique<alvr::VkFrameCtx>(v_ctx, nullptr);
 
     auto input_frame_ctx = (AVHWFramesContext*)vk_frame_ctx->ctx->data;
     assert(input_frame_ctx->sw_format == AV_PIX_FMT_BGRA);
@@ -202,7 +202,7 @@ void alvr::EncodePipelineNvEnc::PushFrame(uint64_t targetTimestampNs, bool idr) 
 
     vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eBottomOfPipe;
 
-    VkSubmitInfo submitInfo = {};
+    vk::SubmitInfo submitInfo = {};
     // submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.pNext = &timelineInfo;
     // submitInfo.waitSemaphoreCount = 1;

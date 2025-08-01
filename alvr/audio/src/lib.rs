@@ -302,7 +302,7 @@ pub fn record_audio_blocking(
 
                 if is_running() {
                     let mut buffer = sender.get_buffer(&()).unwrap();
-                    buffer.get_range_mut(0, data.len()).copy_from_slice(&data);
+                    buffer.get_range_mut(0..data.len()).copy_from_slice(&data);
                     sender.send(buffer).ok();
                 } else {
                     *state.lock() = AudioRecordState::ShouldStop;

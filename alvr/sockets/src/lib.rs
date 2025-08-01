@@ -1,4 +1,3 @@
-mod backend;
 mod control_socket;
 mod stream_socket;
 

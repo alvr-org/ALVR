@@ -245,7 +245,7 @@ fn create_speaker_stream(
                     // no need to do conversions
                     let mut buffer = sender.get_buffer(&()).unwrap();
                     buffer
-                        .get_range_mut(0, size)
+                        .get_range_mut(0..size)
                         .copy_from_slice(&data[0..size]);
                     sender.send(buffer).ok();
                 }

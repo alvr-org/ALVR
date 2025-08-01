@@ -5,8 +5,7 @@ use crate::{
     SESSION_MANAGER, ServerCoreContext, ServerCoreEvent, logging_backend, tracking::HandType,
 };
 use alvr_common::{
-    Fov, Pose, log,
-    once_cell::sync::Lazy,
+    AlvrCodecType, AlvrPose, AlvrViewParams, log,
     parking_lot::{Mutex, RwLock},
 };
 use alvr_packets::{ButtonEntry, ButtonValue, Haptics};
@@ -17,60 +16,13 @@ use std::{
     path::PathBuf,
     ptr,
     str::FromStr,
-    sync::mpsc,
+    sync::{LazyLock, mpsc},
     time::{Duration, Instant},
 };
 
-static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> =
-    Lazy::new(|| RwLock::new(None));
-static EVENTS_RECEIVER: Lazy<Mutex<Option<mpsc::Receiver<ServerCoreEvent>>>> =
-    Lazy::new(|| Mutex::new(None));
-static BUTTONS_QUEUE: Lazy<Mutex<VecDeque<Vec<ButtonEntry>>>> =
-    Lazy::new(|| Mutex::new(VecDeque::new()));
-
-#[repr(C)]
-pub struct AlvrFov {
-    /// Negative, radians
-    pub left: f32,
-    /// Positive, radians
-    pub right: f32,
-    /// Positive, radians
-    pub up: f32,
-    /// Negative, radians
-    pub down: f32,
-}
-
-#[repr(C)]
-pub struct AlvrQuat {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
-    pub w: f32,
-}
-
-impl Default for AlvrQuat {
-    fn default() -> Self {
-        Self {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-            w: 1.0,
-        }
-    }
-}
-
-#[repr(u8)]
-pub enum AlvrCodecType {
-    H264 = 0,
-    Hevc = 1,
-    AV1 = 2,
-}
-
-#[repr(C)]
-pub struct AlvrPose {
-    orientation: AlvrQuat,
-    position: [f32; 3],
-}
+static SERVER_CORE_CONTEXT: RwLock<Option<ServerCoreContext>> = RwLock::new(None);
+static EVENTS_RECEIVER: Mutex<Option<mpsc::Receiver<ServerCoreEvent>>> = Mutex::new(None);
+static BUTTONS_QUEUE: Mutex<VecDeque<Vec<ButtonEntry>>> = Mutex::new(VecDeque::new());
 
 #[repr(C)]
 pub struct AlvrDeviceMotion {
@@ -112,13 +64,8 @@ pub enum AlvrEvent {
     ClientDisconnected,
     Battery(AlvrBatteryInfo),
     PlayspaceSync([f32; 2]),
-    ViewsConfig {
-        local_view_transform: [AlvrPose; 2],
-        fov: [AlvrFov; 2],
-    },
-    TrackingUpdated {
-        sample_timestamp_ns: u64,
-    },
+    LocalViewParams([AlvrViewParams; 2]), // In relation to head
+    TrackingUpdated { sample_timestamp_ns: u64 },
     ButtonsUpdated,
     RequestIDR,
     CaptureFrame,
@@ -144,27 +91,6 @@ pub struct AlvrDeviceConfig {
 pub struct AlvrDynamicEncoderParams {
     bitrate_bps: f32,
     framerate: f32,
-}
-
-fn pose_to_capi(pose: &Pose) -> AlvrPose {
-    AlvrPose {
-        orientation: AlvrQuat {
-            x: pose.orientation.x,
-            y: pose.orientation.y,
-            z: pose.orientation.z,
-            w: pose.orientation.w,
-        },
-        position: pose.position.to_array(),
-    }
-}
-
-fn fov_to_capi(fov: &Fov) -> AlvrFov {
-    AlvrFov {
-        left: fov.left,
-        right: fov.right,
-        up: fov.up,
-        down: fov.down,
-    }
 }
 
 fn string_to_c_str(buffer: *mut c_char, value: &str) -> u64 {
@@ -235,8 +161,8 @@ pub unsafe extern "C" fn alvr_dbg_encoder(string_ptr: *const c_char) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn alvr_log_periodically(tag_ptr: *const c_char, message_ptr: *const c_char) {
     const INTERVAL: Duration = Duration::from_secs(1);
-    static LASTEST_TAG_TIMESTAMPS: Lazy<Mutex<HashMap<String, Instant>>> =
-        Lazy::new(|| Mutex::new(HashMap::new()));
+    static LASTEST_TAG_TIMESTAMPS: LazyLock<Mutex<HashMap<String, Instant>>> =
+        LazyLock::new(|| Mutex::new(HashMap::new()));
 
     let tag = unsafe { CStr::from_ptr(tag_ptr) }.to_string_lossy();
     let message = unsafe { CStr::from_ptr(message_ptr) }.to_string_lossy();
@@ -322,59 +248,54 @@ pub extern "C" fn alvr_start_connection() {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: u64) -> bool {
-    if let Some(receiver) = &*EVENTS_RECEIVER.lock() {
-        if let Ok(event) = receiver.recv_timeout(Duration::from_nanos(timeout_ns)) {
-            match event {
-                ServerCoreEvent::ClientConnected => unsafe {
-                    *out_event = AlvrEvent::ClientConnected;
-                },
-                ServerCoreEvent::ClientDisconnected => unsafe {
-                    *out_event = AlvrEvent::ClientDisconnected;
-                },
-                ServerCoreEvent::Battery(battery) => unsafe {
-                    *out_event = AlvrEvent::Battery(AlvrBatteryInfo {
-                        device_id: battery.device_id,
-                        gauge_value: battery.gauge_value,
-                        is_plugged: battery.is_plugged,
-                    });
-                },
-                ServerCoreEvent::PlayspaceSync(bounds) => unsafe {
-                    *out_event = AlvrEvent::PlayspaceSync(bounds.to_array())
-                },
-                ServerCoreEvent::ViewsConfig(config) => unsafe {
-                    *out_event = AlvrEvent::ViewsConfig {
-                        local_view_transform: [
-                            pose_to_capi(&config.local_view_transforms[0]),
-                            pose_to_capi(&config.local_view_transforms[1]),
-                        ],
-                        fov: [fov_to_capi(&config.fov[0]), fov_to_capi(&config.fov[1])],
-                    }
-                },
-                ServerCoreEvent::Tracking { sample_timestamp } => unsafe {
-                    *out_event = AlvrEvent::TrackingUpdated {
-                        sample_timestamp_ns: sample_timestamp.as_nanos() as u64,
-                    };
-                },
-                ServerCoreEvent::Buttons(entries) => {
-                    BUTTONS_QUEUE.lock().push_back(entries);
-                    unsafe { *out_event = AlvrEvent::ButtonsUpdated };
-                }
-                ServerCoreEvent::RequestIDR => unsafe { *out_event = AlvrEvent::RequestIDR },
-                ServerCoreEvent::CaptureFrame => unsafe { *out_event = AlvrEvent::CaptureFrame },
-                ServerCoreEvent::RestartPending => unsafe {
-                    *out_event = AlvrEvent::RestartPending;
-                },
-                ServerCoreEvent::ShutdownPending => unsafe {
-                    *out_event = AlvrEvent::ShutdownPending;
-                },
-                ServerCoreEvent::GameRenderLatencyFeedback(_)
-                | ServerCoreEvent::SetOpenvrProperty { .. } => {} // implementation not needed
+    if let Some(receiver) = &*EVENTS_RECEIVER.lock()
+        && let Ok(event) = receiver.recv_timeout(Duration::from_nanos(timeout_ns))
+    {
+        match event {
+            ServerCoreEvent::ClientConnected => unsafe {
+                *out_event = AlvrEvent::ClientConnected;
+            },
+            ServerCoreEvent::ClientDisconnected => unsafe {
+                *out_event = AlvrEvent::ClientDisconnected;
+            },
+            ServerCoreEvent::Battery(battery) => unsafe {
+                *out_event = AlvrEvent::Battery(AlvrBatteryInfo {
+                    device_id: battery.device_id,
+                    gauge_value: battery.gauge_value,
+                    is_plugged: battery.is_plugged,
+                });
+            },
+            ServerCoreEvent::PlayspaceSync(bounds) => unsafe {
+                *out_event = AlvrEvent::PlayspaceSync(bounds.to_array())
+            },
+            ServerCoreEvent::LocalViewParams(config) => unsafe {
+                *out_event = AlvrEvent::LocalViewParams([
+                    alvr_common::to_capi_view_params(&config[0]),
+                    alvr_common::to_capi_view_params(&config[1]),
+                ])
+            },
+            ServerCoreEvent::Tracking { poll_timestamp } => unsafe {
+                *out_event = AlvrEvent::TrackingUpdated {
+                    sample_timestamp_ns: poll_timestamp.as_nanos() as u64,
+                };
+            },
+            ServerCoreEvent::Buttons(entries) => {
+                BUTTONS_QUEUE.lock().push_back(entries);
+                unsafe { *out_event = AlvrEvent::ButtonsUpdated };
             }
-
-            true
-        } else {
-            false
+            ServerCoreEvent::RequestIDR => unsafe { *out_event = AlvrEvent::RequestIDR },
+            ServerCoreEvent::CaptureFrame => unsafe { *out_event = AlvrEvent::CaptureFrame },
+            ServerCoreEvent::RestartPending => unsafe {
+                *out_event = AlvrEvent::RestartPending;
+            },
+            ServerCoreEvent::ShutdownPending => unsafe {
+                *out_event = AlvrEvent::ShutdownPending;
+            },
+            ServerCoreEvent::GameRenderLatencyFeedback(_)
+            | ServerCoreEvent::SetOpenvrProperty { .. } => {} // implementation not needed
         }
+
+        true
     } else {
         false
     }
@@ -387,22 +308,19 @@ pub unsafe extern "C" fn alvr_get_device_motion(
     sample_timestamp_ns: u64,
     out_motion: *mut AlvrDeviceMotion,
 ) -> bool {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-        if let Some(motion) =
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read()
+        && let Some(motion) =
             context.get_device_motion(device_id, Duration::from_nanos(sample_timestamp_ns))
-        {
-            unsafe {
-                *out_motion = AlvrDeviceMotion {
-                    pose: pose_to_capi(&motion.pose),
-                    linear_velocity: motion.linear_velocity.to_array(),
-                    angular_velocity: motion.angular_velocity.to_array(),
-                };
-            }
-
-            true
-        } else {
-            false
+    {
+        unsafe {
+            *out_motion = AlvrDeviceMotion {
+                pose: alvr_common::to_capi_pose(&motion.pose),
+                linear_velocity: motion.linear_velocity.to_array(),
+                angular_velocity: motion.angular_velocity.to_array(),
+            };
         }
+
+        true
     } else {
         false
     }
@@ -416,22 +334,20 @@ pub unsafe extern "C" fn alvr_get_hand_skeleton(
     sample_timestamp_ns: u64,
     out_skeleton: *mut AlvrPose,
 ) -> bool {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-        if let Some(skeleton) = context.get_hand_skeleton(
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read()
+        && let Some(skeleton) = context.get_hand_skeleton(
             match hand_type {
                 AlvrHandType::Left => HandType::Left,
                 AlvrHandType::Right => HandType::Right,
             },
             Duration::from_nanos(sample_timestamp_ns),
-        ) {
-            for (i, joint_pose) in skeleton.iter().enumerate() {
-                unsafe { *out_skeleton.add(i) = pose_to_capi(joint_pose) };
-            }
-
-            true
-        } else {
-            false
+        )
+    {
+        for (i, joint_pose) in skeleton.iter().enumerate() {
+            unsafe { *out_skeleton.add(i) = alvr_common::to_capi_pose(joint_pose) };
         }
+
+        true
     } else {
         false
     }
@@ -470,15 +386,15 @@ pub extern "C" fn alvr_send_haptics(
     frequency: f32,
     amplitude: f32,
 ) {
-    if let Ok(duration) = Duration::try_from_secs_f32(duration_s) {
-        if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-            context.send_haptics(Haptics {
-                device_id,
-                duration,
-                frequency,
-                amplitude,
-            });
-        }
+    if let Ok(duration) = Duration::try_from_secs_f32(duration_s)
+        && let Some(context) = &*SERVER_CORE_CONTEXT.read()
+    {
+        context.send_haptics(Haptics {
+            device_id,
+            duration,
+            frequency,
+            amplitude,
+        });
     }
 }
 
@@ -503,16 +419,31 @@ pub unsafe extern "C" fn alvr_set_video_config_nals(
     }
 }
 
+/// global_view_params must be an array of length 2
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn alvr_send_video_nal(
     timestamp_ns: u64,
+    global_view_params: *const AlvrViewParams,
+    is_idr: bool,
     buffer_ptr: *mut u8,
     len: i32,
-    is_idr: bool,
 ) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         let buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
-        context.send_video_nal(Duration::from_nanos(timestamp_ns), buffer.to_vec(), is_idr);
+
+        let global_view_params = unsafe {
+            [
+                alvr_common::from_capi_view_params(&(*global_view_params)),
+                alvr_common::from_capi_view_params(&(*global_view_params.add(1))),
+            ]
+        };
+
+        context.send_video_nal(
+            Duration::from_nanos(timestamp_ns),
+            global_view_params,
+            is_idr,
+            buffer.to_vec(),
+        );
     }
 }
 
@@ -521,17 +452,15 @@ pub unsafe extern "C" fn alvr_send_video_nal(
 pub unsafe extern "C" fn alvr_get_dynamic_encoder_params(
     out_params: *mut AlvrDynamicEncoderParams,
 ) -> bool {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-        if let Some(params) = context.get_dynamic_encoder_params() {
-            unsafe {
-                (*out_params).bitrate_bps = params.bitrate_bps;
-                (*out_params).framerate = params.framerate;
-            }
-
-            true
-        } else {
-            false
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read()
+        && let Some(params) = context.get_dynamic_encoder_params()
+    {
+        unsafe {
+            (*out_params).bitrate_bps = params.bitrate_bps;
+            (*out_params).framerate = params.framerate;
         }
+
+        true
     } else {
         false
     }
@@ -560,13 +489,12 @@ pub extern "C" fn alvr_report_present(timestamp_ns: u64, offset_ns: u64) {
 /// Retr  un true if a valid value is provided
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn alvr_duration_until_next_vsync(out_ns: *mut u64) -> bool {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-        if let Some(duration) = context.duration_until_next_vsync() {
-            unsafe { *out_ns = duration.as_nanos() as u64 };
-            true
-        } else {
-            false
-        }
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read()
+        && let Some(duration) = context.duration_until_next_vsync()
+    {
+        unsafe { *out_ns = duration.as_nanos() as u64 };
+
+        true
     } else {
         false
     }

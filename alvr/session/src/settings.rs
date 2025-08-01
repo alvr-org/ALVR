@@ -213,14 +213,7 @@ pub struct HDRConfig {
         help = "If the client has no preference, enables compositing VR layers to an RGBA float16 framebuffer, and doing sRGB/YUV conversions in shader code."
     ))]
     #[schema(flag = "steamvr-restart")]
-    pub enable_hdr: bool,
-
-    #[schema(strings(
-        display_name = "Override for HDR",
-        help = "The server will override the headset client's preference for HDR."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub server_overrides_enable_hdr: bool,
+    pub enable: Option<bool>,
 
     #[schema(strings(
         display_name = "Force HDR sRGB Correction",
@@ -285,42 +278,15 @@ CABAC produces better compression but it's significantly slower and may lead to 
         help = "Sets the encoder to use 10 bits per channel instead of 8, if the client has no preference. Does not work on Linux with Nvidia"
     ))]
     #[schema(flag = "steamvr-restart")]
-    pub use_10bit: bool,
-
-    #[schema(strings(
-        display_name = "Override for 10-bit encoding",
-        help = "The server will override the headset client's preference for 10-bit encoding."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub server_overrides_use_10bit: bool,
-
-    #[schema(strings(
-        display_name = "Full range color",
-        help = "Sets the encoder to encode full range RGB (0-255) instead of limited/video range RGB (16-235), if the client has no preference"
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub use_full_range: bool,
-
-    #[schema(strings(
-        display_name = "Override for full range color",
-        help = "The server will override the headset client's preference for full range color."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub server_overrides_use_full_range: bool,
+    pub use_10bit: Option<bool>,
 
     #[schema(strings(
         display_name = "Encoding Gamma",
         help = "To prioritize darker pixels at the expense of potentially additional banding in midtones, set to 2.2. To allow the encoder to decide priority on its own, set to 1.0."
     ))]
     #[schema(flag = "steamvr-restart")]
-    pub encoding_gamma: f32,
+    pub encoding_gamma: Option<f32>,
 
-    #[schema(strings(
-        display_name = "Override for encoding gamma",
-        help = "The server will override the headset client's preference for encoding gamma."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub server_overrides_encoding_gamma: bool,
     #[schema(strings(display_name = "HDR"))]
     #[schema(flag = "steamvr-restart")]
     pub hdr: HDRConfig,
@@ -888,7 +854,7 @@ pub struct AudioConfig {
         windows,
         schema(strings(
             display_name = "Headset microphone",
-            notice = r"To be able to use the microphone on Windows, you need to install VB-Cable or VoiceMeeter"
+            notice = r"To be able to use the microphone on Windows, you need to install Virtual Audio Cable"
         ))
     )]
     #[cfg_attr(not(windows), schema(strings(display_name = "Headset microphone")))]
@@ -910,12 +876,9 @@ pub enum HeadsetEmulationMode {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-pub struct FaceTrackingSourcesConfig {
-    pub eye_tracking_fb: bool,
-    pub face_tracking_fb: bool,
-    pub eye_expressions_htc: bool,
-    pub lip_expressions_htc: bool,
-    pub face_tracking_pico: bool,
+pub enum FaceTrackingSourcesConfig {
+    PreferEyeTrackingOnly,
+    PreferFullFaceTracking,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -933,22 +896,11 @@ pub struct FaceTrackingConfig {
     pub sink: FaceTrackingSinkConfig,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-pub struct BodyTrackingSourcesConfig {
-    pub body_tracking_fb: Switch<BodyTrackingFBConfig>,
-    #[schema(strings(
-        help = "It's recommended to set Tracking Mode to Full-Body Tracking in Motion Tracker app settings on your Pico headset."
-    ))]
-    pub body_tracking_bd: Switch<BodyTrackingBDConfig>,
-    // todo:
-    // pub detached_controllers_as_feet: bool,
-    // unfortunately multimodal is incompatible with body tracking. To make this usable we need to
-    // at least add support for an android client as 3dof waist tracker.
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-pub struct BodyTrackingFBConfig {
-    pub full_body: bool,
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Default)]
+pub struct BodyTrackingMetaConfig {
+    pub prefer_full_body: bool,
+    #[schema(strings(help = "Prefer active upper body tracking, Quest 3 only"))]
+    pub prefer_high_fidelity: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
@@ -965,8 +917,15 @@ pub enum BodyTrackingBDConfig {
         ))]
         prompt_calibration_on_start: bool,
     },
+
     #[schema(strings(display_name = "Object Tracking"))]
     ObjectTracking,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+pub struct BodyTrackingSourcesConfig {
+    pub meta: BodyTrackingMetaConfig,
+    pub bd: BodyTrackingBDConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1732,16 +1691,20 @@ pub fn session_settings_default() -> SettingsDefault {
                 entropy_coding: EntropyCodingDefault {
                     variant: EntropyCodingDefaultVariant::Cavlc,
                 },
-                use_10bit: false,
-                server_overrides_use_10bit: false,
-                use_full_range: true,
-                server_overrides_use_full_range: false,
-                encoding_gamma: 1.0,
-                server_overrides_encoding_gamma: false,
+                use_10bit: OptionalDefault {
+                    set: false,
+                    content: false,
+                },
+                encoding_gamma: OptionalDefault {
+                    set: false,
+                    content: 1.0,
+                },
                 hdr: HDRConfigDefault {
                     gui_collapsed: true,
-                    enable_hdr: false,
-                    server_overrides_enable_hdr: false,
+                    enable: OptionalDefault {
+                        set: false,
+                        content: false,
+                    },
                     force_hdr_srgb_correction: false,
                     clamp_hdr_extended_range: false,
                 },
@@ -1913,11 +1876,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: FaceTrackingConfigDefault {
                     gui_collapsed: true,
                     sources: FaceTrackingSourcesConfigDefault {
-                        eye_tracking_fb: true,
-                        face_tracking_fb: true,
-                        eye_expressions_htc: true,
-                        lip_expressions_htc: true,
-                        face_tracking_pico: true,
+                        variant: FaceTrackingSourcesConfigDefaultVariant::PreferFullFaceTracking,
                     },
                     sink: FaceTrackingSinkConfigDefault {
                         VrchatEyeOsc: FaceTrackingSinkConfigVrchatEyeOscDefault { port: 9000 },
@@ -1930,19 +1889,16 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: BodyTrackingConfigDefault {
                     gui_collapsed: true,
                     sources: BodyTrackingSourcesConfigDefault {
-                        body_tracking_fb: SwitchDefault {
-                            enabled: true,
-                            content: BodyTrackingFBConfigDefault { full_body: true },
+                        meta: BodyTrackingMetaConfigDefault {
+                            prefer_full_body: true,
+                            prefer_high_fidelity: true,
                         },
-                        body_tracking_bd: SwitchDefault {
-                            enabled: true,
-                            content: BodyTrackingBDConfigDefault {
-                                BodyTracking: BodyTrackingBDConfigBodyTrackingDefault {
-                                    high_accuracy: true,
-                                    prompt_calibration_on_start: true,
-                                },
-                                variant: BodyTrackingBDConfigDefaultVariant::BodyTracking,
+                        bd: BodyTrackingBDConfigDefault {
+                            BodyTracking: BodyTrackingBDConfigBodyTrackingDefault {
+                                high_accuracy: true,
+                                prompt_calibration_on_start: true,
                             },
+                            variant: BodyTrackingBDConfigDefaultVariant::BodyTracking,
                         },
                     },
                     sink: BodyTrackingSinkConfigDefault {

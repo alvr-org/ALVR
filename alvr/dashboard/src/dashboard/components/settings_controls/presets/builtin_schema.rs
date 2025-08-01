@@ -231,7 +231,7 @@ shutterring and high encode/decode latency!"
 }
 
 #[cfg(target_os = "linux")]
-pub fn game_audio_schema(_: Vec<String>) -> PresetSchemaNode {
+pub fn game_audio_schema() -> PresetSchemaNode {
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
         name: "Headset speaker".into(),
         strings: HashMap::new(),
@@ -293,60 +293,42 @@ pub fn microphone_schema() -> PresetSchemaNode {
 }
 
 #[cfg(not(target_os = "linux"))]
-pub fn game_audio_schema(devices: Vec<String>) -> PresetSchemaNode {
-    let mut game_audio_options = vec![
-        HigherOrderChoiceOption {
-            display_name: "Disabled".into(),
-            modifiers: vec![bool_modifier(
-                "session_settings.audio.game_audio.enabled",
-                false,
-            )],
-            content: None,
-        },
-        HigherOrderChoiceOption {
-            display_name: "System Default".to_owned(),
-            modifiers: vec![
-                bool_modifier("session_settings.audio.game_audio.enabled", true),
-                bool_modifier(
-                    "session_settings.audio.game_audio.content.device.set",
-                    false,
-                ),
-            ],
-            content: None,
-        },
-    ];
-
-    for name in devices {
-        game_audio_options.push(HigherOrderChoiceOption {
-            display_name: name.clone(),
-            modifiers: vec![
-                bool_modifier("session_settings.audio.game_audio.enabled", true),
-                bool_modifier("session_settings.audio.game_audio.content.device.set", true),
-                string_modifier(
-                    "session_settings.audio.game_audio.content.device.content.variant",
-                    "NameSubstring",
-                ),
-                string_modifier(
-                    "session_settings.audio.game_audio.content.device.content.NameSubstring",
-                    &name,
-                ),
-            ],
-            content: None,
-        })
-    }
-
+pub fn game_audio_schema() -> PresetSchemaNode {
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
         name: "Headset speaker".into(),
         strings: [(
-            "help".into(),
-            "You should keep this as default. Change the default audio device from the global OS settings".into(),
+            "notice".into(),
+            "You can change the default audio device from the system taskbar tray (bottom right)"
+                .into(),
         )]
         .into_iter()
         .collect(),
         flags: HashSet::new(),
-        options: game_audio_options.into_iter().collect(),
+        options: vec![
+            HigherOrderChoiceOption {
+                display_name: "Disabled".into(),
+                modifiers: vec![bool_modifier(
+                    "session_settings.audio.game_audio.enabled",
+                    false,
+                )],
+                content: None,
+            },
+            HigherOrderChoiceOption {
+                display_name: "System Default".to_owned(),
+                modifiers: vec![
+                    bool_modifier("session_settings.audio.game_audio.enabled", true),
+                    bool_modifier(
+                        "session_settings.audio.game_audio.content.device.set",
+                        false,
+                    ),
+                ],
+                content: None,
+            },
+        ]
+        .into_iter()
+        .collect(),
         default_option_display_name: "System Default".into(),
-        gui: ChoiceControlType::Dropdown,
+        gui: ChoiceControlType::ButtonGroup,
     })
 }
 

@@ -9,7 +9,6 @@ use alvr_common::{
     anyhow::{Context, Result},
     debug,
     glam::bool,
-    once_cell::sync::Lazy,
     parking_lot::Mutex,
     warn,
 };
@@ -120,10 +119,8 @@ impl Launcher {
             .session()
             .client_connections
             .contains_key(alvr_sockets::WIRED_CLIENT_HOSTNAME);
-        if wired_enabled {
-            if let Some(path) = adb::get_adb_path(&crate::get_filesystem_layout()) {
-                adb::kill_server(&path).ok();
-            }
+        if wired_enabled && let Some(path) = adb::get_adb_path(&crate::get_filesystem_layout()) {
+            adb::kill_server(&path).ok();
         }
 
         #[cfg(target_os = "linux")]
@@ -184,8 +181,6 @@ impl Launcher {
 }
 
 // Singleton with exclusive access
-pub static LAUNCHER: Lazy<Mutex<Launcher>> = Lazy::new(|| {
-    Mutex::new(Launcher {
-        _phantom: PhantomData,
-    })
+pub static LAUNCHER: Mutex<Launcher> = Mutex::new(Launcher {
+    _phantom: PhantomData,
 });

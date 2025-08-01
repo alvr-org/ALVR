@@ -1,14 +1,14 @@
 use crate::SESSION_MANAGER;
-use alvr_common::{LogEntry, LogSeverity, log::LevelFilter, once_cell::sync::Lazy};
+use alvr_common::{LogEntry, LogSeverity, log::LevelFilter};
 use alvr_events::{Event, EventType};
 use chrono::Local;
 use fern::Dispatch;
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, sync::LazyLock};
 use tokio::sync::broadcast;
 
 static CHANNEL_CAPACITY: usize = 256;
-pub static LOGGING_EVENTS_SENDER: Lazy<broadcast::Sender<Event>> =
-    Lazy::new(|| broadcast::channel(CHANNEL_CAPACITY).0);
+pub static LOGGING_EVENTS_SENDER: LazyLock<broadcast::Sender<Event>> =
+    LazyLock::new(|| broadcast::channel(CHANNEL_CAPACITY).0);
 
 pub fn init_logging(session_log_path: Option<PathBuf>, crash_log_path: Option<PathBuf>) {
     let debug_groups_config = SESSION_MANAGER

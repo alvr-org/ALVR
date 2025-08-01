@@ -64,6 +64,12 @@ pub fn clean_session() {
         session_ref.server_version = ALVR_VERSION.clone();
         session_ref.client_connections.clear();
         session_ref.session_settings.extra.open_setup_wizard = true;
+        session_ref
+            .session_settings
+            .extra
+            .new_version_popup
+            .content
+            .hide_while_version = ALVR_VERSION.to_string();
     }
 }
 
@@ -239,15 +245,6 @@ impl DataSources {
 
                                     report_session_local(&context, &events_sender, session_manager);
                                 }
-                                ServerRequest::GetAudioDevices => {
-                                    if let Ok(list) = session_manager.get_audio_devices_list() {
-                                        report_event_local(
-                                            &context,
-                                            &events_sender,
-                                            EventType::AudioDevices(list),
-                                        )
-                                    }
-                                }
                                 ServerRequest::FirewallRules(action) => {
                                     if alvr_server_io::firewall_rules(action, &filesystem_layout)
                                         .is_ok()
@@ -369,12 +366,12 @@ impl DataSources {
                                 }
                             }
                             Err(e) => {
-                                if let tungstenite::Error::Io(e) = e {
-                                    if e.kind() == ErrorKind::WouldBlock {
-                                        thread::sleep(Duration::from_millis(50));
+                                if let tungstenite::Error::Io(e) = e
+                                    && e.kind() == ErrorKind::WouldBlock
+                                {
+                                    thread::sleep(Duration::from_millis(50));
 
-                                        continue;
-                                    }
+                                    continue;
                                 }
 
                                 break;

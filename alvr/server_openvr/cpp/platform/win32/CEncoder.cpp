@@ -77,13 +77,13 @@ void CEncoder::Initialize(std::shared_ptr<CD3DRender> d3dRender) {
 #endif
 }
 
-void CEncoder::SetViewsConfig(
+void CEncoder::SetViewParams(
     vr::HmdRect2_t projLeft,
     vr::HmdMatrix34_t eyeToHeadLeft,
     vr::HmdRect2_t projRight,
     vr::HmdMatrix34_t eyeToHeadRight
 ) {
-    m_FrameRender->SetViewsConfig(projLeft, eyeToHeadLeft, projRight, eyeToHeadRight);
+    m_FrameRender->SetViewParams(projLeft, eyeToHeadLeft, projRight, eyeToHeadRight);
 }
 
 bool CEncoder::CopyToStaging(
@@ -144,8 +144,6 @@ void CEncoder::NewFrameReady() {
 void CEncoder::WaitForEncode() { m_encodeFinished.Wait(); }
 
 void CEncoder::OnStreamStart() { m_scheduler.OnStreamStart(); }
-
-void CEncoder::OnPacketLoss() { m_scheduler.OnPacketLoss(); }
 
 void CEncoder::InsertIDR() { m_scheduler.InsertIDR(); }
 

@@ -8,7 +8,6 @@
 #include "Utils.h"
 #include "ViveTrackerProxy.h"
 #include "bindings.h"
-#include <cfloat>
 
 #ifdef _WIN32
 #include "platform/win32/CEncoder.h"
@@ -17,19 +16,6 @@
 #else
 #include "platform/linux/CEncoder.h"
 #endif
-
-const vr::HmdMatrix34_t MATRIX_IDENTITY
-    = { { { 1.0, 0.0, 0.0, 0.0 }, { 0.0, 1.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0, 0.0 } } };
-
-vr::HmdRect2_t fov_to_projection(FfiFov fov) {
-    auto proj_bounds = vr::HmdRect2_t {};
-    proj_bounds.vTopLeft.v[0] = tanf(fov.left);
-    proj_bounds.vBottomRight.v[0] = tanf(fov.right);
-    proj_bounds.vTopLeft.v[1] = tanf(fov.down);
-    proj_bounds.vBottomRight.v[1] = tanf(fov.up);
-
-    return proj_bounds;
-}
 
 Hmd::Hmd()
     : TrackedDevice(
@@ -42,11 +28,11 @@ Hmd::Hmd()
     Debug("Hmd::constructor");
 
     auto dummy_fov = FfiFov { -1.0, 1.0, 1.0, -1.0 };
+    auto dummy_pose = FfiPose { { 0, 0, 0, 1 }, { 0, 0, 0 } };
+    auto dummy_view_params = FfiViewParams { dummy_pose, dummy_fov };
 
-    this->views_config = FfiViewsConfig {};
-    this->views_config.ipd_m = 0.063;
-    this->views_config.fov[0] = dummy_fov;
-    this->views_config.fov[1] = dummy_fov;
+    this->view_params[0] = dummy_view_params;
+    this->view_params[1] = dummy_view_params;
 
     m_poseHistory = std::make_shared<PoseHistory>();
 
@@ -204,12 +190,15 @@ void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
     pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
     pose.qRotation = HmdQuaternion_Init(
-        motion.orientation.w, motion.orientation.x, motion.orientation.y, motion.orientation.z
+        motion.pose.orientation.w,
+        motion.pose.orientation.x,
+        motion.pose.orientation.y,
+        motion.pose.orientation.z
     );
 
-    pose.vecPosition[0] = motion.position[0];
-    pose.vecPosition[1] = motion.position[1];
-    pose.vecPosition[2] = motion.position[2];
+    pose.vecPosition[0] = motion.pose.position[0];
+    pose.vecPosition[1] = motion.pose.position[1];
+    pose.vecPosition[2] = motion.pose.position[2];
 
     this->submit_pose(pose);
 
@@ -278,28 +267,26 @@ void Hmd::StopStreaming() {
     vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, false, 0.0);
 }
 
-void Hmd::SetViewsConfig(FfiViewsConfig config) {
-    Debug("Hmd::SetViewsConfig");
+void Hmd::SetViewParams(const FfiViewParams params[2]) {
+    Debug("Hmd::SetViewParams");
 
-    this->views_config = config;
+    this->view_params[0] = params[0];
+    this->view_params[1] = params[1];
 
     // The OpenXR spec defines the HMD position as the midpoint
     // between the eyes, so conversion to this is handled by the
     // client.
-    auto left_transform = MATRIX_IDENTITY;
-    left_transform.m[0][3] = -config.ipd_m / 2.0;
-    auto right_transform = MATRIX_IDENTITY;
-    right_transform.m[0][3] = config.ipd_m / 2.0;
+    auto left_transform = pose_to_mat(params[0].pose);
+    auto right_transform = pose_to_mat(params[1].pose);
     vr::VRServerDriverHost()->SetDisplayEyeToHead(object_id, left_transform, right_transform);
 
-    auto left_proj = fov_to_projection(config.fov[0]);
-    auto right_proj = fov_to_projection(config.fov[1]);
-
+    auto left_proj = fov_to_tangents(params[0].fov);
+    auto right_proj = fov_to_tangents(params[1].fov);
     vr::VRServerDriverHost()->SetDisplayProjectionRaw(object_id, left_proj, right_proj);
 
 #ifdef _WIN32
     if (m_encoder) {
-        m_encoder->SetViewsConfig(left_proj, left_transform, right_proj, right_transform);
+        m_encoder->SetViewParams(left_proj, left_transform, right_proj, right_transform);
     }
 #endif
 
@@ -355,7 +342,7 @@ void Hmd::GetEyeOutputViewport(
 }
 
 void Hmd::GetProjectionRaw(vr::EVREye eye, float* left, float* right, float* top, float* bottom) {
-    auto proj = fov_to_projection(this->views_config.fov[eye]);
+    auto proj = fov_to_tangents(this->view_params[eye].fov);
     *left = proj.vTopLeft.v[0];
     *right = proj.vBottomRight.v[0];
     *top = proj.vTopLeft.v[1];

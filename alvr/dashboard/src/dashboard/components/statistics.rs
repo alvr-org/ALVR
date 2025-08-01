@@ -463,12 +463,6 @@ impl StatisticsTab {
             ui[0].label("Decoder latency:");
             ui[1].label(format!("{:.2} ms", statistics.decode_latency_ms));
 
-            ui[0].label("Total packets lost:");
-            ui[1].label(format!(
-                "{} packets ({} packets/s)",
-                statistics.packets_lost_total, statistics.packets_lost_per_sec
-            ));
-
             ui[0].label("Client FPS:");
             ui[1].label(format!("{} FPS", statistics.client_fps));
 

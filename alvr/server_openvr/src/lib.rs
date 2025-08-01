@@ -16,13 +16,17 @@ use bindings::*;
 
 use alvr_common::{
     BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
-    error, once_cell::sync::Lazy, parking_lot::RwLock, settings_schema::Switch, warn,
+    Pose, ViewParams, error,
+    parking_lot::{Mutex, RwLock},
+    settings_schema::Switch,
+    warn,
 };
 use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};
 use alvr_server_core::{HandType, ServerCoreContext, ServerCoreEvent};
 use alvr_session::{CodecType, ControllersConfig};
 use std::{
+    collections::VecDeque,
     ffi::{CString, OsStr, c_char, c_void},
     ptr,
     sync::{Once, mpsc},
@@ -30,8 +34,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> =
-    Lazy::new(|| RwLock::new(None));
+static SERVER_CORE_CONTEXT: RwLock<Option<ServerCoreContext>> = RwLock::new(None);
+static LOCAL_VIEW_PARAMS: RwLock<[ViewParams; 2]> = RwLock::new([ViewParams::DUMMY; 2]);
+static HEAD_POSE_QUEUE: Mutex<VecDeque<(Duration, Pose)>> = Mutex::new(VecDeque::new());
 
 fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
     thread::spawn(move || {
@@ -68,28 +73,16 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                 ServerCoreEvent::PlayspaceSync(bounds) => unsafe {
                     SetChaperoneArea(bounds.x, bounds.y)
                 },
-                ServerCoreEvent::ViewsConfig(config) => unsafe {
-                    SetViewsConfig(FfiViewsConfig {
-                        fov: [
-                            FfiFov {
-                                left: config.fov[0].left,
-                                right: config.fov[0].right,
-                                up: config.fov[0].up,
-                                down: config.fov[0].down,
-                            },
-                            FfiFov {
-                                left: config.fov[1].left,
-                                right: config.fov[1].right,
-                                up: config.fov[1].up,
-                                down: config.fov[1].down,
-                            },
-                        ],
-                        // todo: send full matrix to steamvr
-                        ipd_m: config.local_view_transforms[1].position.x
-                            - config.local_view_transforms[0].position.x,
-                    });
+                ServerCoreEvent::LocalViewParams(params) => unsafe {
+                    *LOCAL_VIEW_PARAMS.write() = params;
+
+                    let ffi_params = [
+                        tracking::to_ffi_view_params(params[0]),
+                        tracking::to_ffi_view_params(params[1]),
+                    ];
+                    SetLocalViewParams(ffi_params.as_ptr());
                 },
-                ServerCoreEvent::Tracking { sample_timestamp } => {
+                ServerCoreEvent::Tracking { poll_timestamp } => {
                     let headset_config = &alvr_server_core::settings().headset;
 
                     let controllers_config = headset_config.controllers.clone().into_option();
@@ -98,20 +91,44 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                     let tracked = controllers_config.as_ref().is_some_and(|c| c.tracked);
 
                     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+                        let target_timestamp =
+                            poll_timestamp + context.get_motion_to_photon_latency();
                         let controllers_pose_time_offset = context.get_tracker_pose_time_offset();
+                        // We need to remove the additional offset that SteamVR adds
+                        let target_controller_timestamp =
+                            target_timestamp.saturating_sub(controllers_pose_time_offset);
 
-                        let ffi_head_motion = context
-                            .get_device_motion(*HEAD_ID, sample_timestamp)
-                            .map_or_else(FfiDeviceMotion::default, |m| {
-                                tracking::to_ffi_motion(*HEAD_ID, m)
-                            });
+                        let ffi_head_motion = if let Some(motion) =
+                            context.get_device_motion(*HEAD_ID, poll_timestamp)
+                        {
+                            let motion = motion.predict(poll_timestamp, target_timestamp);
+
+                            let mut head_pose_queue_lock = HEAD_POSE_QUEUE.lock();
+                            head_pose_queue_lock.push_back((poll_timestamp, motion.pose));
+                            while head_pose_queue_lock.len() > 360 {
+                                head_pose_queue_lock.pop_front();
+                            }
+
+                            tracking::to_ffi_motion(*HEAD_ID, motion)
+                        } else {
+                            FfiDeviceMotion::default()
+                        };
+
                         let ffi_left_controller_motion = context
-                            .get_device_motion(*HAND_LEFT_ID, sample_timestamp)
-                            .map(|m| tracking::to_ffi_motion(*HAND_LEFT_ID, m))
+                            .get_device_motion(*HAND_LEFT_ID, poll_timestamp)
+                            .map(|motion| {
+                                let motion =
+                                    motion.predict(poll_timestamp, target_controller_timestamp);
+                                tracking::to_ffi_motion(*HAND_LEFT_ID, motion)
+                            })
                             .filter(|_| tracked);
                         let ffi_right_controller_motion = context
-                            .get_device_motion(*HAND_RIGHT_ID, sample_timestamp)
-                            .map(|m| tracking::to_ffi_motion(*HAND_RIGHT_ID, m))
+                            .get_device_motion(*HAND_RIGHT_ID, poll_timestamp)
+                            .map(|motion| {
+                                let motion =
+                                    motion.predict(poll_timestamp, target_controller_timestamp);
+                                tracking::to_ffi_motion(*HAND_RIGHT_ID, motion)
+                            })
                             .filter(|_| tracked);
 
                         let (
@@ -125,7 +142,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                         }) = controllers_config
                         {
                             let left_hand_skeleton = context
-                                .get_hand_skeleton(HandType::Left, sample_timestamp)
+                                .get_hand_skeleton(HandType::Left, poll_timestamp)
                                 .map(|s| {
                                     tracking::to_openvr_ffi_hand_skeleton(
                                         headset_config,
@@ -134,7 +151,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                     )
                                 });
                             let right_hand_skeleton = context
-                                .get_hand_skeleton(HandType::Right, sample_timestamp)
+                                .get_hand_skeleton(HandType::Right, poll_timestamp)
                                 .map(|s| {
                                     tracking::to_openvr_ffi_hand_skeleton(
                                         headset_config,
@@ -192,7 +209,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                 .filter_map(|id| {
                                     Some(tracking::to_ffi_motion(
                                         *id,
-                                        context.get_device_motion(*id, sample_timestamp)?,
+                                        context.get_device_motion(*id, poll_timestamp)?,
                                     ))
                                 })
                                 .collect::<Vec<_>>()
@@ -206,7 +223,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                         // independently. Selection is done by setting deviceIsConnected.
                         unsafe {
                             SetTracking(
-                                sample_timestamp.as_nanos() as _,
+                                poll_timestamp.as_nanos() as _,
                                 controllers_pose_time_offset.as_secs_f32(),
                                 ffi_head_motion,
                                 ffi_left_hand_data,
@@ -304,15 +321,15 @@ pub unsafe extern "C" fn register_buttons(instance_ptr: *mut c_void, device_id: 
 }
 
 extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
-    if let Ok(duration) = Duration::try_from_secs_f32(duration_s) {
-        if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-            context.send_haptics(Haptics {
-                device_id,
-                duration,
-                frequency,
-                amplitude,
-            });
-        }
+    if let Ok(duration) = Duration::try_from_secs_f32(duration_s)
+        && let Some(context) = &*SERVER_CORE_CONTEXT.read()
+    {
+        context.send_haptics(Haptics {
+            device_id,
+            duration,
+            frequency,
+            amplitude,
+        });
     }
 }
 
@@ -336,21 +353,43 @@ extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32)
 
 extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_idr: bool) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        let timestamp = Duration::from_nanos(timestamp_ns);
         let buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
-        context.send_video_nal(Duration::from_nanos(timestamp_ns), buffer.to_vec(), is_idr);
+
+        let Some(head_pose) = HEAD_POSE_QUEUE
+            .lock()
+            .iter()
+            .find_map(|(ts, pose)| (*ts == timestamp).then_some(*pose))
+        else {
+            // We can't submit the frame without its pose
+            return;
+        };
+
+        let local_views_params = LOCAL_VIEW_PARAMS.read();
+
+        let global_view_params = [
+            ViewParams {
+                pose: head_pose * local_views_params[0].pose,
+                fov: local_views_params[0].fov,
+            },
+            ViewParams {
+                pose: head_pose * local_views_params[1].pose,
+                fov: local_views_params[1].fov,
+            },
+        ];
+
+        context.send_video_nal(timestamp, global_view_params, is_idr, buffer.to_vec());
     }
 }
 
 extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-        if let Some(params) = context.get_dynamic_encoder_params() {
-            FfiDynamicEncoderParams {
-                updated: 1,
-                bitrate_bps: params.bitrate_bps as u64,
-                framerate: params.framerate,
-            }
-        } else {
-            FfiDynamicEncoderParams::default()
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read()
+        && let Some(params) = context.get_dynamic_encoder_params()
+    {
+        FfiDynamicEncoderParams {
+            updated: 1,
+            bitrate_bps: params.bitrate_bps as u64,
+            framerate: params.framerate,
         }
     } else {
         FfiDynamicEncoderParams::default()

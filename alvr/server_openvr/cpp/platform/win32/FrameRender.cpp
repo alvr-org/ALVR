@@ -517,17 +517,9 @@ bool FrameRender::Startup() {
 
         YUVParams& paramStruct = paramStruct_bt2020_8bit_full;
         if (Settings::Instance().m_use10bitEncoder) {
-            if (Settings::Instance().m_useFullRangeEncoding) {
-                paramStruct = paramStruct_bt2020_10bit_full;
-            } else {
-                paramStruct = paramStruct_bt2020_10bit_limited;
-            }
+            paramStruct = paramStruct_bt2020_10bit_full;
         } else {
-            if (Settings::Instance().m_useFullRangeEncoding) {
-                paramStruct = paramStruct_bt2020_8bit_full;
-            } else {
-                paramStruct = paramStruct_bt2020_8bit_limited;
-            }
+            paramStruct = paramStruct_bt2020_8bit_full;
         }
 
         ComPtr<ID3D11Buffer> paramBuffer = CreateBuffer(m_pD3DRender->GetDevice(), paramStruct);
@@ -549,7 +541,7 @@ bool FrameRender::Startup() {
     return true;
 }
 
-void FrameRender::SetViewsConfig(
+void FrameRender::SetViewParams(
     vr::HmdRect2_t projLeft,
     vr::HmdMatrix34_t eyeToHeadLeft,
     vr::HmdRect2_t projRight,

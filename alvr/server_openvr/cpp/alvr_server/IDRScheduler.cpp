@@ -7,8 +7,6 @@ IDRScheduler::IDRScheduler() { }
 
 IDRScheduler::~IDRScheduler() { }
 
-void IDRScheduler::OnPacketLoss() { InsertIDR(); }
-
 void IDRScheduler::OnStreamStart() {
     m_minIDRFrameInterval = Settings::Instance().m_minimumIdrIntervalMs * 1000;
     m_scheduled = false;

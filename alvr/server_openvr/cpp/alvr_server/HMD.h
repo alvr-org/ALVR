@@ -28,12 +28,12 @@ public:
     void OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion);
     void StartStreaming();
     void StopStreaming();
-    void SetViewsConfig(FfiViewsConfig config);
+    void SetViewParams(const FfiViewParams params[2]);
 
 private:
     vr::VRInputComponentHandle_t m_proximity;
 
-    FfiViewsConfig views_config;
+    FfiViewParams view_params[2];
 
     bool m_baseComponentsInitialized;
     bool m_streamComponentsInitialized;

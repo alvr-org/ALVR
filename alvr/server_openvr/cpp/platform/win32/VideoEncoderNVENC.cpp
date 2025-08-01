@@ -271,8 +271,7 @@ void VideoEncoderNVENC::FillEncodeConfig(
 
         config.h264VUIParameters.videoSignalTypePresentFlag = 1;
         config.h264VUIParameters.videoFormat = NV_ENC_VUI_VIDEO_FORMAT_UNSPECIFIED;
-        config.h264VUIParameters.videoFullRangeFlag
-            = Settings::Instance().m_useFullRangeEncoding ? 1 : 0;
+        config.h264VUIParameters.videoFullRangeFlag = 1;
         config.h264VUIParameters.colourDescriptionPresentFlag = 1;
         if (Settings::Instance().m_enableHdr) {
             config.h264VUIParameters.colourPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT2020;
@@ -311,8 +310,7 @@ void VideoEncoderNVENC::FillEncodeConfig(
 
         config.hevcVUIParameters.videoSignalTypePresentFlag = 1;
         config.hevcVUIParameters.videoFormat = NV_ENC_VUI_VIDEO_FORMAT_UNSPECIFIED;
-        config.hevcVUIParameters.videoFullRangeFlag
-            = Settings::Instance().m_useFullRangeEncoding ? 1 : 0;
+        config.hevcVUIParameters.videoFullRangeFlag = 1;
         config.hevcVUIParameters.colourDescriptionPresentFlag = 1;
         if (Settings::Instance().m_enableHdr) {
             config.hevcVUIParameters.colourPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT2020;
@@ -350,7 +348,7 @@ void VideoEncoderNVENC::FillEncodeConfig(
         }
 
         config.chromaFormatIDC = 1; // 4:2:0, 4:4:4 currently not supported
-        config.colorRange = Settings::Instance().m_useFullRangeEncoding ? 1 : 0;
+        config.colorRange = 1;
         if (Settings::Instance().m_enableHdr) {
             config.colorPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT2020;
             config.transferCharacteristics = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;

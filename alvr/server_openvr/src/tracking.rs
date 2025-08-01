@@ -1,17 +1,20 @@
-use crate::{FfiDeviceMotion, FfiHandSkeleton, FfiQuat};
+use crate::{FfiDeviceMotion, FfiFov, FfiHandSkeleton, FfiPose, FfiQuat, FfiViewParams};
 use alvr_common::{
     BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID,
-    BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, DeviceMotion, HAND_LEFT_ID, Pose,
+    BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, DeviceMotion, Fov, HAND_LEFT_ID,
+    Pose, ViewParams,
     glam::{EulerRot, Quat, Vec3},
-    once_cell::sync::Lazy,
     settings_schema::Switch,
 };
 use alvr_session::HeadsetConfig;
-use std::f32::consts::{FRAC_PI_2, PI};
+use std::{
+    f32::consts::{FRAC_PI_2, PI},
+    sync::LazyLock,
+};
 
 const DEG_TO_RAD: f32 = PI / 180.0;
 
-pub static BODY_TRACKER_IDS: Lazy<[u64; 8]> = Lazy::new(|| {
+pub static BODY_TRACKER_IDS: LazyLock<[u64; 8]> = LazyLock::new(|| {
     [
         // Upper body
         *BODY_CHEST_ID,
@@ -26,6 +29,15 @@ pub static BODY_TRACKER_IDS: Lazy<[u64; 8]> = Lazy::new(|| {
     ]
 });
 
+fn to_ffi_fov(fov: Fov) -> FfiFov {
+    FfiFov {
+        left: fov.left,
+        right: fov.right,
+        up: fov.up,
+        down: fov.down,
+    }
+}
+
 fn to_ffi_quat(quat: Quat) -> FfiQuat {
     FfiQuat {
         x: quat.x,
@@ -35,13 +47,26 @@ fn to_ffi_quat(quat: Quat) -> FfiQuat {
     }
 }
 
+fn to_ffi_pose(pose: Pose) -> FfiPose {
+    FfiPose {
+        orientation: to_ffi_quat(pose.orientation),
+        position: pose.position.to_array(),
+    }
+}
+
 pub fn to_ffi_motion(device_id: u64, motion: DeviceMotion) -> FfiDeviceMotion {
     FfiDeviceMotion {
         deviceID: device_id,
-        orientation: to_ffi_quat(motion.pose.orientation),
-        position: motion.pose.position.to_array(),
+        pose: to_ffi_pose(motion.pose),
         linearVelocity: motion.linear_velocity.to_array(),
         angularVelocity: motion.angular_velocity.to_array(),
+    }
+}
+
+pub fn to_ffi_view_params(params: ViewParams) -> FfiViewParams {
+    FfiViewParams {
+        pose: to_ffi_pose(params.pose),
+        fov: to_ffi_fov(params.fov),
     }
 }
 
@@ -71,8 +96,8 @@ fn get_hand_skeleton_offsets(config: &HeadsetConfig) -> (Pose, Pose) {
             position: Vec3::new(-t[0], t[1], t[2]),
         };
     } else {
-        left_offset = Pose::default();
-        right_offset = Pose::default();
+        left_offset = Pose::IDENTITY;
+        right_offset = Pose::IDENTITY;
     }
 
     (left_offset, right_offset)

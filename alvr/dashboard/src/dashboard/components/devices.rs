@@ -84,39 +84,40 @@ impl DevicesTab {
         }
 
         ui.vertical_centered_justified(|ui| {
-            if let Some(clients) = &mut self.trusted_devices {
-                let wired_client = clients
-                    .iter()
-                    .find(|(hostname, _)| hostname == WIRED_CLIENT_HOSTNAME);
-                if let Some(request) =
-                    wired_client_section(ui, wired_client, self.adb_download_progress)
-                {
-                    requests.push(request);
-                }
-            }
-
-            ui.add_space(10.0);
-
-            if let Some(clients) = &self.new_devices {
-                if let Some(request) = new_clients_section(ui, clients) {
-                    requests.push(request);
-                }
-            }
-
-            ui.add_space(10.0);
-
-            if let Some(clients) = &mut self.trusted_devices {
-                let wireless_clients: Vec<&(String, ClientConnectionConfig)> = clients
-                    .iter()
-                    .filter(|(hostname, _)| hostname != WIRED_CLIENT_HOSTNAME)
-                    .collect();
-                if let Some(request) = trusted_clients_section(
+            if let Some(clients) = &mut self.trusted_devices
+                && let Some(request) = wired_client_section(
                     ui,
-                    wireless_clients.as_slice(),
+                    clients
+                        .iter()
+                        .find(|(hostname, _)| hostname == WIRED_CLIENT_HOSTNAME),
+                    self.adb_download_progress,
+                )
+            {
+                requests.push(request);
+            }
+
+            ui.add_space(10.0);
+
+            if let Some(clients) = &self.new_devices
+                && let Some(request) = new_clients_section(ui, clients)
+            {
+                requests.push(request);
+            }
+
+            ui.add_space(10.0);
+
+            if let Some(clients) = &mut self.trusted_devices
+                && let Some(request) = trusted_clients_section(
+                    ui,
+                    clients
+                        .iter()
+                        .filter(|(hostname, _)| hostname != WIRED_CLIENT_HOSTNAME)
+                        .collect::<Vec<_>>()
+                        .as_slice(),
                     &mut self.edit_popup_state,
-                ) {
-                    requests.push(request);
-                }
+                )
+            {
+                requests.push(request);
             }
         });
 

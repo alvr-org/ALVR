@@ -1,18 +1,16 @@
+use crate::tracking::HandType;
 use alvr_common::{
     BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID,
     BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, DeviceMotion, HAND_LEFT_ID,
-    HAND_RIGHT_ID, HEAD_ID, Pose, anyhow::Result, glam::Quat, once_cell::sync::Lazy,
+    HAND_RIGHT_ID, HEAD_ID, Pose, anyhow::Result, glam::Quat,
 };
-use rosc::{OscMessage, OscPacket, OscType};
-use std::{collections::HashMap, net::UdpSocket};
-
 use alvr_session::VMCConfig;
-
-pub use crate::tracking::HandType;
+use rosc::{OscMessage, OscPacket, OscType};
+use std::{collections::HashMap, net::UdpSocket, sync::LazyLock};
 
 // Transform DeviceMotion into Unity HumanBodyBones
 // https://docs.unity3d.com/ScriptReference/HumanBodyBones.html
-static DEVICE_MOTIONS_VMC_MAP: Lazy<HashMap<u64, &'static str>> = Lazy::new(|| {
+static DEVICE_MOTIONS_VMC_MAP: LazyLock<HashMap<u64, &'static str>> = LazyLock::new(|| {
     HashMap::from([
         (*HAND_LEFT_ID, "LeftHand"),
         (*HAND_RIGHT_ID, "RightHand"),
@@ -29,7 +27,7 @@ static DEVICE_MOTIONS_VMC_MAP: Lazy<HashMap<u64, &'static str>> = Lazy::new(|| {
 });
 
 #[expect(clippy::approx_constant)]
-static DEVICE_MOTIONS_ROTATION_MAP: Lazy<HashMap<u64, Quat>> = Lazy::new(|| {
+static DEVICE_MOTIONS_ROTATION_MAP: LazyLock<HashMap<u64, Quat>> = LazyLock::new(|| {
     HashMap::from([
         (
             *HAND_LEFT_ID,
@@ -70,10 +68,9 @@ static DEVICE_MOTIONS_ROTATION_MAP: Lazy<HashMap<u64, Quat>> = Lazy::new(|| {
     ])
 });
 
-static HAND_SKELETON_VMC_MAP: Lazy<[[(usize, &'static str); 1]; 2]> =
-    Lazy::new(|| [[(0, "LeftHand")], [(0, "RightHand")]]);
+static HAND_SKELETON_VMC_MAP: [[(usize, &str); 1]; 2] = [[(0, "LeftHand")], [(0, "RightHand")]];
 
-static HAND_SKELETON_ROTATIONS: Lazy<[HashMap<usize, Quat>; 2]> = Lazy::new(|| {
+static HAND_SKELETON_ROTATIONS: LazyLock<[HashMap<usize, Quat>; 2]> = LazyLock::new(|| {
     [
         HashMap::from([(0, Quat::from_xyzw(-0.03566, 0.25481, 0.00000, -0.96633))]),
         HashMap::from([(0, Quat::from_xyzw(-0.05880, -0.20574, -0.00000, 0.97684))]),

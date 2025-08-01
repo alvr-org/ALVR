@@ -12,10 +12,10 @@ void PoseHistory::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion moti
     history.motion = motion;
 
     HmdMatrix_QuatToMat(
-        motion.orientation.w,
-        motion.orientation.x,
-        motion.orientation.y,
-        motion.orientation.z,
+        motion.pose.orientation.w,
+        motion.pose.orientation.x,
+        motion.pose.orientation.y,
+        motion.pose.orientation.z,
         &history.rotationMatrix
     );
 

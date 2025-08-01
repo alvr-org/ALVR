@@ -1,10 +1,10 @@
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
-    DeviceMotion, Fov, HEAD_ID, Pose, RelaxedAtomic, ViewParams,
+    DeviceMotion, HEAD_ID, Pose, RelaxedAtomic, ViewParams,
     glam::{Quat, UVec2, Vec3},
     parking_lot::RwLock,
 };
-use alvr_packets::FaceData;
+use alvr_packets::{FaceData, TrackingData};
 use alvr_session::CodecType;
 use eframe::{
     Frame, NativeOptions,
@@ -145,17 +145,7 @@ fn tracking_thread(
     input: Arc<RwLock<WindowInput>>,
 ) {
     let timestamp_origin = Instant::now();
-
-    let views_params = ViewParams {
-        pose: Pose::default(),
-        fov: Fov {
-            left: -1.0,
-            right: 1.0,
-            up: 1.0,
-            down: -1.0,
-        },
-    };
-    context.send_view_params([views_params, views_params]);
+    context.send_view_params([ViewParams::DUMMY; 2]);
 
     let mut loop_deadline = Instant::now();
     while streaming.value() {
@@ -170,9 +160,9 @@ fn tracking_thread(
 
         let position = Vec3::new(0.0, input_lock.height, 0.0);
 
-        context.send_tracking(
-            timestamp_origin.elapsed(),
-            vec![(
+        context.send_tracking(TrackingData {
+            poll_timestamp: timestamp_origin.elapsed(),
+            device_motions: vec![(
                 *HEAD_ID,
                 DeviceMotion {
                     pose: Pose {
@@ -183,14 +173,10 @@ fn tracking_thread(
                     angular_velocity: Vec3::ZERO,
                 },
             )],
-            [None, None],
-            FaceData {
-                eye_gazes: [None, None],
-                fb_face_expression: None,
-                htc_eye_expression: None,
-                htc_lip_expression: None,
-            },
-        );
+            hand_skeletons: [None, None],
+            face: FaceData::default(),
+            body: None,
+        });
 
         drop(input_lock);
 

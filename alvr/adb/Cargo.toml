@@ -13,4 +13,4 @@ alvr_system_info.workspace = true
 
 anyhow = "1"
 ureq = "3"
-zip = "2"
+zip = "4"

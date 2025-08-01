@@ -66,12 +66,11 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
     HWContext& vk_ctx,
     VkContext& v_ctx,
     VkFrame& input_frame,
-    VkImageCreateInfo& image_create_info,
     uint32_t width,
     uint32_t height
 ) 
     : v_ctx(v_ctx) {
-    vk_frame_ctx = std::make_unique<alvr::VkFrameCtx>(vk_ctx, image_create_info);
+    vk_frame_ctx = std::make_unique<alvr::VkFrameCtx>(vk_ctx, nullptr);
 
     auto input_frame_ctx = (AVHWFramesContext*)vk_frame_ctx->ctx->data;
     assert(input_frame_ctx->sw_format == AV_PIX_FMT_BGRA);
@@ -213,7 +212,7 @@ void alvr::EncodePipelineNvEnc::PushFrame(uint64_t targetTimestampNs, bool idr) 
     // submitInfo.pSignalSemaphores = &vkf->sem[0];
     submitInfo.pSignalSemaphores = reinterpret_cast<vk::Semaphore*>(&vkf->sem[0]);
     // VK_CHECK(vkQueueSubmit(r->m_queue, 1, &submitInfo, nullptr));
-    v_ctx.useQueue([&](auto& queue) { queue.submit(submitInfo); })
+    v_ctx.useQueue([&](vk::Queue& queue) { queue.submit(submitInfo); });
 
     int err = av_hwframe_get_buffer(encoder_ctx->hw_frames_ctx, hw_frame, 0);
     if (err < 0) {

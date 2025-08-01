@@ -3,8 +3,6 @@
 #include <windows.h>
 #elif __APPLE__
 #include "platform/macos/CEncoder.h"
-#else
-#include "platform/linux/CEncoder.h"
 #endif
 #include "Controller.h"
 #include "FakeViveTracker.h"
@@ -386,7 +384,7 @@ void RequestIDR() {
     }
 #elif __linux__
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_directModeComponent) {
-        g_driver_provider.hmd->m_directModeComponent->RequestIDR();
+        g_driver_provider.hmd->m_directModeComponent->RequestIdr();
     }
 #endif
 }
@@ -523,9 +521,9 @@ void SetChaperoneArea(float areaWidth, float areaHeight) {
 }
 
 void CaptureFrame() {
-#ifndef __APPLE__
-    if (g_driver_provider.hmd && g_driver_provider.hmd->m_encoder) {
-        g_driver_provider.hmd->m_encoder->CaptureFrame();
-    }
+#if _WIN32
+    // if (g_driver_provider.hmd && g_driver_provider.hmd->m_encoder) {
+    //     g_driver_provider.hmd->m_encoder->CaptureFrame();
+    // }
 #endif
 }

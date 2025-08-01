@@ -48,15 +48,16 @@ Hmd::Hmd()
 }
 
 Hmd::~Hmd() {
+    ShutdownRuntime();
     Debug("Hmd::destructor");
 
+#ifdef _WIN32
     if (m_encoder) {
         Debug("Hmd::~Hmd(): Stopping encoder...\n");
         m_encoder->Stop();
         m_encoder.reset();
     }
 
-#ifdef _WIN32
     if (m_D3DRender) {
         m_D3DRender->Shutdown();
         m_D3DRender.reset();

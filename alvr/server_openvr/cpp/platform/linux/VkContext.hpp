@@ -23,10 +23,9 @@
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_handles.hpp>
 #include <vulkan/vulkan_structs.hpp>
+#include <vulkan/vulkan_structs.hpp>
 
 #include "utils.hpp"
-
-#include "alvr_server/Logger.h"
 
 extern "C" {
 #include <libavutil/log.h>
@@ -42,7 +41,7 @@ public:
     vk::PhysicalDevice physDev;
     vk::Device dev;
 
-    vk::DispatchLoaderDynamic dispatch;
+    vk::detail::DispatchLoaderDynamic dispatch;
 
     struct Meta {
         Vendor vendor;

@@ -10,6 +10,7 @@
 #include "alvr_server/IDRScheduler.h"
 #include "alvr_server/Settings.h"
 #include "alvr_server/bindings.h"
+#include "alvr_server/Logger.h"
 
 namespace alvr {
 

@@ -137,8 +137,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
     VkFrame& input_frame, 
     uint32_t width, 
     uint32_t height
-)
-    : r(render) {
+) {
     /* VAAPI Encoding pipeline
      * The encoding pipeline has 3 frame types:
      * - input vulkan frames, only used to initialize the mapped frames
@@ -150,7 +149,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
      * and the encoder that takes the converted frame and produces packets.
      */
     int err = av_hwdevice_ctx_create(
-        &hw_ctx, AV_HWDEVICE_TYPE_VAAPI, vk_ctx.devicePath.c_str(), NULL, 0
+        &hw_ctx, AV_HWDEVICE_TYPE_VAAPI, devicePath.c_str(), NULL, 0
     );
     if (err < 0) {
         throw alvr::AvException("Failed to create a VAAPI device:", err);

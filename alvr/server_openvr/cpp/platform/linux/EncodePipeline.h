@@ -43,7 +43,6 @@ public:
         alvr::VkContext& vk_ctx,
         std::string devicePath,
         VkFrame& input_frame,
-        VkImageCreateInfo& image_create_info,
         uint32_t width,
         uint32_t height
     );

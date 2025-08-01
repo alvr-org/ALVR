@@ -380,9 +380,15 @@ void DeinitializeStreaming() {
 void SendVSync() { vr::VRServerDriverHost()->VsyncEvent(0.0); }
 
 void RequestIDR() {
+#ifdef _WIN32
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_encoder) {
         g_driver_provider.hmd->m_encoder->InsertIDR();
     }
+#elif __linux__
+    if (g_driver_provider.hmd && g_driver_provider.hmd->m_directModeComponent) {
+        g_driver_provider.hmd->m_directModeComponent->RequestIDR();
+    }
+#endif
 }
 
 void SetTracking(

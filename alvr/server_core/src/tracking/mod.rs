@@ -182,17 +182,19 @@ impl TrackingManager {
             }
 
             if let Some(config) = device_motion_configs.get(&device_id) {
-                // Recenter
+                // Recenter to Stage Space
                 motion = self.recenter_motion(motion);
-
-                // Apply custom transform
+                
+                // Apply custom offset
+                let orientation_in_stage = motion.pose.orientation;
                 motion.pose.orientation *= config.pose_offset.orientation;
-                motion.pose.position += motion.pose.orientation * config.pose_offset.position;
-
-                motion.linear_velocity += motion
-                    .angular_velocity
-                    .cross(motion.pose.orientation * config.pose_offset.position);
-
+                
+                let position_offset_in_stage = orientation_in_stage * config.pose_offset.position;
+                motion.pose.position += position_offset_in_stage;
+                
+                let tangential_velocity = motion.angular_velocity.cross(position_offset_in_stage);
+                motion.linear_velocity += tangential_velocity;
+                
                 fn cutoff(v: Vec3, threshold: f32) -> Vec3 {
                     if v.length_squared() > threshold * threshold {
                         v

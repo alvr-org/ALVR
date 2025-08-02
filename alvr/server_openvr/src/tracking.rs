@@ -137,6 +137,15 @@ pub fn to_openvr_ffi_hand_skeleton(
     // global joints
     let gj = hand_skeleton;
 
+    // Get the default hand tracking position offset
+    let default_offset_arr = alvr_session::session_settings_default()
+        .headset
+        .controllers
+        .content
+        .left_hand_tracking_position_offset
+        .content;
+    let default_hand_tracking_offset = Vec3::from_array(default_offset_arr);
+
     // Correct the orientation for auxiliary bones.
     pub fn aux_orientation(id: u64, pose: Pose) -> Pose {
         let o = pose.orientation;
@@ -219,7 +228,9 @@ pub fn to_openvr_ffi_hand_skeleton(
         Pose {
             orientation: gj[0].orientation * pose_offset.orientation,
             position: gj[0].position
-                + gj[0].orientation * pose_offset.orientation * pose_offset.position,
+                + gj[0].orientation * pose_offset.orientation * default_hand_tracking_offset
+                + pose_offset.position
+                - default_hand_tracking_offset,
         },
         // Wrist
         root_parented_pose(gj[1]),

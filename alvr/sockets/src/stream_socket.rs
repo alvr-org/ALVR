@@ -21,6 +21,7 @@ use alvr_common::{
     AnyhowToCon, ConResult, HandleTryAgain, ToCon, anyhow::Result, debug, parking_lot::Mutex,
 };
 use alvr_session::{DscpTos, SocketBufferSize, SocketProtocol};
+use bincode::config;
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
     cmp::Ordering,
@@ -43,7 +44,6 @@ const SHARD_PREFIX_SIZE: usize = mem::size_of::<u32>() // packet length - field 
 pub struct Buffer<H = ()> {
     inner: Vec<u8>,
     hidden_offset: usize, // this corresponds to prefix + header
-    length: usize,
     _phantom: PhantomData<H>,
 }
 
@@ -51,7 +51,7 @@ impl<H> Buffer<H> {
     /// Length of payload (without prefix)
     #[must_use]
     pub fn len(&self) -> usize {
-        self.length
+        self.inner.len() - self.hidden_offset
     }
 
     #[must_use]
@@ -61,7 +61,7 @@ impl<H> Buffer<H> {
 
     /// Get the whole payload of the buffer
     pub fn get(&self) -> &[u8] {
-        &self.inner[self.hidden_offset..][..self.length]
+        &self.inner[self.hidden_offset..]
     }
 
     /// If the range is outside the valid range, new space will be allocated
@@ -72,15 +72,12 @@ impl<H> Buffer<H> {
             self.inner.resize(required_size, 0);
         }
 
-        self.length = self.length.max(offset + size);
-
         &mut self.inner[self.hidden_offset + offset..][..size]
     }
 
     /// If length > current length, allocate more space
     pub fn set_len(&mut self, length: usize) {
         self.inner.resize(self.hidden_offset + length, 0);
-        self.length = length;
     }
 }
 
@@ -100,7 +97,7 @@ impl<H> StreamSender<H> {
     /// The prefix of each shard is written over the previously sent shard to avoid reallocations.
     pub fn send(&mut self, mut buffer: Buffer<H>) -> Result<()> {
         let max_shard_data_size = self.max_packet_size - SHARD_PREFIX_SIZE;
-        let actual_buffer_size = buffer.hidden_offset + buffer.length;
+        let actual_buffer_size = buffer.inner.len();
         let data_size = actual_buffer_size - SHARD_PREFIX_SIZE;
         let shards_count = (data_size as f32 / max_shard_data_size as f32).ceil() as usize;
 
@@ -116,14 +113,11 @@ impl<H> StreamSender<H> {
                 actual_buffer_size - packet_start_position,
             );
 
-            // todo: switch to little endian
-            // todo: do not remove sizeof<u32> for packet length
-            sub_buffer[0..4]
-                .copy_from_slice(&((packet_length - mem::size_of::<u32>()) as u32).to_be_bytes());
-            sub_buffer[4..6].copy_from_slice(&self.stream_id.to_be_bytes());
-            sub_buffer[6..10].copy_from_slice(&self.next_packet_index.to_be_bytes());
-            sub_buffer[10..14].copy_from_slice(&(shards_count as u32).to_be_bytes());
-            sub_buffer[14..18].copy_from_slice(&(idx as u32).to_be_bytes());
+            sub_buffer[0..4].copy_from_slice(&(packet_length as u32).to_le_bytes());
+            sub_buffer[4..6].copy_from_slice(&self.stream_id.to_le_bytes());
+            sub_buffer[6..10].copy_from_slice(&self.next_packet_index.to_le_bytes());
+            sub_buffer[10..14].copy_from_slice(&(shards_count as u32).to_le_bytes());
+            sub_buffer[14..18].copy_from_slice(&(idx as u32).to_le_bytes());
 
             self.inner.lock().send(&sub_buffer[..packet_length])?;
         }
@@ -140,19 +134,14 @@ impl<H: Serialize> StreamSender<H> {
     pub fn get_buffer(&mut self, header: &H) -> Result<Buffer<H>> {
         let mut buffer = self.used_buffers.pop().unwrap_or_default();
 
-        let header_size = bincode::serialized_size(header)? as usize;
-        let hidden_offset = SHARD_PREFIX_SIZE + header_size;
+        buffer.resize(SHARD_PREFIX_SIZE, 0);
 
-        if buffer.len() < hidden_offset {
-            buffer.resize(hidden_offset, 0);
-        }
-
-        bincode::serialize_into(&mut buffer[SHARD_PREFIX_SIZE..hidden_offset], header)?;
+        let encoded_size =
+            bincode::serde::encode_into_std_write(header, &mut buffer, config::standard())?;
 
         Ok(Buffer {
             inner: buffer,
-            hidden_offset,
-            length: 0,
+            hidden_offset: SHARD_PREFIX_SIZE + encoded_size,
             _phantom: PhantomData,
         })
     }
@@ -165,7 +154,6 @@ impl<H: Serialize> StreamSender<H> {
 
 pub struct ReceiverData<H> {
     buffer: Option<Vec<u8>>,
-    size: usize, // counting the prefix
     used_buffer_queue: mpsc::Sender<Vec<u8>>,
     had_packet_loss: bool,
     _phantom: PhantomData<H>,
@@ -179,11 +167,11 @@ impl<H> ReceiverData<H> {
 
 impl<H: DeserializeOwned> ReceiverData<H> {
     pub fn get(&self) -> Result<(H, &[u8])> {
-        let mut data: &[u8] = &self.buffer.as_ref().unwrap()[SHARD_PREFIX_SIZE..self.size];
-        // This will partially consume the slice, leaving only the actual payload
-        let header = bincode::deserialize_from(&mut data)?;
+        let data = &self.buffer.as_ref().unwrap()[SHARD_PREFIX_SIZE..];
 
-        Ok((header, data))
+        let (header, decoded_size) = bincode::serde::decode_from_slice(data, config::standard())?;
+
+        Ok((header, &data[decoded_size..]))
     }
     pub fn get_header(&self) -> Result<H> {
         Ok(self.get()?.0)
@@ -201,7 +189,6 @@ impl<H> Drop for ReceiverData<H> {
 struct ReconstructedPacket {
     index: u32,
     buffer: Vec<u8>,
-    size: usize, // contains prefix
 }
 
 pub struct StreamReceiver<H> {
@@ -253,7 +240,6 @@ impl<H: DeserializeOwned + Serialize> StreamReceiver<H> {
 
         Ok(ReceiverData {
             buffer: Some(packet.buffer),
-            size: packet.size,
             used_buffer_queue: self.used_buffer_queue.clone(),
             had_packet_loss,
             _phantom: PhantomData,
@@ -316,9 +302,7 @@ impl StreamSocketBuilder {
             };
 
         Ok(StreamSocket {
-            // +4 is a workaround to retain compatibilty with old protocol
-            // todo: remove +4
-            max_packet_size: max_packet_size + 4,
+            max_packet_size,
             send_socket: Arc::new(Mutex::new(send_socket)),
             receive_socket,
             shard_recv_state: None,
@@ -361,9 +345,7 @@ impl StreamSocketBuilder {
             };
 
         Ok(StreamSocket {
-            // +4 is a workaround to retain compatibilty with old protocol
-            // todo: remove +4
-            max_packet_size: max_packet_size + 4,
+            max_packet_size,
             send_socket: Arc::new(Mutex::new(send_socket)),
             receive_socket,
             shard_recv_state: None,
@@ -385,7 +367,6 @@ struct RecvState {
 
 struct InProgressPacket {
     buffer: Vec<u8>,
-    buffer_length: usize,
     received_shard_indices: HashSet<usize>,
 }
 
@@ -443,7 +424,6 @@ impl StreamSocket {
                 in_progress_packets: HashMap::new(),
                 discarded_shards_sink: InProgressPacket {
                     buffer: vec![],
-                    buffer_length: 0,
                     received_shard_indices: HashSet::new(),
                 },
             },
@@ -467,14 +447,11 @@ impl StreamSocket {
                 return alvr_common::try_again();
             }
 
-            // todo: switch to little endian
-            // todo: do not remove sizeof<u32> for packet length
-            let shard_length = mem::size_of::<u32>()
-                + u32::from_be_bytes(bytes[0..4].try_into().unwrap()) as usize;
-            let stream_id = u16::from_be_bytes(bytes[4..6].try_into().unwrap());
-            let packet_index = u32::from_be_bytes(bytes[6..10].try_into().unwrap());
-            let shards_count = u32::from_be_bytes(bytes[10..14].try_into().unwrap()) as usize;
-            let shard_index = u32::from_be_bytes(bytes[14..18].try_into().unwrap()) as usize;
+            let shard_length = u32::from_le_bytes(bytes[0..4].try_into().unwrap()) as usize;
+            let stream_id = u16::from_le_bytes(bytes[4..6].try_into().unwrap());
+            let packet_index = u32::from_le_bytes(bytes[6..10].try_into().unwrap());
+            let shards_count = u32::from_le_bytes(bytes[10..14].try_into().unwrap()) as usize;
+            let shard_index = u32::from_le_bytes(bytes[14..18].try_into().unwrap()) as usize;
 
             self.shard_recv_state.insert(RecvState {
                 shard_length,
@@ -506,19 +483,22 @@ impl StreamSocket {
             .get_mut(&shard_recv_state_mut.packet_index)
         {
             packet
-        } else if let Some(buffer) = components.used_buffer_receiver.try_recv().ok().or_else(|| {
-            // By default, try to dequeue a used buffer. In case none were found, recycle one of the
-            // in progress packets, chances are these buffers are "dead" because one of their shards
-            // has been dropped by the network.
-            let idx = *components.in_progress_packets.iter().next()?.0;
-            Some(components.in_progress_packets.remove(&idx).unwrap().buffer)
-        }) {
+        } else if let Some(mut buffer) =
+            components.used_buffer_receiver.try_recv().ok().or_else(|| {
+                // By default, try to dequeue a used buffer. In case none were found, recycle one of the
+                // in progress packets, chances are these buffers are "dead" because one of their shards
+                // has been dropped by the network.
+                let idx = *components.in_progress_packets.iter().next()?.0;
+                Some(components.in_progress_packets.remove(&idx).unwrap().buffer)
+            })
+        {
+            buffer.clear();
+
             // NB: Can't use entry pattern because we want to allow bailing out on the line above
             components.in_progress_packets.insert(
                 shard_recv_state_mut.packet_index,
                 InProgressPacket {
                     buffer,
-                    buffer_length: 0,
                     // todo: find a way to skipping this allocation
                     received_shard_indices: HashSet::with_capacity(
                         shard_recv_state_mut.shards_count,
@@ -546,15 +526,10 @@ impl StreamSocket {
         // Prepare buffer to accomodate receiving shard
         {
             // Note: this contains the prefix offset
-            in_progress_packet.buffer_length = usize::max(
-                in_progress_packet.buffer_length,
-                packet_start_index + shard_recv_state_mut.shard_length,
-            );
+            let size = packet_start_index + shard_recv_state_mut.shard_length;
 
-            if in_progress_packet.buffer.len() < in_progress_packet.buffer_length {
-                in_progress_packet
-                    .buffer
-                    .resize(in_progress_packet.buffer_length, 0);
+            if in_progress_packet.buffer.len() < size {
+                in_progress_packet.buffer.resize(size, 0);
             }
         }
 
@@ -592,7 +567,6 @@ impl StreamSocket {
 
         // Check if packet is complete and send
         if in_progress_packet.received_shard_indices.len() == shard_recv_state_mut.shards_count {
-            let size = in_progress_packet.buffer_length;
             components
                 .packet_queue
                 .send(ReconstructedPacket {
@@ -602,7 +576,6 @@ impl StreamSocket {
                         .remove(&shard_recv_state_mut.packet_index)
                         .unwrap()
                         .buffer,
-                    size,
                 })
                 .ok();
 

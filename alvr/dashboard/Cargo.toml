@@ -17,7 +17,6 @@ alvr_sockets.workspace = true
 alvr_gui_common.workspace = true
 alvr_audio.workspace = true
 
-bincode = "1"
 chrono = "0.4"
 eframe = "0.31"
 env_logger = "0.11"

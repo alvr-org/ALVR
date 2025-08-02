@@ -385,7 +385,10 @@ pub fn build_android_deps(
             .run()
             .unwrap();
     }
-    cmd!(sh, "cargo install cargo-ndk cbindgen").run().unwrap();
+    cmd!(sh, "cargo install cbindgen").run().unwrap();
+    cmd!(sh, "cargo install cargo-ndk --version 3.5.4")
+        .run()
+        .unwrap();
     cmd!(
         sh,
         "cargo install --git https://github.com/zarik5/cargo-apk cargo-apk"

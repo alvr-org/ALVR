@@ -114,7 +114,8 @@ pub fn codec_preset_schema() -> PresetSchemaNode {
         name: "codec_preset".into(),
         strings: [(
             "help".into(),
-            "AV1 is only supported on newer gpus (AMD RX 7xxx+ , NVIDIA RTX 30xx+, Intel ARC)!"
+            "AV1 encoding is only supported on RDNA3, Ada Lovelace, Intel ARC or newer GPUs (AMD RX 7xxx+ , NVIDIA RTX 40xx+, Intel ARC)
+and on headsets that have XR2 Gen 2 onboard (Quest 3, Pico 4 Ultra)"
                 .into(),
         )]
         .into_iter()

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "EncodePipeline.h"
+#include "VkContext.hpp"
+#include "ffmpeg_helper.h"
 #include <functional>
 #include <memory>
 
@@ -17,9 +19,9 @@ public:
     ~EncodePipelineNvEnc();
     EncodePipelineNvEnc(
         Renderer* render,
-        VkContext& vk_ctx,
+        HWContext& vk_ctx,
+        VkContext& v_ctx,
         VkFrame& input_frame,
-        VkImageCreateInfo& image_create_info,
         uint32_t width,
         uint32_t height
     );
@@ -27,7 +29,7 @@ public:
     void PushFrame(uint64_t targetTimestampNs, bool idr) override;
 
 private:
-    Renderer* r = nullptr;
+    VkContext& v_ctx;
     std::unique_ptr<alvr::VkFrameCtx> vk_frame_ctx;
     AVBufferRef* hw_ctx = nullptr;
     std::unique_ptr<AVFrame, std::function<void(AVFrame*)>> vk_frame;

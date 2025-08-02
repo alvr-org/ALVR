@@ -8,13 +8,12 @@
 #include "Utils.h"
 #include "ViveTrackerProxy.h"
 #include "bindings.h"
+#include <memory>
 
 #ifdef _WIN32
 #include "platform/win32/CEncoder.h"
 #elif __APPLE__
 #include "platform/macos/CEncoder.h"
-#else
-#include "platform/linux/CEncoder.h"
 #endif
 
 Hmd::Hmd()
@@ -49,15 +48,16 @@ Hmd::Hmd()
 }
 
 Hmd::~Hmd() {
+    ShutdownRuntime();
     Debug("Hmd::destructor");
 
+#ifdef _WIN32
     if (m_encoder) {
         Debug("Hmd::~Hmd(): Stopping encoder...\n");
         m_encoder->Stop();
         m_encoder.reset();
     }
 
-#ifdef _WIN32
     if (m_D3DRender) {
         m_D3DRender->Shutdown();
         m_D3DRender.reset();
@@ -80,30 +80,14 @@ bool Hmd::activate() {
 
     vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/proximity", &m_proximity);
 
-#ifdef _WIN32
+
     float originalIPD
         = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
     vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, 0.063);
-#endif
+
 
     HmdMatrix_SetIdentity(&m_eyeToHeadLeft);
     HmdMatrix_SetIdentity(&m_eyeToHeadRight);
-
-// Disable async reprojection on Linux. Windows interface uses IVRDriverDirectModeComponent
-// which never applies reprojection
-// Also Disable async reprojection on vulkan
-#ifndef _WIN32
-    vr::VRSettings()->SetBool(
-        vr::k_pch_SteamVR_Section,
-        vr::k_pch_SteamVR_EnableLinuxVulkanAsync_Bool,
-        Settings::Instance().m_enableLinuxVulkanAsyncCompute
-    );
-    vr::VRSettings()->SetBool(
-        vr::k_pch_SteamVR_Section,
-        vr::k_pch_SteamVR_DisableAsyncReprojection_Bool,
-        !Settings::Instance().m_enableLinuxAsyncReprojection
-    );
-#endif
 
     if (!m_baseComponentsInitialized) {
         m_baseComponentsInitialized = true;
@@ -139,6 +123,8 @@ bool Hmd::activate() {
 
             m_directModeComponent
                 = std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_poseHistory);
+#elif __linux__
+            m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_poseHistory);
 #endif
         }
 
@@ -166,11 +152,9 @@ void* Hmd::get_component(const char* component_name_and_version) {
         return (vr::IVRDisplayComponent*)this;
     }
 
-#ifdef _WIN32
     if (name_and_vers == vr::IVRDriverDirectModeComponent_Version) {
         return m_directModeComponent.get();
     }
-#endif
 
     return nullptr;
 }
@@ -210,7 +194,7 @@ void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
 #if !defined(_WIN32) && !defined(__APPLE__)
     // This has to be set after initialization is done, because something in vrcompositor is
     // setting it to 90Hz in the meantime
-    if (!m_refreshRateSet && m_encoder && m_encoder->IsConnected()) {
+    if (!m_refreshRateSet /* && m_encoder && m_encoder->IsConnected() */) {
         m_refreshRateSet = true;
         vr::VRProperties()->SetFloatProperty(
             this->prop_container,
@@ -248,14 +232,13 @@ void Hmd::StartStreaming() {
         m_encoder->Start();
 
         m_directModeComponent->SetEncoder(m_encoder);
+        m_encoder->OnStreamStart();
 
 #elif __APPLE__
         m_encoder = std::make_shared<CEncoder>();
-#else
-        m_encoder = std::make_shared<CEncoder>(m_poseHistory);
-        m_encoder->Start();
-#endif
+
         m_encoder->OnStreamStart();
+#endif
     }
 
     m_streamComponentsInitialized = true;
@@ -312,11 +295,7 @@ void Hmd::GetWindowBounds(int32_t* pnX, int32_t* pnY, uint32_t* pnWidth, uint32_
 }
 
 bool Hmd::IsDisplayRealDisplay() {
-#ifdef _WIN32
     return false;
-#else
-    return true;
-#endif
 }
 
 void Hmd::GetRecommendedRenderTargetSize(uint32_t* pnWidth, uint32_t* pnHeight) {
@@ -353,4 +332,10 @@ void Hmd::GetProjectionRaw(vr::EVREye eye, float* left, float* right, float* top
 
 vr::DistortionCoordinates_t Hmd::ComputeDistortion(vr::EVREye, float u, float v) {
     return { { u, v }, { u, v }, { u, v } };
+}
+
+bool Hmd::ComputeInverseDistortion(
+    vr::HmdVector2_t* pResult, vr::EVREye eEye, uint32_t unChannel, float fU, float fV
+) {
+    return false;
 }

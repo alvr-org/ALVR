@@ -176,6 +176,15 @@ impl TrackingManager {
             );
         }
 
+        // Get the default controller position offset
+        let default_offset_arr = alvr_session::session_settings_default()
+            .headset
+            .controllers
+            .content
+            .left_controller_position_offset
+            .content;
+        let default_controller_offset = Vec3::from_array(default_offset_arr);
+
         for &(device_id, mut motion) in device_motions {
             if device_id == *HEAD_ID {
                 self.last_head_pose = motion.pose;
@@ -184,17 +193,24 @@ impl TrackingManager {
             if let Some(config) = device_motion_configs.get(&device_id) {
                 // Recenter to Stage Space
                 motion = self.recenter_motion(motion);
-                
+
                 // Apply custom offset
-                let orientation_in_stage = motion.pose.orientation;
                 motion.pose.orientation *= config.pose_offset.orientation;
-                
-                let position_offset_in_stage = orientation_in_stage * config.pose_offset.position;
-                motion.pose.position += position_offset_in_stage;
-                
+                let position_offset_in_stage;
+
+                if device_id == *HAND_LEFT_ID || device_id == *HAND_RIGHT_ID {
+                    position_offset_in_stage = motion.pose.orientation * default_controller_offset;
+                    motion.pose.position += position_offset_in_stage + config.pose_offset.position
+                        - default_controller_offset;
+                } else {
+                    position_offset_in_stage =
+                        motion.pose.orientation * config.pose_offset.position;
+                    motion.pose.position += position_offset_in_stage;
+                }
+
                 let tangential_velocity = motion.angular_velocity.cross(position_offset_in_stage);
                 motion.linear_velocity += tangential_velocity;
-                
+
                 fn cutoff(v: Vec3, threshold: f32) -> Vec3 {
                     if v.length_squared() > threshold * threshold {
                         v

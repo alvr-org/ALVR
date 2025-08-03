@@ -799,7 +799,10 @@ pub fn get_hand_data(
             last_controller_pose.position = crate::from_xr_vec3(location.pose.position);
         }
 
-        let pose = *last_controller_pose * hand_source.pose_offset;
+        let pose = Pose {
+            orientation: last_controller_pose.orientation * hand_source.pose_offset.orientation,
+            position: last_controller_pose.position + hand_source.pose_offset.position,
+        };
 
         let mut linear_velocity = crate::from_xr_vec3(velocity.linear_velocity);
         let mut angular_velocity = crate::from_xr_vec3(velocity.angular_velocity);

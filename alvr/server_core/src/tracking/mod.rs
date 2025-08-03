@@ -47,6 +47,7 @@ pub enum HandType {
 struct MotionConfig {
     // Position offset applied after rotation offset
     pose_offset: Pose,
+    pivot_offset: Vec3,
     linear_velocity_cutoff: f32,
     angular_velocity_cutoff: f32,
 }
@@ -140,6 +141,7 @@ impl TrackingManager {
         if let Switch::Enabled(controllers) = &headset_config.controllers {
             let t = controllers.left_controller_position_offset;
             let r = controllers.left_controller_rotation_offset;
+            let p = controllers.left_controller_pivot_offset;
 
             device_motion_configs.insert(
                 *HAND_LEFT_ID,
@@ -153,6 +155,7 @@ impl TrackingManager {
                         ),
                         position: Vec3::new(t[0], t[1], t[2]),
                     },
+                    pivot_offset: Vec3::new(p[0], p[1], p[2]),
                     linear_velocity_cutoff: controllers.linear_velocity_cutoff,
                     angular_velocity_cutoff: controllers.angular_velocity_cutoff * DEG_TO_RAD,
                 },
@@ -170,20 +173,12 @@ impl TrackingManager {
                         ),
                         position: Vec3::new(-t[0], t[1], t[2]),
                     },
+                    pivot_offset: Vec3::new(-p[0], p[1], p[2]),
                     linear_velocity_cutoff: controllers.linear_velocity_cutoff,
                     angular_velocity_cutoff: controllers.angular_velocity_cutoff * DEG_TO_RAD,
                 },
             );
         }
-
-        // Get the default controller position offset
-        let default_offset_arr = alvr_session::session_settings_default()
-            .headset
-            .controllers
-            .content
-            .left_controller_position_offset
-            .content;
-        let default_controller_offset = Vec3::from_array(default_offset_arr);
 
         for &(device_id, mut motion) in device_motions {
             if device_id == *HEAD_ID {
@@ -196,20 +191,10 @@ impl TrackingManager {
 
                 // Apply custom offset
                 motion.pose.orientation *= config.pose_offset.orientation;
-                let position_offset_in_stage;
-
-                if device_id == *HAND_LEFT_ID || device_id == *HAND_RIGHT_ID {
-                    position_offset_in_stage = motion.pose.orientation * default_controller_offset;
-                    motion.pose.position += position_offset_in_stage + config.pose_offset.position
-                        - default_controller_offset;
-                } else {
-                    position_offset_in_stage =
-                        motion.pose.orientation * config.pose_offset.position;
-                    motion.pose.position += position_offset_in_stage;
-                }
-
-                let tangential_velocity = motion.angular_velocity.cross(position_offset_in_stage);
-                motion.linear_velocity += tangential_velocity;
+                let origin_to_pivot_world = motion.pose.orientation * config.pivot_offset;
+                motion.pose.position +=
+                    config.pivot_offset - origin_to_pivot_world + config.pose_offset.position;
+                motion.linear_velocity -= motion.angular_velocity.cross(origin_to_pivot_world); //tangential velocity compensate
 
                 fn cutoff(v: Vec3, threshold: f32) -> Vec3 {
                     if v.length_squared() > threshold * threshold {

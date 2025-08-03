@@ -70,12 +70,15 @@ pub fn to_ffi_view_params(params: ViewParams) -> FfiViewParams {
     }
 }
 
-fn get_hand_skeleton_offsets(config: &HeadsetConfig) -> (Pose, Pose) {
+fn get_hand_skeleton_offsets(config: &HeadsetConfig) -> ((Pose, Vec3), (Pose, Vec3)) {
     let left_offset;
+    let left_pivot_offset;
     let right_offset;
+    let right_pivot_offset;
     if let Switch::Enabled(controllers) = &config.controllers {
         let t = controllers.left_hand_tracking_position_offset;
         let r = controllers.left_hand_tracking_rotation_offset;
+        let p = controllers.left_controller_pivot_offset;
 
         left_offset = Pose {
             orientation: Quat::from_euler(
@@ -86,6 +89,8 @@ fn get_hand_skeleton_offsets(config: &HeadsetConfig) -> (Pose, Pose) {
             ),
             position: Vec3::new(t[0], t[1], t[2]),
         };
+        left_pivot_offset = Vec3::new(p[0], p[1], p[2]);
+
         right_offset = Pose {
             orientation: Quat::from_euler(
                 EulerRot::XYZ,
@@ -95,12 +100,18 @@ fn get_hand_skeleton_offsets(config: &HeadsetConfig) -> (Pose, Pose) {
             ),
             position: Vec3::new(-t[0], t[1], t[2]),
         };
+        right_pivot_offset = Vec3::new(-p[0], -p[1], p[2]);
     } else {
         left_offset = Pose::IDENTITY;
+        left_pivot_offset = Vec3::ZERO;
         right_offset = Pose::IDENTITY;
+        right_pivot_offset = Vec3::ZERO;
     }
 
-    (left_offset, right_offset)
+    (
+        (left_offset, left_pivot_offset),
+        (right_offset, right_pivot_offset),
+    )
 }
 
 fn to_ffi_skeleton(skeleton: &[Pose; 31]) -> FfiHandSkeleton {
@@ -128,7 +139,7 @@ pub fn to_openvr_ffi_hand_skeleton(
     let (left_hand_skeleton_offset, right_hand_skeleton_offset) = get_hand_skeleton_offsets(config);
     let id = device_id;
 
-    let pose_offset = if id == *HAND_LEFT_ID {
+    let (pose_offset, pivot_offset) = if id == *HAND_LEFT_ID {
         left_hand_skeleton_offset
     } else {
         right_hand_skeleton_offset
@@ -136,15 +147,6 @@ pub fn to_openvr_ffi_hand_skeleton(
 
     // global joints
     let gj = hand_skeleton;
-
-    // Get the default hand tracking position offset
-    let default_offset_arr = alvr_session::session_settings_default()
-        .headset
-        .controllers
-        .content
-        .left_hand_tracking_position_offset
-        .content;
-    let default_hand_tracking_offset = Vec3::from_array(default_offset_arr);
 
     // Correct the orientation for auxiliary bones.
     pub fn aux_orientation(id: u64, pose: Pose) -> Pose {
@@ -223,14 +225,14 @@ pub fn to_openvr_ffi_hand_skeleton(
         position: gj[1].position,
     };
 
+    let final_orientation = gj[0].orientation * pose_offset.orientation;
+    let final_position =
+        gj[0].position + pivot_offset - final_orientation * pivot_offset + pose_offset.position;
     let skeleton = [
         // Palm. NB: this is ignored by SteamVR
         Pose {
-            orientation: gj[0].orientation * pose_offset.orientation,
-            position: gj[0].position
-                + gj[0].orientation * pose_offset.orientation * default_hand_tracking_offset
-                + pose_offset.position
-                - default_hand_tracking_offset,
+            orientation: final_orientation,
+            position: final_position,
         },
         // Wrist
         root_parented_pose(gj[1]),

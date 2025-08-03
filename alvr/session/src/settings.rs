@@ -1203,6 +1203,11 @@ Currently this cannot be reliably estimated automatically. The correct value sho
     #[schema(flag = "real-time")]
     #[schema(strings(help = "Right controller offset is mirrored horizontally"))]
     // note: logarithmic scale seems to be glitchy for this control
+    #[schema(gui(slider(min = -0.2, max = 0.2, step = 0.001)), suffix = "m")]
+    pub left_controller_pivot_offset: [f32; 3],
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(help = "Right controller offset is mirrored horizontally"))]
     #[schema(gui(slider(min = -0.5, max = 0.5, step = 0.001)), suffix = "m")]
     pub left_hand_tracking_position_offset: [f32; 3],
 
@@ -1210,6 +1215,11 @@ Currently this cannot be reliably estimated automatically. The correct value sho
     #[schema(strings(help = "Right controller offset is mirrored horizontally"))]
     #[schema(gui(slider(min = -180.0, max = 180.0, step = 1.0)), suffix = "°")]
     pub left_hand_tracking_rotation_offset: [f32; 3],
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(help = "Right controller offset is mirrored horizontally"))]
+    #[schema(gui(slider(min = -0.2, max = 0.2, step = 0.001)), suffix = "m")]
+    pub left_hand_tracking_pivot_offset: [f32; 3],
 
     #[schema(strings(help = "List of OpenXR-syle paths"))]
     pub button_mappings: Option<Vec<(String, Vec<ButtonBindingTarget>)>>,
@@ -2015,6 +2025,10 @@ pub fn session_settings_default() -> SettingsDefault {
                         gui_collapsed: true,
                         content: [0.0; 3],
                     },
+                    left_controller_pivot_offset: ArrayDefault {
+                        gui_collapsed: true,
+                        content: [0.0, 0.0, 0.11],
+                    },
                     left_hand_tracking_position_offset: ArrayDefault {
                         gui_collapsed: true,
                         content: [0.04, -0.02, -0.13],
@@ -2022,6 +2036,10 @@ pub fn session_settings_default() -> SettingsDefault {
                     left_hand_tracking_rotation_offset: ArrayDefault {
                         gui_collapsed: true,
                         content: [0.0, -45.0, -90.0],
+                    },
+                    left_hand_tracking_pivot_offset: ArrayDefault {
+                        gui_collapsed: true,
+                        content: [-0.04, 0.02, 0.13],
                     },
                     haptics: SwitchDefault {
                         enabled: true,

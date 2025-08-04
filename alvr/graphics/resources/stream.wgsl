@@ -150,7 +150,7 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
     var alpha = pc.blend_alpha; // Default to Blend passthrough mode
     if pc.passthrough_mode != 0 { // Chroma key
         var current = color;
-        if pc.passthrough_mode == 3 { // HSV mode
+        if pc.passthrough_mode == 2 { // HSV mode
             current = rgb_to_hsv(color);
         }
         let mask = chroma_key_mask(current);
@@ -169,10 +169,20 @@ fn chroma_key_mask(color: vec3f) -> f32 {
     let end_min = vec3f(pc.ck_channel0.z, pc.ck_channel1.z, pc.ck_channel2.z);
     let end_max = vec3f(pc.ck_channel0.w, pc.ck_channel1.w, pc.ck_channel2.w);
 
-    let start_mask = smoothstep(start_min, start_max, color);
-    let end_mask = smoothstep(end_min, end_max, color);
+    let start_mask = smoothstep(start_min.yz, start_max.yz, color.yz);
+    let end_mask = smoothstep(end_min.yz, end_max.yz, color.yz);
+    let sv_mask = max(start_mask, end_mask);
+    // create t1 < t2 < t3, based on the rotated hue starting with start_max.x representing 0.
+    let t3 = end_max.x - start_max.x;
+    // check hue range
+    if t3 > 1.0 {
+        return max(sv_mask.x, sv_mask.y);
+    }
+    let x = fract(color.x - start_max.x);
+    var t1 = fract(start_min.x - start_max.x);
+    var t2 = fract(end_min.x - start_max.x);
 
-    return max(start_mask.x, max(start_mask.y, max(start_mask.z, max(end_mask.x, max(end_mask.y, end_mask.z)))));
+    return max(max(smoothstep(t1, 0.0, x), smoothstep(t2, t3, x)), max(sv_mask.x, sv_mask.y));
 }
 
 fn rgb_to_hsv(rgb: vec3f) -> vec3f {

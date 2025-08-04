@@ -184,6 +184,7 @@ fn main() {
         let keep_config = args.contains("--keep-config");
         let link_stdcpp = !args.contains("--no-stdcpp");
         let all_targets = args.contains("--all-targets");
+        let reproducible: bool = args.contains("--reproducible");
 
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
         let platform = platform.as_deref().map(|platform| match platform {
@@ -229,10 +230,10 @@ fn main() {
                     }
                 }
                 "build-streamer" => {
-                    build::build_streamer(profile, gpl, None, false, profiling, keep_config)
+                    build::build_streamer(profile, gpl, None, reproducible, profiling, keep_config)
                 }
-                "build-launcher" => build::build_launcher(profile, false),
-                "build-server-lib" => build::build_server_lib(profile, None, false),
+                "build-launcher" => build::build_launcher(profile, reproducible),
+                "build-server-lib" => build::build_server_lib(profile, None, reproducible),
                 "build-client" => build::build_android_client(profile),
                 "build-client-lib" => {
                     build::build_android_client_core_lib(profile, link_stdcpp, all_targets)
@@ -242,13 +243,13 @@ fn main() {
                 }
                 "run-streamer" => {
                     if !no_rebuild {
-                        build::build_streamer(profile, gpl, None, false, profiling, keep_config);
+                        build::build_streamer(profile, gpl, None, reproducible, profiling, keep_config);
                     }
                     run_streamer();
                 }
                 "run-launcher" => {
                     if !no_rebuild {
-                        build::build_launcher(profile, false);
+                        build::build_launcher(profile, reproducible);
                     }
                     run_launcher();
                 }

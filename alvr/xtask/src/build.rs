@@ -40,7 +40,8 @@ pub fn build_server_lib(profile: Profile, root: Option<String>, reproducible: bo
         Profile::Debug => (),
     }
     if reproducible {
-        flags.push("--locked");
+        flags.push("--frozen");
+        flags.push("--offline");
     }
     let flags_ref = &flags;
 
@@ -93,7 +94,8 @@ pub fn build_streamer(
         Profile::Debug => (),
     }
     if reproducible {
-        common_flags.push("--locked");
+        common_flags.push("--frozen");
+        common_flags.push("--offline");
     }
 
     let artifacts_dir = if cfg!(all(windows, target_arch = "aarch64")) {
@@ -286,7 +288,8 @@ pub fn build_launcher(profile: Profile, reproducible: bool) {
         Profile::Debug => (),
     }
     if reproducible {
-        common_flags.push("--locked");
+        common_flags.push("--frozen");
+        common_flags.push("--offline");
     }
     let common_flags_ref = &common_flags;
 

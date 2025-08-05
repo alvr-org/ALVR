@@ -20,7 +20,7 @@ pub fn choco_install(sh: &Shell, packages: &[&str]) -> Result<(), xshell::Error>
 pub fn prepare_prebuilt_x264_windows(deps_path: &Path) {
     const VERSION: &str = "0.164";
     const REVISION: usize = 3086;
-    
+
     let sh = Shell::new().unwrap();
 
     let destination = deps_path.join("x264");
@@ -93,45 +93,61 @@ pub fn prepare_windows_deps(skip_admin_priv: bool) {
     prepare_prebuilt_ffmpeg_windows(&deps_path);
 }
 
+fn linux_deps_path() -> std::path::PathBuf {
+    afs::deps_dir().join("linux")
+}
+
+fn linux_x264_path() -> std::path::PathBuf {
+    linux_deps_path().join("x264")
+}
+
+fn linux_ffmpeg_path() -> std::path::PathBuf {
+    linux_deps_path().join("ffmpeg")
+}
+
+fn linux_nvenc_headers_path() -> std::path::PathBuf {
+    linux_deps_path().join("nv-codec-headers")
+}
+
 pub fn prepare_linux_deps(enable_nvenc: bool) {
     let sh = Shell::new().unwrap();
 
-    let deps_path = afs::deps_dir().join("linux");
+    let deps_path = linux_deps_path();
     sh.remove_path(&deps_path).ok();
     sh.create_dir(&deps_path).unwrap();
 
-    let x264_src_path = download_linux_x264_src(&deps_path);
-    let ffmpeg_src_path = download_linux_ffmpeg_src(&deps_path);
-    let nvenc_headers_path = if enable_nvenc {
-        Some(download_linux_nvidia_ffmpeg_deps(&deps_path))
-    } else {
-        None
-    };
+    download_linux_x264_src();
+    download_linux_ffmpeg_src();
+    if enable_nvenc {
+        download_linux_nvidia_ffmpeg_deps();
+    }
 
-    build_linux_x264(&x264_src_path);
-    build_linux_ffmpeg(&ffmpeg_src_path, nvenc_headers_path.as_deref());
+    build_linux_x264();
+    build_linux_ffmpeg(enable_nvenc);
 }
 
-pub fn download_linux_x264_src(deps_path: &Path) -> std::path::PathBuf {
+pub fn download_linux_x264_src() {
+    let deps_path = linux_deps_path();
+    let x264_src_path = linux_x264_path();
+
     // x264 0.164
     command::download_and_extract_tar(
         "https://code.videolan.org/videolan/x264/-/archive/c196240409e4d7c01b47448d93b1f9683aaa7cf7/x264-c196240409e4d7c01b47448d93b1f9683aaa7cf7.tar.bz2",
-        deps_path,
+        &deps_path,
     )
     .unwrap();
-
-    let x264_src_path = deps_path.join("x264");
 
     fs::rename(
         deps_path.join("x264-c196240409e4d7c01b47448d93b1f9683aaa7cf7"),
         &x264_src_path,
     )
     .unwrap();
-    x264_src_path
 }
 
-pub fn build_linux_x264(x264_src_path: &Path) {
+pub fn build_linux_x264() {
     let sh = Shell::new().unwrap();
+
+    let x264_src_path = linux_x264_path();
 
     let flags = ["--enable-static", "--disable-cli", "--enable-pic"];
 
@@ -148,22 +164,25 @@ pub fn build_linux_x264(x264_src_path: &Path) {
     cmd!(sh, "make install").run().unwrap();
 }
 
-fn download_linux_ffmpeg_src(deps_path: &Path) -> std::path::PathBuf {
+fn download_linux_ffmpeg_src() {
+    let deps_path = linux_deps_path();
+    let ffmpeg_src_path = linux_ffmpeg_path();
+
     command::download_and_extract_zip(
         "https://codeload.github.com/FFmpeg/FFmpeg/zip/n6.0",
-        deps_path,
+        &deps_path,
     )
     .unwrap();
 
-    let ffmpeg_src_path = deps_path.join("ffmpeg");
     fs::rename(deps_path.join("FFmpeg-n6.0"), &ffmpeg_src_path).unwrap();
-
-    ffmpeg_src_path
 }
 
-pub fn build_linux_ffmpeg(ffmpeg_src_path: &Path, nvenc_headers_path: Option<&Path>) {
+pub fn build_linux_ffmpeg(enable_nvenc: bool) {
+    let ffmpeg_src_path = linux_ffmpeg_path();
+    let nvenc_headers_path = linux_nvenc_headers_path();
+    
     let sh = Shell::new().unwrap();
-
+    
     let flags = [
         "--enable-gpl",
         "--enable-version3",
@@ -203,7 +222,7 @@ pub fn build_linux_ffmpeg(ffmpeg_src_path: &Path, nvenc_headers_path: Option<&Pa
     let ffmpeg_command = "for p in ../../../alvr/xtask/patches/*; do patch -p1 < $p; done";
     cmd!(sh, "bash -c {ffmpeg_command}").run().unwrap();
 
-    if let Some(nvenc_headers_path) = nvenc_headers_path {
+    if enable_nvenc {
         /*
            Describing Nvidia specific options --nvccflags:
            nvcc from CUDA toolkit version 11.0 or higher does not support compiling for 'compute_30' (default in ffmpeg)
@@ -273,7 +292,10 @@ pub fn build_linux_ffmpeg(ffmpeg_src_path: &Path, nvenc_headers_path: Option<&Pa
     cmd!(sh, "make install").run().unwrap();
 }
 
-fn download_linux_nvidia_ffmpeg_deps(deps_path: &Path) -> std::path::PathBuf {
+fn download_linux_nvidia_ffmpeg_deps() {
+    let deps_path = linux_deps_path();
+    let nvenc_headers_path = linux_nvenc_headers_path();
+
     let codec_header_version = "12.1.14.0";
     let temp_download_dir = deps_path.join("dl_temp");
     command::download_and_extract_zip(
@@ -282,14 +304,12 @@ fn download_linux_nvidia_ffmpeg_deps(deps_path: &Path) -> std::path::PathBuf {
     )
     .unwrap();
 
-    let header_dir = deps_path.join("nv-codec-headers");
     fs::rename(
         temp_download_dir.join(format!("nv-codec-headers-n{codec_header_version}")),
-        &header_dir,
+        &nvenc_headers_path,
     )
     .unwrap();
     fs::remove_dir_all(temp_download_dir).unwrap();
-    header_dir
 }
 
 pub fn prepare_macos_deps() {}

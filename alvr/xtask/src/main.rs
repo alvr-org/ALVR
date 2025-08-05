@@ -15,7 +15,7 @@ use pico_args::Arguments;
 use std::{fs, process, time::Instant};
 use xshell::{Shell, cmd};
 
-const HELP_STR: &str = r#"
+const HELP_STR: &str = r"
 cargo xtask
 Developement actions for ALVR.
 
@@ -63,7 +63,7 @@ ARGS:
     --version <VERSION> Specify version to set with the bump-versions subcommand
     --root <PATH>       Installation root. By default no root is set and paths are calculated using
                         relative paths, which requires conforming to FHS on Linux
-"#;
+";
 
 enum BuildPlatform {
     Windows,
@@ -187,13 +187,13 @@ fn main() {
         let reproducible: bool = args.contains("--reproducible");
 
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
-        let platform = platform.as_deref().map(|platform| match platform {
-            "windows" => BuildPlatform::Windows,
-            "linux" => BuildPlatform::Linux,
-            "macos" => BuildPlatform::Macos,
-            "android" => BuildPlatform::Android,
+        let platform = match platform.as_deref() {
+            Some("windows") => BuildPlatform::Windows,
+            Some("linux") => BuildPlatform::Linux,
+            Some("macos") => BuildPlatform::Macos,
+            Some("android") => BuildPlatform::Android,
             _ => print_help_and_exit("Unrecognized platform"),
-        });
+        };
 
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
         let root: Option<String> = args.opt_value_from_str("--root").unwrap();
@@ -209,26 +209,18 @@ fn main() {
         if args.finish().is_empty() {
             match subcommand.as_str() {
                 "prepare-deps" => {
-                    if let Some(platform) = platform {
-                        if matches!(platform, BuildPlatform::Android) {
-                            dependencies::build_android_deps(
-                                for_ci,
-                                all_targets,
-                                OpenXRLoadersSelection::All,
-                            );
-                        } else {
-                            dependencies::prepare_server_deps(Some(platform), for_ci, !no_nvidia);
-                        }
-                    } else {
-                        dependencies::prepare_server_deps(platform, for_ci, !no_nvidia);
-
+                    if matches!(platform, BuildPlatform::Android) {
                         dependencies::build_android_deps(
                             for_ci,
                             all_targets,
                             OpenXRLoadersSelection::All,
                         );
+                    } else {
+                        dependencies::prepare_server_deps(platform, for_ci, !no_nvidia);
                     }
                 }
+                "download-server-deps" => todo!(),
+                "build-server-deps" => todo!(),
                 "build-streamer" => {
                     build::build_streamer(profile, gpl, None, reproducible, profiling, keep_config)
                 }
@@ -243,7 +235,14 @@ fn main() {
                 }
                 "run-streamer" => {
                     if !no_rebuild {
-                        build::build_streamer(profile, gpl, None, reproducible, profiling, keep_config);
+                        build::build_streamer(
+                            profile,
+                            gpl,
+                            None,
+                            reproducible,
+                            profiling,
+                            keep_config,
+                        );
                     }
                     run_streamer();
                 }
@@ -265,9 +264,9 @@ fn main() {
                 "bump" => version::bump_version(version, is_nightly),
                 "clippy" => {
                     if for_ci {
-                        ci::clippy_ci()
+                        ci::clippy_ci();
                     } else {
-                        clippy()
+                        clippy();
                     }
                 }
                 "check-msrv" => version::check_msrv(),

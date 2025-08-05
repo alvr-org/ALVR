@@ -17,11 +17,11 @@ pub fn choco_install(sh: &Shell, packages: &[&str]) -> Result<(), xshell::Error>
     .run()
 }
 
-pub fn prepare_x264_windows(deps_path: &Path) {
-    let sh = Shell::new().unwrap();
-
+pub fn prepare_prebuilt_x264_windows(deps_path: &Path) {
     const VERSION: &str = "0.164";
     const REVISION: usize = 3086;
+    
+    let sh = Shell::new().unwrap();
 
     let destination = deps_path.join("x264");
 
@@ -37,7 +37,7 @@ pub fn prepare_x264_windows(deps_path: &Path) {
     fs::write(
         afs::deps_dir().join("x264.pc"),
         format!(
-            r#"
+            r"
 prefix={}
 exec_prefix=${{prefix}}/bin/x64
 libdir=${{prefix}}/lib/x64
@@ -48,7 +48,7 @@ Description: x264 library
 Version: {VERSION}
 Libs: -L${{libdir}} -lx264
 Cflags: -I${{includedir}}
-"#,
+",
             destination.to_string_lossy().replace('\\', "/")
         ),
     )
@@ -57,7 +57,7 @@ Cflags: -I${{includedir}}
     cmd!(sh, "setx PKG_CONFIG_PATH {deps_path}").run().unwrap();
 }
 
-pub fn prepare_ffmpeg_windows(deps_path: &Path) {
+pub fn prepare_prebuilt_ffmpeg_windows(deps_path: &Path) {
     command::download_and_extract_zip(
         &format!(
             "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/{}",
@@ -89,8 +89,8 @@ pub fn prepare_windows_deps(skip_admin_priv: bool) {
         .unwrap();
     }
 
-    prepare_x264_windows(&deps_path);
-    prepare_ffmpeg_windows(&deps_path);
+    prepare_prebuilt_x264_windows(&deps_path);
+    prepare_prebuilt_ffmpeg_windows(&deps_path);
 }
 
 pub fn prepare_linux_deps(enable_nvenc: bool) {
@@ -100,13 +100,19 @@ pub fn prepare_linux_deps(enable_nvenc: bool) {
     sh.remove_path(&deps_path).ok();
     sh.create_dir(&deps_path).unwrap();
 
-    build_x264_linux(&deps_path);
-    build_ffmpeg_linux(enable_nvenc, &deps_path);
+    let x264_src_path = download_linux_x264_src(&deps_path);
+    let ffmpeg_src_path = download_linux_ffmpeg_src(&deps_path);
+    let nvenc_headers_path = if enable_nvenc {
+        Some(download_linux_nvidia_ffmpeg_deps(&deps_path))
+    } else {
+        None
+    };
+
+    build_linux_x264(&x264_src_path);
+    build_linux_ffmpeg(&ffmpeg_src_path, nvenc_headers_path.as_deref());
 }
 
-pub fn build_x264_linux(deps_path: &Path) {
-    let sh = Shell::new().unwrap();
-
+pub fn download_linux_x264_src(deps_path: &Path) -> std::path::PathBuf {
     // x264 0.164
     command::download_and_extract_tar(
         "https://code.videolan.org/videolan/x264/-/archive/c196240409e4d7c01b47448d93b1f9683aaa7cf7/x264-c196240409e4d7c01b47448d93b1f9683aaa7cf7.tar.bz2",
@@ -114,19 +120,24 @@ pub fn build_x264_linux(deps_path: &Path) {
     )
     .unwrap();
 
-    let final_path = deps_path.join("x264");
+    let x264_src_path = deps_path.join("x264");
 
     fs::rename(
         deps_path.join("x264-c196240409e4d7c01b47448d93b1f9683aaa7cf7"),
-        &final_path,
+        &x264_src_path,
     )
     .unwrap();
+    x264_src_path
+}
+
+pub fn build_linux_x264(x264_src_path: &Path) {
+    let sh = Shell::new().unwrap();
 
     let flags = ["--enable-static", "--disable-cli", "--enable-pic"];
 
-    let install_prefix = format!("--prefix={}", final_path.join("alvr_build").display());
+    let install_prefix = format!("--prefix={}", x264_src_path.join("alvr_build").display());
 
-    let _push_guard = sh.push_dir(final_path);
+    let _push_guard = sh.push_dir(x264_src_path);
 
     cmd!(sh, "./configure {install_prefix} {flags...}")
         .run()
@@ -137,18 +148,21 @@ pub fn build_x264_linux(deps_path: &Path) {
     cmd!(sh, "make install").run().unwrap();
 }
 
-pub fn build_ffmpeg_linux(enable_nvenc: bool, deps_path: &Path) {
-    let sh = Shell::new().unwrap();
-
+fn download_linux_ffmpeg_src(deps_path: &Path) -> std::path::PathBuf {
     command::download_and_extract_zip(
         "https://codeload.github.com/FFmpeg/FFmpeg/zip/n6.0",
         deps_path,
     )
     .unwrap();
 
-    let final_path = deps_path.join("ffmpeg");
+    let ffmpeg_src_path = deps_path.join("ffmpeg");
+    fs::rename(deps_path.join("FFmpeg-n6.0"), &ffmpeg_src_path).unwrap();
 
-    fs::rename(deps_path.join("FFmpeg-n6.0"), &final_path).unwrap();
+    ffmpeg_src_path
+}
+
+pub fn build_linux_ffmpeg(ffmpeg_src_path: &Path, nvenc_headers_path: Option<&Path>) {
+    let sh = Shell::new().unwrap();
 
     let flags = [
         "--enable-gpl",
@@ -176,20 +190,20 @@ pub fn build_ffmpeg_linux(enable_nvenc: bool, deps_path: &Path) {
         "--enable-rpath",
         "--fatal-warnings",
     ];
-    let install_prefix = format!("--prefix={}", final_path.join("alvr_build").display());
+    let install_prefix = format!("--prefix={}", ffmpeg_src_path.join("alvr_build").display());
     // The reason for 4x$ in LDSOFLAGS var refer to https://stackoverflow.com/a/71429999
     // all varients of --extra-ldsoflags='-Wl,-rpath,$ORIGIN' do not work! don't waste your time trying!
     //
-    let config_vars = r#"-Wl,-rpath,'$$$$ORIGIN'"#;
+    let config_vars = r"-Wl,-rpath,'$$$$ORIGIN'";
 
-    let _push_guard = sh.push_dir(final_path);
+    let _push_guard = sh.push_dir(ffmpeg_src_path);
     let _env_vars = sh.push_env("LDSOFLAGS", config_vars);
 
     // Patches ffmpeg for workarounds and patches that have yet to be unstreamed
     let ffmpeg_command = "for p in ../../../alvr/xtask/patches/*; do patch -p1 < $p; done";
     cmd!(sh, "bash -c {ffmpeg_command}").run().unwrap();
 
-    if enable_nvenc {
+    if let Some(nvenc_headers_path) = nvenc_headers_path {
         /*
            Describing Nvidia specific options --nvccflags:
            nvcc from CUDA toolkit version 11.0 or higher does not support compiling for 'compute_30' (default in ffmpeg)
@@ -201,26 +215,11 @@ pub fn build_ffmpeg_linux(enable_nvenc: bool, deps_path: &Path) {
         */
         #[cfg(target_os = "linux")]
         {
-            let codec_header_version = "12.1.14.0";
-            let temp_download_dir = deps_path.join("dl_temp");
-            command::download_and_extract_zip(
-                &format!("https://github.com/FFmpeg/nv-codec-headers/archive/refs/tags/n{codec_header_version}.zip"),
-                &temp_download_dir
-            )
-            .unwrap();
-
-            let header_dir = deps_path.join("nv-codec-headers");
-            let header_build_dir = header_dir.join("build");
-            fs::rename(
-                temp_download_dir.join(format!("nv-codec-headers-n{codec_header_version}")),
-                &header_dir,
-            )
-            .unwrap();
-            fs::remove_dir_all(temp_download_dir).unwrap();
+            let header_build_dir = nvenc_headers_path.join("build");
             {
                 let make_header_cmd =
                     format!("make install PREFIX='{}'", header_build_dir.display());
-                let _header_push_guard = sh.push_dir(&header_dir);
+                let _header_push_guard = sh.push_dir(nvenc_headers_path);
                 cmd!(sh, "bash -c {make_header_cmd}").run().unwrap();
             }
 
@@ -274,29 +273,33 @@ pub fn build_ffmpeg_linux(enable_nvenc: bool, deps_path: &Path) {
     cmd!(sh, "make install").run().unwrap();
 }
 
+fn download_linux_nvidia_ffmpeg_deps(deps_path: &Path) -> std::path::PathBuf {
+    let codec_header_version = "12.1.14.0";
+    let temp_download_dir = deps_path.join("dl_temp");
+    command::download_and_extract_zip(
+        &format!("https://github.com/FFmpeg/nv-codec-headers/archive/refs/tags/n{codec_header_version}.zip"),
+        &temp_download_dir
+    )
+    .unwrap();
+
+    let header_dir = deps_path.join("nv-codec-headers");
+    fs::rename(
+        temp_download_dir.join(format!("nv-codec-headers-n{codec_header_version}")),
+        &header_dir,
+    )
+    .unwrap();
+    fs::remove_dir_all(temp_download_dir).unwrap();
+    header_dir
+}
+
 pub fn prepare_macos_deps() {}
 
-pub fn prepare_server_deps(
-    platform: Option<BuildPlatform>,
-    skip_admin_priv: bool,
-    enable_nvenc: bool,
-) {
+pub fn prepare_server_deps(platform: BuildPlatform, skip_admin_priv: bool, enable_nvenc: bool) {
     match platform {
-        Some(BuildPlatform::Windows) => prepare_windows_deps(skip_admin_priv),
-        Some(BuildPlatform::Linux) => prepare_linux_deps(enable_nvenc),
-        Some(BuildPlatform::Macos) => prepare_macos_deps(),
-        Some(BuildPlatform::Android) => panic!("Android is not supported"),
-        None => {
-            if cfg!(windows) {
-                prepare_windows_deps(skip_admin_priv);
-            } else if cfg!(target_os = "linux") {
-                prepare_linux_deps(enable_nvenc);
-            } else if cfg!(target_os = "macos") {
-                prepare_macos_deps();
-            } else {
-                panic!("Unsupported platform");
-            }
-        }
+        BuildPlatform::Windows => prepare_windows_deps(skip_admin_priv),
+        BuildPlatform::Linux => prepare_linux_deps(enable_nvenc),
+        BuildPlatform::Macos => prepare_macos_deps(),
+        BuildPlatform::Android => panic!("Android is not supported"),
     }
 }
 

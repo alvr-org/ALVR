@@ -51,7 +51,7 @@ pub fn include_licenses(root_path: &Path, gpl: bool) {
 }
 
 pub fn package_streamer(
-    platform: BuildPlatform,
+    platform: Option<BuildPlatform>,
     skip_admin_priv: bool,
     enable_nvenc: bool,
     gpl: bool,

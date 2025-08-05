@@ -9,6 +9,7 @@ mod version;
 use crate::build::Profile;
 use afs::Layout;
 use alvr_filesystem as afs;
+use core::panic;
 use dependencies::OpenXRLoadersSelection;
 use packaging::ReleaseFlavor;
 use pico_args::Arguments;
@@ -187,13 +188,13 @@ fn main() {
         let reproducible: bool = args.contains("--reproducible");
 
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
-        let platform = match platform.as_deref() {
-            Some("windows") => BuildPlatform::Windows,
-            Some("linux") => BuildPlatform::Linux,
-            Some("macos") => BuildPlatform::Macos,
-            Some("android") => BuildPlatform::Android,
+        let platform = platform.as_deref().map(|platform| match platform {
+            "windows" => BuildPlatform::Windows,
+            "linux" => BuildPlatform::Linux,
+            "macos" => BuildPlatform::Macos,
+            "android" => BuildPlatform::Android,
             _ => print_help_and_exit("Unrecognized platform"),
-        };
+        });
 
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
         let root: Option<String> = args.opt_value_from_str("--root").unwrap();
@@ -209,14 +210,18 @@ fn main() {
         if args.finish().is_empty() {
             match subcommand.as_str() {
                 "prepare-deps" => {
-                    if matches!(platform, BuildPlatform::Android) {
-                        dependencies::android::build_deps(
-                            for_ci,
-                            all_targets,
-                            OpenXRLoadersSelection::All,
-                        );
+                    if let Some(platform) = platform {
+                        if matches!(platform, BuildPlatform::Android) {
+                            dependencies::android::build_deps(
+                                for_ci,
+                                all_targets,
+                                OpenXRLoadersSelection::All,
+                            );
+                        } else {
+                            dependencies::prepare_server_deps(Some(platform), for_ci, !no_nvidia);
+                        }
                     } else {
-                        dependencies::prepare_server_deps(platform, for_ci, !no_nvidia);
+                        panic!("No selected ")
                     }
                 }
                 "download-server-deps" => {

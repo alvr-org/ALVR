@@ -108,7 +108,7 @@ pub fn package_client_openxr(flavor: ReleaseFlavor, skip_admin_priv: bool) {
         ReleaseFlavor::PicoStore => OpenXRLoadersSelection::OnlyPico,
     };
 
-    dependencies::build_android_deps(skip_admin_priv, false, openxr_selection);
+    dependencies::android::build_deps(skip_admin_priv, false, openxr_selection);
 
     if !matches!(flavor, ReleaseFlavor::GitHub) {
         replace_client_openxr_manifest(

@@ -210,7 +210,7 @@ fn main() {
             match subcommand.as_str() {
                 "prepare-deps" => {
                     if matches!(platform, BuildPlatform::Android) {
-                        dependencies::build_android_deps(
+                        dependencies::android::build_deps(
                             for_ci,
                             all_targets,
                             OpenXRLoadersSelection::All,
@@ -219,8 +219,10 @@ fn main() {
                         dependencies::prepare_server_deps(platform, for_ci, !no_nvidia);
                     }
                 }
-                "download-server-deps" => todo!(),
-                "build-server-deps" => todo!(),
+                "download-server-deps" => {
+                    dependencies::download_server_deps(platform, for_ci, !no_nvidia)
+                }
+                "build-server-deps" => dependencies::build_server_deps(platform, !no_nvidia),
                 "build-streamer" => {
                     build::build_streamer(profile, gpl, None, reproducible, profiling, keep_config)
                 }

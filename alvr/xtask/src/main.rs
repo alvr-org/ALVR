@@ -24,46 +24,48 @@ USAGE:
     cargo xtask <SUBCOMMAND> [FLAG] [ARGS]
 
 SUBCOMMANDS:
-    prepare-deps        Download and compile streamer and client external dependencies
-    build-streamer      Build streamer, then copy binaries to build folder
-    build-launcher      Build launcher, then copy binaries to build folder
-    build-server-lib    Build a C-ABI ALVR server library and header
-    build-client        Build client, then copy binaries to build folder
-    build-client-lib    Build a C-ABI ALVR client library and header
-    build-client-xr-lib Build a C-ABI ALVR OpenXR entry point client library and header
-    run-streamer        Build streamer and then open the dashboard
-    run-launcher        Build launcher and then open it
-    format              Autoformat all code
-    check-format        Check if code is correctly formatted
-    package-streamer    Build streamer with distribution profile, make archive
-    package-launcher    Build launcher with distribution profile, make archive
-    package-client      Build client with distribution profile
-    package-client-lib  Build client library then zip it
-    clean               Removes all build artifacts and dependencies
-    bump                Bump streamer and client package versions
-    clippy              Show warnings for selected clippy lints
-    kill-oculus         Kill all Oculus processes
+    prepare-deps            Download and compile streamer and client external dependencies
+    download-server-deps    Download streamer external dependencies
+    build-server-deps       Compile streamer external dependencies
+    build-streamer          Build streamer, then copy binaries to build folder
+    build-launcher          Build launcher, then copy binaries to build folder
+    build-server-lib        Build a C-ABI ALVR server library and header
+    build-client            Build client, then copy binaries to build folder
+    build-client-lib        Build a C-ABI ALVR client library and header
+    build-client-xr-lib     Build a C-ABI ALVR OpenXR entry point client library and header
+    run-streamer            Build streamer and then open the dashboard
+    run-launcher            Build launcher and then open it
+    format                  Autoformat all code
+    check-format            Check if code is correctly formatted
+    package-streamer        Build streamer with distribution profile, make archive
+    package-launcher        Build launcher with distribution profile, make archive
+    package-client          Build client with distribution profile
+    package-client-lib      Build client library then zip it
+    clean                   Removes all build artifacts and dependencies
+    bump                    Bump streamer and client package versions
+    clippy                  Show warnings for selected clippy lints
+    kill-oculus             Kill all Oculus processes
 
 FLAGS:
-    --help              Print this text
-    --keep-config       Preserve the configuration file between rebuilds (session.json)
-    --no-nvidia         Disables nVidia support on Linux. For prepare-deps subcommand
-    --release           Optimized build with less debug checks. For build subcommands
-    --profiling         Enable Profiling
-    --gpl               Bundle GPL libraries (FFmpeg). Only for Windows
-    --nightly           Append nightly tag to versions. For bump subcommand
-    --no-rebuild        Do not rebuild the streamer with run-streamer
-    --ci                Do some CI related tweaks. Depends on the other flags and subcommand
-    --no-stdcpp         Disable linking to libc++_shared with build-client-lib
-    --all-targets       For prepare-deps and build-client-lib subcommand, will build for all android supported ABI targets
-    --meta-store        For package-client subcommand, build for Meta Store
-    --pico-store        For package-client subcommand, build for Pico Store
+    --help                  Print this text
+    --keep-config           Preserve the configuration file between rebuilds (session.json)
+    --no-nvidia             Disables nVidia support on Linux. For prepare-deps subcommand
+    --release               Optimized build with less debug checks. For build subcommands
+    --profiling             Enable Profiling
+    --gpl                   Bundle GPL libraries (FFmpeg, x264)
+    --nightly               Append nightly tag to versions. For bump subcommand
+    --no-rebuild            Do not rebuild the streamer with run-streamer
+    --ci                    Do some CI related tweaks. Depends on the other flags and subcommand
+    --no-stdcpp             Disable linking to libc++_shared with build-client-lib
+    --all-targets           For prepare-deps and build-client-lib subcommand, will build for all android supported ABI targets
+    --meta-store            For package-client subcommand, build for Meta Store
+    --pico-store            For package-client subcommand, build for Pico Store
 
 ARGS:
-    --platform <NAME>   Can be one of: windows, linux, macos, android. Can be omitted
-    --version <VERSION> Specify version to set with the bump-versions subcommand
-    --root <PATH>       Installation root. By default no root is set and paths are calculated using
-                        relative paths, which requires conforming to FHS on Linux
+    --platform <NAME>       Can be one of: windows, linux, macos, android. Can be omitted
+    --version <VERSION>     Specify version to set with the bump-versions subcommand
+    --root <PATH>           Installation root. By default no root is set and paths are calculated using
+                            relative paths, which requires conforming to FHS on Linux
 ";
 
 enum BuildPlatform {
@@ -221,7 +223,13 @@ fn main() {
                             dependencies::prepare_server_deps(Some(platform), for_ci, !no_nvidia);
                         }
                     } else {
-                        panic!("No selected ")
+                        dependencies::prepare_server_deps(platform, for_ci, !no_nvidia);
+
+                        dependencies::android::build_deps(
+                            for_ci,
+                            all_targets,
+                            OpenXRLoadersSelection::All,
+                        );
                     }
                 }
                 "download-server-deps" => {

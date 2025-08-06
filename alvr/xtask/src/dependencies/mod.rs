@@ -1,4 +1,4 @@
-use crate::{BuildPlatform, print_help_and_exit};
+use crate::BuildPlatform;
 
 pub mod android;
 pub mod linux;

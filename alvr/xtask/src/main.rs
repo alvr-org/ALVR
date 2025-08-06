@@ -9,7 +9,6 @@ mod version;
 use crate::build::Profile;
 use afs::Layout;
 use alvr_filesystem as afs;
-use core::panic;
 use dependencies::OpenXRLoadersSelection;
 use packaging::ReleaseFlavor;
 use pico_args::Arguments;

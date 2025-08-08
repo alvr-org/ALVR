@@ -1,6 +1,7 @@
 name: Merge queue only checks
 
 on:
+  pull_request:
   merge_group:
 
 env:
@@ -8,6 +9,7 @@ env:
 
 jobs:
   check-linux-old:
+    if: github.event_name == 'merge_group'
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -34,6 +36,7 @@ jobs:
       - run: cargo clippy
 
   check-msrv-windows:
+    if: github.event_name == 'merge_group'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,6 +56,7 @@ jobs:
       - run: cargo xtask check-msrv
 
   check-msrv-linux:
+    if: github.event_name == 'merge_group'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

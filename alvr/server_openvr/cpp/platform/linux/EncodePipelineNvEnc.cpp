@@ -5,6 +5,7 @@
 #include "ffmpeg_helper.h"
 #include <chrono>
 #include <memory>
+#include <vulkan/vulkan_structs.hpp>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -61,15 +62,15 @@ void set_hwframe_ctx(AVCodecContext* ctx, AVBufferRef* hw_device_ctx) {
 
 } // namespace
 alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
-    Renderer* render,
-    VkContext& vk_ctx,
+    Renderer* render,    
+    HWContext& vk_ctx,
+    VkContext& v_ctx,
     VkFrame& input_frame,
-    VkImageCreateInfo& image_create_info,
     uint32_t width,
     uint32_t height
-) {
-    r = render;
-    vk_frame_ctx = std::make_unique<alvr::VkFrameCtx>(vk_ctx, image_create_info);
+) 
+    : v_ctx(v_ctx) {
+    // vk_frame_ctx = std::make_unique<alvr::VkFrameCtx>(v_ctx, nullptr);
 
     auto input_frame_ctx = (AVHWFramesContext*)vk_frame_ctx->ctx->data;
     assert(input_frame_ctx->sw_format == AV_PIX_FMT_BGRA);
@@ -77,7 +78,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
     int err;
     vk_frame = input_frame.make_av_frame(*vk_frame_ctx);
 
-    err = av_hwdevice_ctx_create_derived(&hw_ctx, AV_HWDEVICE_TYPE_CUDA, vk_ctx.ctx, 0);
+    err = av_hwdevice_ctx_create_derived(&hw_ctx, AV_HWDEVICE_TYPE_CUDA, vk_ctx.avCtx, 0);
     if (err < 0) {
         throw alvr::AvException("Failed to create a CUDA device:", err);
     }
@@ -199,17 +200,19 @@ void alvr::EncodePipelineNvEnc::PushFrame(uint64_t targetTimestampNs, bool idr) 
     timelineInfo.signalSemaphoreValueCount = 1;
     timelineInfo.pSignalSemaphoreValues = &vkf->sem_value[0];
 
-    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eBottomOfPipe;
 
-    VkSubmitInfo submitInfo = {};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    vk::SubmitInfo submitInfo = {};
+    // submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.pNext = &timelineInfo;
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &r->GetOutput().semaphore;
+    // submitInfo.waitSemaphoreCount = 1;
+    // submitInfo.pWaitSemaphores = &r->GetOutput().semaphore;
     submitInfo.pWaitDstStageMask = &waitStage;
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &vkf->sem[0];
-    VK_CHECK(vkQueueSubmit(r->m_queue, 1, &submitInfo, nullptr));
+    // submitInfo.pSignalSemaphores = &vkf->sem[0];
+    submitInfo.pSignalSemaphores = reinterpret_cast<vk::Semaphore*>(&vkf->sem[0]);
+    // VK_CHECK(vkQueueSubmit(r->m_queue, 1, &submitInfo, nullptr));
+    v_ctx.useQueue([&](vk::Queue& queue) { queue.submit(submitInfo); });
 
     int err = av_hwframe_get_buffer(encoder_ctx->hw_frames_ctx, hw_frame, 0);
     if (err < 0) {

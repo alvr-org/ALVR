@@ -1,12 +1,15 @@
-mod backend;
 mod control_socket;
 mod stream_socket;
 
-use alvr_common::{anyhow::Result, info};
+use alvr_common::{ConResult, HandleTryAgain, anyhow::Result, info};
 use alvr_session::{DscpTos, SocketBufferSize};
 use socket2::Socket;
+#[cfg(not(windows))]
+use std::ffi::c_int;
 use std::{
+    mem::MaybeUninit,
     net::{IpAddr, Ipv4Addr},
+    ptr,
     time::Duration,
 };
 
@@ -90,6 +93,16 @@ fn set_dscp(socket: &Socket, dscp: Option<DscpTos>) {
             DscpTos::ExpeditedForwarding => 0b101110,
         };
 
-        socket.set_tos((tos << 2) as u32).ok();
+        socket.set_tos_v4((tos << 2) as u32).ok();
     }
+}
+
+fn socket_peek(socket: &mut Socket, buffer: &mut [u8]) -> ConResult<usize> {
+    #[cfg(windows)]
+    const FLAGS: c_int = 0x02 | 0x8000; // MSG_PEEK | MSG_PARTIAL
+    #[cfg(not(windows))]
+    const FLAGS: c_int = 0x02 | 0x20; // MSG_PEEK | MSG_TRUNC
+
+    let buffer = unsafe { &mut *(ptr::from_mut(buffer) as *mut [MaybeUninit<u8>]) };
+    socket.recv_with_flags(buffer, FLAGS).handle_try_again()
 }

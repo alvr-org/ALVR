@@ -140,7 +140,7 @@ impl ServerSessionManager {
         &self.session_config
     }
 
-    pub fn session_mut(&mut self) -> SessionLock {
+    pub fn session_mut(&mut self) -> SessionLock<'_> {
         SessionLock {
             session_desc: &mut self.session_config,
             session_path: self.session_path.as_deref(),

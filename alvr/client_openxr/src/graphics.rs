@@ -95,7 +95,7 @@ impl<'a> ProjectionLayerBuilder<'a> {
         }
     }
 
-    pub fn build(&self) -> xr::CompositionLayerProjection<xr::OpenGlEs> {
+    pub fn build(&self) -> xr::CompositionLayerProjection<'_, xr::OpenGlEs> {
         let mut flags = xr::CompositionLayerFlags::EMPTY;
 
         if let Some(alpha) = &self.alpha {

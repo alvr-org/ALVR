@@ -1,4 +1,4 @@
-use alvr_audio::AudioDevice;
+use alvr_audio::Device;
 use alvr_common::{
     anyhow::{Result, bail},
     parking_lot::Mutex,
@@ -23,7 +23,7 @@ const INPUT_RECV_TIMEOUT: Duration = Duration::from_millis(20);
 pub fn record_audio_blocking(
     is_running: Arc<dyn Fn() -> bool + Send + Sync>,
     mut sender: StreamSender<()>,
-    device: &AudioDevice,
+    device: &Device,
     channels_count: u16,
     mute: bool,
 ) -> Result<()> {
@@ -32,7 +32,7 @@ pub fn record_audio_blocking(
         "This code only supports mono microphone input"
     );
 
-    let sample_rate = device.input_sample_rate()?;
+    let sample_rate = alvr_audio::input_sample_rate(device)?;
 
     let error = Arc::new(Mutex::new(None::<AudioError>));
 
@@ -96,7 +96,7 @@ pub fn record_audio_blocking(
 #[allow(unused_variables)]
 pub fn play_audio_loop(
     is_running: impl Fn() -> bool,
-    device: &AudioDevice,
+    device: &Device,
     channels_count: u16,
     sample_rate: u32,
     config: AudioBufferingConfig,

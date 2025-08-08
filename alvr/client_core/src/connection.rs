@@ -7,7 +7,6 @@ use crate::{
     statistics::StatisticsManager,
     storage::Config,
 };
-use alvr_audio::AudioDevice;
 use alvr_common::{
     ALVR_VERSION, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState,
     ViewParams, dbg_connection, debug, error, info,
@@ -158,10 +157,9 @@ fn connection_pipeline(
 
     *connection_state_lock = ConnectionState::Connecting;
 
-    let microphone_sample_rate = AudioDevice::new_input(None)
-        .to_con()?
-        .input_sample_rate()
-        .to_con()?;
+    // TODO: Don't fetch cpal sample rate, get directly from AAudio
+    let microphone_sample_rate =
+        alvr_audio::input_sample_rate(&alvr_audio::new_input(None).to_con()?).to_con()?;
 
     dbg_connection!("connection_pipeline: Send stream capabilities");
     proto_control_socket
@@ -340,7 +338,7 @@ fn connection_pipeline(
     });
 
     let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
-        let device = AudioDevice::new_output(None).to_con()?;
+        let device = alvr_audio::new_output(None).to_con()?;
         thread::spawn({
             let ctx = Arc::clone(&ctx);
             move || {
@@ -361,7 +359,7 @@ fn connection_pipeline(
     };
 
     let microphone_thread = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
-        let device = AudioDevice::new_input(None).to_con()?;
+        let device = alvr_audio::new_input(None).to_con()?;
 
         let microphone_sender = stream_socket.request_stream(AUDIO);
 

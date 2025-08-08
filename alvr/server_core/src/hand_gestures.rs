@@ -571,13 +571,11 @@ pub fn trigger_hand_gesture_actions(
 
     for gesture in gestures {
         // Click bind
-        if !only_touch {
-            if let Some(click_bind) = get_click_bind_for_gesture(device_id, gesture.id) {
-                button_entries.append(&mut button_mapping_manager.map_button(&ButtonEntry {
-                    path_id: click_bind,
-                    value: ButtonValue::Binary(gesture.active && gesture.clicked),
-                }));
-            }
+        if !only_touch && let Some(click_bind) = get_click_bind_for_gesture(device_id, gesture.id) {
+            button_entries.append(&mut button_mapping_manager.map_button(&ButtonEntry {
+                path_id: click_bind,
+                value: ButtonValue::Binary(gesture.active && gesture.clicked),
+            }));
         }
 
         // Touch bind
@@ -589,13 +587,11 @@ pub fn trigger_hand_gesture_actions(
         }
 
         // Hover bind
-        if !only_touch {
-            if let Some(hover_bind) = get_hover_bind_for_gesture(device_id, gesture.id) {
-                button_entries.append(&mut button_mapping_manager.map_button(&ButtonEntry {
-                    path_id: hover_bind,
-                    value: ButtonValue::Scalar(if gesture.active { gesture.value } else { 0.0 }),
-                }));
-            }
+        if !only_touch && let Some(hover_bind) = get_hover_bind_for_gesture(device_id, gesture.id) {
+            button_entries.append(&mut button_mapping_manager.map_button(&ButtonEntry {
+                path_id: hover_bind,
+                value: ButtonValue::Scalar(if gesture.active { gesture.value } else { 0.0 }),
+            }));
         }
     }
 

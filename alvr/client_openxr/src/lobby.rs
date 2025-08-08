@@ -85,7 +85,7 @@ impl Lobby {
         self.renderer.update_hud_message(message);
     }
 
-    pub fn render(&mut self, vsync_time: Duration) -> ProjectionLayerBuilder {
+    pub fn render(&mut self, vsync_time: Duration) -> ProjectionLayerBuilder<'_> {
         let xr_vsync_time = crate::to_xr_time(vsync_time);
 
         let (flags, maybe_views) = self

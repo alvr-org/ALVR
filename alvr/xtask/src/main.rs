@@ -59,6 +59,9 @@ FLAGS:
     --all-targets           For prepare-deps and build-client-lib subcommand, will build for all android supported ABI targets
     --meta-store            For package-client subcommand, build for Meta Store
     --pico-store            For package-client subcommand, build for Pico Store
+    --frozen                Forces build subcommands to use locally cached dependencies. Useful for CI or reproducible builds. 
+    --offline               Forces build subcommands to fail if they try to use internet. 
+                            Note that xtask and cargo about are built and downloaded at build time. Useful for CI or reproducible builds.
 
 ARGS:
     --platform <NAME>       Can be one of: windows, linux, macos, android. Can be omitted
@@ -186,7 +189,8 @@ fn main() {
         let keep_config = args.contains("--keep-config");
         let link_stdcpp = !args.contains("--no-stdcpp");
         let all_targets = args.contains("--all-targets");
-        let reproducible: bool = args.contains("--reproducible");
+        let frozen = args.contains("--frozen");
+        let offline = args.contains("--offline");
 
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
         let platform = platform.as_deref().map(|platform| match platform {
@@ -235,11 +239,17 @@ fn main() {
                     dependencies::download_server_deps(platform, for_ci, !no_nvidia)
                 }
                 "build-server-deps" => dependencies::build_server_deps(platform, !no_nvidia),
-                "build-streamer" => {
-                    build::build_streamer(profile, gpl, None, reproducible, profiling, keep_config)
-                }
-                "build-launcher" => build::build_launcher(profile, reproducible),
-                "build-server-lib" => build::build_server_lib(profile, None, reproducible),
+                "build-streamer" => build::build_streamer(
+                    profile,
+                    gpl,
+                    None,
+                    frozen,
+                    offline,
+                    profiling,
+                    keep_config,
+                ),
+                "build-launcher" => build::build_launcher(profile, frozen, offline),
+                "build-server-lib" => build::build_server_lib(profile, None, frozen, offline),
                 "build-client" => build::build_android_client(profile),
                 "build-client-lib" => {
                     build::build_android_client_core_lib(profile, link_stdcpp, all_targets)
@@ -253,7 +263,8 @@ fn main() {
                             profile,
                             gpl,
                             None,
-                            reproducible,
+                            frozen,
+                            offline,
                             profiling,
                             keep_config,
                         );
@@ -262,7 +273,7 @@ fn main() {
                 }
                 "run-launcher" => {
                     if !no_rebuild {
-                        build::build_launcher(profile, reproducible);
+                        build::build_launcher(profile, frozen, offline);
                     }
                     run_launcher();
                 }

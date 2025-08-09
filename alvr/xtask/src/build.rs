@@ -27,7 +27,7 @@ impl Display for Profile {
     }
 }
 
-pub fn build_server_lib(profile: Profile, root: Option<String>, reproducible: bool) {
+pub fn build_server_lib(profile: Profile, root: Option<String>, frozen: bool, offline: bool) {
     let sh = Shell::new().unwrap();
 
     let mut flags = vec![];
@@ -39,8 +39,10 @@ pub fn build_server_lib(profile: Profile, root: Option<String>, reproducible: bo
         Profile::Release => flags.push("--release"),
         Profile::Debug => (),
     }
-    if reproducible {
+    if frozen {
         flags.push("--frozen");
+    }
+    if offline {
         flags.push("--offline");
     }
     let flags_ref = &flags;
@@ -76,7 +78,8 @@ pub fn build_streamer(
     profile: Profile,
     gpl: bool,
     root: Option<String>,
-    reproducible: bool,
+    frozen: bool,
+    offline: bool,
     profiling: bool,
     keep_config: bool,
 ) {
@@ -93,8 +96,10 @@ pub fn build_streamer(
         Profile::Release => common_flags.push("--release"),
         Profile::Debug => (),
     }
-    if reproducible {
+    if frozen {
         common_flags.push("--frozen");
+    }
+    if offline {
         common_flags.push("--offline");
     }
 
@@ -275,7 +280,7 @@ pub fn build_streamer(
     }
 }
 
-pub fn build_launcher(profile: Profile, reproducible: bool) {
+pub fn build_launcher(profile: Profile, frozen: bool, offline: bool) {
     let sh = Shell::new().unwrap();
 
     let mut common_flags = vec![];
@@ -287,8 +292,10 @@ pub fn build_launcher(profile: Profile, reproducible: bool) {
         Profile::Release => common_flags.push("--release"),
         Profile::Debug => (),
     }
-    if reproducible {
+    if frozen {
         common_flags.push("--frozen");
+    }
+    if offline {
         common_flags.push("--offline");
     }
     let common_flags_ref = &common_flags;

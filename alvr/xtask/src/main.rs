@@ -59,9 +59,11 @@ FLAGS:
     --all-targets           For prepare-deps and build-client-lib subcommand, will build for all android supported ABI targets
     --meta-store            For package-client subcommand, build for Meta Store
     --pico-store            For package-client subcommand, build for Pico Store
-    --frozen                Forces build subcommands to use locally cached dependencies. Useful for CI or reproducible builds. 
+    --locked                Forces build subcommands to use only dependencies specified from Cargo.lock 
+    --frozen                Forces build subcommands to use locally cached dependencies specified in Cargo.lock
+                            and fail if internet access was required during build
     --offline               Forces build subcommands to fail if they try to use internet. 
-                            Note that xtask and cargo about are built and downloaded at build time. Useful for CI or reproducible builds.
+                            Note that 'xtask' and 'cargo about' dependencies are downloaded and built during build of alvr
 
 ARGS:
     --platform <NAME>       Can be one of: windows, linux, macos, android. Can be omitted

@@ -189,7 +189,7 @@ fn main() {
         let keep_config = args.contains("--keep-config");
         let link_stdcpp = !args.contains("--no-stdcpp");
         let all_targets = args.contains("--all-targets");
-        let frozen = args.contains("--frozen");
+        let locked = args.contains("--locked");
         let offline = args.contains("--offline");
 
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
@@ -243,13 +243,13 @@ fn main() {
                     profile,
                     gpl,
                     None,
-                    frozen,
+                    locked,
                     offline,
                     profiling,
                     keep_config,
                 ),
-                "build-launcher" => build::build_launcher(profile, frozen, offline),
-                "build-server-lib" => build::build_server_lib(profile, None, frozen, offline),
+                "build-launcher" => build::build_launcher(profile, locked, offline),
+                "build-server-lib" => build::build_server_lib(profile, None, locked, offline),
                 "build-client" => build::build_android_client(profile),
                 "build-client-lib" => {
                     build::build_android_client_core_lib(profile, link_stdcpp, all_targets)
@@ -263,7 +263,7 @@ fn main() {
                             profile,
                             gpl,
                             None,
-                            frozen,
+                            locked,
                             offline,
                             profiling,
                             keep_config,
@@ -273,7 +273,7 @@ fn main() {
                 }
                 "run-launcher" => {
                     if !no_rebuild {
-                        build::build_launcher(profile, frozen, offline);
+                        build::build_launcher(profile, locked, offline);
                     }
                     run_launcher();
                 }

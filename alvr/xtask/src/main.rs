@@ -278,7 +278,7 @@ fn main() {
                 }
                 "run-launcher" => {
                     if !no_rebuild {
-                        build::build_launcher(profile, locked, frozen,  offline);
+                        build::build_launcher(profile, locked, frozen, offline);
                     }
                     run_launcher();
                 }

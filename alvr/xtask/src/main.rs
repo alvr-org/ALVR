@@ -79,6 +79,14 @@ enum BuildPlatform {
     Android,
 }
 
+#[derive(Default)]
+pub struct CommonBuildFlags {
+    locked: bool,
+    frozen: bool,
+    offline: bool,
+    profiling: bool,
+}
+
 pub fn print_help_and_exit(message: &str) -> ! {
     eprintln!("\n{message}");
     eprintln!("{HELP_STR}");
@@ -183,7 +191,6 @@ fn main() {
         } else {
             Profile::Debug
         };
-        let profiling = args.contains("--profiling");
         let gpl = args.contains("--gpl");
         let is_nightly = args.contains("--nightly");
         let no_rebuild = args.contains("--no-rebuild");
@@ -191,9 +198,12 @@ fn main() {
         let keep_config = args.contains("--keep-config");
         let link_stdcpp = !args.contains("--no-stdcpp");
         let all_targets = args.contains("--all-targets");
-        let locked = args.contains("--locked");
-        let frozen = args.contains("--frozen");
-        let offline = args.contains("--offline");
+        let common_build_flags = CommonBuildFlags {
+            locked: args.contains("--locked"),
+            frozen: args.contains("--frozen"),
+            offline: args.contains("--offline"),
+            profiling: args.contains("--profiling"),
+        };
 
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
         let platform = platform.as_deref().map(|platform| match platform {
@@ -242,18 +252,11 @@ fn main() {
                     dependencies::download_server_deps(platform, for_ci, !no_nvidia)
                 }
                 "build-server-deps" => dependencies::build_server_deps(platform, !no_nvidia),
-                "build-streamer" => build::build_streamer(
-                    profile,
-                    gpl,
-                    None,
-                    locked,
-                    frozen,
-                    offline,
-                    profiling,
-                    keep_config,
-                ),
-                "build-launcher" => build::build_launcher(profile, locked, frozen, offline),
-                "build-server-lib" => build::build_server_lib(profile, None, locked, offline),
+                "build-streamer" => {
+                    build::build_streamer(profile, gpl, None, common_build_flags, keep_config)
+                }
+                "build-launcher" => build::build_launcher(profile, common_build_flags),
+                "build-server-lib" => build::build_server_lib(profile, None, common_build_flags),
                 "build-client" => build::build_android_client(profile),
                 "build-client-lib" => {
                     build::build_android_client_core_lib(profile, link_stdcpp, all_targets)
@@ -263,22 +266,13 @@ fn main() {
                 }
                 "run-streamer" => {
                     if !no_rebuild {
-                        build::build_streamer(
-                            profile,
-                            gpl,
-                            None,
-                            locked,
-                            frozen,
-                            offline,
-                            profiling,
-                            keep_config,
-                        );
+                        build::build_streamer(profile, gpl, None, common_build_flags, keep_config);
                     }
                     run_streamer();
                 }
                 "run-launcher" => {
                     if !no_rebuild {
-                        build::build_launcher(profile, locked, frozen, offline);
+                        build::build_launcher(profile, common_build_flags);
                     }
                     run_launcher();
                 }

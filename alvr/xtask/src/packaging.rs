@@ -65,10 +65,10 @@ pub fn package_streamer(
         Profile::Distribution,
         gpl,
         root,
-        true,
-        false,
-        false,
-        false,
+        crate::CommonBuildFlags {
+            locked: true,
+            ..Default::default()
+        },
         false,
     );
 
@@ -86,7 +86,13 @@ pub fn package_launcher() {
 
     sh.remove_path(afs::launcher_build_dir()).ok();
 
-    build::build_launcher(Profile::Distribution, true, false, false);
+    build::build_launcher(
+        Profile::Distribution,
+        crate::CommonBuildFlags {
+            locked: true,
+            ..Default::default()
+        },
+    );
 
     include_licenses(&afs::launcher_build_dir(), false);
 

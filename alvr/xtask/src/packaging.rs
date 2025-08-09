@@ -61,7 +61,16 @@ pub fn package_streamer(
 
     dependencies::prepare_server_deps(platform, skip_admin_priv, enable_nvenc);
 
-    build::build_streamer(Profile::Distribution, gpl, root, true, false, false, false);
+    build::build_streamer(
+        Profile::Distribution,
+        gpl,
+        root,
+        true,
+        false,
+        false,
+        false,
+        false,
+    );
 
     include_licenses(&afs::streamer_build_dir(), gpl);
 
@@ -77,7 +86,7 @@ pub fn package_launcher() {
 
     sh.remove_path(afs::launcher_build_dir()).ok();
 
-    build::build_launcher(Profile::Distribution, true, false);
+    build::build_launcher(Profile::Distribution, true, false, false);
 
     include_licenses(&afs::launcher_build_dir(), false);
 

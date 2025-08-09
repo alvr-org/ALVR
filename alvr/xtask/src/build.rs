@@ -79,6 +79,7 @@ pub fn build_streamer(
     gpl: bool,
     root: Option<String>,
     locked: bool,
+    frozen: bool,
     offline: bool,
     profiling: bool,
     keep_config: bool,
@@ -98,6 +99,9 @@ pub fn build_streamer(
     }
     if locked {
         common_flags.push("--locked");
+    }
+    if frozen {
+        common_flags.push("--frozen");
     }
     if offline {
         common_flags.push("--offline");
@@ -280,7 +284,7 @@ pub fn build_streamer(
     }
 }
 
-pub fn build_launcher(profile: Profile, locked: bool, offline: bool) {
+pub fn build_launcher(profile: Profile, locked: bool, frozen: bool, offline: bool) {
     let sh = Shell::new().unwrap();
 
     let mut common_flags = vec![];
@@ -294,6 +298,9 @@ pub fn build_launcher(profile: Profile, locked: bool, offline: bool) {
     }
     if locked {
         common_flags.push("--locked");
+    }
+    if frozen {
+        common_flags.push("--frozen");
     }
     if offline {
         common_flags.push("--offline");

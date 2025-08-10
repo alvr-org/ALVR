@@ -1,6 +1,6 @@
 name: Merge queue only checks
 
-// Merge queue checks need to be selected as required for prs to actually run, so simply skip them on prs
+# Merge queue checks need to be selected as required for prs to actually run, so simply skip them on prs
 on:
   pull_request:
   merge_group:

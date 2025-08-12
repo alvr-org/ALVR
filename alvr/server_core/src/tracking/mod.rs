@@ -47,6 +47,7 @@ pub enum HandType {
 struct MotionConfig {
     // Position offset applied after rotation offset
     pose_offset: Pose,
+    pivot_offset: Vec3,
     linear_velocity_cutoff: f32,
     angular_velocity_cutoff: f32,
 }
@@ -140,6 +141,7 @@ impl TrackingManager {
         if let Switch::Enabled(controllers) = &headset_config.controllers {
             let t = controllers.left_controller_position_offset;
             let r = controllers.left_controller_rotation_offset;
+            let p = controllers.left_controller_pivot_offset;
 
             device_motion_configs.insert(
                 *HAND_LEFT_ID,
@@ -153,6 +155,7 @@ impl TrackingManager {
                         ),
                         position: Vec3::new(t[0], t[1], t[2]),
                     },
+                    pivot_offset: Vec3::new(p[0], p[1], p[2]),
                     linear_velocity_cutoff: controllers.linear_velocity_cutoff,
                     angular_velocity_cutoff: controllers.angular_velocity_cutoff * DEG_TO_RAD,
                 },
@@ -170,6 +173,7 @@ impl TrackingManager {
                         ),
                         position: Vec3::new(-t[0], t[1], t[2]),
                     },
+                    pivot_offset: Vec3::new(-p[0], p[1], p[2]),
                     linear_velocity_cutoff: controllers.linear_velocity_cutoff,
                     angular_velocity_cutoff: controllers.angular_velocity_cutoff * DEG_TO_RAD,
                 },
@@ -182,18 +186,15 @@ impl TrackingManager {
             }
 
             if let Some(config) = device_motion_configs.get(&device_id) {
-                // Recenter
+                // Recenter to Stage Space
                 motion = self.recenter_motion(motion);
 
-                // Apply custom transform
+                // Apply custom offset
                 motion.pose.orientation *= config.pose_offset.orientation;
-                motion.pose.position += motion.pose.orientation * config.pose_offset.position;
-
-                motion.linear_velocity += motion
-                    .angular_velocity
-                    .cross(motion.pose.orientation * config.pose_offset.position);
-                motion.angular_velocity =
-                    motion.pose.orientation.conjugate() * motion.angular_velocity;
+                let origin_to_pivot_world = motion.pose.orientation * config.pivot_offset;
+                motion.pose.position +=
+                    config.pivot_offset - origin_to_pivot_world + config.pose_offset.position;
+                motion.linear_velocity -= motion.angular_velocity.cross(origin_to_pivot_world); //tangential velocity compensate
 
                 fn cutoff(v: Vec3, threshold: f32) -> Vec3 {
                     if v.length_squared() > threshold * threshold {

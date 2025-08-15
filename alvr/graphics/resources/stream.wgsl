@@ -1,6 +1,5 @@
-// todo: use expression directly when supported in naga
-const DIV12: f32 = 0.0773993808;// 1.0 / 12.92
-const DIV1: f32 = 0.94786729857; // 1.0 / 1.055
+const DIV12: f32 = 1.0 / 12.92;
+const DIV1: f32 = 1.0 / 1.055;
 const THRESHOLD: f32 = 0.04045;
 const GAMMA: vec3f = vec3f(2.4);
 

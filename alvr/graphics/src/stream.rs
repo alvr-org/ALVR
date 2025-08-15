@@ -4,7 +4,7 @@ use alvr_common::{
     glam::{self, Mat4, UVec2, Vec3, Vec4},
 };
 use alvr_session::{FoveatedEncodingConfig, PassthroughMode, UpscalingConfig};
-use std::{collections::HashMap, ffi::c_void, iter, mem, rc::Rc};
+use std::{ffi::c_void, iter, mem, rc::Rc};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, Color, ColorTargetState, ColorWrites,
@@ -12,9 +12,7 @@ use wgpu::{
     PrimitiveTopology, PushConstantRange, RenderPass, RenderPassColorAttachment,
     RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, SamplerBindingType,
     SamplerDescriptor, ShaderStages, StoreOp, TextureSampleType, TextureView,
-    TextureViewDescriptor, TextureViewDimension, VertexState,
-    hal::{api, gles},
-    include_wgsl,
+    TextureViewDescriptor, TextureViewDimension, VertexState, include_wgsl,
 };
 
 const FLOAT_SIZE: u32 = mem::size_of::<f32>() as u32;
@@ -57,6 +55,7 @@ pub struct StreamRenderer {
 
 impl StreamRenderer {
     #[expect(clippy::too_many_arguments)]
+    #[cfg_attr(any(target_os = "macos", target_os = "ios"), expect(unused))]
     pub fn new(
         context: Rc<GraphicsContext>,
         base_view_resolution: UVec2,
@@ -97,14 +96,11 @@ impl StreamRenderer {
 
         let shader_module = device.create_shader_module(include_wgsl!("../resources/stream.wgsl"));
 
-        let mut constants = HashMap::new();
+        let mut constants = vec![];
 
         constants.extend([
-            (
-                "ENABLE_SRGB_CORRECTION".into(),
-                enable_srgb_correction.into(),
-            ),
-            ("ENCODING_GAMMA".into(), encoding_gamma.into()),
+            ("ENABLE_SRGB_CORRECTION", enable_srgb_correction.into()),
+            ("ENCODING_GAMMA", encoding_gamma.into()),
         ]);
 
         let staging_resolution = if let Some(foveated_encoding) = foveated_encoding {
@@ -119,19 +115,16 @@ impl StreamRenderer {
 
         if let Some(upscaling) = upscaling {
             constants.extend([
-                ("ENABLE_UPSCALING".into(), true.into()),
+                ("ENABLE_UPSCALING", true.into()),
                 (
-                    "UPSCALE_USE_EDGE_DIRECTION".into(),
+                    "UPSCALE_USE_EDGE_DIRECTION",
                     upscaling.edge_direction.into(),
                 ),
                 (
-                    "UPSCALE_EDGE_THRESHOLD".into(),
+                    "UPSCALE_EDGE_THRESHOLD",
                     (upscaling.edge_threshold / 255.0).into(),
                 ),
-                (
-                    "UPSCALE_EDGE_SHARPNESS".into(),
-                    upscaling.edge_sharpness.into(),
-                ),
+                ("UPSCALE_EDGE_SHARPNESS", upscaling.edge_sharpness.into()),
             ]);
         };
 
@@ -189,15 +182,6 @@ impl StreamRenderer {
         for target_swapchain in &swapchain_textures {
             let staging_texture = super::create_texture(device, staging_resolution, target_format);
 
-            let staging_texture_gl = unsafe {
-                staging_texture.as_hal::<api::Gles, _, _>(|tex| {
-                    let gles::TextureInner::Texture { raw, .. } = tex.unwrap().inner else {
-                        panic!("invalid texture type");
-                    };
-                    raw
-                })
-            };
-
             let bind_group = device.create_bind_group(&BindGroupDescriptor {
                 label: None,
                 layout: &bind_group_layout,
@@ -226,7 +210,20 @@ impl StreamRenderer {
                 bind_group,
                 render_target,
             });
-            staging_textures_gl.push(staging_texture_gl);
+
+            #[cfg(not(any(target_os = "macos", target_os = "ios")))]
+            {
+                let staging_texture_gl = unsafe {
+                    staging_texture.as_hal::<wgpu::hal::api::Gles, _, _>(|tex| {
+                        let wgpu::hal::gles::TextureInner::Texture { raw, .. } = tex.unwrap().inner
+                        else {
+                            panic!("invalid texture type");
+                        };
+                        raw
+                    })
+                };
+                staging_textures_gl.push(staging_texture_gl);
+            }
         }
 
         let staging_renderer = StagingRenderer::new(
@@ -443,7 +440,7 @@ fn set_passthrough_push_constants(render_pass: &mut RenderPass, config: Option<&
 pub fn foveated_encoding_shader_constants(
     expanded_view_resolution: UVec2,
     config: FoveatedEncodingConfig,
-) -> (UVec2, HashMap<String, f64>) {
+) -> (UVec2, Vec<(&'static str, f64)>) {
     let view_resolution = expanded_view_resolution.as_vec2();
 
     let center_size = glam::vec2(config.center_size_x, config.center_size_y);
@@ -514,7 +511,7 @@ pub fn foveated_encoding_shader_constants(
         ("C_RIGHT_Y", c_right.y),
     ]
     .iter()
-    .map(|(k, v)| ((*k).to_string(), *v as f64))
+    .map(|(k, v)| (*k, *v as f64))
     .collect();
 
     (optimized_view_resolution_aligned.as_uvec2(), constants)

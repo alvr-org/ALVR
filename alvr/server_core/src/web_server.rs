@@ -3,7 +3,7 @@ use crate::{
     logging_backend::LOGGING_EVENTS_SENDER,
 };
 use alvr_common::{
-    ConnectionState,
+    ConnectionState, RelaxedAtomic,
     anyhow::{self, Result},
     error, info, log,
 };
@@ -95,13 +95,6 @@ async fn http_api(
     connection_context: &ConnectionContext,
     request: Request<Body>,
 ) -> Result<Response<Body>> {
-    let allow_untrusted_http = SESSION_MANAGER
-        .read()
-        .session()
-        .session_settings
-        .connection
-        .allow_untrusted_http;
-
     const X_ALVR: &str = "X-ALVR";
 
     // A browser is asking for CORS info
@@ -110,7 +103,13 @@ async fn http_api(
             .status(StatusCode::FORBIDDEN)
             .body("".into())?;
 
-        if !allow_untrusted_http {
+        static ALLOW_UNTRUSTED_HTTP: RelaxedAtomic = RelaxedAtomic::new(false);
+
+        if let Some(session_manager) = SESSION_MANAGER.try_read() {
+            ALLOW_UNTRUSTED_HTTP.set(session_manager.settings().connection.allow_untrusted_http);
+        }
+
+        if !ALLOW_UNTRUSTED_HTTP.value() {
             return Ok(bad_request);
         }
 

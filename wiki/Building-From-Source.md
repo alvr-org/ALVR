@@ -58,8 +58,8 @@ cargo xtask prepare-deps --platform [your platform] [--gpl] [--no-nvidia]
 ```
 
 * Replace `[your platform]` with your computer OS, either `windows` or `linux`
-* **Windows only:** Use the `--gpl` flag if you want to download, build and bundle FFmpeg inside the ALVR streamer. Keep in mind that this is only needed for software encoding. As the name suggests, if you use this flag you can only redistribute the final package as GPLv2.0 licensed; because of the x264 encoder.
-* **Linux only:** Use the `--no-nvidia` flag if you have a AMD gpu.
+* Use the `--gpl` flag if you want to download, build and bundle FFmpeg, x264 inside the ALVR streamer. As the name suggests, if you use this flag you can only redistribute the final package as GPLv2.0 licensed.
+* **Linux only:** Use the `--no-nvidia` flag if you have a AMD or Intel gpu.
 
 Next up is the proper build of the streamer. Run the following:
 
@@ -67,7 +67,7 @@ Next up is the proper build of the streamer. Run the following:
 cargo xtask build-streamer --release [--gpl]
 ```
 
-**Windows only:** Again, the `--gpl` flag is needed only if you want to bundle FFmpeg.
+Again, the `--gpl` flag is needed only if you want to bundle FFmpeg and x264.
 
 You can find the resulting package in `build/alvr_streamer_[your platform]`
 

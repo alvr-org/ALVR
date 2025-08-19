@@ -61,7 +61,16 @@ pub fn package_streamer(
 
     dependencies::prepare_server_deps(platform, skip_admin_priv, enable_nvenc);
 
-    build::build_streamer(Profile::Distribution, gpl, root, true, false, false);
+    build::build_streamer(
+        Profile::Distribution,
+        gpl,
+        root,
+        crate::CommonBuildFlags {
+            locked: true,
+            ..Default::default()
+        },
+        false,
+    );
 
     include_licenses(&afs::streamer_build_dir(), gpl);
 
@@ -77,7 +86,13 @@ pub fn package_launcher() {
 
     sh.remove_path(afs::launcher_build_dir()).ok();
 
-    build::build_launcher(Profile::Distribution, true);
+    build::build_launcher(
+        Profile::Distribution,
+        crate::CommonBuildFlags {
+            locked: true,
+            ..Default::default()
+        },
+    );
 
     include_licenses(&afs::launcher_build_dir(), false);
 
@@ -108,7 +123,7 @@ pub fn package_client_openxr(flavor: ReleaseFlavor, skip_admin_priv: bool) {
         ReleaseFlavor::PicoStore => OpenXRLoadersSelection::OnlyPico,
     };
 
-    dependencies::build_android_deps(skip_admin_priv, false, openxr_selection);
+    dependencies::android::build_deps(skip_admin_priv, false, openxr_selection);
 
     if !matches!(flavor, ReleaseFlavor::GitHub) {
         replace_client_openxr_manifest(

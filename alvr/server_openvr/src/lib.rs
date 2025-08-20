@@ -333,28 +333,32 @@ extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, ampl
     }
 }
 
-extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32) {
-    let codec = if codec == 0 {
-        CodecType::H264
-    } else if codec == 1 {
-        CodecType::Hevc
-    } else {
-        CodecType::AV1
-    };
-
-    let mut config_buffer = vec![0; len as usize];
-
-    unsafe { ptr::copy_nonoverlapping(buffer_ptr, config_buffer.as_mut_ptr(), len as usize) };
-
+extern "C" fn send_video(
+    codec: i32,
+    timestamp_ns: u64,
+    buffer_ptr: *mut u8,
+    len: i32,
+    is_idr: bool,
+) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-        context.set_video_config_nals(config_buffer, codec);
-    }
-}
-
-extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_idr: bool) {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        let codec = if codec == 0 {
+            CodecType::H264
+        } else if codec == 1 {
+            CodecType::Hevc
+        } else {
+            CodecType::AV1
+        };
         let timestamp = Duration::from_nanos(timestamp_ns);
-        let buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
+        let mut buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
+
+        let Some(maybe_config_nals) = alvr_server_core::parse_nals(codec, &mut buffer) else {
+            // The video buffer is invalid
+            return;
+        };
+
+        if let Some(config_nals) = maybe_config_nals {
+            context.set_video_config_nals(config_nals.to_vec(), codec);
+        }
 
         let Some(head_pose) = HEAD_POSE_QUEUE
             .lock()
@@ -516,7 +520,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
             RegisterButtons = Some(register_buttons);
             DriverReadyIdle = Some(driver_ready_idle);
             HapticsSend = Some(send_haptics);
-            SetVideoConfigNals = Some(set_video_config_nals);
             VideoSend = Some(send_video);
             GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
             ReportComposed = Some(report_composed);

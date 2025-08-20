@@ -289,8 +289,8 @@ void CEncoder::Run() {
                 ReportComposed(pose->targetTimestampNs, composed_offset);
             }
 
-            ParseFrameNals(
-                encode_pipeline->GetCodec(), packet.data, packet.size, packet.pts, packet.isIDR
+            VideoSend(
+                encode_pipeline->GetCodec(), packet.pts, packet.data, packet.size, packet.isIDR
             );
         }
     } catch (std::exception& e) {

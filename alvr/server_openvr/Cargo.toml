@@ -21,11 +21,11 @@ alvr_server_io.workspace = true
 alvr_session.workspace = true
 
 serde_json = "1"
-sysinfo = "0.33"
+sysinfo = "0.37"
 
 [build-dependencies]
 alvr_filesystem = { path = "../filesystem" }
-bindgen = "0.71"
+bindgen = "0.72"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"
 

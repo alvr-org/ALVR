@@ -1,5 +1,13 @@
-use egui::{self, Ui, popup};
+use egui::{self, Id, Popup, PopupAnchor, Ui};
 
 pub fn tooltip(ui: &mut Ui, id: &str, text: &str) {
-    popup::show_tooltip_text(ui.ctx(), ui.layer_id(), egui::Id::new(id), text);
+    Popup::new(
+        Id::new(id),
+        ui.ctx().clone(),
+        PopupAnchor::PointerFixed,
+        ui.layer_id(),
+    )
+    .show(|ui| {
+        ui.label(text);
+    });
 }

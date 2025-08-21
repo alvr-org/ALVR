@@ -90,6 +90,6 @@ fn set_dscp(socket: &Socket, dscp: Option<DscpTos>) {
             DscpTos::ExpeditedForwarding => 0b101110,
         };
 
-        socket.set_tos((tos << 2) as u32).ok();
+        socket.set_tos_v4((tos << 2) as u32).ok();
     }
 }

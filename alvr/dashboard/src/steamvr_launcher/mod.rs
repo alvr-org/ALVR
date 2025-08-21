@@ -118,7 +118,7 @@ fn get_steamvr_root_dir() -> PathBuf {
                 Please make sure you have installed and ran SteamVR at least once. \
                 Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR. {e}"
             );
-            return "".into();
+            "".into()
         }
     }
 }

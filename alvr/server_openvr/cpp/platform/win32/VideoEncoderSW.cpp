@@ -253,7 +253,7 @@ void VideoEncoderSW::Transmit(
         }
         // Send encoded frame to client
         bool isIdr = (packet->flags & AV_PKT_FLAG_KEY) != 0;
-        ParseFrameNals(m_codec, packet->data, packet->size, packet->pts, isIdr);
+        VideoSend(m_codec, packet->pts, packet->data, packet->size, isIdr);
         // Debug("Sent encoded packet to client");
         av_packet_free(&packet);
     }

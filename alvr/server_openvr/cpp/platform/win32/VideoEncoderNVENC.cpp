@@ -155,7 +155,7 @@ void VideoEncoderNVENC::Transmit(
             fpOut.write(reinterpret_cast<char*>(buf), len);
         }
 
-        ParseFrameNals(m_codec, buf, len, targetTimestampNs, insertIDR);
+        VideoSend(m_codec, targetTimestampNs, buf, len, insertIDR);
     }
 }
 

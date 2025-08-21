@@ -8,11 +8,13 @@ mod logging_backend;
 mod sockets;
 mod statistics;
 mod tracking;
+mod video_encoding;
 mod web_server;
 
 pub use c_api::*;
 pub use logging_backend::init_logging;
 pub use tracking::HandType;
+pub use video_encoding::parse_nals;
 
 use crate::connection::VideoPacket;
 use alvr_common::{

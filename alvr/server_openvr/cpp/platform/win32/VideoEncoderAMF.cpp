@@ -772,7 +772,7 @@ void VideoEncoderAMF::Receive(AMFDataPtr data) {
         isIdr = type == AMF_VIDEO_ENCODER_HEVC_OUTPUT_DATA_TYPE_IDR;
     }
 
-    ParseFrameNals(m_codec, reinterpret_cast<uint8_t*>(p), length, targetTimestampNs, isIdr);
+    VideoSend(m_codec, targetTimestampNs, reinterpret_cast<uint8_t*>(p), length, isIdr);
 }
 
 void VideoEncoderAMF::ApplyFrameProperties(const amf::AMFSurfacePtr& surface, bool insertIDR) {

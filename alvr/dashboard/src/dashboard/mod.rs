@@ -97,7 +97,7 @@ impl Dashboard {
         }
 
         *server_restarting_lock = true;
-        
+
         #[cfg(not(target_arch = "wasm32"))]
         std::thread::spawn({
             let server_restarting = Arc::clone(&self.server_restarting);

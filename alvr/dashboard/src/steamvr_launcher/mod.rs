@@ -9,11 +9,10 @@ use crate::data_sources;
 use alvr_adb::commands as adb;
 use alvr_common::{
     anyhow::{Context, Result},
-    debug,
+    debug, error,
     glam::bool,
     parking_lot::Mutex,
     warn,
-    error,
 };
 use alvr_filesystem as afs;
 use serde_json::{self, json};
@@ -198,31 +197,28 @@ impl Launcher {
             let steamvr_path = &steamvr_settings.steamvr_executable_path;
             let default_steamvr_executable = get_default_steamvr_executable_path();
 
-            
             if quick_launch {
                 if PathBuf::from(steamvr_path).exists() {
                     debug!("Launching SteamVR from path: {}", steamvr_path);
 
-                    Command::new(steamvr_path)
-                        .spawn()
-                        .ok();
+                    Command::new(steamvr_path).spawn().ok();
                 } else {
-                    warn!("SteamVR executable not found at path: {}. Trying default path.", default_steamvr_executable);
-    
-                    Command::new(default_steamvr_executable)
-                        .spawn()
-                        .ok();
+                    warn!(
+                        "SteamVR executable not found at path: {}. Trying default path.",
+                        default_steamvr_executable
+                    );
+
+                    Command::new(default_steamvr_executable).spawn().ok();
                 }
             } else {
                 let steamvr_app_id = "250820";
-    
+
                 #[cfg(windows)]
                 windows_steamvr::launch_steam_app(steamvr_app_id);
-    
+
                 #[cfg(target_os = "linux")]
                 linux_steamvr::launch_steam_app(steamvr_app_id);
             }
-
         }
     }
 
@@ -236,7 +232,7 @@ impl Launcher {
         maybe_kill_steamvr();
     }
 
-    pub fn restart_steamvr(&self, ) {
+    pub fn restart_steamvr(&self) {
         self.ensure_steamvr_shutdown();
         self.launch_steamvr();
     }

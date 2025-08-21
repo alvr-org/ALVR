@@ -93,8 +93,6 @@ pub fn linux_hardware_checks() {
     linux_encoder_checks(&device_infos);
 }
 
-
-
 fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     let have_intel_igpu = device_infos.iter().any(|gpu| {
         gpu.1

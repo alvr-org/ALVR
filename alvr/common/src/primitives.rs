@@ -98,6 +98,14 @@ impl DeviceMotion {
             angular_velocity: self.angular_velocity,
         }
     }
+
+    pub fn to_local_velocity(&self) -> Self {
+        Self {
+            pose: self.pose,
+            linear_velocity: self.pose.orientation.conjugate() * self.linear_velocity,
+            angular_velocity: self.pose.orientation.conjugate() * self.angular_velocity,
+        }
+    }
 }
 
 // Per eye view parameters

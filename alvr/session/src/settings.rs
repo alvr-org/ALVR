@@ -1469,9 +1469,12 @@ pub struct LoggingConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct SteamvrLauncher {
-    #[schema(strings(display_name = "Open and close SteamVR with dashboard"))]
-    pub open_close_steamvr_with_dashboard: bool,
+pub struct ServerLauncher {
+    #[schema(strings(
+        display_name = "Open and close server with dashboard",
+        notice = "This may kill the currently open VR game"
+    ))]
+    pub open_close_server_with_dashboard: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1513,7 +1516,7 @@ pub struct NewVersionPopupConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ExtraConfig {
-    pub steamvr_launcher: SteamvrLauncher,
+    pub server_launcher: ServerLauncher,
     pub capture: CaptureConfig,
     pub logging: LoggingConfig,
     #[cfg_attr(not(target_os = "linux"), schema(flag = "hidden"))]
@@ -2131,8 +2134,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     decoder: false,
                 },
             },
-            steamvr_launcher: SteamvrLauncherDefault {
-                open_close_steamvr_with_dashboard: false,
+            server_launcher: ServerLauncherDefault {
+                open_close_server_with_dashboard: false,
             },
             capture: CaptureConfigDefault {
                 startup_video_recording: false,

@@ -12,7 +12,7 @@ use alvr_filesystem as afs;
 use dependencies::OpenXRLoadersSelection;
 use packaging::ReleaseFlavor;
 use pico_args::Arguments;
-use std::{fs, process, time::Instant};
+use std::{fs, path::Path, process, time::Instant};
 use xshell::{Shell, cmd};
 
 const HELP_STR: &str = r#"
@@ -31,6 +31,7 @@ SUBCOMMANDS:
     build-client-lib    Build a C-ABI ALVR client library and header
     build-client-xr-lib Build a C-ABI ALVR OpenXR entry point client library and header
     run-streamer        Build streamer and then open the dashboard
+    run-streamer-mock   Build mock streamer and then open the dashboard
     run-launcher        Build launcher and then open it
     format              Autoformat all code
     check-format        Check if code is correctly formatted
@@ -78,10 +79,10 @@ pub fn print_help_and_exit(message: &str) -> ! {
     process::exit(1);
 }
 
-pub fn run_streamer() {
+pub fn run_streamer(root: &Path) {
     let sh = Shell::new().unwrap();
 
-    let dashboard_exe = Layout::new(&afs::streamer_build_dir()).dashboard_exe();
+    let dashboard_exe = Layout::new(root).dashboard_exe();
     cmd!(sh, "{dashboard_exe}").run().unwrap();
 }
 
@@ -244,7 +245,13 @@ fn main() {
                     if !no_rebuild {
                         build::build_streamer(profile, gpl, None, false, profiling, keep_config);
                     }
-                    run_streamer();
+                    run_streamer(&afs::streamer_build_dir());
+                }
+                "run-streamer-mock" => {
+                    if !no_rebuild {
+                        build::build_streamer_mock(keep_config);
+                    }
+                    run_streamer(&afs::streamer_mock_build_dir());
                 }
                 "run-launcher" => {
                     if !no_rebuild {

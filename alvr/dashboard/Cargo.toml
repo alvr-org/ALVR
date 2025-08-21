@@ -6,6 +6,12 @@ rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 
+[features]
+steamvr-server = []
+# monado-server = [] # todo
+mock-server = []
+default = ["steamvr-server"]
+
 [dependencies]
 alvr_adb.workspace = true
 alvr_common.workspace = true

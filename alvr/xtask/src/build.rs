@@ -273,6 +273,57 @@ pub fn build_streamer(
     }
 }
 
+pub fn build_streamer_mock(keep_config: bool) {
+    let sh = Shell::new().unwrap();
+
+    let build_root = afs::streamer_mock_build_dir();
+
+    let build_layout = Layout::new(&build_root);
+
+    let artifacts_dir = afs::target_dir().join("debug");
+
+    let maybe_config = if keep_config {
+        fs::read_to_string(build_layout.session()).ok()
+    } else {
+        None
+    };
+
+    sh.remove_path(build_root).ok();
+    sh.create_dir(&build_layout.executables_dir).unwrap();
+
+    if let Some(config) = maybe_config {
+        fs::write(build_layout.session(), config).ok();
+    }
+
+    // Build mock server
+    cmd!(sh, "cargo build -p alvr_server_mock").run().unwrap();
+    sh.copy_file(
+        artifacts_dir.join(afs::exec_fname("alvr_server_mock")),
+        build_layout.mock_server_exe(),
+    )
+    .unwrap();
+
+    // Build dashboard
+    cmd!(
+        sh,
+        "cargo build -p alvr_dashboard --no-default-features --features mock-server"
+    )
+    .run()
+    .unwrap();
+    sh.copy_file(
+        artifacts_dir.join(afs::exec_fname("alvr_dashboard")),
+        build_layout.dashboard_exe(),
+    )
+    .unwrap();
+
+    // Copy test video
+    sh.copy_file(
+        afs::deps_dir().join("test_video.mp4"),
+        build_layout.static_resources_dir.join("test_video.mp4"),
+    )
+    .unwrap();
+}
+
 pub fn build_launcher(profile: Profile, reproducible: bool) {
     let sh = Shell::new().unwrap();
 

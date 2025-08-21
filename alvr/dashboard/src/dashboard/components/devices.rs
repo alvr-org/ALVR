@@ -75,8 +75,8 @@ impl DevicesTab {
 
                         #[cfg(not(target_arch = "wasm32"))]
                         ui.with_layout(Layout::right_to_left(eframe::emath::Align::Center), |ui| {
-                            if ui.button("Launch SteamVR").clicked() {
-                                crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr();
+                            if ui.button("Launch server").clicked() {
+                                crate::server_launcher::LAUNCHER.lock().launch_server();
                             }
                         });
                     })

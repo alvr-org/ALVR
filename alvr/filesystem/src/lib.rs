@@ -56,6 +56,10 @@ pub fn streamer_build_dir() -> PathBuf {
     build_dir().join(format!("alvr_streamer_{OS}"))
 }
 
+pub fn streamer_mock_build_dir() -> PathBuf {
+    build_dir().join("alvr_streamer_mock")
+}
+
 pub fn launcher_fname() -> String {
     exec_fname("ALVR Launcher")
 }
@@ -78,6 +82,10 @@ pub fn dashboard_fname() -> &'static str {
     } else {
         "alvr_dashboard"
     }
+}
+
+pub fn mock_server_fname() -> String {
+    exec_fname("alvr_mock_server")
 }
 
 // Layout of the ALVR installation. All paths are absolute
@@ -175,6 +183,10 @@ impl Layout {
 
     pub fn dashboard_exe(&self) -> PathBuf {
         self.executables_dir.join(dashboard_fname())
+    }
+
+    pub fn mock_server_exe(&self) -> PathBuf {
+        self.executables_dir.join(mock_server_fname())
     }
 
     pub fn local_adb_exe(&self) -> PathBuf {

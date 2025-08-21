@@ -106,5 +106,20 @@ pub fn init_logging(session_log_path: Option<PathBuf>, crash_log_path: Option<Pa
 
     log_dispatch.apply().unwrap();
 
+    fn popup_callback(title: &str, message: &str, severity: LogSeverity) {
+        let level = match severity {
+            LogSeverity::Error => rfd::MessageLevel::Error,
+            LogSeverity::Warning => rfd::MessageLevel::Warning,
+            LogSeverity::Info | LogSeverity::Debug => rfd::MessageLevel::Info,
+        };
+
+        rfd::MessageDialog::new()
+            .set_title(title)
+            .set_description(message)
+            .set_level(level)
+            .show();
+    }
+    alvr_common::set_popup_callback(popup_callback);
+
     alvr_common::set_panic_hook();
 }

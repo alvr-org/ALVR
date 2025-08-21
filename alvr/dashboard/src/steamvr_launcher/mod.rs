@@ -110,7 +110,6 @@ fn unblock_alvr_driver_within_vrsettings(text: &str) -> Result<String> {
 }
 
 pub fn get_default_steamvr_executable_path() -> String {
-
     let get_steamvr_root_dir = match alvr_server_io::steamvr_root_dir() {
         Ok(dir) => dir,
         Err(e) => {

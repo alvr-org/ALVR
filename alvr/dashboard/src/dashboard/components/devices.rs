@@ -1,4 +1,5 @@
 use crate::dashboard::ServerRequest;
+use crate::data_sources;
 use alvr_common::ConnectionState;
 use alvr_gui_common::theme::{self, log_colors};
 use alvr_packets::ClientListAction;
@@ -76,7 +77,12 @@ impl DevicesTab {
                         #[cfg(not(target_arch = "wasm32"))]
                         ui.with_layout(Layout::right_to_left(eframe::emath::Align::Center), |ui| {
                             if ui.button("Launch SteamVR").clicked() {
-                                crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr();
+
+                                let session = data_sources::get_read_only_local_session();
+                                let steamvr_settings = &session.settings().extra.steamvr_launcher;
+                                let quick_launch = steamvr_settings.quick_launch_steamvr;
+
+                                crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr(quick_launch);
                             }
                         });
                     })

@@ -6,11 +6,18 @@ use alvr_common::anyhow::bail;
 use alvr_common::{debug, error, info, warn};
 use sysinfo::Process;
 
-pub fn start_steamvr() {
-    Command::new("steam")
-        .args(["steam://rungameid/250820"])
-        .spawn()
-        .ok();
+pub fn start_steamvr(quick_launch: bool) {
+
+    if quick_launch {
+        Command::new("~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh") // Change if necessary
+            .spawn()
+            .ok();
+    } else {
+        Command::new("steam")
+            .args(["steam://rungameid/250820"])
+            .spawn()
+            .ok();
+    }
 }
 
 pub fn terminate_process(process: &Process) {

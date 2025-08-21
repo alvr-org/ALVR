@@ -1472,6 +1472,8 @@ pub struct LoggingConfig {
 pub struct SteamvrLauncher {
     #[schema(strings(display_name = "Open and close SteamVR with dashboard"))]
     pub open_close_steamvr_with_dashboard: bool,
+    #[schema(strings(display_name = "Launch SteamVR standalone (quick launch)"))]
+    pub quick_launch_steamvr: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -2133,6 +2135,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             steamvr_launcher: SteamvrLauncherDefault {
                 open_close_steamvr_with_dashboard: false,
+                quick_launch_steamvr: false,
             },
             capture: CaptureConfigDefault {
                 startup_video_recording: false,

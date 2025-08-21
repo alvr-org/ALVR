@@ -112,7 +112,7 @@ pub struct Launcher {
 }
 
 impl Launcher {
-    pub fn launch_steamvr(&self) {
+    pub fn launch_steamvr(&self, quick_launch: bool) {
         // The ADB server might be left running because of a unclean termination of SteamVR
         // Note that this will also kill a system wide ADB server not started by ALVR
         let wired_enabled = data_sources::get_read_only_local_session()
@@ -156,11 +156,13 @@ impl Launcher {
         if !is_steamvr_running() {
             debug!("SteamVR is dead. Launching...");
 
+            
+
             #[cfg(windows)]
-            windows_steamvr::start_steamvr();
+            windows_steamvr::start_steamvr(quick_launch);
 
             #[cfg(target_os = "linux")]
-            linux_steamvr::start_steamvr();
+            linux_steamvr::start_steamvr(quick_launch);
         }
     }
 
@@ -174,9 +176,9 @@ impl Launcher {
         maybe_kill_steamvr();
     }
 
-    pub fn restart_steamvr(&self) {
+    pub fn restart_steamvr(&self, quick_launch: bool) {
         self.ensure_steamvr_shutdown();
-        self.launch_steamvr();
+        self.launch_steamvr(quick_launch);
     }
 }
 

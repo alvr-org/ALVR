@@ -3,8 +3,8 @@ use std::process::Command;
 
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-pub fn start_steamvr() {
-    if true {
+pub fn start_steamvr(quick_launch: bool) {
+    if quick_launch {
         Command::new("C:\\Program Files (x86)\\Steam\\steamapps\\common\\SteamVR\\bin\\win64\\vrstartup.exe")
             .spawn()
             .ok();

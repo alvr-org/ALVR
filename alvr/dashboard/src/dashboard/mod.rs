@@ -85,6 +85,15 @@ impl Dashboard {
         }
     }
 
+    fn use_quick_launch(&self) -> bool {
+        return self.session.as_ref().is_some_and(|s| {
+            s.to_settings()
+                .extra
+                .steamvr_launcher
+                .quick_launch_steamvr
+        })
+    }
+
     // This call may block
     fn restart_steamvr(&self, requests: &mut Vec<ServerRequest>) {
         requests.push(ServerRequest::RestartSteamvr);
@@ -98,12 +107,14 @@ impl Dashboard {
 
         *server_restarting_lock = true;
 
+        let quick_launch = self.use_quick_launch();
+        
         #[cfg(not(target_arch = "wasm32"))]
         std::thread::spawn({
             let server_restarting = Arc::clone(&self.server_restarting);
             let condvar = Arc::clone(&self.server_restarting_condvar);
             move || {
-                crate::steamvr_launcher::LAUNCHER.lock().restart_steamvr();
+                crate::steamvr_launcher::LAUNCHER.lock().restart_steamvr(quick_launch);
 
                 *server_restarting.lock() = false;
                 condvar.notify_one();
@@ -235,7 +246,9 @@ impl eframe::App for Dashboard {
                                     self.restart_steamvr(&mut requests);
                                 }
                             } else if ui.button("Launch SteamVR").clicked() {
-                                crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr();
+                                let quick_launch = self.use_quick_launch();
+
+                                crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr(quick_launch);
                             }
 
                             ui.horizontal(|ui| {

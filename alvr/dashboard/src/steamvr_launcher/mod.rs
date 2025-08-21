@@ -116,8 +116,8 @@ fn get_steamvr_root_dir() -> PathBuf {
         Err(e) => {
             error!(
                 "Couldn't detect openvr or steamvr files. \
-            Please make sure you have installed and ran SteamVR at least once. \
-            Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR. {e}"
+                Please make sure you have installed and ran SteamVR at least once. \
+                Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR. {e}"
             );
             return "".into();
         }
@@ -134,8 +134,7 @@ pub fn get_default_steamvr_executable_path() -> String {
         .into_string()
         .unwrap();
 
-    
-    #[cfg(target_os = "linux")]
+    #[cfg(not(windows))]
     return get_steamvr_root_dir()
         .join("bin")
         .join("vrstartup.sh") // Adjust this to match actual entry point for Linux

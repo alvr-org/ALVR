@@ -3,6 +3,8 @@ mod linux_steamvr;
 #[cfg(windows)]
 mod windows_steamvr;
 
+#[cfg(windows)]
+use std::default;
 use std::{path::PathBuf, process::Command};
 
 use crate::data_sources;
@@ -126,6 +128,26 @@ fn get_steamvr_root_dir() -> PathBuf {
     return  steamvr_root_dir;
 }
 
+pub fn get_default_steamvr_executable_path() -> String {
+    #[cfg(windows)]
+    return get_steamvr_root_dir()
+        .join("bin")
+        .join("win64")
+        .join("vrstartup.exe")
+        .into_os_string()
+        .into_string()
+        .unwrap();
+
+    
+    #[cfg(target_os = "linux")]
+    return get_steamvr_root_dir()
+        .join("bin")
+        .join("vrstartup.sh") // Adjust this to match actual entry point for Linux
+        .into_os_string()
+        .into_string()
+        .unwrap();
+}
+
 pub struct Launcher {
     _phantom: PhantomData<()>,
 }
@@ -179,11 +201,23 @@ impl Launcher {
             let steamvr_settings = &session.settings().extra.steamvr_launcher;
             let quick_launch = steamvr_settings.quick_launch_steamvr;
             let steamvr_path = &steamvr_settings.steamvr_executable_path;
+            let default_steamvr_executable = get_default_steamvr_executable_path();
 
+            
             if quick_launch {
-                Command::new(steamvr_path)
-                    .spawn()
-                    .ok();
+                if PathBuf::from(steamvr_path).exists() {
+                    debug!("Launching SteamVR from path: {}", steamvr_path);
+
+                    Command::new(steamvr_path)
+                        .spawn()
+                        .ok();
+                } else {
+                    warn!("SteamVR executable not found at path: {}. Trying default path.", default_steamvr_executable);
+    
+                    Command::new(default_steamvr_executable)
+                        .spawn()
+                        .ok();
+                }
             } else {
                 let steamvr_app_id = "250820";
     

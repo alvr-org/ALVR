@@ -334,12 +334,3 @@ fn probe_libva_encoder_profile(
         }
     }
 }
-
-pub fn get_default_steamvr_executable_path() -> String {
-    return get_steamvr_root_dir()
-        .join("bin")
-        .join("vrstartup.sh") // Adjust this to match actual entry point for Linux
-        .into_os_string()
-        .into_string()
-        .unwrap();
-}

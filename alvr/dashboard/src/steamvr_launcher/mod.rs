@@ -3,6 +3,8 @@ mod linux_steamvr;
 #[cfg(windows)]
 mod windows_steamvr;
 
+use std::process::Command;
+
 use crate::data_sources;
 use alvr_adb::commands as adb;
 use alvr_common::{
@@ -112,7 +114,7 @@ pub struct Launcher {
 }
 
 impl Launcher {
-    pub fn launch_steamvr(&self, quick_launch: bool) {
+    pub fn launch_steamvr(&self) {
         // The ADB server might be left running because of a unclean termination of SteamVR
         // Note that this will also kill a system wide ADB server not started by ALVR
         let wired_enabled = data_sources::get_read_only_local_session()
@@ -156,13 +158,25 @@ impl Launcher {
         if !is_steamvr_running() {
             debug!("SteamVR is dead. Launching...");
 
-            
+            let session = data_sources::get_read_only_local_session();
+            let steamvr_settings = &session.settings().extra.steamvr_launcher;
+            let quick_launch = steamvr_settings.quick_launch_steamvr;
+            let steamvr_path = &steamvr_settings.steamvr_executable_path;
 
-            #[cfg(windows)]
-            windows_steamvr::start_steamvr(quick_launch);
+            if quick_launch {
+                Command::new(steamvr_path)
+                    .spawn()
+                    .ok();
+            } else {
+                let steamvr_app_id = "250820";
+    
+                #[cfg(windows)]
+                windows_steamvr::launch_steam_app(steamvr_app_id);
+    
+                #[cfg(target_os = "linux")]
+                linux_steamvr::launch_steam_app(steamvr_app_id);
+            }
 
-            #[cfg(target_os = "linux")]
-            linux_steamvr::start_steamvr(quick_launch);
         }
     }
 

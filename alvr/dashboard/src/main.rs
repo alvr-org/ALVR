@@ -64,11 +64,10 @@ fn main() {
 
     let session = data_sources::get_read_only_local_session();
     let steamvr_settings = &session.settings().extra.steamvr_launcher;
-    let quick_launch = steamvr_settings.quick_launch_steamvr;
 
     if steamvr_settings.open_close_steamvr_with_dashboard
     {
-        steamvr_launcher::LAUNCHER.lock().launch_steamvr(quick_launch);
+        steamvr_launcher::LAUNCHER.lock().launch_steamvr();
     }
 
     let ico = IconDir::read(Cursor::new(include_bytes!("../resources/dashboard.ico"))).unwrap();

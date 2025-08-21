@@ -1472,7 +1472,10 @@ pub struct LoggingConfig {
 pub struct SteamvrLauncher {
     #[schema(strings(display_name = "Open and close SteamVR with dashboard"))]
     pub open_close_steamvr_with_dashboard: bool,
-    #[schema(strings(display_name = "SteamVR Quick Launch"))]
+    #[schema(strings(
+        display_name = "SteamVR Quick Launch",
+        help = "Launches SteamVR directly without Steam. This makes launching SteamVR significantly faster, allows SteamVR to be launched offline and avoids the \"app already running\" pop-up."
+    ))]
     pub quick_launch_steamvr: bool,
 }
 

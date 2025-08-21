@@ -3,7 +3,7 @@ mod linux_steamvr;
 #[cfg(windows)]
 mod windows_steamvr;
 
-use std::process::Command;
+use std::{path::PathBuf, process::Command};
 
 use crate::data_sources;
 use alvr_adb::commands as adb;
@@ -13,6 +13,7 @@ use alvr_common::{
     glam::bool,
     parking_lot::Mutex,
     warn,
+    error,
 };
 use alvr_filesystem as afs;
 use serde_json::{self, json};
@@ -107,6 +108,22 @@ fn unblock_alvr_driver_within_vrsettings(text: &str) -> Result<String> {
     }
 
     Ok(serde_json::to_string_pretty(&settings)?)
+}
+
+fn get_steamvr_root_dir() -> PathBuf {
+    let steamvr_root_dir = match alvr_server_io::steamvr_root_dir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            error!(
+                "Couldn't detect openvr or steamvr files. \
+            Please make sure you have installed and ran SteamVR at least once. \
+            Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR. {e}"
+            );
+            return "".into();
+        }
+    };
+
+    return  steamvr_root_dir;
 }
 
 pub struct Launcher {

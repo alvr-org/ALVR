@@ -2145,7 +2145,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 steamvr_executable_path: if !cfg!(target_os = "windows") {
                     "C:\\Program Files (x86)\\Steam\\steamapps\\common\\SteamVR\\bin\\win64\\vrstartup.exe".into()
                 } else {
-                    "~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh".into()
+                    "~/.local/share/Steam/steamapps/common/SteamVR/bin/vrstartup.sh".into()
                 },
             },
             capture: CaptureConfigDefault {

@@ -93,6 +93,8 @@ pub fn linux_hardware_checks() {
     linux_encoder_checks(&device_infos);
 }
 
+
+
 fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     let have_intel_igpu = device_infos.iter().any(|gpu| {
         gpu.1
@@ -149,17 +151,7 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
     });
     debug!("have_intel_dgpu: {}", have_intel_dgpu);
 
-    let steamvr_root_dir = match alvr_server_io::steamvr_root_dir() {
-        Ok(dir) => dir,
-        Err(e) => {
-            error!(
-                "Couldn't detect openvr or steamvr files. \
-            Please make sure you have installed and ran SteamVR at least once. \
-            Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR. {e}"
-            );
-            return;
-        }
-    };
+    let steamvr_root_dir = get_steamvr_root_dir();
 
     let vrmonitor_path_string = steamvr_root_dir
         .join("bin")
@@ -341,4 +333,13 @@ fn probe_libva_encoder_profile(
             );
         }
     }
+}
+
+pub fn get_default_steamvr_executable_path() -> String {
+    return get_steamvr_root_dir()
+        .join("bin")
+        .join("vrstartup.sh") // Adjust this to match actual entry point for Linux
+        .into_os_string()
+        .into_string()
+        .unwrap();
 }

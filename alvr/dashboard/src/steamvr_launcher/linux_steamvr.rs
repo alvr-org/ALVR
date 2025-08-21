@@ -6,7 +6,14 @@ use alvr_common::anyhow::bail;
 use alvr_common::{debug, error, info, warn};
 use sysinfo::Process;
 
-pub fn start_steamvr(quick_launch: bool) {
+use crate::data_sources;
+
+pub fn start_steamvr() {
+
+    let session = data_sources::get_read_only_local_session();
+    let steamvr_settings = &session.settings().extra.steamvr_launcher;
+    let quick_launch = steamvr_settings.quick_launch_steamvr;
+    let steamvr_path = steamvr_settings.quick_launch_steamvr;
 
     if quick_launch {
         Command::new("~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh") // Change if necessary
@@ -18,6 +25,13 @@ pub fn start_steamvr(quick_launch: bool) {
             .spawn()
             .ok();
     }
+}
+
+pub fn launch_steam_app(app_id: u32) {
+    Command::new("steam")
+        .args(["steam://rungameid/", &app_id.to_string()])
+        .spawn()
+        .ok();
 }
 
 pub fn terminate_process(process: &Process) {

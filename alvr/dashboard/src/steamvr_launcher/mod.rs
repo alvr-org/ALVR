@@ -176,9 +176,9 @@ impl Launcher {
         maybe_kill_steamvr();
     }
 
-    pub fn restart_steamvr(&self, quick_launch: bool) {
+    pub fn restart_steamvr(&self, ) {
         self.ensure_steamvr_shutdown();
-        self.launch_steamvr(quick_launch);
+        self.launch_steamvr();
     }
 }
 

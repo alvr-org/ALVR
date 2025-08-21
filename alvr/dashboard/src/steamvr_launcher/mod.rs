@@ -109,20 +109,6 @@ fn unblock_alvr_driver_within_vrsettings(text: &str) -> Result<String> {
     Ok(serde_json::to_string_pretty(&settings)?)
 }
 
-fn get_steamvr_root_dir() -> PathBuf {
-    match alvr_server_io::steamvr_root_dir() {
-        Ok(dir) => dir,
-        Err(e) => {
-            error!(
-                "Couldn't detect openvr or steamvr files. \
-                Please make sure you have installed and ran SteamVR at least once. \
-                Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR. {e}"
-            );
-            "".into()
-        }
-    }
-}
-
 pub fn get_default_steamvr_executable_path() -> String {
     #[cfg(windows)]
     return get_steamvr_root_dir()
@@ -211,13 +197,11 @@ impl Launcher {
                     Command::new(default_steamvr_executable).spawn().ok();
                 }
             } else {
-                let steamvr_app_id = "250820";
-
                 #[cfg(windows)]
-                windows_steamvr::launch_steam_app(steamvr_app_id);
+                windows_steamvr::launch_steamvr_with_steam();
 
                 #[cfg(target_os = "linux")]
-                linux_steamvr::launch_steam_app(steamvr_app_id);
+                linux_steamvr::launch_steamvr_with_steam();
             }
         }
     }

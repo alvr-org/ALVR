@@ -6,9 +6,11 @@ use alvr_common::anyhow::bail;
 use alvr_common::{debug, error, info, warn};
 use sysinfo::Process;
 
-pub fn launch_steam_app(app_id: &str) {
+use std::path::PathBuf;
+
+pub fn launch_steamvr_with_steam() {
     Command::new("steam")
-        .args([format!("steam://rungameid/{}", app_id).as_str()])
+        .args(["steam://rungameid/250820"])
         .spawn()
         .ok();
 }
@@ -329,6 +331,20 @@ fn probe_libva_encoder_profile(
             If you're not using this encoder, ignore this message.",
                 message
             );
+        }
+    }
+}
+
+fn get_steamvr_root_dir() -> PathBuf {
+    match alvr_server_io::steamvr_root_dir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            error!(
+                "Couldn't find OpenVR or SteamVR files. \
+                Please make sure you have installed and ran SteamVR at least once. \
+                Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR. {e}"
+            );
+            "".into()
         }
     }
 }

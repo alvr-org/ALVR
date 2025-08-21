@@ -1472,7 +1472,7 @@ pub struct LoggingConfig {
 pub struct SteamvrLauncher {
     #[schema(strings(display_name = "Open and close SteamVR with dashboard"))]
     pub open_close_steamvr_with_dashboard: bool,
-    #[schema(strings(display_name = "Launch SteamVR standalone (quick launch)"))]
+    #[schema(strings(display_name = "SteamVR Quick Launch"))]
     pub quick_launch_steamvr: bool,
 }
 

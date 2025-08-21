@@ -4,7 +4,6 @@ mod linux_steamvr;
 mod windows_steamvr;
 
 #[cfg(windows)]
-use std::default;
 use std::{path::PathBuf, process::Command};
 
 use crate::data_sources;

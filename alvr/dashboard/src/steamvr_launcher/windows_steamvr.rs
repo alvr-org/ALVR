@@ -5,7 +5,7 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 pub fn launch_steam_app(app_id: &str) {
     Command::new("cmd")
-            .args(["/C", "start", "steam://rungameid/", app_id])
+            .args(["/C", "start", format!("steam://rungameid/{}", app_id).as_str()])
             .creation_flags(CREATE_NO_WINDOW)
             .spawn()
             .ok();

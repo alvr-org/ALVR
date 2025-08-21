@@ -8,7 +8,7 @@ use sysinfo::Process;
 
 pub fn launch_steam_app(app_id: &str) {
     Command::new("steam")
-        .args(["steam://rungameid/", app_id])
+        .args([format!("steam://rungameid/{}", app_id).as_str()])
         .spawn()
         .ok();
 }

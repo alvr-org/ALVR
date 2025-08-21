@@ -3,7 +3,6 @@ mod linux_steamvr;
 #[cfg(windows)]
 mod windows_steamvr;
 
-#[cfg(windows)]
 use std::{path::PathBuf, process::Command};
 
 use crate::data_sources;
@@ -112,7 +111,7 @@ fn unblock_alvr_driver_within_vrsettings(text: &str) -> Result<String> {
 }
 
 fn get_steamvr_root_dir() -> PathBuf {
-    let steamvr_root_dir = match alvr_server_io::steamvr_root_dir() {
+    match alvr_server_io::steamvr_root_dir() {
         Ok(dir) => dir,
         Err(e) => {
             error!(
@@ -122,9 +121,7 @@ fn get_steamvr_root_dir() -> PathBuf {
             );
             return "".into();
         }
-    };
-
-    return  steamvr_root_dir;
+    }
 }
 
 pub fn get_default_steamvr_executable_path() -> String {

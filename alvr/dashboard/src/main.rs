@@ -13,7 +13,7 @@ mod linux_checks;
 #[cfg(not(target_arch = "wasm32"))]
 mod logging_backend;
 #[cfg(not(target_arch = "wasm32"))]
-mod steamvr_launcher;
+mod server_launcher;
 
 #[cfg(not(target_arch = "wasm32"))]
 use data_sources::DataSources;
@@ -65,10 +65,10 @@ fn main() {
     if data_sources::get_read_only_local_session()
         .settings()
         .extra
-        .steamvr_launcher
-        .open_close_steamvr_with_dashboard
+        .server_launcher
+        .open_close_server_with_dashboard
     {
-        steamvr_launcher::LAUNCHER.lock().launch_steamvr()
+        server_launcher::LAUNCHER.lock().launch_server()
     }
 
     let ico = IconDir::read(Cursor::new(include_bytes!("../resources/dashboard.ico"))).unwrap();

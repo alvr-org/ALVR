@@ -103,7 +103,7 @@ impl Dashboard {
             let server_restarting = Arc::clone(&self.server_restarting);
             let condvar = Arc::clone(&self.server_restarting_condvar);
             move || {
-                crate::steamvr_launcher::LAUNCHER.lock().restart_steamvr();
+                crate::server_launcher::LAUNCHER.lock().restart_server();
 
                 *server_restarting.lock() = false;
                 condvar.notify_one();
@@ -170,7 +170,7 @@ impl eframe::App for Dashboard {
                 // todo: find a way to center both vertically and horizontally
                 ui.vertical_centered(|ui| {
                     ui.add_space(100.0);
-                    ui.heading(RichText::new("SteamVR is restarting").size(30.0));
+                    ui.heading(RichText::new("The server is restarting").size(30.0));
                 });
             });
 
@@ -231,16 +231,16 @@ impl eframe::App for Dashboard {
                             ui.add_space(5.0);
 
                             if connected_to_server {
-                                if ui.button("Restart SteamVR").clicked() {
+                                if ui.button("Restart server").clicked() {
                                     self.restart_steamvr(&mut requests);
                                 }
-                            } else if ui.button("Launch SteamVR").clicked() {
-                                crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr();
+                            } else if ui.button("Launch server").clicked() {
+                                crate::server_launcher::LAUNCHER.lock().launch_server();
                             }
 
                             ui.horizontal(|ui| {
                                 ui.add_space(5.0);
-                                ui.label(RichText::new("SteamVR:").size(13.0));
+                                ui.label(RichText::new("Server:").size(13.0));
                                 ui.add_space(-10.0);
                                 if connected_to_server {
                                     ui.label(
@@ -307,9 +307,9 @@ impl eframe::App for Dashboard {
         let shutdown_alvr = || {
             self.data_sources.request(ServerRequest::ShutdownSteamvr);
 
-            crate::steamvr_launcher::LAUNCHER
+            crate::server_launcher::LAUNCHER
                 .lock()
-                .ensure_steamvr_shutdown();
+                .ensure_server_shutdown();
         };
 
         if let Some(popup) = &self.new_version_popup
@@ -330,8 +330,8 @@ impl eframe::App for Dashboard {
             && self.session.as_ref().is_some_and(|s| {
                 s.to_settings()
                     .extra
-                    .steamvr_launcher
-                    .open_close_steamvr_with_dashboard
+                    .server_launcher
+                    .open_close_server_with_dashboard
             })
         {
             shutdown_alvr();

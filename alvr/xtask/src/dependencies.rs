@@ -1,4 +1,7 @@
-use crate::{BuildPlatform, command};
+use crate::{
+    BuildPlatform,
+    command::{self, download},
+};
 use alvr_filesystem as afs;
 use std::{fs, path::Path};
 use xshell::{Shell, cmd};
@@ -276,6 +279,13 @@ pub fn build_ffmpeg_linux(enable_nvenc: bool, deps_path: &Path) {
 
 pub fn prepare_macos_deps() {}
 
+pub fn server_mock_dependencies() {
+    let sh = Shell::new().unwrap();
+
+    download(&sh, "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/1080/Big_Buck_Bunny_1080_10s_30MB.mp4", &afs::deps_dir().join("test_video.mp4"))
+        .unwrap();
+}
+
 pub fn prepare_server_deps(
     platform: Option<BuildPlatform>,
     skip_admin_priv: bool,
@@ -298,6 +308,8 @@ pub fn prepare_server_deps(
             }
         }
     }
+
+    server_mock_dependencies();
 }
 
 fn get_android_openxr_loaders(selection: OpenXRLoadersSelection) {

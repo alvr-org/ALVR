@@ -6,8 +6,6 @@ use alvr_common::anyhow::bail;
 use alvr_common::{debug, error, info, warn};
 use sysinfo::Process;
 
-use std::path::PathBuf;
-
 pub fn launch_steamvr_with_steam() {
     Command::new("steam")
         .args(["steam://rungameid/250820"])

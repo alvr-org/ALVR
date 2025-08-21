@@ -110,8 +110,17 @@ fn unblock_alvr_driver_within_vrsettings(text: &str) -> Result<String> {
 }
 
 pub fn get_default_steamvr_executable_path() -> String {
+
+    let get_steamvr_root_dir = match alvr_server_io::steamvr_root_dir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            error!("Couldn't find OpenVR or SteamVR files. {e}");
+            "".into()
+        }
+    };
+
     #[cfg(windows)]
-    return get_steamvr_root_dir()
+    return get_steamvr_root_dir
         .join("bin")
         .join("win64")
         .join("vrstartup.exe")
@@ -120,7 +129,7 @@ pub fn get_default_steamvr_executable_path() -> String {
         .unwrap();
 
     #[cfg(not(windows))]
-    return get_steamvr_root_dir()
+    return get_steamvr_root_dir
         .join("bin")
         .join("vrstartup.sh") // Adjust this to match actual entry point for Linux
         .into_os_string()

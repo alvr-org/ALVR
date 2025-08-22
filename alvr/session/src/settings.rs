@@ -1469,9 +1469,23 @@ pub struct LoggingConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct SteamvrQuickLaunchConfig {
+    #[schema(strings(display_name = "SteamVR executable path"))]
+    pub steamvr_executable_path: String,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct SteamvrLauncher {
-    #[schema(strings(display_name = "Open and close SteamVR with dashboard"))]
+    #[schema(strings(
+        display_name = "Open and close SteamVR automatically",
+        help = "Launches SteamVR automatically when the ALVR dashboard is opened, and closes it when the dashboard is closed."
+    ))]
     pub open_close_steamvr_with_dashboard: bool,
+    #[schema(strings(
+        display_name = "Quick launch",
+        help = "Launches SteamVR directly without Steam. This makes launching SteamVR significantly faster, allows SteamVR to be launched offline and avoids the \"app already running\" pop-up."
+    ))]
+    pub use_steamvr_path: Switch<SteamvrQuickLaunchConfig>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1513,6 +1527,7 @@ pub struct NewVersionPopupConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ExtraConfig {
+    #[schema(strings(display_name = "SteamVR Launcher"))]
     pub steamvr_launcher: SteamvrLauncher,
     pub capture: CaptureConfig,
     pub logging: LoggingConfig,
@@ -2133,6 +2148,18 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             steamvr_launcher: SteamvrLauncherDefault {
                 open_close_steamvr_with_dashboard: false,
+                use_steamvr_path: SwitchDefault {
+                    enabled: false,
+                    content: SteamvrQuickLaunchConfigDefault {
+                        steamvr_executable_path: if cfg!(target_os = "windows") {
+                            r"C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win64\vrstartup.exe".into()
+                        } else if cfg!(target_os = "linux") {
+                            "/usr/bin/steamvr".into()
+                        } else {
+                            "".into()
+                        },
+                    },
+                },
             },
             capture: CaptureConfigDefault {
                 startup_video_recording: false,

@@ -1476,10 +1476,13 @@ pub struct SteamvrQuickLaunchConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct SteamvrLauncher {
-    #[schema(strings(display_name = "Open and close SteamVR with dashboard"))]
+    #[schema(strings(
+        display_name = "Open and close SteamVR automatically",
+        help = "Launches SteamVR automatically when the ALVR dashboard is opened, and closes it when the dashboard is closed."
+    ))]
     pub open_close_steamvr_with_dashboard: bool,
     #[schema(strings(
-        display_name = "Quick Launch",
+        display_name = "Quick launch",
         help = "Launches SteamVR directly without Steam. This makes launching SteamVR significantly faster, allows SteamVR to be launched offline and avoids the \"app already running\" pop-up."
     ))]
     pub use_steamvr_path: Switch<SteamvrQuickLaunchConfig>,

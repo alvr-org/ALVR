@@ -2140,13 +2140,13 @@ pub fn session_settings_default() -> SettingsDefault {
             steamvr_launcher: SteamvrLauncherDefault {
                 open_close_steamvr_with_dashboard: false,
                 use_steamvr_path: SwitchDefault {
-                            enabled: false,
-                            content: if cfg!(target_os = "windows") {
-                    "C:\\Program Files (x86)\\Steam\\steamapps\\common\\SteamVR\\bin\\win64\\vrstartup.exe".into()
-                } else {
-                    "~/.local/share/Steam/steamapps/common/SteamVR/bin/vrstartup.sh".into()
+                    enabled: false,
+                    content: if cfg!(target_os = "windows") {
+                        "C:\\Program Files (x86)\\Steam\\steamapps\\common\\SteamVR\\bin\\win64\\vrstartup.exe".into()
+                    } else {
+                        "~/.local/share/Steam/steamapps/common/SteamVR/bin/vrstartup.sh".into()
+                    },
                 },
-                        },
             },
             capture: CaptureConfigDefault {
                 startup_video_recording: false,

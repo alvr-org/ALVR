@@ -62,11 +62,13 @@ fn main() {
 
     data_sources::clean_session();
 
-    let session = data_sources::get_read_only_local_session();
-    let steamvr_settings = &session.settings().extra.steamvr_launcher;
-
-    if steamvr_settings.open_close_steamvr_with_dashboard {
-        steamvr_launcher::LAUNCHER.lock().launch_steamvr();
+    if data_sources::get_read_only_local_session()
+        .settings()
+        .extra
+        .steamvr_launcher
+        .open_close_steamvr_with_dashboard
+    {
+        steamvr_launcher::LAUNCHER.lock().launch_steamvr()
     }
 
     let ico = IconDir::read(Cursor::new(include_bytes!("../resources/dashboard.ico"))).unwrap();

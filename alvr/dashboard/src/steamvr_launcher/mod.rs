@@ -16,6 +16,7 @@ use alvr_common::{
 };
 use alvr_filesystem as afs;
 use serde_json::{self, json};
+use settings_schema::Switch;
 use std::{
     ffi::OsStr,
     fs,
@@ -184,19 +185,15 @@ impl Launcher {
 
         if !is_steamvr_running() {
             debug!("SteamVR is dead. Launching...");
-
-            let session = data_sources::get_read_only_local_session();
-            let steamvr_settings = &session.settings().extra.steamvr_launcher;
-            let quick_launch = steamvr_settings.quick_launch_steamvr;
-            let steamvr_path = &steamvr_settings.steamvr_executable_path;
-            let default_steamvr_executable = get_default_steamvr_executable_path();
-
-            if quick_launch {
+            
+            if let Switch::Enabled(steamvr_path) = &data_sources::get_read_only_local_session().settings().extra.steamvr_launcher.use_steamvr_path{                
                 if PathBuf::from(steamvr_path).exists() {
                     debug!("Launching SteamVR from path: {}", steamvr_path);
-
+                    
                     Command::new(steamvr_path).spawn().ok();
                 } else {
+                    let default_steamvr_executable = get_default_steamvr_executable_path();
+                    
                     warn!(
                         "SteamVR executable not found at path: {}. Trying default path.",
                         default_steamvr_executable

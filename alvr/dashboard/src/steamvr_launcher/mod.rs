@@ -186,12 +186,14 @@ impl Launcher {
         if !is_steamvr_running() {
             debug!("SteamVR is dead. Launching...");
 
-            if let Switch::Enabled(steamvr_path) = &data_sources::get_read_only_local_session()
+            if let Switch::Enabled(use_steamvr_path) = &data_sources::get_read_only_local_session()
                 .settings()
                 .extra
                 .steamvr_launcher
                 .use_steamvr_path
             {
+                let steamvr_path = &use_steamvr_path.steamvr_executable_path;
+
                 if PathBuf::from(steamvr_path).exists() {
                     debug!("Launching SteamVR from path: {}", steamvr_path);
 

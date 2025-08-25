@@ -59,15 +59,13 @@ impl DevicesTab {
         if !connected_to_server {
             Frame::group(ui.style())
                 .fill(log_colors::WARNING_LIGHT)
+                .corner_radius(15.0)
                 .show(ui, |ui| {
                     Grid::new(0).num_columns(2).show(ui, |ui| {
                         ui.horizontal(|ui| {
                             ui.add_space(10.0);
                             ui.heading(
-                                RichText::new(format!(
-                                    "ALVR requires running SteamVR! {}",
-                                    "Devices will not be discovered or connected"
-                                ))
+                                RichText::new("ALVR requires running SteamVR! Devices will not be discovered or connected.")
                                 .color(Color32::BLACK)
                                 .size(16.0),
                             );

@@ -59,6 +59,7 @@ pub fn set_theme(ctx: &Context) {
     let mut visuals = Visuals::dark();
 
     let corner_radius = CornerRadius::same(10);
+    let frame_corner_radius = CornerRadius::same(15);
 
     visuals.widgets.active.bg_fill = ACCENT;
     visuals.widgets.active.fg_stroke = Stroke::new(1.0, FG);
@@ -79,7 +80,7 @@ pub fn set_theme(ctx: &Context) {
     visuals.faint_bg_color = DARKER_BG;
     visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, FG);
     visuals.widgets.noninteractive.bg_stroke = Stroke::new(0.5, SEPARATOR_BG);
-    visuals.widgets.noninteractive.corner_radius = corner_radius;
+    visuals.widgets.noninteractive.corner_radius = frame_corner_radius;
 
     ctx.set_visuals(visuals);
 }

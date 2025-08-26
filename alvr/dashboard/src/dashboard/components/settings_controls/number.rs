@@ -104,6 +104,8 @@ impl Control {
                 NumericGuiType::TextBox => {
                     let mut textbox = DragValue::new(editing_value_mut);
 
+                    // textbox.
+
                     if !matches!(self.ty, NumberType::Float) {
                         textbox = textbox.fixed_decimals(0);
                     }

@@ -123,10 +123,15 @@ impl SettingsTab {
 
         let mut path_value_pairs = vec![];
         ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
+
+            let visuals = ui.style().visuals.clone();
+            let margin = 12.0;
+            let corner_radius = visuals.widgets.open.corner_radius.average() + margin;
+
             Frame::group(ui.style())
                 .fill(theme::DARKER_BG)
-                .inner_margin(egui::vec2(15.0, 15.0))
-                .corner_radius(20.0)
+                .inner_margin(egui::vec2(margin, margin))
+                .corner_radius(corner_radius)
                 .show(ui, |ui| {
                     ui.horizontal_wrapped(|ui| {
                         ui.selectable_value(

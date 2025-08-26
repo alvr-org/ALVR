@@ -59,7 +59,6 @@ impl DevicesTab {
         if !connected_to_server {
             Frame::group(ui.style())
                 .fill(log_colors::WARNING_LIGHT)
-                .corner_radius(15.0)
                 .show(ui, |ui| {
                     Grid::new(0).num_columns(2).show(ui, |ui| {
                         ui.horizontal(|ui| {

@@ -49,7 +49,12 @@ pub fn set_theme(ctx: &Context) {
     ctx.set_theme(ThemePreference::Dark);
 
     let mut style = (*ctx.style()).clone();
-    style.spacing.slider_width = 200_f32; // slider width can only be set globally
+    style.spacing.slider_width = 200_f32; // slider width can only be set globally, but you can use ui.scope to override it locally
+    // style.spacing.sli
+    // ui.spacing().interact_size.y = 30.0;
+    // style.spacing.interact_size.y = 40.0;
+    // style.spacing.interact_size.x = 40.0;
+
     style.spacing.item_spacing = egui::vec2(15.0, 15.0);
     style.spacing.button_padding = egui::vec2(10.0, 10.0);
     style.text_styles.get_mut(&TextStyle::Body).unwrap().size = 14.0;

@@ -125,7 +125,8 @@ impl SettingsTab {
         ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
             Frame::group(ui.style())
                 .fill(theme::DARKER_BG)
-                .inner_margin(egui::vec2(15.0, 12.0))
+                .inner_margin(egui::vec2(15.0, 15.0))
+                .corner_radius(20.0)
                 .show(ui, |ui| {
                     ui.horizontal_wrapped(|ui| {
                         ui.selectable_value(

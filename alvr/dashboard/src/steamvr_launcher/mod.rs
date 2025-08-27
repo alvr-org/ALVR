@@ -111,30 +111,20 @@ fn unblock_alvr_driver_within_vrsettings(text: &str) -> Result<String> {
 }
 
 pub fn get_default_steamvr_executable_path() -> String {
-    let get_steamvr_root_dir = match alvr_server_io::steamvr_root_dir() {
-        Ok(dir) => dir,
-        Err(e) => {
-            error!("Couldn't find OpenVR or SteamVR files. {e}");
-            "".into()
-        }
+    let steamvr_root_dir = alvr_server_io::steamvr_root_dir()
+        .map_err(|e| error!("Couldn't find OpenVR or SteamVR files. {e}"))
+        .unwrap_or_default();
+
+    let steamvr_path = if cfg!(windows) {
+        steamvr_root_dir
+            .join("bin")
+            .join("win64")
+            .join("vrstartup.exe")
+    } else {
+        steamvr_root_dir.join("bin").join("vrmonitor.sh")
     };
 
-    #[cfg(windows)]
-    return get_steamvr_root_dir
-        .join("bin")
-        .join("win64")
-        .join("vrstartup.exe")
-        .into_os_string()
-        .into_string()
-        .unwrap();
-
-    #[cfg(not(windows))]
-    return get_steamvr_root_dir
-        .join("bin")
-        .join("vrstartup.sh") // Adjust this to match actual entry point for Linux
-        .into_os_string()
-        .into_string()
-        .unwrap();
+    return steamvr_path.into_os_string().into_string().unwrap();
 }
 
 pub struct Launcher {
@@ -186,13 +176,13 @@ impl Launcher {
         if !is_steamvr_running() {
             debug!("SteamVR is dead. Launching...");
 
-            if let Switch::Enabled(use_steamvr_path) = &data_sources::get_read_only_local_session()
+            if let Switch::Enabled(steamvr_path) = &data_sources::get_read_only_local_session()
                 .settings()
                 .extra
                 .steamvr_launcher
                 .use_steamvr_path
             {
-                let steamvr_path = &use_steamvr_path.steamvr_executable_path;
+                let steamvr_path = &steamvr_path.steamvr_executable_path_override;
 
                 if PathBuf::from(steamvr_path).exists() {
                     debug!("Launching SteamVR from path: {}", steamvr_path);

@@ -318,50 +318,44 @@ bool InitializeStreaming() {
 
             auto leftElbowTracker = std::make_unique<FakeViveTracker>(BODY_LEFT_ELBOW_ID);
             if (leftElbowTracker->register_device(true)) {
-                g_driver_provider.tracked_devices.insert(
-                    { BODY_LEFT_ELBOW_ID, leftElbowTracker.get() }
-                );
+                g_driver_provider.tracked_devices.insert({ BODY_LEFT_ELBOW_ID,
+                                                           leftElbowTracker.get() });
                 g_driver_provider.generic_trackers.push_back(std::move(leftElbowTracker));
             }
 
             auto rightElbowTracker = std::make_unique<FakeViveTracker>(BODY_RIGHT_ELBOW_ID);
             if (rightElbowTracker->register_device(true)) {
-                g_driver_provider.tracked_devices.insert(
-                    { BODY_RIGHT_ELBOW_ID, rightElbowTracker.get() }
-                );
+                g_driver_provider.tracked_devices.insert({ BODY_RIGHT_ELBOW_ID,
+                                                           rightElbowTracker.get() });
                 g_driver_provider.generic_trackers.push_back(std::move(rightElbowTracker));
             }
 
             if (Settings::Instance().m_bodyTrackingHasLegs) {
                 auto leftKneeTracker = std::make_unique<FakeViveTracker>(BODY_LEFT_KNEE_ID);
                 if (leftKneeTracker->register_device(true)) {
-                    g_driver_provider.tracked_devices.insert(
-                        { BODY_LEFT_KNEE_ID, leftKneeTracker.get() }
-                    );
+                    g_driver_provider.tracked_devices.insert({ BODY_LEFT_KNEE_ID,
+                                                               leftKneeTracker.get() });
                     g_driver_provider.generic_trackers.push_back(std::move(leftKneeTracker));
                 }
 
                 auto leftFootTracker = std::make_unique<FakeViveTracker>(BODY_LEFT_FOOT_ID);
                 if (leftFootTracker->register_device(true)) {
-                    g_driver_provider.tracked_devices.insert(
-                        { BODY_LEFT_FOOT_ID, leftFootTracker.get() }
-                    );
+                    g_driver_provider.tracked_devices.insert({ BODY_LEFT_FOOT_ID,
+                                                               leftFootTracker.get() });
                     g_driver_provider.generic_trackers.push_back(std::move(leftFootTracker));
                 }
 
                 auto rightKneeTracker = std::make_unique<FakeViveTracker>(BODY_RIGHT_KNEE_ID);
                 if (rightKneeTracker->register_device(true)) {
-                    g_driver_provider.tracked_devices.insert(
-                        { BODY_RIGHT_KNEE_ID, rightKneeTracker.get() }
-                    );
+                    g_driver_provider.tracked_devices.insert({ BODY_RIGHT_KNEE_ID,
+                                                               rightKneeTracker.get() });
                     g_driver_provider.generic_trackers.push_back(std::move(rightKneeTracker));
                 }
 
                 auto rightFootTracker = std::make_unique<FakeViveTracker>(BODY_RIGHT_FOOT_ID);
                 if (rightFootTracker->register_device(true)) {
-                    g_driver_provider.tracked_devices.insert(
-                        { BODY_RIGHT_FOOT_ID, rightFootTracker.get() }
-                    );
+                    g_driver_provider.tracked_devices.insert({ BODY_RIGHT_FOOT_ID,
+                                                               rightFootTracker.get() });
                     g_driver_provider.generic_trackers.push_back(std::move(rightFootTracker));
                 }
             }

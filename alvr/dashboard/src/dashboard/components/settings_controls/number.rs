@@ -120,17 +120,11 @@ impl Control {
                 drag_value = drag_value.suffix(suffix);
             }
 
-            let drag_value_response = ui.add(drag_value);
-            
-            if is_editing
-                || drag_value_response.drag_started()
-                || drag_value_response.gained_focus()
-            {
+            let response = ui.add(drag_value);
+
+            if is_editing || response.drag_started() || response.gained_focus() {
                 self.editing_value_f64 = Some(session_value)
-            } else if finished_editing
-                || drag_value_response.drag_stopped()
-                || drag_value_response.lost_focus()
-            {
+            } else if finished_editing || response.drag_stopped() || response.lost_focus() {
                 request = get_request(&self.nesting_info, *editing_value_mut, self.ty);
                 *session_fragment = to_json_value(*editing_value_mut, self.ty);
 

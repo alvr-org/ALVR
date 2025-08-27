@@ -111,20 +111,20 @@ impl Control {
                 });
             }
 
-            let mut textbox = DragValue::new(editing_value_mut);
+            let mut drag_value = DragValue::new(editing_value_mut);
 
             if !matches!(self.ty, NumberType::Float) {
-                textbox = textbox.fixed_decimals(0);
+                drag_value = drag_value.fixed_decimals(0);
             }
             if let Some(suffix) = &self.suffix {
-                textbox = textbox.suffix(suffix);
+                drag_value = drag_value.suffix(suffix);
             }
 
-            let drag_value = ui.add(textbox);
+            let drag_value_response = ui.add(drag_value);
 
-            if is_editing || drag_value.drag_started() || drag_value.gained_focus() {
+            if is_editing || drag_value_response.drag_started() || drag_value_response.gained_focus() {
                 self.editing_value_f64 = Some(session_value)
-            } else if finished_editing || drag_value.drag_stopped() || drag_value.lost_focus() {
+            } else if finished_editing || drag_value_response.drag_stopped() || drag_value_response.lost_focus() {
                 request = get_request(&self.nesting_info, *editing_value_mut, self.ty);
                 *session_fragment = to_json_value(*editing_value_mut, self.ty);
 

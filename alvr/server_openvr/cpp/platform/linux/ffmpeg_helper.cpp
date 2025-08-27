@@ -63,9 +63,9 @@ alvr::VkContext::VkContext(
     vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, instanceExts.data());
     for (const char* name : instance_extensions) {
         auto it = std::find_if(
-            instanceExts.begin(), instanceExts.end(), [name](VkExtensionProperties e) {
-                return strcmp(e.extensionName, name) == 0;
-            }
+            instanceExts.begin(),
+            instanceExts.end(),
+            [name](VkExtensionProperties e) { return strcmp(e.extensionName, name) == 0; }
         );
         if (it != instanceExts.end()) {
             instanceExtensions.push_back(name);

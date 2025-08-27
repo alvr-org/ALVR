@@ -124,7 +124,7 @@ pub fn get_default_steamvr_executable_path() -> String {
         steamvr_root_dir.join("bin").join("vrmonitor.sh")
     };
 
-    return steamvr_path.into_os_string().into_string().unwrap();
+    steamvr_path.into_os_string().into_string().unwrap()
 }
 
 pub struct Launcher {

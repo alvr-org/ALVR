@@ -2153,8 +2153,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     content: SteamvrQuickLaunchConfigDefault {
                         steamvr_executable_path_override: if cfg!(target_os = "windows") {
                             r"C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win64\vrstartup.exe".into()
-                        } else if cfg!(target_os = "linux") {
-                            "".into()
                         } else {
                             "".into()
                         },

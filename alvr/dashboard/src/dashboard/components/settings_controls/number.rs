@@ -78,15 +78,12 @@ impl Control {
                 &mut session_value
             };
 
-            let response = match &self.gui_type {
-                NumericGuiType::Slider {
-                    range,
-                    step,
-                    logarithmic,
-                } => {
+            let mut is_editing = false;
+            let mut finished_editing = false;
+
+            if let NumericGuiType::Slider {range, step, logarithmic} = &self.gui_type {
                     
-                    let mut slider =
-                    Slider::new(editing_value_mut, range.clone()).logarithmic(*logarithmic);
+                    let mut slider = Slider::new(editing_value_mut, range.clone()).logarithmic(*logarithmic).show_value(false);
 
                     if let Some(step) = step {
                         slider = slider.step_by(*step);
@@ -97,31 +94,48 @@ impl Control {
                     if let Some(suffix) = &self.suffix {
                         slider = slider.suffix(suffix);
                     }
-                    
-                    // ui.add_space(10.0);
-                    // todo: investigate why the slider does not get centered vertically
+
+
                     ui.scope(|ui| {
-                        ui.style_mut().spacing.interact_size = vec2(20.0, 20.0);
-                        ui.add(slider)                       // ui.add_space(10.0);
-                    })
-                    .inner
-                }
-                NumericGuiType::TextBox => {
-                    let mut textbox = DragValue::new(editing_value_mut);
+                         ui.style_mut().spacing.interact_size.y = 20.0;
+                    let slider_response = ui.add(slider);
+                    
+                    // // ui.add_space(10.0);
+                    // // todo: investigate why the slider does not get centered vertically
+                    // ui.scope(|ui| {
+                    //     ui.style_mut().spacing.interact_size.y = 1.0;
+                    //     ui.add(slider)                       // ui.add_space(10.0);
+                    // })
+                    // .inner#
 
-                    if !matches!(self.ty, NumberType::Float) {
-                        textbox = textbox.fixed_decimals(0);
-                    }
-                    if let Some(suffix) = &self.suffix {
-                        textbox = textbox.suffix(suffix);
-                    }
+                    is_editing = slider_response.drag_started() || slider_response.gained_focus();
+                    finished_editing = slider_response.drag_stopped() || slider_response.lost_focus();
+                    });
+            }
 
-                    ui.add(textbox)
-                }
-            };
-            if response.drag_started() || response.gained_focus() {
+            // if response.drag_started() || response.gained_focus() {
+            //     self.editing_value_f64 = Some(session_value)
+            // } else if response.drag_stopped() || response.lost_focus() {
+            //     request = get_request(&self.nesting_info, *editing_value_mut, self.ty);
+            //     *session_fragment = to_json_value(*editing_value_mut, self.ty);
+
+            //     self.editing_value_f64 = None;
+            // }
+
+            let mut textbox = DragValue::new(editing_value_mut);
+
+            if !matches!(self.ty, NumberType::Float) {
+                textbox = textbox.fixed_decimals(0);
+            }
+            if let Some(suffix) = &self.suffix {
+                textbox = textbox.suffix(suffix);
+            }
+
+            let drag_value = ui.add(textbox);
+
+            if is_editing || drag_value.drag_started() || drag_value.gained_focus() {
                 self.editing_value_f64 = Some(session_value)
-            } else if response.drag_stopped() || response.lost_focus() {
+            } else if finished_editing || drag_value.drag_stopped() || drag_value.lost_focus() {
                 request = get_request(&self.nesting_info, *editing_value_mut, self.ty);
                 *session_fragment = to_json_value(*editing_value_mut, self.ty);
 

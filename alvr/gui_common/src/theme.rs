@@ -50,6 +50,8 @@ pub fn set_theme(ctx: &Context) {
 
     let mut style = (*ctx.style()).clone();
     style.spacing.slider_width = 200_f32; // slider width can only be set globally, but you can use ui.scope to override it locally
+    style.spacing.interact_size.x = 35.0;
+    style.spacing.interact_size.y = 35.0;
     // style.spacing.sli
     // ui.spacing().interact_size.y = 30.0;
     // style.spacing.interact_size.y = 40.0;

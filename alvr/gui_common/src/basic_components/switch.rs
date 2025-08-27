@@ -1,7 +1,7 @@
 use egui::{self, Response, Sense, StrokeKind, Ui, WidgetInfo, WidgetType};
 
 pub fn switch(ui: &mut Ui, on: &mut bool) -> Response {
-    let desired_size = ui.spacing().interact_size.y * egui::vec2(2.0, 1.0);
+    let desired_size = 20.0 * egui::vec2(2.0, 1.0);
     let (rect, mut response) = ui.allocate_exact_size(desired_size, Sense::click());
     if response.clicked() {
         *on = !*on;

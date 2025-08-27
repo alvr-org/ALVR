@@ -3,7 +3,7 @@ use crate::dashboard::components::f64_eq;
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{NumberType, NumericGuiType};
 use eframe::{
-    egui::{DragValue, Layout, Slider, Ui},
+    egui::{vec2, DragValue, Layout, Slider, Ui},
     emath::Align,
 };
 use json::Number;
@@ -84,8 +84,9 @@ impl Control {
                     step,
                     logarithmic,
                 } => {
+                    
                     let mut slider =
-                        Slider::new(editing_value_mut, range.clone()).logarithmic(*logarithmic);
+                    Slider::new(editing_value_mut, range.clone()).logarithmic(*logarithmic);
 
                     if let Some(step) = step {
                         slider = slider.step_by(*step);
@@ -96,15 +97,17 @@ impl Control {
                     if let Some(suffix) = &self.suffix {
                         slider = slider.suffix(suffix);
                     }
-
+                    
+                    // ui.add_space(10.0);
                     // todo: investigate why the slider does not get centered vertically
-                    ui.with_layout(Layout::left_to_right(Align::Center), |ui| ui.add(slider))
-                        .inner
+                    ui.scope(|ui| {
+                        ui.style_mut().spacing.interact_size = vec2(20.0, 20.0);
+                        ui.add(slider)                       // ui.add_space(10.0);
+                    })
+                    .inner
                 }
                 NumericGuiType::TextBox => {
                     let mut textbox = DragValue::new(editing_value_mut);
-
-                    // textbox.
 
                     if !matches!(self.ty, NumberType::Float) {
                         textbox = textbox.fixed_decimals(0);

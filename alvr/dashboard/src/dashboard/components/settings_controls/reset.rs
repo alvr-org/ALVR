@@ -1,5 +1,5 @@
 use eframe::{
-    egui::{self, Button, Layout, Response, Ui, vec2},
+    egui::{Button, Layout, Response, Ui, vec2},
     emath::Align,
 };
 

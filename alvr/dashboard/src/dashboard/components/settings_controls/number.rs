@@ -3,7 +3,7 @@ use crate::dashboard::components::f64_eq;
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{NumberType, NumericGuiType};
 use eframe::{
-    egui::{DragValue, Layout, Slider, Ui, vec2},
+    egui::{DragValue, Layout, Slider, Ui},
     emath::Align,
 };
 use json::Number;
@@ -121,10 +121,16 @@ impl Control {
             }
 
             let drag_value_response = ui.add(drag_value);
-
-            if is_editing || drag_value_response.drag_started() || drag_value_response.gained_focus() {
+            
+            if is_editing
+                || drag_value_response.drag_started()
+                || drag_value_response.gained_focus()
+            {
                 self.editing_value_f64 = Some(session_value)
-            } else if finished_editing || drag_value_response.drag_stopped() || drag_value_response.lost_focus() {
+            } else if finished_editing
+                || drag_value_response.drag_stopped()
+                || drag_value_response.lost_focus()
+            {
                 request = get_request(&self.nesting_info, *editing_value_mut, self.ty);
                 *session_fragment = to_json_value(*editing_value_mut, self.ty);
 

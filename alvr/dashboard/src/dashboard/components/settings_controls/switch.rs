@@ -2,7 +2,7 @@ use super::{NestingInfo, SettingControl, reset};
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::SchemaNode;
 use eframe::{
-    egui::{Layout, Ui, vec2},
+    egui::{Layout, Ui},
     emath::Align,
 };
 use serde_json as json;

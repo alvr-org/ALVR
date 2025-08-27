@@ -157,6 +157,7 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
                 Please make sure you have installed and ran SteamVR at least once. \
                 Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR. {e}"
             );
+            return;
         }
     };
 

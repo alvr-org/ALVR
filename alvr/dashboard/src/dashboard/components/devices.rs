@@ -201,26 +201,22 @@ fn wired_client_section(
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         let mut wired = maybe_client.is_some();
 
-                        // ui.scope(|ui| {
-                        //     ui.style_mut().spacing.interact_size.y = vec2(20.0, 20.0);
-                            if alvr_gui_common::switch(ui, &mut wired).changed() {
-                                if wired {
-                                    request = Some(ServerRequest::UpdateClientList {
-                                        hostname: WIRED_CLIENT_HOSTNAME.to_owned(),
-                                        action: ClientListAction::AddIfMissing {
-                                            trusted: true,
-                                            manual_ips: Vec::new(),
-                                        },
-                                    });
-                                } else {
-                                    request = Some(ServerRequest::UpdateClientList {
-                                        hostname: WIRED_CLIENT_HOSTNAME.to_owned(),
-                                        action: ClientListAction::RemoveEntry,
-                                    });
-                                }
+                        if alvr_gui_common::switch(ui, &mut wired).changed() {
+                            if wired {
+                                request = Some(ServerRequest::UpdateClientList {
+                                    hostname: WIRED_CLIENT_HOSTNAME.to_owned(),
+                                    action: ClientListAction::AddIfMissing {
+                                        trusted: true,
+                                        manual_ips: Vec::new(),
+                                    },
+                                });
+                            } else {
+                                request = Some(ServerRequest::UpdateClientList {
+                                    hostname: WIRED_CLIENT_HOSTNAME.to_owned(),
+                                    action: ClientListAction::RemoveEntry,
+                                });
                             }
-                        // })
-                        // .inner
+                        }
                     });
                     ui.end_row();
 

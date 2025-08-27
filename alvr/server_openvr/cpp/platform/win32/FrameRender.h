@@ -134,8 +134,9 @@ private:
         }
 
         NTSTATUS(WINAPI * d3dkmt_spspc)(HANDLE, D3DKMT_SCHEDULINGPRIORITYCLASS);
-        d3dkmt_spspc = (decltype(d3dkmt_spspc)
-        )GetProcAddress(gdi32, "D3DKMTSetProcessSchedulingPriorityClass");
+        d3dkmt_spspc = (decltype(d3dkmt_spspc))GetProcAddress(
+            gdi32, "D3DKMTSetProcessSchedulingPriorityClass"
+        );
         if (!d3dkmt_spspc) {
             Info("[GPU PRIO FIX] Failed to get d3dkmt_spspc\n");
             return false;

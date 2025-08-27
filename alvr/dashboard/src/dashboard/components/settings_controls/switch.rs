@@ -2,7 +2,7 @@ use super::{NestingInfo, SettingControl, reset};
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::SchemaNode;
 use eframe::{
-    egui::{vec2, Layout, Ui},
+    egui::{Layout, Ui, vec2},
     emath::Align,
 };
 use serde_json as json;
@@ -48,48 +48,44 @@ impl Control {
         allow_inline: bool,
     ) -> Option<PathValuePair> {
         super::grid_flow_inline(ui, allow_inline);
-        
+
         let session_switch_mut = session_fragment.as_object_mut().unwrap();
-        // ui.scope(|ui| {
-        //     ui.style_mut().spacing.interact_size = vec2(20.0, 20.0);
 
-            let json::Value::Bool(enabled_mut) = &mut session_switch_mut["enabled"] else {
-                unreachable!()
-            };
+        let json::Value::Bool(enabled_mut) = &mut session_switch_mut["enabled"] else {
+            unreachable!()
+        };
 
-            let mut request = None;
+        let mut request = None;
 
-            fn get_request(nesting_info: &NestingInfo, enabled: bool) -> Option<PathValuePair> {
-                super::get_single_value(nesting_info, "enabled".into(), json::Value::Bool(enabled))
+        fn get_request(nesting_info: &NestingInfo, enabled: bool) -> Option<PathValuePair> {
+            super::get_single_value(nesting_info, "enabled".into(), json::Value::Bool(enabled))
+        }
+
+        ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+            if alvr_gui_common::switch(ui, enabled_mut).clicked() {
+                request = get_request(&self.nesting_info, *enabled_mut);
             }
 
-            ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                if alvr_gui_common::switch(ui, enabled_mut).clicked() {
-                    request = get_request(&self.nesting_info, *enabled_mut);
-                }
-
-                if reset::reset_button(
-                    ui,
-                    *enabled_mut != self.default_enabled,
-                    &self.default_string,
-                )
-                .clicked()
-                {
-                    request = get_request(&self.nesting_info, self.default_enabled);
-                }
-            });
-
-            if *enabled_mut {
-                ui.end_row();
-
-                request = self
-                    .content_control
-                    .ui(ui, &mut session_switch_mut["content"], false)
-                    .or(request);
+            if reset::reset_button(
+                ui,
+                *enabled_mut != self.default_enabled,
+                &self.default_string,
+            )
+            .clicked()
+            {
+                request = get_request(&self.nesting_info, self.default_enabled);
             }
+        });
 
-            request
-        // })
-        // .inner
+        if *enabled_mut {
+            ui.end_row();
+
+            request = self
+                .content_control
+                .ui(ui, &mut session_switch_mut["content"], false)
+                .or(request);
+        }
+
+        request
     }
 }

@@ -123,7 +123,6 @@ impl SettingsTab {
 
         let mut path_value_pairs = vec![];
         ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
-
             let visuals = ui.style().visuals.clone();
             let margin = 12.0;
             let corner_radius = visuals.widgets.open.corner_radius.average() + margin;

@@ -3,7 +3,7 @@ use crate::dashboard::components::f64_eq;
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{NumberType, NumericGuiType};
 use eframe::{
-    egui::{vec2, DragValue, Layout, Slider, Ui},
+    egui::{DragValue, Layout, Slider, Ui, vec2},
     emath::Align,
 };
 use json::Number;
@@ -81,46 +81,35 @@ impl Control {
             let mut is_editing = false;
             let mut finished_editing = false;
 
-            if let NumericGuiType::Slider {range, step, logarithmic} = &self.gui_type {
-                    
-                    let mut slider = Slider::new(editing_value_mut, range.clone()).logarithmic(*logarithmic).show_value(false);
+            if let NumericGuiType::Slider {
+                range,
+                step,
+                logarithmic,
+            } = &self.gui_type
+            {
+                let mut slider = Slider::new(editing_value_mut, range.clone())
+                    .logarithmic(*logarithmic)
+                    .show_value(false);
 
-                    if let Some(step) = step {
-                        slider = slider.step_by(*step);
-                    }
-                    if !matches!(self.ty, NumberType::Float) {
-                        slider = slider.integer();
-                    }
-                    if let Some(suffix) = &self.suffix {
-                        slider = slider.suffix(suffix);
-                    }
+                if let Some(step) = step {
+                    slider = slider.step_by(*step);
+                }
+                if !matches!(self.ty, NumberType::Float) {
+                    slider = slider.integer();
+                }
+                if let Some(suffix) = &self.suffix {
+                    slider = slider.suffix(suffix);
+                }
 
-
-                    ui.scope(|ui| {
-                         ui.style_mut().spacing.interact_size.y = 20.0;
+                ui.scope(|ui| {
+                    ui.style_mut().spacing.interact_size.y = 20.0;
                     let slider_response = ui.add(slider);
-                    
-                    // // ui.add_space(10.0);
-                    // // todo: investigate why the slider does not get centered vertically
-                    // ui.scope(|ui| {
-                    //     ui.style_mut().spacing.interact_size.y = 1.0;
-                    //     ui.add(slider)                       // ui.add_space(10.0);
-                    // })
-                    // .inner#
 
                     is_editing = slider_response.drag_started() || slider_response.gained_focus();
-                    finished_editing = slider_response.drag_stopped() || slider_response.lost_focus();
-                    });
+                    finished_editing =
+                        slider_response.drag_stopped() || slider_response.lost_focus();
+                });
             }
-
-            // if response.drag_started() || response.gained_focus() {
-            //     self.editing_value_f64 = Some(session_value)
-            // } else if response.drag_stopped() || response.lost_focus() {
-            //     request = get_request(&self.nesting_info, *editing_value_mut, self.ty);
-            //     *session_fragment = to_json_value(*editing_value_mut, self.ty);
-
-            //     self.editing_value_f64 = None;
-            // }
 
             let mut textbox = DragValue::new(editing_value_mut);
 

@@ -7,6 +7,8 @@ pub const SECTION_BG: Color32 = Color32::from_rgb(36, 36, 36);
 pub const DARKER_BG: Color32 = Color32::from_rgb(26, 26, 26);
 pub const SEPARATOR_BG: Color32 = Color32::from_rgb(69, 69, 69);
 pub const FG: Color32 = Color32::from_rgb(250, 250, 250);
+pub const SCROLLBAR_DOT_DIAMETER: f32 = 20.0;
+pub const SWITCH_DOT_DIAMETER: f32 = 20.0;
 
 pub const OK_GREEN: Color32 = Color32::GREEN;
 pub const KO_RED: Color32 = Color32::RED;
@@ -62,7 +64,6 @@ pub fn set_theme(ctx: &Context) {
     let mut visuals = Visuals::dark();
 
     let corner_radius = CornerRadius::same(10);
-    let frame_corner_radius = CornerRadius::same(15);
 
     visuals.widgets.active.bg_fill = ACCENT;
     visuals.widgets.active.fg_stroke = Stroke::new(1.0, FG);
@@ -79,8 +80,11 @@ pub fn set_theme(ctx: &Context) {
     visuals.selection.bg_fill = ACCENT;
     visuals.selection.stroke = Stroke::new(1.0, FG);
 
-    visuals.widgets.noninteractive.bg_fill = BG;
     visuals.faint_bg_color = DARKER_BG;
+
+    let frame_corner_radius = CornerRadius::same(15);
+
+    visuals.widgets.noninteractive.bg_fill = BG;
     visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, FG);
     visuals.widgets.noninteractive.bg_stroke = Stroke::new(0.5, SEPARATOR_BG);
     visuals.widgets.noninteractive.corner_radius = frame_corner_radius;

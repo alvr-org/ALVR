@@ -1,5 +1,6 @@
 use super::{NestingInfo, reset};
 use crate::dashboard::components::f64_eq;
+use alvr_gui_common::theme::SCROLLBAR_DOT_DIAMETER;
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{NumberType, NumericGuiType};
 use eframe::{
@@ -102,7 +103,7 @@ impl Control {
                 }
 
                 ui.scope(|ui| {
-                    ui.style_mut().spacing.interact_size.y = 20.0;
+                    ui.style_mut().spacing.interact_size.y = SCROLLBAR_DOT_DIAMETER;
                     let slider_response = ui.add(slider);
 
                     is_editing = slider_response.drag_started() || slider_response.gained_focus();

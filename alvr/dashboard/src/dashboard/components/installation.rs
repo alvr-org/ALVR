@@ -1,4 +1,4 @@
-use alvr_gui_common::theme::{self, FRAME_PADDING};
+use alvr_gui_common::theme::{self};
 use alvr_packets::{FirewallRulesAction, ServerRequest};
 use eframe::{
     egui::{Frame, Grid, Layout, RichText, Ui},
@@ -64,7 +64,7 @@ impl InstallationTab {
 
             Frame::group(ui.style())
                 .fill(theme::SECTION_BG)
-                .inner_margin(FRAME_PADDING)
+                .inner_margin(theme::FRAME_PADDING)
                 .show(ui, |ui| {
                     ui.vertical_centered(|ui| {
                         ui.label(RichText::new("Registered drivers").size(18.0));

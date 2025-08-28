@@ -1,5 +1,5 @@
 use alvr_common::ALVR_VERSION;
-use alvr_gui_common::theme::{self, FRAME_PADDING};
+use alvr_gui_common::theme;
 use eframe::egui::{Frame, RichText, ScrollArea, Ui};
 
 pub fn about_tab_ui(ui: &mut Ui) {
@@ -19,7 +19,7 @@ pub fn about_tab_ui(ui: &mut Ui) {
     ui.label("License:");
     Frame::group(ui.style())
         .fill(theme::DARKER_BG)
-        .inner_margin(FRAME_PADDING)
+        .inner_margin(theme::FRAME_PADDING)
         .show(ui, |ui| {
             ScrollArea::new([false, true])
                 .id_salt("license_scroll")

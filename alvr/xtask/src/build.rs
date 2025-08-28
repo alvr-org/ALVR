@@ -308,7 +308,7 @@ pub fn build_launcher(profile: Profile, reproducible: bool) {
 fn build_android_lib_impl(dir_name: &str, profile: Profile, link_stdcpp: bool, all_targets: bool) {
     let sh = Shell::new().unwrap();
 
-    let mut ndk_flags = vec!["--no-strip", "-p", "26", "-t", "arm64-v8a"];
+    let mut ndk_flags = vec!["--no-strip", "-p", "28", "-t", "arm64-v8a"];
 
     if all_targets {
         ndk_flags.extend(["-t", "armeabi-v7a", "-t", "x86_64", "-t", "x86"]);

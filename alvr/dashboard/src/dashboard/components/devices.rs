@@ -1,6 +1,6 @@
 use crate::dashboard::ServerRequest;
 use alvr_common::ConnectionState;
-use alvr_gui_common::theme::{self, log_colors, FRAME_PADDING};
+use alvr_gui_common::theme::{self, log_colors, FRAME_PADDING, FRAME_TEXT_SPACING};
 use alvr_packets::ClientListAction;
 use alvr_session::{ClientConnectionConfig, SessionConfig};
 use alvr_sockets::WIRED_CLIENT_HOSTNAME;
@@ -63,6 +63,7 @@ impl DevicesTab {
                 .show(ui, |ui| {
                     Grid::new(0).num_columns(2).show(ui, |ui| {
                         ui.horizontal(|ui| {
+                            ui.add_space(FRAME_TEXT_SPACING);
                             ui.heading(
                                 RichText::new("ALVR requires running SteamVR! Devices will not be discovered or connected.")
                                 .color(Color32::BLACK)
@@ -197,6 +198,7 @@ fn wired_client_section(
                 .num_columns(2)
                 .spacing(egui::vec2(8.0, 8.0))
                 .show(ui, |ui| {
+                    ui.add_space(FRAME_TEXT_SPACING);
                     ui.heading("Wired Connection");
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         let mut wired = maybe_client.is_some();
@@ -217,6 +219,7 @@ fn wired_client_section(
                                 });
                             }
                         }
+                        ui.add_space(FRAME_TEXT_SPACING);
                     });
                     ui.end_row();
 
@@ -255,6 +258,7 @@ fn new_clients_section(
         .show(ui, |ui| {
             ui.vertical_centered_justified(|ui| {
                 ui.horizontal(|ui| {
+                    ui.add_space(FRAME_TEXT_SPACING);
                     ui.heading("New Wireless Devices");
 
                     // Extend to the right
@@ -308,6 +312,7 @@ fn trusted_clients_section(
         .show(ui, |ui| {
             Grid::new(0).num_columns(2).show(ui, |ui| {
                 ui.horizontal(|ui| {
+                    ui.add_space(FRAME_TEXT_SPACING);
                     ui.heading("Trusted Wireless Devices");
                 });
 

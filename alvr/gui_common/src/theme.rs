@@ -9,8 +9,9 @@ pub const SEPARATOR_BG: Color32 = Color32::from_rgb(69, 69, 69);
 pub const FG: Color32 = Color32::from_rgb(250, 250, 250);
 pub const SCROLLBAR_DOT_DIAMETER: f32 = 20.0;
 pub const SWITCH_DOT_DIAMETER: f32 = SCROLLBAR_DOT_DIAMETER;
-pub const FRAME_PADDING: f32 = 30.0;
+pub const FRAME_PADDING: f32 = 10.0;
 pub const CORNER_RADIUS: u8 = 10;
+pub const FRAME_TEXT_SPACING: f32 = 5.0;
 
 pub const OK_GREEN: Color32 = Color32::GREEN;
 pub const KO_RED: Color32 = Color32::RED;

@@ -90,7 +90,8 @@ pub fn set_theme(ctx: &Context) {
     visuals.widgets.noninteractive.bg_fill = BG;
     visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, FG);
     visuals.widgets.noninteractive.bg_stroke = Stroke::new(0.5, SEPARATOR_BG);
-    visuals.widgets.noninteractive.corner_radius = CornerRadius::same(CORNER_RADIUS + FRAME_PADDING as u8); // Frame corner radius
+    visuals.widgets.noninteractive.corner_radius =
+        CornerRadius::same(CORNER_RADIUS + FRAME_PADDING as u8); // Frame corner radius
 
     ctx.set_visuals(visuals);
 }

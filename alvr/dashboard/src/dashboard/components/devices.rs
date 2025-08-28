@@ -192,7 +192,10 @@ fn wired_client_section(
 
     Frame::group(ui.style())
         .fill(theme::SECTION_BG)
-        .inner_margin(egui::vec2(theme::FRAME_PADDING + theme::FRAME_TEXT_SPACING, theme::FRAME_PADDING))
+        .inner_margin(egui::vec2(
+            theme::FRAME_PADDING + theme::FRAME_TEXT_SPACING,
+            theme::FRAME_PADDING,
+        ))
         .show(ui, |ui| {
             ui.horizontal(|ui| {
                 Grid::new("wired-client")

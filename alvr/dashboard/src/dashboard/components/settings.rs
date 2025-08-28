@@ -5,7 +5,7 @@ use super::{
 use crate::dashboard::ServerRequest;
 use alvr_gui_common::{
     DisplayString,
-    theme::{self, SETTINGS_TAB_FRAME_MARGIN},
+    theme::{self},
 };
 use alvr_session::{SessionSettings, Settings};
 use eframe::egui::{self, Align, Frame, Grid, Layout, RichText, ScrollArea, Ui};
@@ -19,6 +19,7 @@ use std::time::Instant;
 
 const DATA_UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 const MIN_COLUMN_SIZE: f32 = 300.0;
+const TAB_FRAME_MARGIN: f32 = 12.0;
 
 struct TopLevelEntry {
     id: DisplayString,
@@ -127,14 +128,11 @@ impl SettingsTab {
         let mut path_value_pairs = vec![];
         ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
             let corner_radius =
-                ui.style().visuals.widgets.open.corner_radius.average() + SETTINGS_TAB_FRAME_MARGIN;
+                ui.style().visuals.widgets.open.corner_radius.average() + TAB_FRAME_MARGIN;
 
             Frame::group(ui.style())
                 .fill(theme::DARKER_BG)
-                .inner_margin(egui::vec2(
-                    SETTINGS_TAB_FRAME_MARGIN,
-                    SETTINGS_TAB_FRAME_MARGIN,
-                ))
+                .inner_margin(egui::vec2(TAB_FRAME_MARGIN, TAB_FRAME_MARGIN))
                 .corner_radius(corner_radius)
                 .show(ui, |ui| {
                     ui.horizontal_wrapped(|ui| {

@@ -9,7 +9,6 @@ pub const SEPARATOR_BG: Color32 = Color32::from_rgb(69, 69, 69);
 pub const FG: Color32 = Color32::from_rgb(250, 250, 250);
 pub const SCROLLBAR_DOT_DIAMETER: f32 = 20.0;
 pub const SWITCH_DOT_DIAMETER: f32 = SCROLLBAR_DOT_DIAMETER;
-pub const SETTINGS_TAB_FRAME_MARGIN: f32 = 12.0;
 
 pub const OK_GREEN: Color32 = Color32::GREEN;
 pub const KO_RED: Color32 = Color32::RED;
@@ -52,7 +51,7 @@ pub fn set_theme(ctx: &Context) {
     ctx.set_theme(ThemePreference::Dark);
 
     let mut style = (*ctx.style()).clone();
-    style.spacing.slider_width = 200_f32; // slider width can only be set globally, but you can use ui.scope to override it locally
+    style.spacing.slider_width = 200_f32; // slider width can only be set globally
     style.spacing.interact_size.x = 35.0;
     style.spacing.interact_size.y = 35.0;
 

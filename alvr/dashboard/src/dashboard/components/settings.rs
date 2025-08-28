@@ -3,7 +3,10 @@ use super::{
     presets::{PresetControl, builtin_schema},
 };
 use crate::dashboard::ServerRequest;
-use alvr_gui_common::{theme::{self, SETTINGS_TAB_FRAME_MARGIN}, DisplayString};
+use alvr_gui_common::{
+    DisplayString,
+    theme::{self, SETTINGS_TAB_FRAME_MARGIN},
+};
 use alvr_session::{SessionSettings, Settings};
 use eframe::egui::{self, Align, Frame, Grid, Layout, RichText, ScrollArea, Ui};
 #[cfg(target_arch = "wasm32")]
@@ -123,11 +126,15 @@ impl SettingsTab {
 
         let mut path_value_pairs = vec![];
         ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
-            let corner_radius = ui.style().visuals.widgets.open.corner_radius.average() + SETTINGS_TAB_FRAME_MARGIN;
+            let corner_radius =
+                ui.style().visuals.widgets.open.corner_radius.average() + SETTINGS_TAB_FRAME_MARGIN;
 
             Frame::group(ui.style())
                 .fill(theme::DARKER_BG)
-                .inner_margin(egui::vec2(SETTINGS_TAB_FRAME_MARGIN, SETTINGS_TAB_FRAME_MARGIN))
+                .inner_margin(egui::vec2(
+                    SETTINGS_TAB_FRAME_MARGIN,
+                    SETTINGS_TAB_FRAME_MARGIN,
+                ))
                 .corner_radius(corner_radius)
                 .show(ui, |ui| {
                     ui.horizontal_wrapped(|ui| {

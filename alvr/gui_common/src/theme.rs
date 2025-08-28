@@ -83,7 +83,6 @@ pub fn set_theme(ctx: &Context) {
 
     visuals.faint_bg_color = DARKER_BG;
 
-
     visuals.widgets.noninteractive.bg_fill = BG;
     visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, FG);
     visuals.widgets.noninteractive.bg_stroke = Stroke::new(0.5, SEPARATOR_BG);

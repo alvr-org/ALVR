@@ -9,6 +9,8 @@ pub const SEPARATOR_BG: Color32 = Color32::from_rgb(69, 69, 69);
 pub const FG: Color32 = Color32::from_rgb(250, 250, 250);
 pub const SCROLLBAR_DOT_DIAMETER: f32 = 20.0;
 pub const SWITCH_DOT_DIAMETER: f32 = SCROLLBAR_DOT_DIAMETER;
+pub const FRAME_PADDING: f32 = 30.0;
+pub const CORNER_RADIUS: u8 = 10;
 
 pub const OK_GREEN: Color32 = Color32::GREEN;
 pub const KO_RED: Color32 = Color32::RED;
@@ -57,13 +59,15 @@ pub fn set_theme(ctx: &Context) {
 
     style.spacing.item_spacing = egui::vec2(15.0, 15.0);
     style.spacing.button_padding = egui::vec2(10.0, 10.0);
+    style.spacing.window_margin = egui::Margin::from(FRAME_PADDING);
+
     style.text_styles.get_mut(&TextStyle::Body).unwrap().size = 14.0;
 
     ctx.set_style(style);
 
     let mut visuals = Visuals::dark();
 
-    let corner_radius = CornerRadius::same(10);
+    let corner_radius = CornerRadius::same(CORNER_RADIUS);
 
     visuals.widgets.active.bg_fill = ACCENT;
     visuals.widgets.active.fg_stroke = Stroke::new(1.0, FG);
@@ -85,7 +89,7 @@ pub fn set_theme(ctx: &Context) {
     visuals.widgets.noninteractive.bg_fill = BG;
     visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, FG);
     visuals.widgets.noninteractive.bg_stroke = Stroke::new(0.5, SEPARATOR_BG);
-    visuals.widgets.noninteractive.corner_radius = CornerRadius::same(15); // Frame corner radius
+    visuals.widgets.noninteractive.corner_radius = CornerRadius::same(CORNER_RADIUS + FRAME_PADDING as u8); // Frame corner radius
 
     ctx.set_visuals(visuals);
 }

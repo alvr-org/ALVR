@@ -1,6 +1,6 @@
 use crate::dashboard::ServerRequest;
 use alvr_common::ConnectionState;
-use alvr_gui_common::theme::{self, log_colors};
+use alvr_gui_common::theme::{self, log_colors, FRAME_PADDING};
 use alvr_packets::ClientListAction;
 use alvr_session::{ClientConnectionConfig, SessionConfig};
 use alvr_sockets::WIRED_CLIENT_HOSTNAME;
@@ -58,11 +58,11 @@ impl DevicesTab {
 
         if !connected_to_server {
             Frame::group(ui.style())
+                .inner_margin(FRAME_PADDING)
                 .fill(log_colors::WARNING_LIGHT)
                 .show(ui, |ui| {
                     Grid::new(0).num_columns(2).show(ui, |ui| {
                         ui.horizontal(|ui| {
-                            ui.add_space(10.0);
                             ui.heading(
                                 RichText::new("ALVR requires running SteamVR! Devices will not be discovered or connected.")
                                 .color(Color32::BLACK)
@@ -93,7 +93,7 @@ impl DevicesTab {
                 requests.push(request);
             }
 
-            ui.add_space(10.0);
+            ui.add_space(FRAME_PADDING);
 
             if let Some(clients) = &self.new_devices
                 && let Some(request) = new_clients_section(ui, clients)
@@ -101,7 +101,7 @@ impl DevicesTab {
                 requests.push(request);
             }
 
-            ui.add_space(10.0);
+            ui.add_space(FRAME_PADDING);
 
             if let Some(clients) = &mut self.trusted_devices
                 && let Some(request) = trusted_clients_section(
@@ -191,7 +191,7 @@ fn wired_client_section(
 
     Frame::group(ui.style())
         .fill(theme::SECTION_BG)
-        .inner_margin(egui::vec2(15.0, 12.0))
+        .inner_margin(FRAME_PADDING)
         .show(ui, |ui| {
             Grid::new("wired-client")
                 .num_columns(2)
@@ -250,12 +250,11 @@ fn new_clients_section(
     let mut request = None;
 
     Frame::group(ui.style())
+        .inner_margin(FRAME_PADDING)
         .fill(theme::SECTION_BG)
         .show(ui, |ui| {
             ui.vertical_centered_justified(|ui| {
-                ui.add_space(5.0);
                 ui.horizontal(|ui| {
-                    ui.add_space(10.0);
                     ui.heading("New Wireless Devices");
 
                     // Extend to the right
@@ -305,10 +304,10 @@ fn trusted_clients_section(
 
     Frame::group(ui.style())
         .fill(theme::SECTION_BG)
+        .inner_margin(FRAME_PADDING)
         .show(ui, |ui| {
             Grid::new(0).num_columns(2).show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    ui.add_space(10.0);
                     ui.heading("Trusted Wireless Devices");
                 });
 

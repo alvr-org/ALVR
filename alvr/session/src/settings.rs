@@ -1,6 +1,6 @@
 use alvr_common::{
-    ALVR_VERSION, DebugGroupsConfig, DebugGroupsConfigDefault, LogSeverity, LogSeverityDefault,
-    LogSeverityDefaultVariant,
+    DebugGroupsConfig, DebugGroupsConfigDefault, LogSeverity, LogSeverityDefault,
+    LogSeverityDefaultVariant, ALVR_VERSION,
 };
 use alvr_system_info::{ClientFlavor, ClientFlavorDefault, ClientFlavorDefaultVariant};
 use bytemuck::{Pod, Zeroable};
@@ -1469,12 +1469,6 @@ pub struct LoggingConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct SteamvrQuickLaunchConfig {
-    #[schema(strings(display_name = "SteamVR executable path"))]
-    pub steamvr_executable_path_override: String,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct SteamvrLauncher {
     #[schema(strings(
         display_name = "Open and close SteamVR automatically",
@@ -1485,7 +1479,7 @@ pub struct SteamvrLauncher {
         display_name = "Quick launch",
         help = "Launches SteamVR directly without Steam. This makes launching SteamVR significantly faster, allows SteamVR to be launched offline and avoids the \"app already running\" pop-up."
     ))]
-    pub use_steamvr_path: Switch<SteamvrQuickLaunchConfig>,
+    pub use_steamvr_path: Switch<String>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -2150,12 +2144,10 @@ pub fn session_settings_default() -> SettingsDefault {
                 open_close_steamvr_with_dashboard: false,
                 use_steamvr_path: SwitchDefault {
                     enabled: false,
-                    content: SteamvrQuickLaunchConfigDefault {
-                        steamvr_executable_path_override: if cfg!(target_os = "windows") {
-                            r"C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win64\vrstartup.exe".into()
-                        } else {
-                            "".into()
-                        },
+                    content: if cfg!(target_os = "windows") {
+                        r"C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win64\vrstartup.exe".into()
+                    } else {
+                        "".into()
                     },
                 },
             },

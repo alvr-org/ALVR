@@ -182,8 +182,6 @@ impl Launcher {
                 .steamvr_launcher
                 .use_steamvr_path
             {
-                let steamvr_path = &steamvr_path.steamvr_executable_path_override;
-
                 if PathBuf::from(steamvr_path).exists() {
                     debug!("Launching SteamVR from path: {}", steamvr_path);
 

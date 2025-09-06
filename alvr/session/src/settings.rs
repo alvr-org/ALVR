@@ -1477,7 +1477,7 @@ pub struct SteamvrLauncher {
     pub open_close_steamvr_with_dashboard: bool,
     #[schema(strings(
         display_name = "Quick launch",
-        help = "Launches SteamVR directly without Steam. This makes launching SteamVR significantly faster, allows SteamVR to be launched offline and avoids the \"app already running\" pop-up."
+        help = "This speeds up SteamVR launches and allows it to work offline, independent of Steam."
     ))]
     pub use_steamvr_path: Switch<String>,
 }

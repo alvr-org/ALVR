@@ -187,10 +187,10 @@ impl Launcher {
                     launch_steamvr_from_path(steamvr_path);
                 } else {
                     warn!("SteamVR executable not found at: {steamvr_path}. Trying default path.");
-    
+
                     match get_default_steamvr_executable_path() {
                         Ok(path) => launch_steamvr_from_path(&path),
-                        Err(e) => error!("Couldn't find SteamVR files. {e}")
+                        Err(e) => error!("Couldn't find SteamVR files. {e}"),
                     };
                 }
             } else {

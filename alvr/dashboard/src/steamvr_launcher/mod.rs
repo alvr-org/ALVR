@@ -122,6 +122,12 @@ pub fn get_default_steamvr_executable_path() -> Result<String> {
     Ok(steamvr_path.into_os_string().into_string().unwrap())
 }
 
+pub fn launch_steamvr_from_path(path) {
+    debug!("Launching SteamVR from path: {}", steamvr_path);
+
+    Command::new(steamvr_path).spawn().ok();
+}
+
 pub struct Launcher {
     _phantom: PhantomData<()>,
 }
@@ -171,29 +177,22 @@ impl Launcher {
         if !is_steamvr_running() {
             debug!("SteamVR is dead. Launching...");
 
-            if let Switch::Enabled(steamvr_path) = data_sources::get_read_only_local_session()
+            if let Switch::Enabled(steamvr_path) = &data_sources::get_read_only_local_session()
                 .settings()
                 .extra
                 .steamvr_launcher
                 .use_steamvr_path
-                .clone()
             {
-                let mut steamvr_path = steamvr_path;
-                if !PathBuf::from(&steamvr_path).exists() {
+                if PathBuf::from(&steamvr_path).exists() {
+                    launch_steamvr_from_path(steamvr_path);
+                } else {
                     warn!("SteamVR executable not found at: {steamvr_path}. Trying default path.");
-
-                    steamvr_path = match get_default_steamvr_executable_path() {
-                        Ok(path) => path,
-                        Err(e) => {
-                            error!("Couldn't find SteamVR files. {e}");
-                            return;
-                        }
+    
+                    match get_default_steamvr_executable_path() {
+                        Ok(path) => launch_steamvr_from_path(&path),
+                        Err(e) => error!("Couldn't find SteamVR files. {e}")
                     };
                 }
-
-                debug!("Launching SteamVR from path: {}", steamvr_path);
-
-                Command::new(steamvr_path).spawn().ok();
             } else {
                 #[cfg(windows)]
                 windows_steamvr::launch_steamvr_with_steam();

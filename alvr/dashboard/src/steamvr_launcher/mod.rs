@@ -122,7 +122,7 @@ pub fn get_default_steamvr_executable_path() -> Result<String> {
     Ok(steamvr_path.into_os_string().into_string().unwrap())
 }
 
-pub fn launch_steamvr_from_path(path) {
+pub fn launch_steamvr_from_path(steamvr_path: &String) {
     debug!("Launching SteamVR from path: {}", steamvr_path);
 
     Command::new(steamvr_path).spawn().ok();

@@ -24,7 +24,7 @@ pub fn maybe_wrap_vrcompositor_launcher() -> alvr_common::anyhow::Result<()> {
     let steamvr_vrserver_path = steamvr_bin_dir.join("vrserver");
     debug!(
         "File path used to check for linux files: {}",
-        steamvr_vrserver_path.display().to_string()
+        steamvr_vrserver_path.display()
     );
     match steamvr_vrserver_path.try_exists() {
         Ok(exists) => {

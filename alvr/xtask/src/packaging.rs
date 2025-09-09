@@ -14,6 +14,20 @@ pub enum ReleaseFlavor {
     PicoStore,
 }
 
+pub fn generate_licenses() -> String {
+    let sh = Shell::new().unwrap();
+
+    cmd!(sh, "cargo install cargo-about --version 0.6.4")
+        .run()
+        .unwrap();
+
+    let licenses_template = afs::crate_dir("xtask").join("licenses_template.hbs");
+
+    cmd!(sh, "cargo about generate {licenses_template}")
+        .read()
+        .unwrap()
+}
+
 pub fn include_licenses(root_path: &Path, gpl: bool) {
     let sh = Shell::new().unwrap();
 
@@ -38,14 +52,7 @@ pub fn include_licenses(root_path: &Path, gpl: bool) {
         .ok();
     }
 
-    // Gather licenses with cargo about
-    cmd!(sh, "cargo install cargo-about --version 0.6.4")
-        .run()
-        .unwrap();
-    let licenses_template = afs::crate_dir("xtask").join("licenses_template.hbs");
-    let licenses_content = cmd!(sh, "cargo about generate {licenses_template}")
-        .read()
-        .unwrap();
+    let licenses_content = generate_licenses();
     sh.write_file(licenses_dir.join("dependencies.html"), licenses_content)
         .unwrap();
 }

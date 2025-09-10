@@ -1470,8 +1470,16 @@ pub struct LoggingConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct SteamvrLauncher {
-    #[schema(strings(display_name = "Open and close SteamVR with dashboard"))]
+    #[schema(strings(
+        display_name = "Open and close SteamVR automatically",
+        help = "Launches SteamVR automatically when the ALVR dashboard is opened, and closes it when the dashboard is closed."
+    ))]
     pub open_close_steamvr_with_dashboard: bool,
+    #[schema(strings(
+        display_name = "Quick launch",
+        help = "This speeds up SteamVR launches and allows it to work offline, independent of Steam."
+    ))]
+    pub use_steamvr_path: Switch<String>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1513,6 +1521,7 @@ pub struct NewVersionPopupConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ExtraConfig {
+    #[schema(strings(display_name = "SteamVR Launcher"))]
     pub steamvr_launcher: SteamvrLauncher,
     pub capture: CaptureConfig,
     pub logging: LoggingConfig,
@@ -2133,6 +2142,14 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             steamvr_launcher: SteamvrLauncherDefault {
                 open_close_steamvr_with_dashboard: false,
+                use_steamvr_path: SwitchDefault {
+                    enabled: false,
+                    content: if cfg!(target_os = "windows") {
+                        r"C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win64\vrstartup.exe".into()
+                    } else {
+                        "".into()
+                    },
+                },
             },
             capture: CaptureConfigDefault {
                 startup_video_recording: false,

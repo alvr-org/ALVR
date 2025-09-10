@@ -3,17 +3,20 @@ mod linux_steamvr;
 #[cfg(windows)]
 mod windows_steamvr;
 
+use std::{path::PathBuf, process::Command};
+
 use crate::data_sources;
 use alvr_adb::commands as adb;
 use alvr_common::{
     anyhow::{Context, Result},
-    debug,
+    debug, error,
     glam::bool,
     parking_lot::Mutex,
     warn,
 };
 use alvr_filesystem as afs;
 use serde_json::{self, json};
+use settings_schema::Switch;
 use std::{
     ffi::OsStr,
     fs,
@@ -107,6 +110,24 @@ fn unblock_alvr_driver_within_vrsettings(text: &str) -> Result<String> {
     Ok(serde_json::to_string_pretty(&settings)?)
 }
 
+pub fn get_default_steamvr_executable_path() -> Result<String> {
+    let steamvr_bin_dir = alvr_server_io::steamvr_root_dir()?.join("bin");
+
+    let steamvr_path = if cfg!(windows) {
+        steamvr_bin_dir.join("win64").join("vrstartup.exe")
+    } else {
+        steamvr_bin_dir.join("vrmonitor.sh")
+    };
+
+    Ok(steamvr_path.into_os_string().into_string().unwrap())
+}
+
+pub fn launch_steamvr_from_path(steamvr_path: &String) {
+    debug!("Launching SteamVR from path: {}", steamvr_path);
+
+    Command::new(steamvr_path).spawn().ok();
+}
+
 pub struct Launcher {
     _phantom: PhantomData<()>,
 }
@@ -156,11 +177,29 @@ impl Launcher {
         if !is_steamvr_running() {
             debug!("SteamVR is dead. Launching...");
 
-            #[cfg(windows)]
-            windows_steamvr::start_steamvr();
+            if let Switch::Enabled(steamvr_path) = &data_sources::get_read_only_local_session()
+                .settings()
+                .extra
+                .steamvr_launcher
+                .use_steamvr_path
+            {
+                if PathBuf::from(&steamvr_path).exists() {
+                    launch_steamvr_from_path(steamvr_path);
+                } else {
+                    warn!("SteamVR executable not found at: {steamvr_path}. Trying default path.");
 
-            #[cfg(target_os = "linux")]
-            linux_steamvr::start_steamvr();
+                    match get_default_steamvr_executable_path() {
+                        Ok(path) => launch_steamvr_from_path(&path),
+                        Err(e) => error!("Couldn't find SteamVR files. {e}"),
+                    };
+                }
+            } else {
+                #[cfg(windows)]
+                windows_steamvr::launch_steamvr_with_steam();
+
+                #[cfg(target_os = "linux")]
+                linux_steamvr::launch_steamvr_with_steam();
+            }
         }
     }
 

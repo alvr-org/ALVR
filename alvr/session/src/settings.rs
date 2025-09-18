@@ -1475,11 +1475,18 @@ pub struct SteamvrLauncher {
         help = "Launches SteamVR automatically when the ALVR dashboard is opened, and closes it when the dashboard is closed."
     ))]
     pub open_close_steamvr_with_dashboard: bool,
-    #[schema(strings(
-        display_name = "Quick launch",
-        help = "This speeds up SteamVR launches and allows it to work offline, independent of Steam."
-    ))]
-    pub use_steamvr_path: Switch<String>,
+
+    #[cfg_attr(
+        windows,
+        schema(strings(help = "Directly start the VR server, bypassing Steam. \
+                Will run start_server.bat if it exists alongside session.json, and try to automatically find SteamVR otherwise."))
+    )]
+    #[cfg_attr(
+        not(windows),
+        schema(strings(help = "Directly start the VR server, bypassing Steam. \
+                Will run start_server.sh if it exists alongside session.json, and try to automatically find SteamVR otherwise."))
+    )]
+    pub direct_launch: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -2142,14 +2149,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             steamvr_launcher: SteamvrLauncherDefault {
                 open_close_steamvr_with_dashboard: false,
-                use_steamvr_path: SwitchDefault {
-                    enabled: false,
-                    content: if cfg!(target_os = "windows") {
-                        r"C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win64\vrstartup.exe".into()
-                    } else {
-                        "".into()
-                    },
-                },
+                direct_launch: false,
             },
             capture: CaptureConfigDefault {
                 startup_video_recording: false,

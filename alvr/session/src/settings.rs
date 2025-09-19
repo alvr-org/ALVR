@@ -865,6 +865,8 @@ pub struct AudioConfig {
 pub enum HeadsetEmulationMode {
     #[schema(strings(display_name = "Rift S"))]
     RiftS,
+    #[schema(strings(display_name = "Quest 1"))]
+    Quest1,
     #[schema(strings(display_name = "Quest 2"))]
     Quest2,
     #[schema(strings(display_name = "Quest Pro"))]
@@ -962,6 +964,8 @@ pub struct VMCConfig {
 pub enum ControllersEmulationMode {
     #[schema(strings(display_name = "Rift S Touch"))]
     RiftSTouch,
+    #[schema(strings(display_name = "Quest 1 Touch"))]
+    Quest1Touch,
     #[schema(strings(display_name = "Quest 2 Touch"))]
     Quest2Touch,
     #[schema(strings(display_name = "Quest 3 Touch Plus"))]

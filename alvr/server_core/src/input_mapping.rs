@@ -11,6 +11,7 @@ pub fn registered_button_set(
 ) -> HashSet<u64> {
     match &controllers_emulation_mode {
         ControllersEmulationMode::RiftSTouch
+        | ControllersEmulationMode::Quest1Touch
         | ControllersEmulationMode::Quest2Touch
         | ControllersEmulationMode::Quest3Plus
         | ControllersEmulationMode::QuestPro => CONTROLLER_PROFILE_INFO

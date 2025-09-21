@@ -429,24 +429,24 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
                         set_prop(SerialNumberString, "playstation_vr2_sense_controller_left");
                         set_prop(
                             RenderModelNameString,
-                            "{playstation_vr2}/rendermodels/playstation_vr2_sense_left",
+                            "{alvr_server}/rendermodels/playstation_vr2_sense_left",
                         );
-                        set_icons("{playstation_vr2}/icons/left_controller_status");
+                        set_icons("{alvr_server}/icons/left_controller_status");
                     } else if right_hand {
                         set_prop(ModelNumberString, "PlayStation VR2 Sense Right");
                         set_prop(SerialNumberString, "playstation_vr2_sense_controller_right");
                         set_prop(
                             RenderModelNameString,
-                            "{playstation_vr2}/rendermodels/playstation_vr2_sense_right",
+                            "{alvr_server}/rendermodels/playstation_vr2_sense_right",
                         );
-                        set_icons("{playstation_vr2}/icons/right_controller_status");
+                        set_icons("{alvr_server}/icons/right_controller_status");
                     }
                     set_prop(TrackingFirmwareVersionString, "0303");
                     set_prop(HardwareRevisionString, "MP");
                     set_prop(ControllerTypeString, "playstation_vr2_sense");
                     set_prop(
                         InputProfilePathString,
-                        "{playstation_vr2}/input/playstation_vr2_sense_controller_profile.json",
+                        "{alvr_server}/input/playstation_vr2_sense_controller_profile.json",
                     );
                 }
                 ControllersEmulationMode::ValveIndex => {

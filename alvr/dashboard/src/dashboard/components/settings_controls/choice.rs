@@ -1,4 +1,4 @@
-use super::{reset, NestingInfo, SettingControl};
+use super::{NestingInfo, SettingControl, reset};
 use alvr_gui_common::DisplayString;
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{ChoiceControlType, SchemaEntry, SchemaNode};
@@ -171,16 +171,16 @@ impl Control {
             }
         });
 
-        if let Some(control) = self.variant_controls.get_mut(&*variant_mut) {
-            if !matches!(control, SettingControl::None) {
-                ui.end_row();
+        if let Some(control) = self.variant_controls.get_mut(&*variant_mut)
+            && !matches!(control, SettingControl::None)
+        {
+            ui.end_row();
 
-                //fixes "cannot borrow `*session_variants` as mutable more than once at a time"
-                let variant = variant_mut.clone();
-                request = control
-                    .ui(ui, &mut session_variants_mut[&variant], false)
-                    .or(request);
-            }
+            //fixes "cannot borrow `*session_variants` as mutable more than once at a time"
+            let variant = variant_mut.clone();
+            request = control
+                .ui(ui, &mut session_variants_mut[&variant], false)
+                .or(request);
         }
 
         request

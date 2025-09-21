@@ -4,10 +4,10 @@
 
 [![badge-discord][]][link-discord] [![badge-matrix][]][link-matrix] [![badge-opencollective][]][link-opencollective]
 
-Stream VR games from your PC to your headset via Wi-Fi.
+Stream VR games from your PC to your headset over Wi-Fi.  
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
-### Direct download to the latest version:
+### Direct download (latest version):
 ### [Windows Launcher](https://github.com/alvr-org/ALVR/releases/latest/download/alvr_launcher_windows.zip) | [Linux Launcher](https://github.com/alvr-org/ALVR/releases/latest/download/alvr_launcher_linux.tar.gz)
 
 ## Compatibility
@@ -24,8 +24,8 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 |        Android/Monado        |                                      :warning: **                                      |
 |          Oculus Go           |                 :x: ([old repo](https://github.com/polygraphene/ALVR))                 |
 
-\* : ALVR for Quest 1 not available through the Meta store.  
-\** : Only works on some smartphones, not enough testing.  
+\* ALVR for Quest 1 is not available through the Meta store.  
+\** Works on some smartphones, but has not been extensively tested.  
 
 |     PC OS      |                                    Support                                    |
 | :------------: | :---------------------------------------------------------------------------: |
@@ -34,51 +34,51 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 |     Linux      |                             :heavy_check_mark:***                             |
 |     macOS      |                                      :x:                                      |
 
-\*** : Please check the wiki for compatibility info
+\*** Please check the wiki for detailed compatibility information.
 
 ### Requirements
 
--   A supported standalone VR headset (see compatibility table above)
+-   A supported standalone VR headset (see compatibility table above).
+-   SteamVR.
+-   A high-end gaming PC:
+    -   See the OS compatibility table above.
+    -   NVIDIA GPU with NVENC support (GTX 1000 series or newer), or an AMD GPU with AMF VCE support, with the latest drivers.
+    -   On laptops with both an integrated GPU (Intel HD, AMD iGPU) and a dedicated GPU (NVIDIA GTX/RTX, AMD HD/R5/R7), make sure to assign the dedicated GPU (or "high performance graphics adapter") to ALVR and SteamVR for the best performance and compatibility.  
+        (NVIDIA: Nvidia Control Panel → 3D Settings → Application Settings; AMD: similar method)
 
--   SteamVR
+-   Network:
+    -   802.11ac 5 GHz Wi-Fi for the headset, and wired Ethernet for the PC is recommended.
+    -   The PC and the headset must be connected to the same router (or use a routed connection as described [here](https://github.com/alvr-org/ALVR/wiki/ALVR-v14-and-Above)).
 
--   High-end gaming PC
-    -   See OS compatibility table above.
-    -   NVIDIA GPU that supports NVENC (1000 GTX Series or higher) (or with an AMD GPU that supports AMF VCE) with the latest driver.
-    -   Laptops with an onboard (Intel HD, AMD iGPU) and an additional dedicated GPU (NVidia GTX/RTX, AMD HD/R5/R7): you should assign the dedicated GPU or "high performance graphics adapter" to the applications ALVR, SteamVR for best performance and compatibility. (NVidia: Nvidia control panel->3d settings->application settings; AMD: similiar way)
+## Installation
 
--   802.11ac 5Ghz wireless or ethernet wired connection
-    -   It is recommended to use 802.11ac 5Ghz for the headset and ethernet for PC
-    -   You need to connect both the PC and the headset to same router (or use a routed connection as described [here](https://github.com/alvr-org/ALVR/wiki/ALVR-v14-and-Above))
-
-## Install
-
-Follow the installation guide [here](https://github.com/alvr-org/ALVR/wiki/Installation-guide).
+Follow the [installation guide](https://github.com/alvr-org/ALVR/wiki/Installation-guide).
 
 ## Troubleshooting
 
--   Please check the [Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Troubleshooting) page, and also [Linux Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Linux-Troubleshooting) if applicable.
--   Configuration recommendations and information may be found [here](https://github.com/alvr-org/ALVR/wiki/Information-and-Recommendations)
+-   See the [Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Troubleshooting) page, and [Linux Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Linux-Troubleshooting) if applicable.
+-   Configuration recommendations and additional information can be found [here](https://github.com/alvr-org/ALVR/wiki/Information-and-Recommendations).
 
-## Uninstall
+## Uninstallation
 
-Open `ALVR Dashboard.exe`, go to `Installation` tab then press `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
+Open `ALVR Dashboard.exe`, go to the `Installation` tab, then press `Remove firewall rules`.  
+Close the ALVR window and delete the ALVR folder.
 
-## Build from source
+## Build from Source
 
-You can follow the guide [here](https://github.com/alvr-org/ALVR/wiki/Building-From-Source).
+Follow the [build guide](https://github.com/alvr-org/ALVR/wiki/Building-From-Source).
 
 ## License
 
 ALVR is licensed under the [MIT License](LICENSE).
 
-## Privacy policy
+## Privacy Policy
 
-ALVR apps do not directly collect any kind of data.
+ALVR apps do not directly collect any personal data.
 
 ## Donate
 
-If you want to support this project you can make a donation to our [Open Source Collective account](https://opencollective.com/alvr).
+If you would like to support this project, you can donate through our [Open Source Collective account](https://opencollective.com/alvr).
 
 [badge-discord]: https://img.shields.io/discord/720612397580025886?style=for-the-badge&logo=discord&color=5865F2 "Join us on Discord"
 [link-discord]: https://discord.gg/ALVR

@@ -11,6 +11,5 @@ public:
 
     void Stop() { }
     void OnStreamStart() { }
-    void OnPacketLoss() { }
     void InsertIDR() { }
 };

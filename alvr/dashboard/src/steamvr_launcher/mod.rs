@@ -7,18 +7,18 @@ use crate::data_sources;
 use alvr_adb::commands as adb;
 use alvr_common::{
     anyhow::{Context, Result},
-    debug,
+    debug, error,
     glam::bool,
-    once_cell::sync::Lazy,
     parking_lot::Mutex,
     warn,
 };
-use alvr_filesystem as afs;
+use alvr_filesystem::{self as afs};
 use serde_json::{self, json};
 use std::{
     ffi::OsStr,
     fs,
     marker::PhantomData,
+    process::Command,
     thread,
     time::{Duration, Instant},
 };
@@ -120,10 +120,8 @@ impl Launcher {
             .session()
             .client_connections
             .contains_key(alvr_sockets::WIRED_CLIENT_HOSTNAME);
-        if wired_enabled {
-            if let Some(path) = adb::get_adb_path(&crate::get_filesystem_layout()) {
-                adb::kill_server(&path).ok();
-            }
+        if wired_enabled && let Some(path) = adb::get_adb_path(&crate::get_filesystem_layout()) {
+            adb::kill_server(&path).ok();
         }
 
         #[cfg(target_os = "linux")]
@@ -156,14 +154,52 @@ impl Launcher {
             }
         }
 
-        if !is_steamvr_running() {
-            debug!("SteamVR is dead. Launching...");
+        if is_steamvr_running() {
+            return;
+        }
 
+        debug!("SteamVR is dead. Launching...");
+
+        if data_sources::get_read_only_local_session()
+            .settings()
+            .extra
+            .steamvr_launcher
+            .direct_launch
+        {
+            let start_script = afs::filesystem_layout_invalid().server_start_script();
+
+            if start_script.exists() {
+                debug!("Running VR server start script: {}", start_script.display());
+
+                if let Err(e) = Command::new(&start_script).spawn() {
+                    error!("Failed to run VR server start script: {e}");
+                }
+            } else if let Ok(steamvr_bin_dir) =
+                alvr_server_io::steamvr_root_dir().map(|root| root.join("bin"))
+            {
+                let steamvr_path = if cfg!(windows) {
+                    steamvr_bin_dir.join("win64").join("vrstartup.exe")
+                } else {
+                    steamvr_bin_dir.join("vrmonitor.sh")
+                };
+
+                debug!("Launching SteamVR from path: {}", steamvr_path.display());
+
+                if let Err(e) = Command::new(&steamvr_path).spawn() {
+                    error!(
+                        "Failed to run SteamVR from automatically detected path {} with error: {e}",
+                        steamvr_path.display()
+                    );
+                }
+            } else {
+                error!("Failed to find SteamVR files to directly launch SteamVR");
+            }
+        } else {
             #[cfg(windows)]
-            windows_steamvr::start_steamvr();
+            windows_steamvr::launch_steamvr_with_steam();
 
             #[cfg(target_os = "linux")]
-            linux_steamvr::start_steamvr();
+            linux_steamvr::launch_steamvr_with_steam();
         }
     }
 
@@ -184,8 +220,6 @@ impl Launcher {
 }
 
 // Singleton with exclusive access
-pub static LAUNCHER: Lazy<Mutex<Launcher>> = Lazy::new(|| {
-    Mutex::new(Launcher {
-        _phantom: PhantomData,
-    })
+pub static LAUNCHER: Mutex<Launcher> = Mutex::new(Launcher {
+    _phantom: PhantomData,
 });

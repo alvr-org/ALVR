@@ -1,28 +1,22 @@
 use crate::extra_extensions::get_instance_proc;
-use alvr_common::once_cell::sync::Lazy;
-use openxr::{self as xr, sys, AnyGraphics};
-use std::ffi::{c_char, c_void, CString};
-use std::ptr;
+use openxr::{self as xr, AnyGraphics, sys};
+use std::{
+    ffi::{CString, c_char, c_void},
+    ptr,
+    sync::LazyLock,
+};
 
 pub const BD_BODY_TRACKING_EXTENSION_NAME: &str = "XR_BD_body_tracking";
 
-static TYPE_BODY_TRACKER_CREATE_INFO_BD: Lazy<xr::StructureType> =
-    Lazy::new(|| xr::StructureType::from_raw(1000385001));
-static TYPE_BODY_JOINTS_LOCATE_INFO_BD: Lazy<xr::StructureType> =
-    Lazy::new(|| xr::StructureType::from_raw(1000385002));
-static TYPE_BODY_JOINT_LOCATIONS_BD: Lazy<xr::StructureType> =
-    Lazy::new(|| xr::StructureType::from_raw(1000385003));
-static TYPE_SYSTEM_BODY_TRACKING_PROPERTIES_BD: Lazy<xr::StructureType> =
-    Lazy::new(|| xr::StructureType::from_raw(1000385004));
+static TYPE_BODY_TRACKER_CREATE_INFO_BD: LazyLock<xr::StructureType> =
+    LazyLock::new(|| xr::StructureType::from_raw(1000385001));
+static TYPE_BODY_JOINTS_LOCATE_INFO_BD: LazyLock<xr::StructureType> =
+    LazyLock::new(|| xr::StructureType::from_raw(1000385002));
+static TYPE_BODY_JOINT_LOCATIONS_BD: LazyLock<xr::StructureType> =
+    LazyLock::new(|| xr::StructureType::from_raw(1000385003));
+static TYPE_SYSTEM_BODY_TRACKING_PROPERTIES_BD: LazyLock<xr::StructureType> =
+    LazyLock::new(|| xr::StructureType::from_raw(1000385004));
 
-pub const BODY_JOINT_PELVIS_BD: usize = 0;
-pub const BODY_JOINT_LEFT_KNEE_BD: usize = 4;
-pub const BODY_JOINT_RIGHT_KNEE_BD: usize = 5;
-pub const BODY_JOINT_SPINE3_BD: usize = 9;
-pub const BODY_JOINT_LEFT_FOOT_BD: usize = 10;
-pub const BODY_JOINT_RIGHT_FOOT_BD: usize = 11;
-pub const BODY_JOINT_LEFT_ELBOW_BD: usize = 18;
-pub const BODY_JOINT_RIGHT_ELBOW_BD: usize = 19;
 pub const BODY_JOINT_COUNT_BD: usize = 24;
 
 #[repr(transparent)]

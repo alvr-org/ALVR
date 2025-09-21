@@ -72,7 +72,7 @@ impl LogsTab {
         }
     }
 
-    pub fn ui(&self, ui: &mut Ui) {
+    pub fn ui(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             if ui.button("Copy all").clicked() {
                 ui.output_mut(|out| {
@@ -94,6 +94,9 @@ impl LogsTab {
                     "file://{}",
                     log_dir.to_string_lossy()
                 )));
+            }
+            if ui.button("Clear all").clicked() {
+                self.entries.clear();
             }
         });
 

@@ -1,5 +1,5 @@
 use std::path::Path;
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 pub fn zip(sh: &Shell, source: &Path) -> Result<(), xshell::Error> {
     let _push_guard = sh.push_dir(source);

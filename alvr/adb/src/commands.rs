@@ -2,7 +2,7 @@
 
 use crate::parse::{self, Device, ForwardedPorts};
 use alvr_filesystem as afs;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use std::{
     collections::HashSet,
     io::{Cursor, Read},
@@ -164,7 +164,9 @@ fn download_adb(progress_callback: impl Fn(usize, Option<usize>)) -> Result<Vec<
 }
 
 fn get_platform_tools_url() -> String {
-    format!("https://dl.google.com/android/repository/platform-tools{PLATFORM_TOOLS_VERSION}-{PLATFORM_TOOLS_OS}.zip")
+    format!(
+        "https://dl.google.com/android/repository/platform-tools{PLATFORM_TOOLS_VERSION}-{PLATFORM_TOOLS_OS}.zip"
+    )
 }
 
 ///////////////

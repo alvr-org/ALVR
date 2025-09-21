@@ -2,6 +2,7 @@ use alvr_common::glam::UVec2;
 use alvr_graphics::GraphicsContext;
 use alvr_session::ClientsidePostProcessingConfig;
 use openxr as xr;
+use std::ptr;
 
 #[allow(unused)]
 pub fn session_create_info(ctx: &GraphicsContext) -> xr::opengles::SessionCreateInfo {
@@ -94,7 +95,7 @@ impl<'a> ProjectionLayerBuilder<'a> {
         }
     }
 
-    pub fn build(&self) -> xr::CompositionLayerProjection<xr::OpenGlEs> {
+    pub fn build(&self) -> xr::CompositionLayerProjection<'_, xr::OpenGlEs> {
         let mut flags = xr::CompositionLayerFlags::EMPTY;
 
         if let Some(alpha) = &self.alpha {
@@ -113,7 +114,7 @@ impl<'a> ProjectionLayerBuilder<'a> {
         if let Some(composition_layer_settings) = self.composition_layer_settings.as_ref() {
             unsafe {
                 xr::CompositionLayerProjection::from_raw(xr::sys::CompositionLayerProjection {
-                    next: std::ptr::from_ref(composition_layer_settings).cast(),
+                    next: ptr::from_ref(composition_layer_settings).cast(),
                     ..layer.into_raw()
                 })
             }

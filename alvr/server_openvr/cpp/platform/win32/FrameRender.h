@@ -45,7 +45,7 @@ public:
     virtual ~FrameRender();
 
     bool Startup();
-    void SetViewsConfig(
+    void SetViewParams(
         vr::HmdRect2_t projLeft,
         vr::HmdMatrix34_t eyeToHeadLeft,
         vr::HmdRect2_t projRight,

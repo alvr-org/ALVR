@@ -133,7 +133,10 @@ pub fn parse_forwarded_ports(line: &str) -> Option<ForwardedPorts> {
     let local = parse_port(slices.next()?);
     let remote = parse_port(slices.next()?);
 
-    if let (Some(serial), Some(local), Some(remote)) = (serial, local, remote) {
+    if let Some(serial) = serial
+        && let Some(local) = local
+        && let Some(remote) = remote
+    {
         Some(ForwardedPorts {
             local,
             remote,

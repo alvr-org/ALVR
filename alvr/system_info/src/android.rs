@@ -1,5 +1,5 @@
 use alvr_common::warn;
-use jni::{objects::JObject, sys::jobject, JNIEnv, JavaVM};
+use jni::{JNIEnv, JavaVM, objects::JObject, sys::jobject};
 use std::net::{IpAddr, Ipv4Addr};
 
 pub const MICROPHONE_PERMISSION: &str = "android.permission.RECORD_AUDIO";

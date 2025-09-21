@@ -211,12 +211,15 @@ bool Controller::OnPoseUpdate(uint64_t targetTimestampNs, float predictionS, Ffi
         auto m = controllerMotion;
 
         pose.qRotation = HmdQuaternion_Init(
-            m->orientation.w, m->orientation.x, m->orientation.y, m->orientation.z
+            m->pose.orientation.w,
+            m->pose.orientation.x,
+            m->pose.orientation.y,
+            m->pose.orientation.z
         );
 
-        pose.vecPosition[0] = m->position[0];
-        pose.vecPosition[1] = m->position[1];
-        pose.vecPosition[2] = m->position[2];
+        pose.vecPosition[0] = m->pose.position[0];
+        pose.vecPosition[1] = m->pose.position[1];
+        pose.vecPosition[2] = m->pose.position[2];
 
         pose.vecVelocity[0] = m->linearVelocity[0];
         pose.vecVelocity[1] = m->linearVelocity[1];

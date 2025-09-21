@@ -1,5 +1,5 @@
 use crate::extra_extensions::{PassthroughFB, PassthroughHTC};
-use alvr_common::anyhow::{bail, Result};
+use alvr_common::anyhow::{Result, bail};
 use alvr_system_info::Platform;
 use openxr::{self as xr};
 use std::{marker::PhantomData, ops::Deref, ptr};

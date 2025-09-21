@@ -13,7 +13,7 @@ use dependencies::OpenXRLoadersSelection;
 use packaging::ReleaseFlavor;
 use pico_args::Arguments;
 use std::{fs, process, time::Instant};
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 const HELP_STR: &str = r#"
 cargo xtask
@@ -270,6 +270,9 @@ fn main() {
                     }
                 }
                 "check-msrv" => version::check_msrv(),
+                "check-licenses" => {
+                    packaging::generate_licenses();
+                }
                 "kill-oculus" => kill_oculus_processes(),
                 _ => print_help_and_exit("Unrecognized subcommand."),
             }

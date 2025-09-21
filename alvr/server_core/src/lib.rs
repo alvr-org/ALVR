@@ -16,13 +16,12 @@ pub use tracking::HandType;
 
 use crate::connection::VideoPacket;
 use alvr_common::{
-    dbg_server_core, error,
+    ConnectionState, DEVICE_ID_TO_PATH, DeviceMotion, LifecycleState, Pose, RelaxedAtomic,
+    ViewParams, dbg_server_core, error,
     glam::Vec2,
-    once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
-    warn, ConnectionState, DeviceMotion, Fov, LifecycleState, Pose, RelaxedAtomic,
-    DEVICE_ID_TO_PATH,
+    warn,
 };
 use alvr_events::{EventType, HapticsEvent};
 use alvr_filesystem as afs;
@@ -42,9 +41,9 @@ use std::{
     fs::File,
     io::Write,
     sync::{
+        Arc, LazyLock, OnceLock,
         atomic::{AtomicBool, Ordering},
         mpsc::{self, SyncSender, TrySendError},
-        Arc, OnceLock,
     },
     thread::{self, JoinHandle},
     time::{Duration, Instant},
@@ -58,7 +57,7 @@ static FILESYSTEM_LAYOUT: OnceLock<afs::Layout> = OnceLock::new();
 // needs to be initialized first using initialize_environment().
 // NB: this must remain a global because only one instance should exist for the whole application
 // execution time.
-static SESSION_MANAGER: Lazy<RwLock<ServerSessionManager>> = Lazy::new(|| {
+static SESSION_MANAGER: LazyLock<RwLock<ServerSessionManager>> = LazyLock::new(|| {
     RwLock::new(ServerSessionManager::new(
         FILESYSTEM_LAYOUT.get().map(|l| l.session()),
     ))
@@ -71,13 +70,6 @@ pub fn initialize_environment(layout: afs::Layout) {
     SESSION_MANAGER.write().session_mut();
 }
 
-// todo: use this as the network packet
-pub struct ViewsConfig {
-    // transforms relative to the head
-    pub local_view_transforms: [Pose; 2],
-    pub fov: [Fov; 2],
-}
-
 pub enum ServerCoreEvent {
     SetOpenvrProperty {
         device_id: u64,
@@ -87,9 +79,9 @@ pub enum ServerCoreEvent {
     ClientDisconnected,
     Battery(BatteryInfo),
     PlayspaceSync(Vec2),
-    ViewsConfig(ViewsConfig),
+    LocalViewParams([ViewParams; 2]), // In relation to head
     Tracking {
-        sample_timestamp: Duration,
+        poll_timestamp: Duration,
     },
     Buttons(Vec<ButtonEntry>), // Note: this is after mapping
     RequestIDR,
@@ -189,7 +181,7 @@ impl ServerCoreContext {
             .logging
             .prefer_backtrace
         {
-            env::set_var("RUST_BACKTRACE", "1");
+            unsafe { env::set_var("RUST_BACKTRACE", "1") };
         }
 
         SESSION_MANAGER.write().clean_client_list();
@@ -284,16 +276,26 @@ impl ServerCoreContext {
     }
 
     pub fn get_motion_to_photon_latency(&self) -> Duration {
-        dbg_server_core!("get_total_pipeline_latency");
+        dbg_server_core!("get_motion_to_photon_latency");
 
-        // self.connection_context
-        //     .statistics_manager
-        //     .read()
-        //     .as_ref()
-        //     .map(|stats| stats.motion_to_photon_latency_average())
-        //     .unwrap_or_default()
+        let latency = self
+            .connection_context
+            .statistics_manager
+            .read()
+            .as_ref()
+            .map(|stats| stats.motion_to_photon_latency_average())
+            .unwrap_or_default();
 
-        Duration::from_millis(0)
+        let max_prediction =
+            Duration::from_millis(SESSION_MANAGER.read().settings().headset.max_prediction_ms);
+
+        if latency > max_prediction {
+            warn!("Latency is too high. Clamping prediction");
+
+            max_prediction
+        } else {
+            latency
+        }
     }
 
     pub fn get_tracker_pose_time_offset(&self) -> Duration {
@@ -357,15 +359,23 @@ impl ServerCoreContext {
         *self.connection_context.decoder_config.lock() = Some(DecoderInitializationConfig {
             codec,
             config_buffer,
+            ext_str: String::new(),
         });
     }
 
-    pub fn send_video_nal(&self, target_timestamp: Duration, nal_buffer: Vec<u8>, is_idr: bool) {
+    pub fn send_video_nal(
+        &self,
+        timestamp: Duration,
+        global_view_params: [ViewParams; 2],
+        is_idr: bool,
+        nal_buffer: Vec<u8>,
+    ) {
         dbg_server_core!("send_video_nal");
 
         // start in the corrupts state, the client didn't receive the initial IDR yet.
         static STREAM_CORRUPTED: AtomicBool = AtomicBool::new(true);
-        static LAST_IDR_INSTANT: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
+        static LAST_IDR_INSTANT: LazyLock<Mutex<Instant>> =
+            LazyLock::new(|| Mutex::new(Instant::now()));
 
         if let Some(sender) = &*self.connection_context.video_channel_sender.lock() {
             let buffer_size = nal_buffer.len();
@@ -380,22 +390,20 @@ impl ServerCoreContext {
                 .extra
                 .capture
                 .rolling_video_files
-            {
-                if Instant::now()
+                && Instant::now()
                     > *LAST_IDR_INSTANT.lock() + Duration::from_secs(config.duration_s)
-                {
-                    self.connection_context
-                        .events_sender
-                        .send(ServerCoreEvent::RequestIDR)
-                        .ok();
+            {
+                self.connection_context
+                    .events_sender
+                    .send(ServerCoreEvent::RequestIDR)
+                    .ok();
 
-                    if is_idr {
-                        create_recording_file(
-                            &self.connection_context,
-                            SESSION_MANAGER.read().settings(),
-                        );
-                        *LAST_IDR_INSTANT.lock() = Instant::now();
-                    }
+                if is_idr {
+                    create_recording_file(
+                        &self.connection_context,
+                        SESSION_MANAGER.read().settings(),
+                    );
+                    *LAST_IDR_INSTANT.lock() = Instant::now();
                 }
             }
 
@@ -414,16 +422,15 @@ impl ServerCoreContext {
                     file.write_all(&nal_buffer).ok();
                 }
 
-                if matches!(
-                    sender.try_send(VideoPacket {
-                        header: VideoPacketHeader {
-                            timestamp: target_timestamp,
-                            is_idr
-                        },
-                        payload: nal_buffer,
-                    }),
-                    Err(TrySendError::Full(_))
-                ) {
+                let sender_result = sender.try_send(VideoPacket {
+                    header: VideoPacketHeader {
+                        timestamp,
+                        global_view_params,
+                        is_idr,
+                    },
+                    payload: nal_buffer,
+                });
+                if matches!(sender_result, Err(TrySendError::Full(_))) {
                     STREAM_CORRUPTED.store(true, Ordering::SeqCst);
                     self.connection_context
                         .events_sender
@@ -436,12 +443,12 @@ impl ServerCoreContext {
             }
 
             if let Some(stats) = &mut *self.connection_context.statistics_manager.write() {
-                let encoder_latency = stats.report_frame_encoded(target_timestamp, buffer_size);
+                let encoder_latency = stats.report_frame_encoded(timestamp, buffer_size);
 
                 self.connection_context
                     .bitrate_manager
                     .lock()
-                    .report_frame_encoded(target_timestamp, encoder_latency, buffer_size);
+                    .report_frame_encoded(timestamp, encoder_latency, buffer_size);
             }
         }
     }

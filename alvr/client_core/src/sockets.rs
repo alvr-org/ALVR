@@ -1,4 +1,4 @@
-use alvr_common::anyhow::{bail, Result};
+use alvr_common::anyhow::{Result, bail};
 use mdns_sd::{ServiceDaemon, ServiceInfo};
 
 pub struct AnnouncerSocket {

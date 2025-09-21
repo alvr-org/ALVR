@@ -1,18 +1,18 @@
-use alvr_audio::AudioDevice;
+use alvr_audio::Device;
 use alvr_common::{
-    anyhow::{bail, Result},
+    anyhow::{Result, bail},
     parking_lot::Mutex,
 };
 use alvr_session::AudioBufferingConfig;
 use alvr_sockets::{StreamReceiver, StreamSender};
 use ndk::audio::{
-    AudioCallbackResult, AudioDirection, AudioError, AudioFormat, AudioPerformanceMode,
-    AudioSharingMode, AudioStreamBuilder,
+    AudioCallbackResult, AudioDirection, AudioError, AudioFormat, AudioInputPreset,
+    AudioPerformanceMode, AudioSharingMode, AudioStreamBuilder,
 };
 use std::{
     collections::VecDeque,
     mem, slice,
-    sync::{mpsc, Arc},
+    sync::{Arc, mpsc},
     time::Duration,
 };
 
@@ -23,7 +23,7 @@ const INPUT_RECV_TIMEOUT: Duration = Duration::from_millis(20);
 pub fn record_audio_blocking(
     is_running: Arc<dyn Fn() -> bool + Send + Sync>,
     mut sender: StreamSender<()>,
-    device: &AudioDevice,
+    device: &Device,
     channels_count: u16,
     mute: bool,
 ) -> Result<()> {
@@ -32,7 +32,7 @@ pub fn record_audio_blocking(
         "This code only supports mono microphone input"
     );
 
-    let sample_rate = device.input_sample_rate()?;
+    let sample_rate = alvr_audio::input_sample_rate(device)?;
 
     let error = Arc::new(Mutex::new(None::<AudioError>));
 
@@ -44,12 +44,13 @@ pub fn record_audio_blocking(
         .channel_count(1)
         .sample_rate(sample_rate as _)
         .format(AudioFormat::PCM_I16)
+        .input_preset(AudioInputPreset::VoiceCommunication)
         .performance_mode(AudioPerformanceMode::LowLatency)
         .sharing_mode(AudioSharingMode::Shared)
         .data_callback(Box::new(move |_, data_ptr, frames_count| {
             let buffer_size = frames_count as usize * mem::size_of::<i16>();
 
-            let mut sample_buffer =
+            let sample_buffer =
                 unsafe { slice::from_raw_parts(data_ptr as *mut u8, buffer_size) }.to_vec();
 
             // it will block only when the channel is full
@@ -96,7 +97,7 @@ pub fn record_audio_blocking(
 #[allow(unused_variables)]
 pub fn play_audio_loop(
     is_running: impl Fn() -> bool,
-    device: &AudioDevice,
+    device: &Device,
     channels_count: u16,
     sample_rate: u32,
     config: AudioBufferingConfig,

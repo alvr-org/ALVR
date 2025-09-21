@@ -18,15 +18,13 @@ mod audio;
 pub mod video_decoder;
 
 use alvr_common::{
-    dbg_client_core, error,
-    glam::{UVec2, Vec2, Vec3},
+    ConnectionState, LifecycleState, ViewParams, dbg_client_core, error,
+    glam::{UVec2, Vec2},
     parking_lot::{Mutex, RwLock},
-    warn, ConnectionState, DeviceMotion, LifecycleState, Pose, HAND_LEFT_ID, HAND_RIGHT_ID,
-    HEAD_ID,
+    warn,
 };
 use alvr_packets::{
-    BatteryInfo, ButtonEntry, ClientControlPacket, FaceData, RealTimeConfig,
-    ReservedClientControlPacket, StreamConfig, Tracking, ViewParams, ViewsConfig,
+    BatteryInfo, ButtonEntry, ClientControlPacket, RealTimeConfig, StreamConfig, TrackingData,
 };
 use alvr_session::CodecType;
 use connection::{ConnectionContext, DecoderCallback};
@@ -78,6 +76,7 @@ pub struct ClientCoreContext {
     event_queue: Arc<Mutex<VecDeque<ClientCoreEvent>>>,
     connection_context: Arc<ConnectionContext>,
     connection_thread: Arc<Mutex<Option<JoinHandle<()>>>>,
+    last_good_global_view_params: Mutex<[ViewParams; 2]>,
 }
 
 impl ClientCoreContext {
@@ -119,6 +118,7 @@ impl ClientCoreContext {
             event_queue,
             connection_context,
             connection_thread: Arc::new(Mutex::new(Some(connection_thread))),
+            last_good_global_view_params: Mutex::new([ViewParams::DUMMY; 2]),
         }
     }
 
@@ -172,7 +172,12 @@ impl ClientCoreContext {
         }
     }
 
-    pub fn send_active_interaction_profile(&self, device_id: u64, profile_id: u64) {
+    pub fn send_active_interaction_profile(
+        &self,
+        device_id: u64,
+        profile_id: u64,
+        input_ids: HashSet<u64>,
+    ) {
         dbg_client_core!("send_active_interaction_profile");
 
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
@@ -180,22 +185,8 @@ impl ClientCoreContext {
                 .send(&ClientControlPacket::ActiveInteractionProfile {
                     device_id,
                     profile_id,
+                    input_ids,
                 })
-                .ok();
-        }
-    }
-
-    pub fn send_custom_interaction_profile(&self, device_id: u64, input_ids: HashSet<u64>) {
-        dbg_client_core!("send_custom_interaction_profile");
-
-        if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
-            sender
-                .send(&alvr_packets::encode_reserved_client_control_packet(
-                    &ReservedClientControlPacket::CustomInteractionProfile {
-                        device_id,
-                        input_ids,
-                    },
-                ))
                 .ok();
         }
     }
@@ -212,106 +203,21 @@ impl ClientCoreContext {
     pub fn send_view_params(&self, views: [ViewParams; 2]) {
         dbg_client_core!("send_view_params");
 
-        *self.connection_context.view_params.write() = views;
-
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender
-                .send(&ClientControlPacket::ViewsConfig(ViewsConfig {
-                    fov: [views[0].fov, views[1].fov],
-                    ipd_m: (views[0].pose.position - views[1].pose.position).length(),
-                }))
+                .send(&ClientControlPacket::LocalViewParams(views))
                 .ok();
         }
     }
 
-    pub fn send_tracking(
-        &self,
-        poll_timestamp: Duration,
-        mut device_motions: Vec<(u64, DeviceMotion)>,
-        hand_skeletons: [Option<[Pose; 26]>; 2],
-        face_data: FaceData,
-    ) {
+    pub fn send_tracking(&self, data: TrackingData) {
         dbg_client_core!("send_tracking");
 
-        let max_prediction = *self.connection_context.max_prediction.read();
-
-        let target_timestamp = if let Some(stats) =
-            &*self.connection_context.statistics_manager.lock()
-        {
-            poll_timestamp + Duration::min(stats.average_total_pipeline_latency(), max_prediction)
-        } else {
-            poll_timestamp
-        };
-
-        // Guarantee that sent timestamps never go backwards by sending the poll time
-        let reported_timestamp = poll_timestamp;
-
-        for (id, motion) in &mut device_motions {
-            let velocity_multiplier = *self.connection_context.velocities_multiplier.read();
-            motion.linear_velocity *= velocity_multiplier;
-            motion.angular_velocity *= velocity_multiplier;
-
-            if *id == *HEAD_ID {
-                *motion = motion.predict(poll_timestamp, target_timestamp);
-
-                let mut head_pose_queue = self.connection_context.head_pose_queue.write();
-
-                head_pose_queue.push_back((reported_timestamp, motion.pose));
-
-                while head_pose_queue.len() > 1024 {
-                    head_pose_queue.pop_front();
-                }
-
-                // This is done for backward compatibiity for the v20 protocol. Will be removed with the
-                // tracking rewrite protocol extension.
-                motion.linear_velocity = Vec3::ZERO;
-                motion.angular_velocity = Vec3::ZERO;
-            } else if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
-                let tracker_timestamp = poll_timestamp
-                    + Duration::min(stats.tracker_prediction_offset(), max_prediction);
-
-                *motion = motion.predict(poll_timestamp, tracker_timestamp);
-            }
-        }
-
-        // send_tracking() expects hand data in the multimodal protocol. In case multimodal protocol
-        // is not supported, convert back to legacy protocol.
-        if !self.connection_context.uses_multimodal_protocol.value() {
-            if hand_skeletons[0].is_some() {
-                device_motions.push((
-                    *HAND_LEFT_ID,
-                    DeviceMotion {
-                        pose: hand_skeletons[0].unwrap()[0],
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ));
-            }
-
-            if hand_skeletons[1].is_some() {
-                device_motions.push((
-                    *HAND_RIGHT_ID,
-                    DeviceMotion {
-                        pose: hand_skeletons[1].unwrap()[0],
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ));
-            }
-        }
-
         if let Some(sender) = &mut *self.connection_context.tracking_sender.lock() {
-            sender
-                .send_header(&Tracking {
-                    target_timestamp: reported_timestamp,
-                    device_motions,
-                    hand_skeletons,
-                    face_data,
-                })
-                .ok();
+            sender.send_header(&data).ok();
 
             if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
-                stats.report_input_acquired(reported_timestamp);
+                stats.report_input_acquired(data.poll_timestamp);
             }
         }
     }
@@ -320,7 +226,10 @@ impl ClientCoreContext {
         dbg_client_core!("get_total_prediction_offset");
 
         if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
-            stats.average_total_pipeline_latency()
+            Duration::min(
+                stats.average_total_pipeline_latency(),
+                *self.connection_context.max_prediction.read(),
+            )
         } else {
             Duration::ZERO
         }
@@ -359,25 +268,15 @@ impl ClientCoreContext {
             stats.report_compositor_start(timestamp);
         }
 
-        let mut head_pose = *self.connection_context.last_good_head_pose.read();
-        for (ts, pose) in &*self.connection_context.head_pose_queue.read() {
+        let global_view_params_lock = &mut *self.last_good_global_view_params.lock();
+        for (ts, params) in &*self.connection_context.global_view_params_queue.lock() {
             if *ts == timestamp {
-                head_pose = *pose;
+                *global_view_params_lock = *params;
                 break;
             }
         }
-        let view_params = self.connection_context.view_params.read();
 
-        [
-            ViewParams {
-                pose: head_pose * view_params[0].pose,
-                fov: view_params[0].fov,
-            },
-            ViewParams {
-                pose: head_pose * view_params[1].pose,
-                fov: view_params[1].fov,
-            },
-        ]
+        *global_view_params_lock
     }
 
     pub fn report_submit(&self, timestamp: Duration, vsync_queue: Duration) {

@@ -1,10 +1,10 @@
-use super::{collapsible, notice, NestingInfo, SettingControl, INDENTATION_STEP};
+use super::{INDENTATION_STEP, NestingInfo, SettingControl, collapsible, notice};
 use alvr_gui_common::{
-    theme::{
-        log_colors::{INFO_LIGHT, WARNING_LIGHT},
-        OK_GREEN,
-    },
     DisplayString,
+    theme::{
+        OK_GREEN,
+        log_colors::{INFO_LIGHT, WARNING_LIGHT},
+    },
 };
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{SchemaEntry, SchemaNode};
@@ -114,14 +114,14 @@ impl Control {
                         label_res.on_hover_text(&*entry.id);
                     }
 
-                    if let Some(string) = &entry.help {
-                        if ui.colored_label(INFO_LIGHT, "❓").hovered() {
-                            alvr_gui_common::tooltip(
-                                ui,
-                                &format!("{}_help_tooltip", entry.id.display),
-                                string,
-                            );
-                        }
+                    if let Some(string) = &entry.help
+                        && ui.colored_label(INFO_LIGHT, "❓").hovered()
+                    {
+                        alvr_gui_common::tooltip(
+                            ui,
+                            &format!("{}_help_tooltip", entry.id.display),
+                            string,
+                        );
                     }
                     if entry.steamvr_restart_flag && ui.colored_label(WARNING_LIGHT, "⚠").hovered()
                     {

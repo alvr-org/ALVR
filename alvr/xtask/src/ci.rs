@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use serde_json::{self as json, Deserializer, Value};
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]

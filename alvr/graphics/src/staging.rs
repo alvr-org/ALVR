@@ -1,4 +1,4 @@
-use super::{ck, GraphicsContext};
+use super::{GraphicsContext, ck};
 use crate::GL_TEXTURE_EXTERNAL_OES;
 use alvr_common::glam::{IVec2, UVec2};
 use glow::{self as gl, HasContext};
@@ -117,31 +117,33 @@ impl StagingRenderer {
     }
 
     #[allow(unused_variables)]
-    pub unsafe fn render(&self, hardware_buffer: *mut c_void) {
+    pub fn render(&self, hardware_buffer: *mut c_void) {
         let gl = &self.context.gl_context;
         self.context.make_current();
 
-        self.context.render_ahardwarebuffer_using_texture(
-            hardware_buffer,
-            self.surface_texture,
-            || unsafe {
-                ck!(gl.use_program(Some(self.program)));
+        unsafe {
+            self.context.render_ahardwarebuffer_using_texture(
+                hardware_buffer,
+                self.surface_texture,
+                || {
+                    ck!(gl.use_program(Some(self.program)));
 
-                ck!(gl.viewport(0, 0, self.viewport_size.x, self.viewport_size.y));
-                ck!(gl.disable(gl::SCISSOR_TEST));
-                ck!(gl.disable(gl::STENCIL_TEST));
+                    ck!(gl.viewport(0, 0, self.viewport_size.x, self.viewport_size.y));
+                    ck!(gl.disable(gl::SCISSOR_TEST));
+                    ck!(gl.disable(gl::STENCIL_TEST));
 
-                for (i, framebuffer) in self.framebuffers.iter().enumerate() {
-                    ck!(gl.bind_framebuffer(gl::DRAW_FRAMEBUFFER, Some(*framebuffer)));
+                    for (i, framebuffer) in self.framebuffers.iter().enumerate() {
+                        ck!(gl.bind_framebuffer(gl::DRAW_FRAMEBUFFER, Some(*framebuffer)));
 
-                    ck!(gl.active_texture(gl::TEXTURE0));
-                    ck!(gl.bind_texture(GL_TEXTURE_EXTERNAL_OES, Some(self.surface_texture)));
-                    ck!(gl.bind_sampler(0, None));
-                    ck!(gl.uniform_1_i32(Some(&self.view_idx_uloc), i as i32));
-                    ck!(gl.draw_arrays(gl::TRIANGLE_STRIP, 0, 4));
-                }
-            },
-        );
+                        ck!(gl.active_texture(gl::TEXTURE0));
+                        ck!(gl.bind_texture(GL_TEXTURE_EXTERNAL_OES, Some(self.surface_texture)));
+                        ck!(gl.bind_sampler(0, None));
+                        ck!(gl.uniform_1_i32(Some(&self.view_idx_uloc), i as i32));
+                        ck!(gl.draw_arrays(gl::TRIANGLE_STRIP, 0, 4));
+                    }
+                },
+            )
+        };
     }
 }
 

@@ -8,42 +8,35 @@ pub mod linux;
 pub use crate::windows::*;
 
 use alvr_common::{
-    anyhow::{self, anyhow, bail, Context, Result},
-    info,
-    once_cell::sync::Lazy,
-    parking_lot::Mutex,
     ConnectionError, ToAny,
+    anyhow::{self, Context, Result, bail},
+    info,
+    parking_lot::Mutex,
 };
 use alvr_session::{AudioBufferingConfig, CustomAudioDeviceConfig, MicrophoneDevicesConfig};
 use alvr_sockets::{StreamReceiver, StreamSender};
 use cpal::{
+    BufferSize, Host, Sample, SampleFormat, StreamConfig,
     traits::{DeviceTrait, HostTrait, StreamTrait},
-    BufferSize, Device, Host, Sample, SampleFormat, StreamConfig,
 };
-use rodio::{OutputStream, Source};
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::Arc,
-    thread,
-    time::Duration,
-};
+use rodio::{OutputStreamBuilder, Source};
+use std::{collections::VecDeque, sync::Arc, thread, time::Duration};
 
-static VIRTUAL_MICROPHONE_PAIRS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
-    [
-        ("CABLE Input", "CABLE Output"),
-        ("VoiceMeeter Input", "VoiceMeeter Output"),
-        ("VoiceMeeter Aux Input", "VoiceMeeter Aux Output"),
-        ("VoiceMeeter VAIO3 Input", "VoiceMeeter VAIO3 Output"),
-        ("Virtual Cable 1", "Virtual Cable 2"),
-    ]
-    .into_iter()
-    .collect()
-});
+pub use cpal::Device;
 
-fn device_from_custom_config(host: &Host, config: &CustomAudioDeviceConfig) -> Result<Device> {
+fn device_from_custom_config(
+    host: &Host,
+    config: &CustomAudioDeviceConfig,
+    is_output: bool,
+) -> Result<Device> {
+    let mut devices = if is_output {
+        host.output_devices()?
+    } else {
+        host.input_devices()?
+    };
+
     Ok(match config {
-        CustomAudioDeviceConfig::NameSubstring(name_substring) => host
-            .devices()?
+        CustomAudioDeviceConfig::NameSubstring(name_substring) => devices
             .find(|d| {
                 d.name()
                     .map(|name| name.to_lowercase().contains(&name_substring.to_lowercase()))
@@ -52,141 +45,97 @@ fn device_from_custom_config(host: &Host, config: &CustomAudioDeviceConfig) -> R
             .with_context(|| {
                 format!("Cannot find audio device which name contains \"{name_substring}\"")
             })?,
-        CustomAudioDeviceConfig::Index(index) => host
-            .devices()?
+        CustomAudioDeviceConfig::Index(index) => devices
             .nth(*index)
             .with_context(|| format!("Cannot find audio device at index {index}"))?,
     })
 }
 
-fn microphone_pair_from_sink_name(host: &Host, sink_name: &str) -> Result<(Device, Device)> {
+pub fn new_output(config: Option<&CustomAudioDeviceConfig>) -> Result<Device> {
+    let host = cpal::default_host();
+
+    let device = match config {
+        None => host
+            .default_output_device()
+            .context("No output audio device found")?,
+        Some(config) => device_from_custom_config(&host, config, true)?,
+    };
+
+    Ok(device)
+}
+
+pub fn new_input(config: Option<CustomAudioDeviceConfig>) -> Result<Device> {
+    let host = cpal::default_host();
+
+    let device = match config {
+        None => host
+            .default_input_device()
+            .context("No input audio device found")?,
+        Some(config) => device_from_custom_config(&host, &config, false)?,
+    };
+
+    Ok(device)
+}
+
+// returns (sink, source)
+pub fn new_virtual_microphone_pair(config: MicrophoneDevicesConfig) -> Result<(Device, Device)> {
+    // No-op on Windows (this is windows specific code)
+    let host = cpal::default_host();
+
+    let (sink_name, source_name) = match config {
+        MicrophoneDevicesConfig::Automatic => {
+            // NOTE: This will iterate over all devices for every option it tries, if the audio
+            // code is slow, change that first
+            return [
+                MicrophoneDevicesConfig::VAC,
+                MicrophoneDevicesConfig::VBCable,
+                MicrophoneDevicesConfig::VoiceMeeter,
+                MicrophoneDevicesConfig::VoiceMeeterAux,
+                MicrophoneDevicesConfig::VoiceMeeterVaio3,
+            ]
+            .into_iter()
+            .find_map(|cable_type| new_virtual_microphone_pair(cable_type).ok())
+            .context("No microphones found");
+        }
+
+        MicrophoneDevicesConfig::VAC => ("Line 1", "Line 1"),
+        MicrophoneDevicesConfig::VBCable => ("CABLE Input", "CABLE Output"),
+        MicrophoneDevicesConfig::VoiceMeeter => ("VoiceMeeter Input", "VoiceMeeter Output"),
+        MicrophoneDevicesConfig::VoiceMeeterAux => {
+            ("VoiceMeeter Aux Input", "VoiceMeeter Aux Output")
+        }
+        MicrophoneDevicesConfig::VoiceMeeterVaio3 => {
+            ("VoiceMeeter VAIO3 Input", "VoiceMeeter VAIO3 Output")
+        }
+
+        MicrophoneDevicesConfig::Custom { sink, source } => {
+            return Ok((
+                device_from_custom_config(&host, &sink, true)?,
+                device_from_custom_config(&host, &source, false)?,
+            ));
+        }
+    };
+
     let sink = host
-        .output_devices()?
-        .find(|d| d.name().unwrap_or_default().contains(sink_name))
-        .context("VB-CABLE or Voice Meeter not found. Please install or reinstall either one")?;
+            .output_devices()?
+            .find(|d| d.name().unwrap_or_default().contains(sink_name))
+            .context("Virtual Audio Cable, VB-CABLE or VoiceMeeter not found. Please install or reinstall one")?;
 
-    if let Some(source_name) = VIRTUAL_MICROPHONE_PAIRS.get(sink_name) {
-        Ok((
-            sink,
-            host.input_devices()?
-                .find(|d| {
-                    d.name()
-                        .map(|name| name.contains(source_name))
-                        .unwrap_or(false)
-                })
-                .context("Matching output microphone not found. Did you rename it?")?,
-        ))
-    } else {
-        unreachable!("Invalid argument")
-    }
+    let source = host
+        .input_devices()?
+        .find(|d| d.name().unwrap_or_default().contains(source_name))
+        .context("Matching output microphone not found. Did you rename it?")?;
+
+    Ok((sink, source))
 }
 
-#[allow(dead_code)]
-pub struct AudioDevice {
-    inner: Device,
-    is_output: bool,
-}
+pub fn input_sample_rate(dev: &Device) -> Result<u32> {
+    let config = dev
+        .default_input_config()
+        // On Windows, loopback devices are not recognized as input devices. Use output config.
+        .or_else(|_| dev.default_output_config())?;
 
-#[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
-impl AudioDevice {
-    pub fn new_output(config: Option<&CustomAudioDeviceConfig>) -> Result<Self> {
-        let host = cpal::default_host();
-
-        let device = match config {
-            None => host
-                .default_output_device()
-                .context("No output audio device found")?,
-            Some(config) => device_from_custom_config(&host, config)?,
-        };
-
-        Ok(Self {
-            inner: device,
-            is_output: true,
-        })
-    }
-
-    pub fn new_input(config: Option<CustomAudioDeviceConfig>) -> Result<Self> {
-        let host = cpal::default_host();
-
-        let device = match config {
-            None => host
-                .default_input_device()
-                .context("No input audio device found")?,
-            Some(config) => device_from_custom_config(&host, &config)?,
-        };
-
-        Ok(Self {
-            inner: device,
-            is_output: false,
-        })
-    }
-
-    // returns (sink, source)
-    pub fn new_virtual_microphone_pair(config: MicrophoneDevicesConfig) -> Result<(Self, Self)> {
-        let host = cpal::default_host();
-
-        let (sink, source) = match config {
-            MicrophoneDevicesConfig::Automatic => {
-                let mut pair = Err(anyhow!("No microphones found"));
-                for sink_name in VIRTUAL_MICROPHONE_PAIRS.keys() {
-                    pair = microphone_pair_from_sink_name(&host, sink_name);
-                    if pair.is_ok() {
-                        break;
-                    }
-                }
-
-                pair?
-            }
-            MicrophoneDevicesConfig::VAC => {
-                microphone_pair_from_sink_name(&host, "Virtual Cable 1")?
-            }
-            MicrophoneDevicesConfig::VBCable => {
-                microphone_pair_from_sink_name(&host, "CABLE Input")?
-            }
-            MicrophoneDevicesConfig::VoiceMeeter => {
-                microphone_pair_from_sink_name(&host, "VoiceMeeter Input")?
-            }
-            MicrophoneDevicesConfig::VoiceMeeterAux => {
-                microphone_pair_from_sink_name(&host, "VoiceMeeter Aux Input")?
-            }
-            MicrophoneDevicesConfig::VoiceMeeterVaio3 => {
-                microphone_pair_from_sink_name(&host, "VoiceMeeter VAIO3 Input")?
-            }
-            MicrophoneDevicesConfig::Custom { sink, source } => (
-                device_from_custom_config(&host, &sink)?,
-                device_from_custom_config(&host, &source)?,
-            ),
-        };
-
-        Ok((
-            Self {
-                inner: sink,
-                is_output: true,
-            },
-            Self {
-                inner: source,
-                is_output: false,
-            },
-        ))
-    }
-
-    pub fn input_sample_rate(&self) -> Result<u32> {
-        let config = self
-            .inner
-            .default_input_config()
-            // On Windows, loopback devices are not recognized as input devices. Use output config.
-            .or_else(|_| self.inner.default_output_config())?;
-
-        Ok(config.sample_rate().0)
-    }
-}
-
-pub fn is_same_device(device1: &AudioDevice, device2: &AudioDevice) -> bool {
-    if let (Ok(name1), Ok(name2)) = (device1.inner.name(), device2.inner.name()) {
-        name1 == name2
-    } else {
-        false
-    }
+    Ok(config.sample_rate().0)
 }
 
 pub enum AudioRecordState {
@@ -212,9 +161,12 @@ pub enum AudioChannel {
     LowFrequency,
 }
 
-macro_rules! channel_mix {
-    ( $x:expr ) => {
-        match $x {
+fn downmix_channels(channels: &[AudioChannel], data: &[u8], out_channels: u16) -> Vec<u8> {
+    let mut left = 0.0;
+    let mut right = 0.0;
+
+    for i in 0..channels.len() {
+        let [l, r] = match &channels[i] {
             AudioChannel::FrontLeft => [1.0, 0.0],
             AudioChannel::FrontRight => [0.0, 1.0],
             AudioChannel::Center => [0.707, 0.707],
@@ -229,17 +181,7 @@ macro_rules! channel_mix {
             AudioChannel::HighBackLeft => [0.5, 0.0],
             AudioChannel::HighBackRight => [0.0, 0.5],
             _ => [0.0, 0.0],
-        }
-    };
-}
-
-fn downmix_channels(channels: &[AudioChannel], data: &[u8], out_channels: u16) -> Vec<u8> {
-    let mut left = 0.0;
-    let mut right = 0.0;
-
-    for i in 0..channels.len() {
-        let chan = &channels[i];
-        let [l, r] = channel_mix!(chan);
+        };
         let val = i16::from_ne_bytes([data[i * 2], data[i * 2 + 1]]).to_sample::<f32>();
         left += val * l;
         right += val * r;
@@ -306,15 +248,14 @@ fn downmix_audio(data: Vec<u8>, in_channels: u16, out_channels: u16) -> Vec<u8> 
 pub fn record_audio_blocking(
     is_running: Arc<dyn Fn() -> bool + Send + Sync>,
     mut sender: StreamSender<()>,
-    device: &AudioDevice,
+    device: &Device,
     channels_count: u16,
     mute: bool,
 ) -> Result<()> {
     let config = device
-        .inner
         .default_input_config()
         // On Windows, loopback devices are not recognized as input devices. Use output config.
-        .or_else(|_| device.inner.default_output_config())?;
+        .or_else(|_| device.default_output_config())?;
 
     if config.channels() > 8 {
         bail!(
@@ -336,7 +277,7 @@ pub fn record_audio_blocking(
 
     let state = Arc::new(Mutex::new(AudioRecordState::Recording));
 
-    let stream = device.inner.build_input_stream_raw(
+    let stream = device.build_input_stream_raw(
         &stream_config,
         config.sample_format(),
         {
@@ -376,7 +317,7 @@ pub fn record_audio_blocking(
     )?;
 
     #[cfg(windows)]
-    if mute && device.is_output {
+    if mute && device.supports_output() {
         crate::windows::set_mute_windows_device(device, true).ok();
     }
 
@@ -393,7 +334,7 @@ pub fn record_audio_blocking(
     }
 
     #[cfg(windows)]
-    if mute && device.is_output {
+    if mute && device.supports_output() {
         set_mute_windows_device(device, false).ok();
     }
 
@@ -545,7 +486,7 @@ struct StreamingSource {
 }
 
 impl Source for StreamingSource {
-    fn current_frame_len(&self) -> Option<usize> {
+    fn current_span_len(&self) -> Option<usize> {
         None
     }
 
@@ -586,7 +527,7 @@ impl Iterator for StreamingSource {
 
 pub fn play_audio_loop(
     is_running: impl Fn() -> bool,
-    device: &AudioDevice,
+    device: &Device,
     channels_count: u16,
     sample_rate: u32,
     config: AudioBufferingConfig,
@@ -601,16 +542,16 @@ pub fn play_audio_loop(
 
     let sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
 
-    let (_stream, handle) = OutputStream::try_from_device(&device.inner)?;
+    let stream = OutputStreamBuilder::from_device(device.clone())?.open_stream()?;
 
-    handle.play_raw(StreamingSource {
+    stream.mixer().add(StreamingSource {
         sample_buffer: Arc::clone(&sample_buffer),
         current_batch: vec![],
         current_batch_cursor: 0,
         channels_count: channels_count as _,
         sample_rate,
         batch_frames_count,
-    })?;
+    });
 
     receive_samples_loop(
         is_running,

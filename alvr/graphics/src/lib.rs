@@ -6,16 +6,15 @@ pub use lobby::*;
 pub use stream::*;
 
 use alvr_common::{
-    glam::{Mat4, UVec2, Vec4},
     Fov,
+    glam::{Mat4, UVec2, Vec4},
 };
 use glow::{self as gl, HasContext};
 use khronos_egl as egl;
-use std::{ffi::c_void, num::NonZeroU32, ptr};
+use std::{ffi::c_void, ptr};
 use wgpu::{
-    hal::{self, api, MemoryFlags, TextureUses},
-    Adapter, Device, Extent3d, Instance, Queue, Texture, TextureDescriptor, TextureDimension,
-    TextureFormat, TextureUsages, TextureView,
+    Device, Extent3d, Instance, Queue, Texture, TextureDescriptor, TextureDimension, TextureFormat,
+    TextureUsages, TextureView,
 };
 
 pub const SDR_FORMAT: TextureFormat = TextureFormat::Rgba8Unorm;
@@ -123,12 +122,19 @@ pub fn create_texture(device: &Device, resolution: UVec2, format: TextureFormat)
     })
 }
 
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
 fn create_texture_from_gles(
     device: &Device,
     texture: u32,
     resolution: UVec2,
     format: TextureFormat,
 ) -> Texture {
+    use std::num::NonZeroU32;
+    use wgpu::{
+        TextureUses,
+        hal::{self, MemoryFlags, api},
+    };
+
     let size = Extent3d {
         width: resolution.x,
         height: resolution.y,
@@ -170,6 +176,11 @@ fn create_texture_from_gles(
     }
 }
 
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+fn create_texture_from_gles(_: &Device, _: u32, _: UVec2, _: TextureFormat) -> Texture {
+    unimplemented!()
+}
+
 // This is used to convert OpenXR swapchains to wgpu
 pub fn create_gl_swapchain(
     device: &Device,
@@ -189,8 +200,8 @@ pub fn create_gl_swapchain(
 pub struct GraphicsContext {
     _instance: Instance,
 
-    #[cfg_attr(windows, expect(dead_code))]
-    adapter: Adapter,
+    #[cfg(not(any(windows, target_os = "macos", target_os = "ios")))]
+    adapter: wgpu::Adapter,
 
     device: Device,
     queue: Queue,
@@ -199,7 +210,7 @@ pub struct GraphicsContext {
     pub egl_context: egl::Context,
     pub gl_context: gl::Context,
 
-    #[cfg_attr(windows, expect(dead_code))]
+    #[cfg(not(any(windows, target_os = "macos", target_os = "ios")))]
     dummy_surface: egl::Surface,
 
     create_image: CreateImageFn,
@@ -209,12 +220,12 @@ pub struct GraphicsContext {
 }
 
 impl GraphicsContext {
-    #[cfg(not(windows))]
+    #[cfg(not(any(windows, target_os = "macos", target_os = "ios")))]
     pub fn new_gl() -> Self {
         use std::mem;
         use wgpu::{
             Backends, DeviceDescriptor, Features, InstanceDescriptor, InstanceFlags, Limits,
-            MemoryHints,
+            MemoryHints, Trace, hal::api,
         };
 
         const CREATE_IMAGE_FN_STR: &str = "eglCreateImageKHR";
@@ -231,22 +242,20 @@ impl GraphicsContext {
         let instance = Instance::new(&InstanceDescriptor {
             backends: Backends::GL,
             flags,
-            backend_options: Default::default(),
+            ..Default::default()
         });
 
         let adapter = instance.enumerate_adapters(Backends::GL).remove(0);
-        let (device, queue) = pollster::block_on(adapter.request_device(
-            &DeviceDescriptor {
-                label: None,
-                required_features: Features::PUSH_CONSTANTS,
-                required_limits: Limits {
-                    max_push_constant_size: MAX_PUSH_CONSTANTS_SIZE,
-                    ..adapter.limits()
-                },
-                memory_hints: MemoryHints::Performance,
+        let (device, queue) = pollster::block_on(adapter.request_device(&DeviceDescriptor {
+            label: None,
+            required_features: Features::PUSH_CONSTANTS,
+            required_limits: Limits {
+                max_push_constant_size: MAX_PUSH_CONSTANTS_SIZE,
+                ..adapter.limits()
             },
-            None,
-        ))
+            memory_hints: MemoryHints::Performance,
+            trace: Trace::Off,
+        }))
         .unwrap();
 
         let raw_instance = unsafe { instance.as_hal::<api::Gles>() }.unwrap();
@@ -332,30 +341,31 @@ impl GraphicsContext {
         }
     }
 
-    #[cfg(windows)]
+    #[cfg(any(windows, target_os = "macos", target_os = "ios"))]
     pub fn new_gl() -> Self {
         unimplemented!()
     }
 
     pub fn make_current(&self) {
-        #[cfg(not(windows))]
+        #[cfg(not(any(windows, target_os = "macos", target_os = "ios")))]
         unsafe {
-            self.adapter.as_hal::<api::Gles, _, _>(|raw_adapter| {
-                let egl_instance = raw_adapter
-                    .unwrap()
-                    .adapter_context()
-                    .egl_instance()
-                    .unwrap();
+            self.adapter
+                .as_hal::<wgpu::hal::api::Gles, _, _>(|raw_adapter| {
+                    let egl_instance = raw_adapter
+                        .unwrap()
+                        .adapter_context()
+                        .egl_instance()
+                        .unwrap();
 
-                egl_instance
-                    .make_current(
-                        self.egl_display,
-                        Some(self.dummy_surface),
-                        Some(self.dummy_surface),
-                        Some(self.egl_context),
-                    )
-                    .unwrap();
-            })
+                    egl_instance
+                        .make_current(
+                            self.egl_display,
+                            Some(self.dummy_surface),
+                            Some(self.dummy_surface),
+                            Some(self.egl_context),
+                        )
+                        .unwrap();
+                })
         };
     }
 
@@ -371,28 +381,32 @@ impl GraphicsContext {
         const EGL_NATIVE_BUFFER_ANDROID: u32 = 0x3140;
 
         if !buffer.is_null() {
-            let client_buffer = (self.get_native_client_buffer)(buffer);
+            let client_buffer = unsafe { (self.get_native_client_buffer)(buffer) };
             check_error(&self.gl_context, "get_native_client_buffer");
 
-            let image = (self.create_image)(
-                self.egl_display.as_ptr(),
-                egl::NO_CONTEXT,
-                EGL_NATIVE_BUFFER_ANDROID,
-                client_buffer,
-                ptr::null(),
-            );
+            let image = unsafe {
+                (self.create_image)(
+                    self.egl_display.as_ptr(),
+                    egl::NO_CONTEXT,
+                    EGL_NATIVE_BUFFER_ANDROID,
+                    client_buffer,
+                    ptr::null(),
+                )
+            };
             check_error(&self.gl_context, "create_image");
 
-            self.gl_context
-                .bind_texture(GL_TEXTURE_EXTERNAL_OES, Some(texture));
+            unsafe {
+                self.gl_context
+                    .bind_texture(GL_TEXTURE_EXTERNAL_OES, Some(texture))
+            };
             check_error(&self.gl_context, "bind texture OES");
 
-            (self.image_target_texture_2d)(GL_TEXTURE_EXTERNAL_OES, image);
+            unsafe { (self.image_target_texture_2d)(GL_TEXTURE_EXTERNAL_OES, image) };
             check_error(&self.gl_context, "image_target_texture_2d");
 
             render_cb();
 
-            (self.destroy_image)(self.egl_display.as_ptr(), image);
+            unsafe { (self.destroy_image)(self.egl_display.as_ptr(), image) };
             check_error(&self.gl_context, "destroy_image");
         }
     }

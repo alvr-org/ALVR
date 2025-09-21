@@ -1,10 +1,10 @@
-use crate::dashboard::{theme::graph_colors, ServerRequest};
+use crate::dashboard::{ServerRequest, theme::graph_colors};
 use alvr_events::{GraphStatistics, StatisticsSummary};
 use alvr_gui_common::theme;
 use eframe::{
     egui::{
-        popup, pos2, vec2, Align2, Color32, CornerRadius, FontId, Frame, Grid, Id, Painter, Rect,
-        RichText, ScrollArea, Shape, Stroke, Ui,
+        Align2, Color32, CornerRadius, FontId, Frame, Grid, Id, Painter, Popup, PopupAnchor, Rect,
+        RichText, ScrollArea, Shape, Stroke, Ui, pos2, vec2,
     },
     emath::RectTransform,
     epaint::Pos2,
@@ -117,12 +117,13 @@ impl StatisticsTab {
                 RectTransform::from_to(canvas_response.response.rect, canvas_response.inner) * pos;
             let history_index = (graph_pos.x as usize).clamp(0, GRAPH_HISTORY_SIZE - 1);
 
-            popup::show_tooltip(
-                ui.ctx(),
-                ui.layer_id(),
+            Popup::new(
                 Id::new(format!("{title}_popup")),
-                |ui| tooltip_content(ui, &self.history[history_index]),
-            );
+                ui.ctx().clone(),
+                PopupAnchor::Pointer,
+                ui.layer_id(),
+            )
+            .show(|ui| tooltip_content(ui, &self.history[history_index]));
         }
     }
 
@@ -462,12 +463,6 @@ impl StatisticsTab {
 
             ui[0].label("Decoder latency:");
             ui[1].label(format!("{:.2} ms", statistics.decode_latency_ms));
-
-            ui[0].label("Total packets lost:");
-            ui[1].label(format!(
-                "{} packets ({} packets/s)",
-                statistics.packets_lost_total, statistics.packets_lost_per_sec
-            ));
 
             ui[0].label("Client FPS:");
             ui[1].label(format!("{} FPS", statistics.client_fps));

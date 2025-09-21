@@ -15,6 +15,6 @@ serde = { version = "1", features = ["derive"] }
 settings-schema = { git = "https://github.com/alvr-org/settings-schema-rs", rev = "676185f" }
 
 [target.'cfg(target_os = "android")'.dependencies]
-ndk = { version = "0.9", features = ["api-level-26", "media"] }
+ndk = { version = "0.9", features = ["api-level-28", "media"] }
 ndk-context = "0.1"
 ndk-sys = "0.6"

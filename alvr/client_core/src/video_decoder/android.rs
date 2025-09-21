@@ -1,9 +1,10 @@
 use super::VideoDecoderConfig;
 use alvr_common::{
-    anyhow::{anyhow, bail, Context, Result},
+    RelaxedAtomic, ToAny,
+    anyhow::{Context, Result, anyhow, bail},
     error, info,
     parking_lot::{Condvar, Mutex},
-    warn, RelaxedAtomic, ToAny,
+    warn,
 };
 use alvr_session::{CodecType, MediacodecPropType};
 use ndk::{
@@ -100,11 +101,11 @@ impl VideoDecoderSource {
     pub fn dequeue_frame(&mut self) -> Option<(Duration, *mut c_void)> {
         let mut image_queue_lock = self.image_queue.lock();
 
-        if let Some(queued_image) = image_queue_lock.front() {
-            if queued_image.in_use {
-                // image is released and ready to be reused by the decoder
-                image_queue_lock.pop_front();
-            }
+        if let Some(queued_image) = image_queue_lock.front()
+            && queued_image.in_use
+        {
+            // image is released and ready to be reused by the decoder
+            image_queue_lock.pop_front();
         }
 
         // use running average to give more weight to recent samples

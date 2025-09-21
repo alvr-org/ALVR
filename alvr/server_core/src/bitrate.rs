@@ -1,7 +1,7 @@
 use alvr_common::SlidingWindowAverage;
 use alvr_events::BitrateDirectives;
 use alvr_session::{
-    settings_schema::Switch, BitrateAdaptiveFramerateConfig, BitrateConfig, BitrateMode,
+    BitrateAdaptiveFramerateConfig, BitrateConfig, BitrateMode, settings_schema::Switch,
 };
 use std::{
     collections::VecDeque,

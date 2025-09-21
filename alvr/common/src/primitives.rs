@@ -11,24 +11,27 @@ pub struct Fov {
     pub down: f32,
 }
 
-impl Default for Fov {
-    fn default() -> Self {
-        Fov {
-            left: -1.0,
-            right: 1.0,
-            up: 1.0,
-            down: -1.0,
-        }
-    }
+impl Fov {
+    pub const DUMMY: Self = Fov {
+        left: -1.0,
+        right: 1.0,
+        up: 1.0,
+        down: -1.0,
+    };
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
 pub struct Pose {
-    pub orientation: Quat, // NB: default Quat is identity
+    pub orientation: Quat,
     pub position: Vec3,
 }
 
 impl Pose {
+    pub const IDENTITY: Self = Pose {
+        orientation: Quat::IDENTITY,
+        position: Vec3::ZERO,
+    };
+
     pub fn inverse(&self) -> Pose {
         let inverse_orientation = self.orientation.conjugate();
         Pose {
@@ -74,6 +77,12 @@ fn difference_seconds(from: Duration, to: Duration) -> f32 {
 }
 
 impl DeviceMotion {
+    pub const IDENTITY: Self = DeviceMotion {
+        pose: Pose::IDENTITY,
+        linear_velocity: Vec3::ZERO,
+        angular_velocity: Vec3::ZERO,
+    };
+
     pub fn predict(&self, from_timestamp: Duration, to_timestamp: Duration) -> Self {
         let delta_time_s = difference_seconds(from_timestamp, to_timestamp);
 
@@ -89,4 +98,33 @@ impl DeviceMotion {
             angular_velocity: self.angular_velocity,
         }
     }
+}
+
+// Per eye view parameters
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub struct ViewParams {
+    pub pose: Pose,
+    pub fov: Fov,
+}
+
+impl ViewParams {
+    pub const DUMMY: Self = ViewParams {
+        pose: Pose::IDENTITY,
+        fov: Fov::DUMMY,
+    };
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct BodySkeletonFb {
+    pub upper_body: [Option<Pose>; 18],
+    pub lower_body: Option<[Option<Pose>; 14]>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct BodySkeletonBd(pub [Option<Pose>; 24]);
+
+#[derive(Serialize, Deserialize, Clone)]
+pub enum BodySkeleton {
+    Fb(Box<BodySkeletonFb>),
+    Bd(Box<BodySkeletonBd>),
 }

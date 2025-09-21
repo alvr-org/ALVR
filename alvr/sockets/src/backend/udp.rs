@@ -1,7 +1,7 @@
 use crate::LOCAL_IP;
 
 use super::{SocketReader, SocketWriter};
-use alvr_common::{anyhow::Result, ConResult, HandleTryAgain};
+use alvr_common::{ConResult, HandleTryAgain, anyhow::Result};
 use alvr_session::{DscpTos, SocketBufferSize};
 use socket2::{MaybeUninitSlice, Socket};
 use std::{

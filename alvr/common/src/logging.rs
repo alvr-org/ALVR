@@ -1,8 +1,9 @@
 use anyhow::Result;
 use backtrace::Backtrace;
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use settings_schema::SettingsSchema;
-use std::{error::Error, fmt::Display};
+use std::{error::Error, fmt::Display, sync::OnceLock};
 
 pub const SERVER_IMPL_DBG_LABEL: &str = "SERVER IMPL";
 pub const CLIENT_IMPL_DBG_LABEL: &str = "CLIENT IMPL";
@@ -14,6 +15,8 @@ pub const SERVER_GFX_DBG_LABEL: &str = "SERVER GFX";
 pub const CLIENT_GFX_DBG_LABEL: &str = "CLIENT GFX";
 pub const ENCODER_DBG_LABEL: &str = "ENCODER";
 pub const DECODER_DBG_LABEL: &str = "DECODER";
+
+static POPUP_CALLBACK: OnceLock<fn(&str, &str, LogSeverity)> = OnceLock::new();
 
 #[macro_export]
 macro_rules! dbg_server_impl {
@@ -184,6 +187,11 @@ pub struct LogEntry {
     pub content: String,
 }
 
+// The callback has parameters in order: title, message, severity
+pub fn set_popup_callback(callback: fn(&str, &str, LogSeverity)) {
+    POPUP_CALLBACK.set(callback).ok();
+}
+
 pub fn set_panic_hook() {
     std::panic::set_hook(Box::new(|panic_info| {
         let err_str = format!(
@@ -193,15 +201,12 @@ pub fn set_panic_hook() {
 
         log::error!("ALVR panicked: {err_str}");
 
-        #[cfg(all(not(target_os = "android"), not(target_os = "ios")))]
         std::thread::spawn({
             let panic_str = panic_info.to_string();
             move || {
-                rfd::MessageDialog::new()
-                    .set_title("ALVR panicked")
-                    .set_description(&panic_str)
-                    .set_level(rfd::MessageLevel::Error)
-                    .show();
+                if let Some(callback) = POPUP_CALLBACK.get() {
+                    callback("ALVR panicked", &panic_str, LogSeverity::Error);
+                }
             }
         });
     }))
@@ -210,13 +215,10 @@ pub fn set_panic_hook() {
 pub fn show_w<W: Display + Send + 'static>(w: W) {
     log::warn!("{w}");
 
-    #[cfg(all(not(target_os = "android"), not(target_os = "ios")))]
     std::thread::spawn(move || {
-        rfd::MessageDialog::new()
-            .set_title("ALVR warning")
-            .set_description(w.to_string())
-            .set_level(rfd::MessageLevel::Warning)
-            .show()
+        if let Some(callback) = POPUP_CALLBACK.get() {
+            callback("ALVR warning", &w.to_string(), LogSeverity::Warning);
+        }
     });
 }
 
@@ -224,41 +226,33 @@ pub fn show_warn<T, E: Display + Send + 'static>(res: Result<T, E>) -> Option<T>
     res.map_err(show_w).ok()
 }
 
-#[allow(unused_variables)]
 fn show_e_block<E: Display>(e: E, blocking: bool) {
     log::error!("{e}");
 
-    #[cfg(all(not(target_os = "android"), not(target_os = "ios")))]
-    {
-        // Store the last error shown in a message box. Do not open a new message box if the content
-        // of the error has not changed
-        use once_cell::sync::Lazy;
-        use parking_lot::Mutex;
+    // Store the last error shown in a message box. Do not open a new message box if the content
+    // of the error has not changed
 
-        static LAST_MESSAGEBOX_ERROR: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
+    static LAST_MESSAGEBOX_ERROR: Mutex<String> = Mutex::new(String::new());
 
-        let err_string = e.to_string();
-        let last_messagebox_error_ref = &mut *LAST_MESSAGEBOX_ERROR.lock();
-        if *last_messagebox_error_ref != err_string {
-            let show_msgbox = {
-                let err_string = err_string.clone();
-                move || {
-                    rfd::MessageDialog::new()
-                        .set_title("ALVR error")
-                        .set_description(&err_string)
-                        .set_level(rfd::MessageLevel::Error)
-                        .show()
+    let err_string = e.to_string();
+    let last_messagebox_error_ref = &mut *LAST_MESSAGEBOX_ERROR.lock();
+    if *last_messagebox_error_ref != err_string {
+        let show_msgbox = {
+            let err_string = err_string.clone();
+            move || {
+                if let Some(callback) = POPUP_CALLBACK.get() {
+                    callback("ALVR error", &err_string, LogSeverity::Error);
                 }
-            };
-
-            if blocking {
-                show_msgbox();
-            } else {
-                std::thread::spawn(show_msgbox);
             }
+        };
 
-            *last_messagebox_error_ref = err_string;
+        if blocking {
+            show_msgbox();
+        } else {
+            std::thread::spawn(show_msgbox);
         }
+
+        *last_messagebox_error_ref = err_string;
     }
 }
 

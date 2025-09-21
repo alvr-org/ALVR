@@ -8,20 +8,19 @@ mod stream;
 
 use crate::stream::ParsedStreamConfig;
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
-use alvr_common::settings_schema::Switch;
 use alvr_common::{
-    error,
+    Fov, HAND_LEFT_ID, Pose, error,
     glam::{Quat, UVec2, Vec3},
     info,
     parking_lot::RwLock,
-    Fov, Pose, HAND_LEFT_ID,
 };
 use alvr_graphics::GraphicsContext;
 use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig};
 use alvr_system_info::Platform;
 use extra_extensions::{
     BD_BODY_TRACKING_EXTENSION_NAME, BD_MOTION_TRACKING_EXTENSION_NAME,
-    META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME, META_DETACHED_CONTROLLERS_EXTENSION_NAME,
+    META_BODY_TRACKING_FIDELITY_EXTENSION_NAME, META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
+    META_DETACHED_CONTROLLERS_EXTENSION_NAME,
     META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME, PICO_CONFIGURATION_EXTENSION_NAME,
 };
 use interaction::{InteractionContext, InteractionSourcesConfig};
@@ -193,6 +192,7 @@ pub fn entry_point() {
         .filter(|ext| {
             [
                 META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
+                META_BODY_TRACKING_FIDELITY_EXTENSION_NAME,
                 META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,
                 META_DETACHED_CONTROLLERS_EXTENSION_NAME,
                 BD_BODY_TRACKING_EXTENSION_NAME,
@@ -293,16 +293,22 @@ pub fn entry_point() {
             default_view_resolution,
             &last_lobby_message,
         );
-        let lobby_body_tracking_config = BodyTrackingSourcesConfig {
-            body_tracking_fb: Switch::Disabled,
-            body_tracking_bd: Switch::Enabled(BodyTrackingBDConfig::BodyTracking {
-                high_accuracy: true,
-                prompt_calibration_on_start: false,
-            }),
+
+        // For Meta/Quest enabling body tracking would disable multimodal input
+        let lobby_body_tracking_config = if platform.is_pico() {
+            Some(BodyTrackingSourcesConfig {
+                bd: BodyTrackingBDConfig::BodyTracking {
+                    high_accuracy: true,
+                    prompt_calibration_on_start: false,
+                },
+                meta: Default::default(),
+            })
+        } else {
+            None
         };
         let lobby_interaction_sources = InteractionSourcesConfig {
             face_tracking: None,
-            body_tracking: Some(lobby_body_tracking_config),
+            body_tracking: lobby_body_tracking_config,
             prefers_multimodal_input: true,
         };
         interaction_context
@@ -343,7 +349,7 @@ pub fn entry_point() {
                             xr_session.end().unwrap();
                         }
                         xr::SessionState::EXITING | xr::SessionState::LOSS_PENDING => {
-                            break 'render_loop
+                            break 'render_loop;
                         }
                         _ => (),
                     },
@@ -532,7 +538,7 @@ fn xr_runtime_now(xr_instance: &xr::Instance) -> Option<xr::Time> {
 }
 
 #[cfg(target_os = "android")]
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn android_main(app: android_activity::AndroidApp) {
     use android_activity::{InputStatus, MainEvent, PollEvent};
 

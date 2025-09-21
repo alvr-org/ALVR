@@ -1,7 +1,7 @@
 use crate::openvrpaths;
 use alvr_common::{
-    anyhow::{bail, Result},
     ToAny,
+    anyhow::{Result, bail},
 };
 use serde_json as json;
 use std::{
@@ -51,10 +51,10 @@ pub fn get_driver_dir_from_registered() -> Result<PathBuf> {
             manifest_map.remove("name").to_any()
         }();
 
-        if let Ok(json::Value::String(str)) = maybe_driver_name {
-            if str == "alvr_server" {
-                return Ok(dir);
-            }
+        if let Ok(json::Value::String(str)) = maybe_driver_name
+            && str == "alvr_server"
+        {
+            return Ok(dir);
         }
     }
 

@@ -4,8 +4,8 @@ use self::components::{
     DevicesTab, LogsTab, NotificationBar, SettingsTab, SetupWizard, SetupWizardRequest,
 };
 use crate::{
-    dashboard::components::{NewVersionPopup, StatisticsTab},
     DataSources,
+    dashboard::components::{CloseAction, NewVersionPopup, StatisticsTab},
 };
 use alvr_common::parking_lot::{Condvar, Mutex};
 use alvr_events::EventType;
@@ -51,9 +51,7 @@ impl Dashboard {
     pub fn new(creation_context: &eframe::CreationContext<'_>, data_sources: DataSources) -> Self {
         alvr_gui_common::theme::set_theme(&creation_context.egui_ctx);
 
-        // Audio devices need to be queried early to mitigate buggy/slow hardware queries on Linux.
         data_sources.request(ServerRequest::GetSession);
-        data_sources.request(ServerRequest::GetAudioDevices);
 
         Self {
             data_sources,
@@ -152,7 +150,6 @@ impl eframe::App for Dashboard {
                     self.session = Some(*session);
                 }
                 EventType::ServerRequestsSelfRestart => self.restart_steamvr(&mut requests),
-                EventType::AudioDevices(list) => self.settings_tab.update_audio_devices(list),
                 #[cfg(not(target_arch = "wasm32"))]
                 EventType::DriversList(list) => self.installation_tab.update_drivers(list),
                 EventType::Adb(adb_event) => self
@@ -315,12 +312,14 @@ impl eframe::App for Dashboard {
                 .ensure_steamvr_shutdown();
         };
 
-        if let Some(popup) = &self.new_version_popup {
-            if let Some(request) = popup.ui(context, shutdown_alvr) {
+        if let Some(popup) = &self.new_version_popup
+            && let Some(action) = popup.ui(context, shutdown_alvr)
+        {
+            if let CloseAction::CloseWithRequest(request) = action {
                 requests.push(request);
-
-                self.new_version_popup = None;
             }
+
+            self.new_version_popup = None;
         }
 
         for request in requests {

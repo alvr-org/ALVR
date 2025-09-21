@@ -1,0 +1,91 @@
+name: Merge queue only checks
+
+# Merge queue checks need to be selected as required for prs to actually run, so simply skip them on prs
+on:
+  pull_request:
+  merge_group:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check-linux-old:
+    if: github.event_name == 'merge_group'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 25088A0359807596
+          echo "deb http://ppa.launchpad.net/pipewire-debian/pipewire-upstream/ubuntu $(lsb_release -cs) main" | sudo tee -a /etc/apt/sources.list.d/pipewire-upstream.list
+          sudo add-apt-repository universe
+          sudo apt-get update
+          sudo apt-get install libfuse2 build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
+
+      - name: Prepare deps
+        env:
+          RUST_BACKTRACE: 1
+        run:  cargo xtask prepare-deps --platform linux --no-nvidia
+
+      - run: cargo clippy
+
+  check-msrv-windows:
+    if: github.event_name == 'merge_group'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # Fix actions rust install and msrv both being stupid
+      - run: rustup update
+
+      - name: Prepare deps
+        env:
+          RUST_BACKTRACE: 1
+        run: cargo xtask prepare-deps --platform windows
+
+      - run: cargo xtask check-msrv
+
+  check-msrv-linux:
+    if: github.event_name == 'merge_group'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libasound2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
+
+      - name: Prepare deps
+        env:
+          RUST_BACKTRACE: 1
+        run:  cargo xtask prepare-deps --platform linux --no-nvidia
+
+      - run: cargo xtask check-msrv
+
+  check-licenses:
+    if: github.event_name == 'merge_group'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo xtask check-licenses

@@ -1,6 +1,7 @@
 use alvr_common::{
-    anyhow::{bail, Result},
-    warn, ToAny,
+    ToAny,
+    anyhow::{Result, bail},
+    warn,
 };
 use flume::TryRecvError;
 use mdns_sd::{Receiver, ServiceDaemon, ServiceEvent};

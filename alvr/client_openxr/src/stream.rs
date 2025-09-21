@@ -3,20 +3,18 @@ use crate::{
     interaction::{self, InteractionContext, InteractionSourcesConfig},
 };
 use alvr_client_core::{
-    video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
     ClientCoreContext,
+    video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
 };
 use alvr_common::{
+    HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID, Pose, RelaxedAtomic, ViewParams,
     anyhow::Result,
     error,
-    glam::{Quat, UVec2, Vec2},
+    glam::{UVec2, Vec2},
     parking_lot::RwLock,
-    Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
-use alvr_graphics::{
-    compute_target_view_resolution, GraphicsContext, StreamRenderer, StreamViewParams,
-};
-use alvr_packets::{FaceData, RealTimeConfig, StreamConfig, ViewParams};
+use alvr_graphics::{GraphicsContext, StreamRenderer, StreamViewParams};
+use alvr_packets::{RealTimeConfig, StreamConfig, TrackingData};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, ClientsidePostProcessingConfig, CodecType,
     FoveatedEncodingConfig, MediacodecProperty, PassthroughMode, UpscalingConfig,
@@ -36,7 +34,6 @@ const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 pub struct ParsedStreamConfig {
     pub view_resolution: UVec2,
     pub refresh_rate_hint: f32,
-    pub use_full_range: bool,
     pub encoding_gamma: f32,
     pub enable_hdr: bool,
     pub passthrough: Option<PassthroughMode>,
@@ -56,7 +53,6 @@ impl ParsedStreamConfig {
         Self {
             view_resolution: config.negotiated_config.view_resolution,
             refresh_rate_hint: config.negotiated_config.refresh_rate_hint,
-            use_full_range: config.negotiated_config.use_full_range,
             encoding_gamma: config.negotiated_config.encoding_gamma,
             enable_hdr: config.negotiated_config.enable_hdr,
             passthrough: config.settings.video.passthrough.as_option().cloned(),
@@ -101,6 +97,7 @@ pub struct StreamContext {
     target_view_resolution: UVec2,
     renderer: StreamRenderer,
     decoder: Option<(VideoDecoderConfig, VideoDecoderSource)>,
+    use_custom_reprojection: bool,
 }
 
 impl StreamContext {
@@ -124,40 +121,39 @@ impl StreamContext {
                 .unwrap();
         }
 
-        let foveation_profile = if let Some(config) = &config.clientside_foveation_config {
-            if xr_exts.fb_swapchain_update_state.is_some()
-                && xr_exts.fb_foveation.is_some()
-                && xr_exts.fb_foveation_configuration.is_some()
-            {
-                let level;
-                let dynamic;
-                match config.mode {
-                    ClientsideFoveationMode::Static { level: lvl } => {
-                        level = lvl;
-                        dynamic = false;
-                    }
-                    ClientsideFoveationMode::Dynamic { max_level } => {
-                        level = max_level;
-                        dynamic = true;
-                    }
-                };
+        let foveation_profile = if let Some(config) = &config.clientside_foveation_config
+            && xr_exts.fb_swapchain_update_state.is_some()
+            && xr_exts.fb_foveation.is_some()
+            && xr_exts.fb_foveation_configuration.is_some()
+        {
+            let level;
+            let dynamic;
+            match config.mode {
+                ClientsideFoveationMode::Static { level: lvl } => {
+                    level = lvl;
+                    dynamic = false;
+                }
+                ClientsideFoveationMode::Dynamic { max_level } => {
+                    level = max_level;
+                    dynamic = true;
+                }
+            };
 
-                xr_session
-                    .create_foveation_profile(Some(xr::FoveationLevelProfile {
-                        level: xr::FoveationLevelFB::from_raw(level as i32),
-                        vertical_offset: config.vertical_offset_deg,
-                        dynamic: xr::FoveationDynamicFB::from_raw(dynamic as i32),
-                    }))
-                    .ok()
-            } else {
-                None
-            }
+            xr_session
+                .create_foveation_profile(Some(xr::FoveationLevelProfile {
+                    level: xr::FoveationLevelFB::from_raw(level as i32),
+                    vertical_offset: config.vertical_offset_deg,
+                    dynamic: xr::FoveationDynamicFB::from_raw(dynamic as i32),
+                }))
+                .ok()
         } else {
             None
         };
 
-        let target_view_resolution =
-            compute_target_view_resolution(config.view_resolution, &config.upscaling);
+        let target_view_resolution = alvr_graphics::compute_target_view_resolution(
+            config.view_resolution,
+            &config.upscaling,
+        );
         let format = graphics::swapchain_format(&gfx_ctx, &xr_session, config.enable_hdr);
 
         let swapchains = [
@@ -198,19 +194,24 @@ impl StreamContext {
             format,
             config.foveated_encoding_config.clone(),
             platform != Platform::Lynx && !((platform.is_pico()) && config.enable_hdr),
-            config.use_full_range && !config.enable_hdr, // TODO: figure out why HDR doesn't need the limited range hackfix in staging?
+            !config.enable_hdr,
             config.encoding_gamma,
             config.upscaling.clone(),
         );
 
-        core_ctx.send_active_interaction_profile(
-            *HAND_LEFT_ID,
-            interaction_ctx.read().hands_interaction[0].controllers_profile_id,
-        );
-        core_ctx.send_active_interaction_profile(
-            *HAND_RIGHT_ID,
-            interaction_ctx.read().hands_interaction[1].controllers_profile_id,
-        );
+        {
+            let int_ctx = interaction_ctx.read();
+            core_ctx.send_active_interaction_profile(
+                *HAND_LEFT_ID,
+                int_ctx.hands_interaction[0].controllers_profile_id,
+                int_ctx.hands_interaction[0].input_ids.clone(),
+            );
+            core_ctx.send_active_interaction_profile(
+                *HAND_RIGHT_ID,
+                int_ctx.hands_interaction[1].controllers_profile_id,
+                int_ctx.hands_interaction[1].input_ids.clone(),
+            );
+        }
 
         let input_thread_running = Arc::new(RelaxedAtomic::new(false));
 
@@ -230,13 +231,14 @@ impl StreamContext {
             stage_reference_space,
             view_reference_space,
             swapchains,
-            last_good_view_params: [ViewParams::default(); 2],
+            last_good_view_params: [ViewParams::DUMMY; 2],
             input_thread: None,
             input_thread_running,
             config,
             target_view_resolution,
             renderer,
             decoder: None,
+            use_custom_reprojection: platform.is_yvr(),
         };
 
         this.update_reference_space();
@@ -336,7 +338,8 @@ impl StreamContext {
         &mut self,
         frame_interval: Duration,
         vsync_time: Duration,
-    ) -> (ProjectionLayerBuilder, Duration) {
+    ) -> (ProjectionLayerBuilder<'_>, Duration) {
+        let xr_vsync_time = xr::Time::from_nanos(vsync_time.as_nanos() as _);
         let frame_poll_deadline = Instant::now()
             + Duration::from_secs_f32(
                 frame_interval.as_secs_f32() * DECODER_MAX_TIMEOUT_MULTIPLIER,
@@ -352,10 +355,6 @@ impl StreamContext {
         let (timestamp, view_params, buffer_ptr) =
             if let Some((timestamp, buffer_ptr)) = frame_result {
                 let view_params = self.core_context.report_compositor_start(timestamp);
-
-                // Avoid passing invalid timestamp to runtime
-                let timestamp =
-                    Duration::max(timestamp, vsync_time.saturating_sub(Duration::from_secs(1)));
 
                 self.last_good_view_params = view_params;
 
@@ -374,35 +373,77 @@ impl StreamContext {
             .wait_image(xr::Duration::INFINITE)
             .unwrap();
 
-        unsafe {
-            self.renderer.render(
-                buffer_ptr,
-                [
-                    StreamViewParams {
-                        swapchain_index: left_swapchain_idx,
-                        reprojection_rotation: Quat::IDENTITY,
-                        fov: view_params[0].fov,
-                    },
-                    StreamViewParams {
-                        swapchain_index: right_swapchain_idx,
-                        reprojection_rotation: Quat::IDENTITY,
-                        fov: view_params[1].fov,
-                    },
-                ],
-                self.config.passthrough.as_ref(),
+        let (flags, maybe_views) = self
+            .xr_session
+            .locate_views(
+                xr::ViewConfigurationType::PRIMARY_STEREO,
+                xr_vsync_time,
+                &self.stage_reference_space,
             )
+            .unwrap();
+
+        let current_headset_views = if flags.contains(xr::ViewStateFlags::ORIENTATION_VALID) {
+            maybe_views
+        } else {
+            vec![crate::default_view(), crate::default_view()]
         };
+
+        // The poses and FoVs we received from the PC runtime, which may differ and/or include
+        // altered FoVs based on settings and view conversions done for canting.
+        let input_view_params = view_params;
+        let mut output_view_params = input_view_params;
+        // Avoid passing invalid timestamp to runtime.
+        // `timestamp` is generally a current vsync time, but may be repeated if frames are
+        // dropped. Some runtimes dislike it if the timestamp is repeated for too long, so after
+        // one second we begin presenting a lagged vsync time instead.
+        let mut openxr_display_time =
+            Duration::max(timestamp, vsync_time.saturating_sub(Duration::from_secs(1)));
+
+        // (shinyquagsire23) I don't entirely trust runtimes to implement CompositionLayerProjectionView
+        // correctly, but if we do trust them, avoid doing rotation ourselves. Otherwise, rerender.
+        // Ex: YVR/PFDMR has issues with aspect ratio mismatches and passthrough compositing.
+        if self.use_custom_reprojection {
+            output_view_params = [
+                ViewParams {
+                    pose: crate::from_xr_pose(current_headset_views[0].pose),
+                    fov: crate::from_xr_fov(current_headset_views[0].fov),
+                },
+                ViewParams {
+                    pose: crate::from_xr_pose(current_headset_views[1].pose),
+                    fov: crate::from_xr_fov(current_headset_views[1].fov),
+                },
+            ];
+
+            openxr_display_time = vsync_time;
+        }
+
+        self.renderer.render(
+            buffer_ptr,
+            [
+                StreamViewParams {
+                    swapchain_index: left_swapchain_idx,
+                    input_view_params: input_view_params[0],
+                    output_view_params: output_view_params[0],
+                },
+                StreamViewParams {
+                    swapchain_index: right_swapchain_idx,
+                    input_view_params: input_view_params[1],
+                    output_view_params: output_view_params[1],
+                },
+            ],
+            self.config.passthrough.as_ref(),
+        );
 
         self.swapchains[0].release_image().unwrap();
         self.swapchains[1].release_image().unwrap();
 
-        if !buffer_ptr.is_null() {
-            if let Some(xr_now) = crate::xr_runtime_now(self.xr_session.instance()) {
-                self.core_context.report_submit(
-                    timestamp,
-                    vsync_time.saturating_sub(Duration::from_nanos(xr_now.as_nanos() as u64)),
-                );
-            }
+        if !buffer_ptr.is_null()
+            && let Some(xr_now) = crate::xr_runtime_now(self.xr_session.instance())
+        {
+            self.core_context.report_submit(
+                timestamp,
+                vsync_time.saturating_sub(Duration::from_nanos(xr_now.as_nanos() as u64)),
+            );
         }
 
         let rect = xr::Rect2Di {
@@ -424,8 +465,8 @@ impl StreamContext {
             &self.stage_reference_space,
             [
                 xr::CompositionLayerProjectionView::new()
-                    .pose(crate::to_xr_pose(view_params[0].pose))
-                    .fov(crate::to_xr_fov(view_params[0].fov))
+                    .pose(crate::to_xr_pose(output_view_params[0].pose))
+                    .fov(crate::to_xr_fov(output_view_params[0].fov))
                     .sub_image(
                         xr::SwapchainSubImage::new()
                             .swapchain(&self.swapchains[0])
@@ -433,8 +474,8 @@ impl StreamContext {
                             .image_rect(rect),
                     ),
                 xr::CompositionLayerProjectionView::new()
-                    .pose(crate::to_xr_pose(view_params[1].pose))
-                    .fov(crate::to_xr_fov(view_params[1].fov))
+                    .pose(crate::to_xr_pose(output_view_params[1].pose))
+                    .fov(crate::to_xr_fov(output_view_params[1].fov))
                     .sub_image(
                         xr::SwapchainSubImage::new()
                             .swapchain(&self.swapchains[1])
@@ -458,7 +499,7 @@ impl StreamContext {
             clientside_post_processing,
         );
 
-        (layer, timestamp)
+        (layer, openxr_display_time)
     }
 }
 
@@ -480,9 +521,9 @@ fn stream_input_loop(
 ) {
     let platform = alvr_system_info::platform();
 
-    let mut last_controller_poses = [Pose::default(); 2];
-    let mut last_palm_poses = [Pose::default(); 2];
-    let mut last_view_params = [ViewParams::default(); 2];
+    let mut last_controller_poses = [Pose::IDENTITY; 2];
+    let mut last_palm_poses = [Pose::IDENTITY; 2];
+    let mut last_view_params = [ViewParams::DUMMY; 2];
 
     let mut deadline = Instant::now();
     let frame_interval = Duration::from_secs_f32(1.0 / refresh_rate);
@@ -547,58 +588,45 @@ fn stream_input_loop(
 
         // Note: When multimodal input is enabled, we are sure that when free hands are used
         // (not holding controllers) the controller data is None.
-        if int_ctx.multimodal_hands_enabled || left_hand_skeleton.is_none() {
-            if let Some(motion) = left_hand_motion {
-                device_motions.push((*HAND_LEFT_ID, motion));
-            }
+        if (int_ctx.multimodal_hands_enabled || left_hand_skeleton.is_none())
+            && let Some(motion) = left_hand_motion
+        {
+            device_motions.push((*HAND_LEFT_ID, motion));
         }
-        if int_ctx.multimodal_hands_enabled || right_hand_skeleton.is_none() {
-            if let Some(motion) = right_hand_motion {
-                device_motions.push((*HAND_RIGHT_ID, motion));
-            }
-        }
-
-        let face_data = FaceData {
-            eye_gazes: interaction::get_eye_gazes(
-                &xr_session,
-                &int_ctx.face_sources,
-                stage_reference_space,
-                now,
-            ),
-            fb_face_expression: interaction::get_fb_face_expression(&int_ctx.face_sources, now).or(
-                interaction::get_pico_face_expression(&int_ctx.face_sources, now),
-            ),
-            htc_eye_expression: interaction::get_htc_eye_expression(&int_ctx.face_sources, now),
-            htc_lip_expression: interaction::get_htc_lip_expression(&int_ctx.face_sources, now),
-        };
-
-        if let Some((tracker, joint_count)) = &int_ctx.body_sources.body_tracker_fb {
-            device_motions.append(&mut interaction::get_fb_body_tracking_points(
-                stage_reference_space,
-                now,
-                tracker,
-                *joint_count,
-            ));
+        if (int_ctx.multimodal_hands_enabled || right_hand_skeleton.is_none())
+            && let Some(motion) = right_hand_motion
+        {
+            device_motions.push((*HAND_RIGHT_ID, motion));
         }
 
-        if let Some(tracker) = &int_ctx.body_sources.body_tracker_bd {
-            device_motions.append(&mut interaction::get_bd_body_tracking_points(
-                stage_reference_space,
-                now,
-                tracker,
-            ));
-        }
-
-        if let Some(tracker) = &int_ctx.body_sources.motion_tracker_bd {
-            device_motions.append(&mut interaction::get_bd_motion_trackers(now, tracker));
-        }
-
-        core_ctx.send_tracking(
-            Duration::from_nanos(now.as_nanos() as u64),
-            device_motions,
-            [left_hand_skeleton, right_hand_skeleton],
-            face_data,
+        let face = interaction::get_face_data(
+            &xr_session,
+            &int_ctx.face_sources,
+            view_reference_space,
+            now,
         );
+
+        let body = int_ctx
+            .body_source
+            .as_ref()
+            .and_then(|source| interaction::get_body_skeleton(source, stage_reference_space, now));
+
+        if let Some(source) = &int_ctx.body_source {
+            device_motions.append(&mut interaction::get_bd_motion_trackers(source, now));
+        }
+
+        // Even though the server is already adding the motion-to-photon latency, here we use
+        // target_time as the poll_timestamp to compensate for the fact that video frames are sent
+        // with the poll timestamp instead of the vsync time. This is to ensure correctness when
+        // submitting frames to OpenXR. This won't cause any desync with the server because no time
+        // sync step is performed between client and server.
+        core_ctx.send_tracking(TrackingData {
+            poll_timestamp: target_time,
+            device_motions,
+            hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
+            face,
+            body,
+        });
 
         let button_entries = interaction::update_buttons(&xr_session, &int_ctx.button_actions);
         if !button_entries.is_empty() {

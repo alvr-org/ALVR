@@ -1,7 +1,7 @@
 use crate::LOCAL_IP;
 
 use super::{SocketReader, SocketWriter};
-use alvr_common::{anyhow::Result, con_bail, ConResult, HandleTryAgain, ToCon};
+use alvr_common::{ConResult, HandleTryAgain, ToCon, anyhow::Result, con_bail};
 use alvr_session::{DscpTos, SocketBufferSize};
 use std::{
     io::Read,
@@ -36,13 +36,13 @@ pub fn accept_from_server(
     // Uses timeout set during bind()
     let (socket, server_address) = listener.accept().handle_try_again()?;
 
-    if let Some(ip) = server_ip {
-        if server_address.ip() != ip {
-            con_bail!(
-                "Connected to wrong client: Expected: {ip}, Found {}",
-                server_address.ip()
-            );
-        }
+    if let Some(ip) = server_ip
+        && server_address.ip() != ip
+    {
+        con_bail!(
+            "Connected to wrong client: Expected: {ip}, Found {}",
+            server_address.ip()
+        );
     }
 
     socket.set_read_timeout(Some(timeout)).to_con()?;

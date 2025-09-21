@@ -1,12 +1,12 @@
-use once_cell::sync::Lazy;
 use semver::Version;
 use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
+    sync::LazyLock,
 };
 
-pub static ALVR_VERSION: Lazy<Version> =
-    Lazy::new(|| Version::parse(env!("CARGO_PKG_VERSION")).unwrap());
+pub static ALVR_VERSION: LazyLock<Version> =
+    LazyLock::new(|| Version::parse(env!("CARGO_PKG_VERSION")).unwrap());
 
 // Consistent across architectures, might not be consistent across different compiler versions.
 pub fn hash_string(string: &str) -> u64 {

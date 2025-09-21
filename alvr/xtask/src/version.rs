@@ -1,7 +1,7 @@
 use crate::command;
 use alvr_filesystem as afs;
 use std::fs;
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 pub fn split_string(source: &str, start_pattern: &str, end: char) -> (String, String, String) {
     let start_idx = source.find(start_pattern).unwrap() + start_pattern.len();

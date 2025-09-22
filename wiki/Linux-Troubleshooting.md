@@ -4,14 +4,14 @@ The Steam runtimes SteamVR runs in break the ALVR driver loaded by SteamVR. This
 
 ### Fix
 
-Add `~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%` to the command-line options of SteamVR (SteamVR -> Manage/Right Click -> Properties -> General -> Launch Options).
+Add `~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%` to the launch options of SteamVR (SteamVR -> Manage/Right Click -> Properties -> General -> Launch Options).
 
 This path might differ based on your Steam installation; in that case, SteamVR will not start at all. If this is the case, you can figure out the actual path by going to Steam Settings -> Storage.
-Then pick the storage location with the star emoji (⭐) and take the path directly above the usage statistics. Prepend this path to `steamapps/common/SteamVR/bin/vrmonitor.sh`. Finally, put the resulting path into the SteamVR command-line options instead of the original one.
+Then pick the storage location with the star emoji (⭐) and take the path directly above the usage statistics. Prepend this path to `steamapps/common/SteamVR/bin/vrmonitor.sh`. Finally, put the resulting path into the SteamVR launch options instead of the original one.
 
 ### Hyprland/Sway/wlroots Qt fix
 
-If you're on Hyprland, Sway, or another wlroots-based Wayland compositor, you might have to prepend `QT_QPA_PLATFORM=xcb` to your command-line.
+If you're on Hyprland, Sway, or another wlroots-based Wayland compositor, you might have to prepend `QT_QPA_PLATFORM=xcb` to your launch options.
 
 Related issue:
 [[BUG] No SteamVR UI on wlroots-based wayland compositors (sway, hyprland, ...) with workaround](https://github.com/ValveSoftware/SteamVR-for-Linux/issues/637).
@@ -72,13 +72,13 @@ If you're using a PC and can disable your integrated GPU from the BIOS/UEFI, it'
 
 ### AMD/Intel integrated GPU + AMD/Intel discrete GPU
 
-Prepend `DRI_PRIME=1` to the command-line options of SteamVR and of all VR games you intend to play with ALVR.
+Prepend `DRI_PRIME=1` to the launch options of SteamVR and of all VR games you intend to play with ALVR.
 
 ### AMD/Intel integrated GPU + Nvidia discrete GPU
 
-Prepend `__NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only __GLX_VENDOR_LIBRARY_NAME=nvidia` to the command-line options of SteamVR and of all VR games you intend to play with ALVR.
+Prepend `__NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only __GLX_VENDOR_LIBRARY_NAME=nvidia` to the launch options of SteamVR and of all VR games you intend to play with ALVR.
 
-If this results in errors such as `error in encoder thread: Failed to initialize vulkan frame context: Invalid argument`, then try adding `VK_DRIVER_FILES=/usr/share/vulkan/icd.d/nvidia_icd.json` to the above command-line options.
+If this results in errors such as `error in encoder thread: Failed to initialize vulkan frame context: Invalid argument`, then try adding `VK_DRIVER_FILES=/usr/share/vulkan/icd.d/nvidia_icd.json` to the above launch options.
 
 - Go to `/usr/share/vulkan/icd.d` and ensure `nvidia_icd.json` exists. It may also be under the name `nvidia_icd.x86_64.json`, in which case you should adjust `VK_DRIVER_FILES` accordingly.
 - On older distributions, `VK_DRIVER_FILES` may not be available, in which case you should use the deprecated but equivalent `VK_ICD_FILENAMES`.
@@ -92,7 +92,7 @@ When using older Gnome versions (<47) under Wayland, issues may be caused by DRM
 
 ### Fix
 
-Prepend `WAYLAND_DISPLAY=''` to the SteamVR command-line options to force XWayland on SteamVR.
+Prepend `WAYLAND_DISPLAY=''` to the SteamVR launch options to force XWayland on SteamVR.
 
 ## The view shakes when using SlimeVR
 

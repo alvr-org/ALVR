@@ -24,6 +24,11 @@ pub fn registered_button_set(
             .unwrap()
             .button_set
             .clone(),
+        ControllersEmulationMode::PSVR2Sense => CONTROLLER_PROFILE_INFO
+            .get(&PSVR2_CONTROLLER_PROFILE_ID)
+            .unwrap()
+            .button_set
+            .clone(),
         ControllersEmulationMode::ValveIndex => CONTROLLER_PROFILE_INFO
             .get(&INDEX_CONTROLLER_PROFILE_ID)
             .unwrap()
@@ -258,6 +263,18 @@ pub fn automatic_bindings(
             ));
         }
     }
+    if s_set.contains(&*LEFT_SYSTEM_CLICK_ID) {
+        let click = click(*LEFT_SYSTEM_CLICK_ID);
+        if d_set.contains(&*LEFT_SYSTEM_CLICK_ID) {
+            bindings.extend(map_button_pair_automatic(
+                click,
+                ct(s_set, *LEFT_SYSTEM_CLICK_ID, *LEFT_SYSTEM_TOUCH_ID),
+                config,
+            ));
+        } else if d_set.contains(&*LEFT_MENU_CLICK_ID) {
+            bindings.extend(map_button_pair_automatic(click, click, config));
+        }
+    }
     if s_set.contains(&*RIGHT_MENU_CLICK_ID) {
         let click = click(*RIGHT_MENU_CLICK_ID);
         if d_set.contains(&*RIGHT_MENU_CLICK_ID) {
@@ -268,6 +285,18 @@ pub fn automatic_bindings(
                 ct(s_set, *RIGHT_SYSTEM_CLICK_ID, *RIGHT_SYSTEM_TOUCH_ID),
                 config,
             ));
+        }
+    }
+    if s_set.contains(&*RIGHT_SYSTEM_CLICK_ID) {
+        let click = click(*RIGHT_SYSTEM_CLICK_ID);
+        if d_set.contains(&*RIGHT_SYSTEM_CLICK_ID) {
+            bindings.extend(map_button_pair_automatic(
+                click,
+                ct(s_set, *RIGHT_SYSTEM_CLICK_ID, *RIGHT_SYSTEM_TOUCH_ID),
+                config,
+            ));
+        } else if d_set.contains(&*RIGHT_MENU_CLICK_ID) {
+            bindings.extend(map_button_pair_automatic(click, click, config));
         }
     }
 

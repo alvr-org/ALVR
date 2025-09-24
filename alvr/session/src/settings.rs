@@ -1364,7 +1364,6 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     #[schema(strings(
         help = "Allow cross-origin browser requests to control ALVR settings remotely."
     ))]
-    #[schema(flag = "real-time")]
     pub allow_untrusted_http: bool,
 
     #[schema(strings(

@@ -7,7 +7,7 @@ use std::{fs, path::PathBuf, sync::LazyLock};
 use tokio::sync::broadcast;
 
 static CHANNEL_CAPACITY: usize = 256;
-pub static LOGGING_EVENTS_SENDER: LazyLock<broadcast::Sender<Event>> =
+pub static EVENTS_SENDER: LazyLock<broadcast::Sender<Event>> =
     LazyLock::new(|| broadcast::channel(CHANNEL_CAPACITY).0);
 
 pub fn init_logging(session_log_path: Option<PathBuf>, crash_log_path: Option<PathBuf>) {
@@ -57,7 +57,7 @@ pub fn init_logging(session_log_path: Option<PathBuf>, crash_log_path: Option<Pa
                 event.message(),
             ));
 
-            LOGGING_EVENTS_SENDER.send(event).ok();
+            EVENTS_SENDER.send(event).ok();
         });
 
     if cfg!(debug_assertions) {

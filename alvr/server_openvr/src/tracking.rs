@@ -2,7 +2,7 @@ use crate::{FfiDeviceMotion, FfiFov, FfiHandSkeleton, FfiPose, FfiQuat, FfiViewP
 use alvr_common::{
     BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID,
     BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, DeviceMotion, Fov, HAND_LEFT_ID,
-    Pose, ViewParams,
+    HAND_RIGHT_ID, Pose, ViewParams,
     glam::{EulerRot, Quat, Vec3},
     settings_schema::Switch,
 };
@@ -261,4 +261,45 @@ pub fn to_openvr_ffi_hand_skeleton(
     ];
 
     to_ffi_skeleton(&skeleton)
+}
+
+pub fn offset_motion(config: &HeadsetConfig, device_id: u64, motion: &mut DeviceMotion) {
+    let (t, r) = if let Switch::Enabled(controllers) = &config.controllers {
+        (
+            controllers.left_controller_position_offset,
+            controllers.left_controller_rotation_offset,
+        )
+    } else {
+        return;
+    };
+
+    let pose_offset = if device_id == *HAND_LEFT_ID {
+        Pose {
+            orientation: Quat::from_euler(
+                EulerRot::XYZ,
+                r[0] * DEG_TO_RAD,
+                r[1] * DEG_TO_RAD,
+                r[2] * DEG_TO_RAD,
+            ),
+            position: Vec3::new(t[0], t[1], t[2]),
+        }
+    } else if device_id == *HAND_RIGHT_ID {
+        Pose {
+            orientation: Quat::from_euler(
+                EulerRot::XYZ,
+                r[0] * DEG_TO_RAD,
+                -r[1] * DEG_TO_RAD,
+                -r[2] * DEG_TO_RAD,
+            ),
+            position: Vec3::new(-t[0], t[1], t[2]),
+        }
+    } else {
+        return;
+    };
+
+    motion.pose = motion.pose * pose_offset;
+    motion.linear_velocity += motion
+        .angular_velocity
+        .cross(motion.pose.orientation * pose_offset.position);
+    motion.angular_velocity = motion.pose.orientation.conjugate() * motion.angular_velocity;
 }

@@ -117,16 +117,22 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                         let ffi_left_controller_motion = context
                             .get_device_motion(*HAND_LEFT_ID, poll_timestamp)
                             .map(|motion| {
-                                let motion =
+                                let mut motion =
                                     motion.predict(poll_timestamp, target_controller_timestamp);
+                                tracking::offset_motion(headset_config, *HAND_LEFT_ID, &mut motion);
                                 tracking::to_ffi_motion(*HAND_LEFT_ID, motion)
                             })
                             .filter(|_| tracked);
                         let ffi_right_controller_motion = context
                             .get_device_motion(*HAND_RIGHT_ID, poll_timestamp)
                             .map(|motion| {
-                                let motion =
+                                let mut motion =
                                     motion.predict(poll_timestamp, target_controller_timestamp);
+                                tracking::offset_motion(
+                                    headset_config,
+                                    *HAND_RIGHT_ID,
+                                    &mut motion,
+                                );
                                 tracking::to_ffi_motion(*HAND_RIGHT_ID, motion)
                             })
                             .filter(|_| tracked);

@@ -18,7 +18,7 @@ Related issue:
 
 ## The ALVR driver doesn't get detected by SteamVR (even after vrmonitor fix)
 
-This can be related to use of an AUR package on Arch.
+This can be related to the use of an AUR package on Arch.
 
 ### Fix
 
@@ -52,7 +52,7 @@ For other distros (e.g. Manjaro):
 
 ## Nvidia driver version requirements
 
-ALVR requires the Nvidia driver version >=535 and CUDA version >=12.1. If your configuration doesn't meet these requirements, SteamVR or the encoder might not work.
+ALVR requires the Nvidia driver version 535 or newer and CUDA version 12.1 or newer. If your configuration doesn't meet these requirements, SteamVR or the encoder might not work.
 
 ### Fix
 
@@ -88,7 +88,7 @@ You may need to run the entire Steam client itself via PRIME render offload. Fir
 
 ## Wayland
 
-When using older Gnome versions (<47) under Wayland, issues may be caused by DRM leasing not being available.
+When using older Gnome versions (older than 47) under Wayland, issues may be caused by DRM leasing not being available.
 
 ### Fix
 
@@ -116,7 +116,7 @@ Audio and/or microphone are enabled in presets, but you still can't hear audio o
 
 ### Fix
 
-Make sure you select `ALVR Audio` and/or `ALVR Microphone` in your device list as default **after** connecting the headset. As soon as the headset is disconnected, the devices will be removed. If you set them as default, they will be automatically selected whenever they show up, and you won't need to do it manually ever again. If you don't appear to have the audio devices, or have PipeWire errors in your logs, ensure you have `pipewire` version >=0.3.49 installed by using the command `pipewire --version`. For older Debian (<=11) or Ubuntu-based (<=22.04) distributions, you can check the [pipewire-upstream](https://github.com/pipewire-debian/pipewire-debian) page for instructions on installing newer PipeWire versions.
+Make sure you select `ALVR Audio` and/or `ALVR Microphone` in your device list as default **after** connecting the headset. As soon as the headset is disconnected, the devices will be removed. If you set them as default, they will be automatically selected whenever they show up, and you won't need to do it manually ever again. If you don't appear to have the audio devices, or have PipeWire errors in your logs, ensure you have `pipewire` version 0.3.49 or newer installed by using the command `pipewire --version`. For older Debian (version 11 or older) or Ubuntu-based (version 22.04 or older) distributions, you can check the [pipewire-upstream](https://github.com/pipewire-debian/pipewire-debian) page for instructions on installing newer PipeWire versions.
 
 ## Low AMDGPU performance and shutters
 

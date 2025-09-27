@@ -1,3 +1,4 @@
+use crate::dashboard::ServerRequest;
 use alvr_common::{
     ALVR_VERSION, RelaxedAtomic, debug, error, info,
     parking_lot::Mutex,
@@ -5,9 +6,10 @@ use alvr_common::{
     warn,
 };
 use alvr_events::{Event, EventType};
-use alvr_packets::ServerRequest;
+use alvr_packets::FirewallRulesAction;
 use alvr_server_io::ServerSessionManager;
 use eframe::egui;
+use serde::Serialize;
 use std::{
     io::ErrorKind,
     net::{SocketAddr, TcpStream},
@@ -209,8 +211,8 @@ impl DataSources {
             let session_source = Arc::clone(&session_source);
             let events_sender = events_sender.clone();
             move || {
-                let uri = format!("http://127.0.0.1:{port}/api/dashboard-request");
-                let request_agent: ureq::Agent = ureq::Agent::config_builder()
+                let base_uri = format!("http://127.0.0.1:{port}");
+                let rq: ureq::Agent = ureq::Agent::config_builder()
                     .timeout_global(Some(LOCAL_REQUEST_TIMEOUT))
                     .build()
                     .into();
@@ -233,25 +235,36 @@ impl DataSources {
 
                                     report_session_local(&context, &events_sender, session_manager);
                                 }
-                                ServerRequest::SetValues(descs) => {
-                                    if let Err(e) = session_manager.set_values(descs) {
+                                ServerRequest::SetSessionValues(values) => {
+                                    if let Err(e) = session_manager.set_session_values(values) {
                                         error!("Failed to set session value: {e}")
                                     }
 
                                     report_session_local(&context, &events_sender, session_manager);
                                 }
                                 ServerRequest::UpdateClientList { hostname, action } => {
-                                    session_manager.update_client_list(hostname, action);
+                                    session_manager.update_client_connections(hostname, action);
 
                                     report_session_local(&context, &events_sender, session_manager);
                                 }
-                                ServerRequest::FirewallRules(action) => {
-                                    if alvr_server_io::firewall_rules(action, &filesystem_layout)
-                                        .is_ok()
-                                    {
-                                        info!("Setting firewall rules succeeded!");
+                                ServerRequest::AddFirewallRules => {
+                                    if let Err(e) = alvr_server_io::firewall_rules(
+                                        FirewallRulesAction::Add,
+                                        &filesystem_layout,
+                                    ) {
+                                        error!("Failed to add firewall rules! code: {e}");
                                     } else {
-                                        error!("Setting firewall rules failed!");
+                                        info!("Successfully added firewall rules!");
+                                    }
+                                }
+                                ServerRequest::RemoveFirewallRules => {
+                                    if let Err(e) = alvr_server_io::firewall_rules(
+                                        FirewallRulesAction::Remove,
+                                        &filesystem_layout,
+                                    ) {
+                                        error!("Failed to remove firewall rules! code: {e}");
+                                    } else {
+                                        info!("Successfully removed firewall rules!");
                                     }
                                 }
                                 ServerRequest::RegisterAlvrDriver => {
@@ -302,12 +315,65 @@ impl DataSources {
                                 }
                             }
                         } else {
-                            // todo: this should be changed to a GET request, requires removing body
-                            request_agent
-                                .post(&uri)
-                                .header("X-ALVR", "true")
-                                .send_json(&request)
-                                .ok();
+                            let get = |path: &str| {
+                                rq.get(format!("{base_uri}{path}"))
+                                    .header("X-ALVR", "true")
+                                    .call()
+                                    .ok();
+                            };
+
+                            fn post_body(
+                                rq: &ureq::Agent,
+                                base_uri: &str,
+                                path: &str,
+                                body: Option<impl Serialize>,
+                            ) {
+                                let builder = rq
+                                    .post(format!("{base_uri}{path}"))
+                                    .header("X-ALVR", "true");
+                                if let Some(body) = body {
+                                    builder.send_json(body).ok();
+                                } else {
+                                    builder.send_empty().ok();
+                                }
+                            }
+                            let post = |path: &str| post_body(&rq, &base_uri, path, None::<()>);
+
+                            match request {
+                                ServerRequest::Log(entry) => {
+                                    post_body(&rq, &base_uri, "/api/log", Some(entry))
+                                }
+                                ServerRequest::GetSession => get("/api/session"),
+                                ServerRequest::UpdateSession(session) => {
+                                    post_body(&rq, &base_uri, "/api/session", Some(&*session))
+                                }
+                                ServerRequest::SetSessionValues(values) => {
+                                    post_body(&rq, &base_uri, "/api/session/values", Some(values))
+                                }
+                                ServerRequest::UpdateClientList { hostname, action } => post_body(
+                                    &rq,
+                                    &base_uri,
+                                    "/api/session/client-connections",
+                                    Some((hostname, action)),
+                                ),
+                                ServerRequest::AddFirewallRules => post("/api/firewall-rules/add"),
+                                ServerRequest::RemoveFirewallRules => {
+                                    post("/api/firewall-rules/remove")
+                                }
+                                ServerRequest::GetDriverList => get("/api/drivers"),
+                                ServerRequest::RegisterAlvrDriver => {
+                                    post("/api/drivers/register-alvr")
+                                }
+                                ServerRequest::UnregisterDriver(path) => {
+                                    post_body(&rq, &base_uri, "/api/drivers/unregister", Some(path))
+                                }
+                                ServerRequest::CaptureFrame => post("/api/capture-frame"),
+                                ServerRequest::InsertIdr => post("/api/insert-idr"),
+                                ServerRequest::StartRecording => post("/api/recording/start"),
+                                ServerRequest::StopRecording => post("/api/recording/stop"),
+                                ServerRequest::RestartSteamvr => post("/api/restart-steamvr"),
+                                ServerRequest::ShutdownSteamvr => post("/api/shutdown-steamvr"),
+                            }
                         }
                     }
 

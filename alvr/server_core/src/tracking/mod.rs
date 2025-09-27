@@ -356,17 +356,11 @@ pub fn tracking_loop(
                 .map(|(id, _)| *id)
                 .collect::<Vec<_>>();
 
-            {
-                let velocity_multiplier = SESSION_MANAGER
-                    .read()
-                    .settings()
-                    .extra
-                    .velocities_multiplier;
-                tracking.device_motions.iter_mut().for_each(|(_, motion)| {
-                    motion.linear_velocity *= velocity_multiplier;
-                    motion.angular_velocity *= velocity_multiplier;
-                });
-            }
+            let velocity_multiplier = session_manager_lock.settings().extra.velocities_multiplier;
+            tracking.device_motions.iter_mut().for_each(|(_, motion)| {
+                motion.linear_velocity *= velocity_multiplier;
+                motion.angular_velocity *= velocity_multiplier;
+            });
 
             tracking_manager_lock.report_device_motions(
                 headset_config,

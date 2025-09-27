@@ -6,7 +6,7 @@ use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     settings_schema::Switch,
 };
-use alvr_session::HeadsetConfig;
+use alvr_session::{ControllersConfig, HeadsetConfig};
 use std::{
     f32::consts::{FRAC_PI_2, PI},
     sync::LazyLock,
@@ -263,15 +263,14 @@ pub fn to_openvr_ffi_hand_skeleton(
     to_ffi_skeleton(&skeleton)
 }
 
-pub fn offset_motion(config: &HeadsetConfig, device_id: u64, motion: &mut DeviceMotion) {
-    let (t, r) = if let Switch::Enabled(controllers) = &config.controllers {
-        (
-            controllers.left_controller_position_offset,
-            controllers.left_controller_rotation_offset,
-        )
-    } else {
-        return;
-    };
+// Apply controller offsets workarounds for SteamVR
+pub fn offset_controller_motion(
+    config: &ControllersConfig,
+    device_id: u64,
+    motion: DeviceMotion,
+) -> DeviceMotion {
+    let t = config.left_controller_position_offset;
+    let r = config.left_controller_rotation_offset;
 
     let pose_offset = if device_id == *HAND_LEFT_ID {
         Pose {
@@ -294,12 +293,15 @@ pub fn offset_motion(config: &HeadsetConfig, device_id: u64, motion: &mut Device
             position: Vec3::new(-t[0], t[1], t[2]),
         }
     } else {
-        return;
+        panic!("device_id is not associated to a controller");
     };
 
-    motion.pose = motion.pose * pose_offset;
-    motion.linear_velocity += motion
-        .angular_velocity
-        .cross(motion.pose.orientation * pose_offset.position);
-    motion.angular_velocity = motion.pose.orientation.conjugate() * motion.angular_velocity;
+    DeviceMotion {
+        pose: motion.pose * pose_offset,
+        linear_velocity: motion.linear_velocity
+            + motion
+                .angular_velocity
+                .cross(motion.pose.orientation * pose_offset.position),
+        angular_velocity: motion.pose.orientation.conjugate() * motion.angular_velocity,
+    }
 }

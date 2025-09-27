@@ -19,7 +19,7 @@ use alvr_common::{
 };
 use alvr_events::{AdbEvent, ButtonEvent, EventType};
 use alvr_packets::{
-    AUDIO, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
+    AUDIO, ClientConnectionResult, ClientConnectionsAction, ClientControlPacket, ClientStatistics,
     HAPTICS, NegotiatedStreamingConfig, NegotiatedStreamingConfigExt, RealTimeConfig, STATISTICS,
     ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData, VIDEO, VideoPacketHeader,
 };
@@ -397,17 +397,19 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                 let trusted = {
                     let mut session_manager = SESSION_MANAGER.write();
 
-                    session_manager.update_client_list(
+                    session_manager.update_client_connections(
                         client_hostname.clone(),
-                        ClientListAction::AddIfMissing {
+                        ClientConnectionsAction::AddIfMissing {
                             trusted: false,
                             manual_ips: vec![],
                         },
                     );
 
                     if config.auto_trust_clients {
-                        session_manager
-                            .update_client_list(client_hostname.clone(), ClientListAction::Trust);
+                        session_manager.update_client_connections(
+                            client_hostname.clone(),
+                            ClientConnectionsAction::Trust,
+                        );
                     }
 
                     session_manager
@@ -485,13 +487,13 @@ fn try_connect(
             let action = if clients_to_be_removed.contains(&client_hostname) {
                 clients_to_be_removed.remove(&client_hostname);
 
-                ClientListAction::RemoveEntry
+                ClientConnectionsAction::RemoveEntry
             } else {
-                ClientListAction::SetConnectionState(ConnectionState::Disconnected)
+                ClientConnectionsAction::SetConnectionState(ConnectionState::Disconnected)
             };
             SESSION_MANAGER
                 .write()
-                .update_client_list(client_hostname, action);
+                .update_client_connections(client_hostname, action);
         }
     }));
 
@@ -513,13 +515,13 @@ fn connection_pipeline(
     let mut session_manager_lock = SESSION_MANAGER.write();
 
     dbg_connection!("connection_pipeline: Setting client state in session");
-    session_manager_lock.update_client_list(
+    session_manager_lock.update_client_connections(
         client_hostname.clone(),
-        ClientListAction::SetConnectionState(ConnectionState::Connecting),
+        ClientConnectionsAction::SetConnectionState(ConnectionState::Connecting),
     );
-    session_manager_lock.update_client_list(
+    session_manager_lock.update_client_connections(
         client_hostname.clone(),
-        ClientListAction::UpdateCurrentIp(Some(client_ip)),
+        ClientConnectionsAction::UpdateCurrentIp(Some(client_ip)),
     );
 
     let disconnect_notif = Arc::new(Condvar::new());
@@ -544,9 +546,9 @@ fn connection_pipeline(
         ..
     } = connection_result
     {
-        session_manager_lock.update_client_list(
+        session_manager_lock.update_client_connections(
             client_hostname.clone(),
-            ClientListAction::SetDisplayName(display_name),
+            ClientConnectionsAction::SetDisplayName(display_name),
         );
 
         if client_protocol_id != alvr_common::protocol_id_u64() {
@@ -1343,9 +1345,9 @@ fn connection_pipeline(
         crate::create_recording_file(&ctx, session_manager_lock.settings());
     }
 
-    session_manager_lock.update_client_list(
+    session_manager_lock.update_client_connections(
         client_hostname.clone(),
-        ClientListAction::SetConnectionState(ConnectionState::Streaming),
+        ClientConnectionsAction::SetConnectionState(ConnectionState::Streaming),
     );
 
     ctx.events_sender
@@ -1362,9 +1364,9 @@ fn connection_pipeline(
 
     *ctx.video_recording_file.lock() = None;
 
-    session_manager_lock.update_client_list(
+    session_manager_lock.update_client_connections(
         client_hostname,
-        ClientListAction::SetConnectionState(ConnectionState::Disconnecting),
+        ClientConnectionsAction::SetConnectionState(ConnectionState::Disconnecting),
     );
 
     let enable_on_disconnect_script = session_manager_lock

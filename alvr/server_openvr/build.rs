@@ -112,6 +112,7 @@ fn main() {
             vpl_lib_path.to_string_lossy()
         );
 
+        build.define("ONEVPL_EXPERIMENTAL", None);
         build.include(vpl_include_path);
         println!("cargo:rustc-link-lib=static=vpl");
     }

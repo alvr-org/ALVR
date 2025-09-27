@@ -1,4 +1,4 @@
-use alvr_packets::{FirewallRulesAction, ServerRequest};
+use crate::dashboard::ServerRequest;
 use eframe::{
     egui::{Button, Label, Layout, RichText, Ui},
     emath::Align,
@@ -137,7 +137,7 @@ This requires administrator rights!",
                 |ui| {
                     if ui.button("Add firewall rules").clicked() {
                         request = Some(SetupWizardRequest::ServerRequest(
-                            ServerRequest::FirewallRules(FirewallRulesAction::Add),
+                            ServerRequest::AddFirewallRules,
                         ));
                     }
                 },

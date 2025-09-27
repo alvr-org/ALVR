@@ -65,7 +65,6 @@ pub struct ConnectionContext {
     pub statistics_manager: Mutex<Option<StatisticsManager>>,
     pub decoder_callback: Mutex<Option<Box<DecoderCallback>>>,
     pub global_view_params_queue: Mutex<VecDeque<(Duration, [ViewParams; 2])>>,
-    pub velocities_multiplier: RwLock<f32>,
     pub max_prediction: RwLock<Duration>,
 }
 
@@ -196,7 +195,6 @@ fn connection_pipeline(
     let settings = stream_config.settings;
     let negotiated_config = stream_config.negotiated_config;
 
-    *ctx.velocities_multiplier.write() = settings.extra.velocities_multiplier;
     *ctx.max_prediction.write() = Duration::from_millis(settings.headset.max_prediction_ms);
 
     *ctx.statistics_manager.lock() = Some(StatisticsManager::new(

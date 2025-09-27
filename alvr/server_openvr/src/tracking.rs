@@ -2,11 +2,11 @@ use crate::{FfiDeviceMotion, FfiFov, FfiHandSkeleton, FfiPose, FfiQuat, FfiViewP
 use alvr_common::{
     BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID,
     BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, DeviceMotion, Fov, HAND_LEFT_ID,
-    Pose, ViewParams,
+    HAND_RIGHT_ID, Pose, ViewParams,
     glam::{EulerRot, Quat, Vec3},
     settings_schema::Switch,
 };
-use alvr_session::HeadsetConfig;
+use alvr_session::{ControllersConfig, HeadsetConfig};
 use std::{
     f32::consts::{FRAC_PI_2, PI},
     sync::LazyLock,
@@ -261,4 +261,47 @@ pub fn to_openvr_ffi_hand_skeleton(
     ];
 
     to_ffi_skeleton(&skeleton)
+}
+
+// Apply controller offsets workarounds for SteamVR
+pub fn offset_controller_motion(
+    config: &ControllersConfig,
+    device_id: u64,
+    motion: DeviceMotion,
+) -> DeviceMotion {
+    let t = config.left_controller_position_offset;
+    let r = config.left_controller_rotation_offset;
+
+    let pose_offset = if device_id == *HAND_LEFT_ID {
+        Pose {
+            orientation: Quat::from_euler(
+                EulerRot::XYZ,
+                r[0] * DEG_TO_RAD,
+                r[1] * DEG_TO_RAD,
+                r[2] * DEG_TO_RAD,
+            ),
+            position: Vec3::new(t[0], t[1], t[2]),
+        }
+    } else if device_id == *HAND_RIGHT_ID {
+        Pose {
+            orientation: Quat::from_euler(
+                EulerRot::XYZ,
+                r[0] * DEG_TO_RAD,
+                -r[1] * DEG_TO_RAD,
+                -r[2] * DEG_TO_RAD,
+            ),
+            position: Vec3::new(-t[0], t[1], t[2]),
+        }
+    } else {
+        panic!("device_id is not associated to a controller");
+    };
+
+    DeviceMotion {
+        pose: motion.pose * pose_offset,
+        linear_velocity: motion.linear_velocity
+            + motion
+                .angular_velocity
+                .cross(motion.pose.orientation * pose_offset.position),
+        angular_velocity: motion.pose.orientation.conjugate() * motion.angular_velocity,
+    }
 }

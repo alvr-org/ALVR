@@ -16,7 +16,7 @@ use alvr_common::{
     BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID,
     BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, ConnectionError,
     DEVICE_ID_TO_PATH, DeviceMotion, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID, Pose, ViewParams,
-    glam::{EulerRot, Quat, Vec3},
+    glam::{Quat, Vec3},
     parking_lot::Mutex,
 };
 use alvr_events::{EventType, TrackingEvent};
@@ -138,21 +138,10 @@ impl TrackingManager {
         ]);
 
         if let Switch::Enabled(controllers) = &headset_config.controllers {
-            let t = controllers.left_controller_position_offset;
-            let r = controllers.left_controller_rotation_offset;
-
             device_motion_configs.insert(
                 *HAND_LEFT_ID,
                 MotionConfig {
-                    pose_offset: Pose {
-                        orientation: Quat::from_euler(
-                            EulerRot::XYZ,
-                            r[0] * DEG_TO_RAD,
-                            r[1] * DEG_TO_RAD,
-                            r[2] * DEG_TO_RAD,
-                        ),
-                        position: Vec3::new(t[0], t[1], t[2]),
-                    },
+                    pose_offset: Pose::IDENTITY,
                     linear_velocity_cutoff: controllers.linear_velocity_cutoff,
                     angular_velocity_cutoff: controllers.angular_velocity_cutoff * DEG_TO_RAD,
                 },
@@ -161,15 +150,7 @@ impl TrackingManager {
             device_motion_configs.insert(
                 *HAND_RIGHT_ID,
                 MotionConfig {
-                    pose_offset: Pose {
-                        orientation: Quat::from_euler(
-                            EulerRot::XYZ,
-                            r[0] * DEG_TO_RAD,
-                            -r[1] * DEG_TO_RAD,
-                            -r[2] * DEG_TO_RAD,
-                        ),
-                        position: Vec3::new(-t[0], t[1], t[2]),
-                    },
+                    pose_offset: Pose::IDENTITY,
                     linear_velocity_cutoff: controllers.linear_velocity_cutoff,
                     angular_velocity_cutoff: controllers.angular_velocity_cutoff * DEG_TO_RAD,
                 },
@@ -182,18 +163,9 @@ impl TrackingManager {
             }
 
             if let Some(config) = device_motion_configs.get(&device_id) {
-                // Recenter
                 motion = self.recenter_motion(motion);
 
-                // Apply custom transform
-                motion.pose.orientation *= config.pose_offset.orientation;
-                motion.pose.position += motion.pose.orientation * config.pose_offset.position;
-
-                motion.linear_velocity += motion
-                    .angular_velocity
-                    .cross(motion.pose.orientation * config.pose_offset.position);
-                motion.angular_velocity =
-                    motion.pose.orientation.conjugate() * motion.angular_velocity;
+                motion.pose = motion.pose * config.pose_offset;
 
                 fn cutoff(v: Vec3, threshold: f32) -> Vec3 {
                     if v.length_squared() > threshold * threshold {
@@ -383,6 +355,12 @@ pub fn tracking_loop(
                 .iter()
                 .map(|(id, _)| *id)
                 .collect::<Vec<_>>();
+
+            let velocity_multiplier = session_manager_lock.settings().extra.velocities_multiplier;
+            tracking.device_motions.iter_mut().for_each(|(_, motion)| {
+                motion.linear_velocity *= velocity_multiplier;
+                motion.angular_velocity *= velocity_multiplier;
+            });
 
             tracking_manager_lock.report_device_motions(
                 headset_config,

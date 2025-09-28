@@ -14,7 +14,7 @@ pub mod text;
 pub mod up_down;
 pub mod vector;
 
-use alvr_packets::{PathSegment, PathValuePair};
+use alvr_packets::{Path, PathSegment, PathValuePair};
 use alvr_session::settings_schema::SchemaNode;
 use eframe::egui::Ui;
 use serde_json as json;
@@ -73,7 +73,7 @@ pub fn json_values_eq(a: &serde_json::Value, b: &serde_json::Value) -> bool {
 
 #[derive(Clone)]
 pub struct NestingInfo {
-    pub path: Vec<PathSegment>,
+    pub path: Path,
     pub indentation_level: usize,
 }
 

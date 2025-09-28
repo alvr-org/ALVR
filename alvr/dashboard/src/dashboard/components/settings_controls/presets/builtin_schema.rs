@@ -1,40 +1,18 @@
-use super::schema::{
-    HigherOrderChoiceOption, HigherOrderChoiceSchema, PresetModifier, PresetSchemaNode,
-};
-use crate::dashboard::components::presets::schema::PresetModifierOperation;
+use super::schema::{HigherOrderChoiceOption, HigherOrderChoiceSchema, PresetSchemaNode};
+use alvr_packets::parse_path_value_pair as parse;
 use settings_schema::ChoiceControlType;
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-};
-
-fn string_modifier(target_path: &str, value: &str) -> PresetModifier {
-    PresetModifier {
-        target_path: target_path.into(),
-        operation: PresetModifierOperation::Assign(serde_json::Value::String(value.into())),
-    }
-}
-fn num_modifier(target_path: &str, value: &str) -> PresetModifier {
-    PresetModifier {
-        target_path: target_path.into(),
-        operation: PresetModifierOperation::Assign(serde_json::Value::Number(
-            serde_json::Number::from_str(value).unwrap(),
-        )),
-    }
-}
-fn bool_modifier(target_path: &str, value: bool) -> PresetModifier {
-    PresetModifier {
-        target_path: target_path.into(),
-        operation: PresetModifierOperation::Assign(serde_json::Value::Bool(value)),
-    }
-}
+use std::collections::{HashMap, HashSet};
 
 pub fn resolution_schema() -> PresetSchemaNode {
+    const PREFIX: &str = "session_settings.video";
+
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
         name: "resolution".into(),
         strings: [(
             "help".into(),
-            "Choosing too high resolution (commonly 'High (width: 5184)') may result in high latency or black screen.".into(),
+            "Choosing too high resolution (commonly 'High (width: 5184)') \
+             may result in high latency or black screen."
+                .into(),
         )]
         .into_iter()
         .collect(),
@@ -49,39 +27,33 @@ pub fn resolution_schema() -> PresetSchemaNode {
         ]
         .into_iter()
         .map(|(key, value)| HigherOrderChoiceOption {
-            display_name: key.into(),
+            name: key.into(),
             modifiers: [
-                string_modifier(
-                    "session_settings.video.transcoding_view_resolution.variant",
-                    "Absolute",
-                ),
-                num_modifier(
-                    "session_settings.video.transcoding_view_resolution.Absolute.width",
-                    value,
-                ),
-                bool_modifier(
-                    "session_settings.video.transcoding_view_resolution.Absolute.height.set",
-                    false,
-                ),
-                string_modifier(
-                    "session_settings.video.emulated_headset_view_resolution.variant",
-                    "Absolute",
-                ),
-                num_modifier(
-                    "session_settings.video.emulated_headset_view_resolution.Absolute.width",
-                    value,
-                ),
-                bool_modifier(
-                    "session_settings.video.emulated_headset_view_resolution.Absolute.height.set",
-                    false,
-                ),
+                parse(&format!(
+                    "{PREFIX}.transcoding_view_resolution.variant = Absolute"
+                )),
+                parse(&format!(
+                    "{PREFIX}.transcoding_view_resolution.Absolute.width = {value}"
+                )),
+                parse(&format!(
+                    "{PREFIX}.transcoding_view_resolution.Absolute.height.set = false"
+                )),
+                parse(&format!(
+                    "{PREFIX}.emulated_headset_view_resolution.variant = Absolute"
+                )),
+                parse(&format!(
+                    "{PREFIX}.emulated_headset_view_resolution.Absolute.width = {value}"
+                )),
+                parse(&format!(
+                    "{PREFIX}.emulated_headset_view_resolution.Absolute.height.set = false"
+                )),
             ]
             .into_iter()
             .collect(),
             content: None,
         })
         .collect(),
-        default_option_display_name: "Medium (width: 4288)".into(),
+        default_option_name: "Medium (width: 4288)".into(),
         gui: ChoiceControlType::Dropdown,
     })
 }
@@ -94,17 +66,17 @@ pub fn framerate_schema() -> PresetSchemaNode {
         options: [60, 72, 80, 90, 120]
             .into_iter()
             .map(|framerate| HigherOrderChoiceOption {
-                display_name: format!("{framerate}Hz"),
-                modifiers: [num_modifier(
-                    "session_settings.video.preferred_fps",
-                    &format!("{:?}", framerate as f32),
-                )]
+                name: format!("{framerate}Hz"),
+                modifiers: [parse(&format!(
+                    "session_settings.video.preferred_fps = {}",
+                    framerate as f32
+                ))]
                 .into_iter()
                 .collect(),
                 content: None,
             })
             .collect(),
-        default_option_display_name: "72Hz".into(),
+        default_option_name: "72Hz".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -114,8 +86,9 @@ pub fn codec_preset_schema() -> PresetSchemaNode {
         name: "codec_preset".into(),
         strings: [(
             "help".into(),
-            "AV1 encoding is only supported on RDNA3, Ada Lovelace, Intel ARC or newer GPUs (AMD RX 7xxx+ , NVIDIA RTX 40xx+, Intel ARC)
-and on headsets that have XR2 Gen 2 onboard (Quest 3, Pico 4 Ultra)"
+            "AV1 encoding is only supported on RDNA3, Ada Lovelace, Intel ARC or newer GPUs \
+             (AMD RX 7xxx+ , NVIDIA RTX 40xx+, Intel ARC) and on headsets that have XR2 Gen 2 \
+             onboard (Quest 3, Pico 4 Ultra)"
                 .into(),
         )]
         .into_iter()
@@ -124,17 +97,16 @@ and on headsets that have XR2 Gen 2 onboard (Quest 3, Pico 4 Ultra)"
         options: [("H264", "H264"), ("HEVC", "Hevc"), ("AV1", "AV1")]
             .into_iter()
             .map(|(key, val_codec)| HigherOrderChoiceOption {
-                display_name: key.into(),
-                modifiers: [string_modifier(
-                    "session_settings.video.preferred_codec.variant",
-                    val_codec,
-                )]
+                name: key.into(),
+                modifiers: [parse(&format!(
+                    "session_settings.video.preferred_codec.variant = {val_codec}"
+                ))]
                 .into_iter()
                 .collect(),
                 content: None,
             })
             .collect(),
-        default_option_display_name: "H264".into(),
+        default_option_name: "H264".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -156,23 +128,21 @@ pub fn encoder_preset_schema() -> PresetSchemaNode {
         ]
         .into_iter()
         .map(|(key, val_amd, val_nv)| HigherOrderChoiceOption {
-            display_name: key.into(),
+            name: key.into(),
             modifiers: [
-                string_modifier(
-                    "session_settings.video.encoder_config.nvenc.quality_preset.variant",
-                    val_nv,
-                ),
-                string_modifier(
-                    "session_settings.video.encoder_config.quality_preset.variant",
-                    val_amd,
-                ),
+                parse(&format!(
+                    "session_settings.video.encoder_config.nvenc.quality_preset.variant = {val_nv}"
+                )),
+                parse(&format!(
+                    "session_settings.video.encoder_config.quality_preset.variant = {val_amd}"
+                )),
             ]
             .into_iter()
             .collect(),
             content: None,
         })
         .collect(),
-        default_option_display_name: "Speed".into(),
+        default_option_name: "Speed".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -200,25 +170,13 @@ shutterring and high encode/decode latency!"
         .into_iter()
         .map(
             |(key, val_size_x, val_size_y, val_edge_x, val_edge_y)| HigherOrderChoiceOption {
-                display_name: key.into(),
+                name: key.into(),
                 modifiers: [
-                    bool_modifier(&format!("{PREFIX}.enabled"), true),
-                    num_modifier(
-                        &format!("{PREFIX}.content.center_size_x"),
-                        &val_size_x.to_string(),
-                    ),
-                    num_modifier(
-                        &format!("{PREFIX}.content.center_size_y"),
-                        &val_size_y.to_string(),
-                    ),
-                    num_modifier(
-                        &format!("{PREFIX}.content.edge_ratio_x"),
-                        &val_edge_x.to_string(),
-                    ),
-                    num_modifier(
-                        &format!("{PREFIX}.content.edge_ratio_y"),
-                        &val_edge_y.to_string(),
-                    ),
+                    parse(&format!("{PREFIX}.enabled = true")),
+                    parse(&format!("{PREFIX}.content.center_size_x = {val_size_x}")),
+                    parse(&format!("{PREFIX}.content.center_size_y = {val_size_y}")),
+                    parse(&format!("{PREFIX}.content.edge_ratio_x = {val_edge_x}")),
+                    parse(&format!("{PREFIX}.content.edge_ratio_y = {val_edge_y}")),
                 ]
                 .into_iter()
                 .collect(),
@@ -226,7 +184,7 @@ shutterring and high encode/decode latency!"
             },
         )
         .collect(),
-        default_option_display_name: "High".into(),
+        default_option_name: "High".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -240,18 +198,12 @@ pub fn game_audio_schema() -> PresetSchemaNode {
         options: [
             HigherOrderChoiceOption {
                 display_name: "Disabled".into(),
-                modifiers: vec![bool_modifier(
-                    "session_settings.audio.game_audio.enabled",
-                    false,
-                )],
+                modifiers: vec!["session_settings.audio.game_audio.enabled = false".into()],
                 content: None,
             },
             HigherOrderChoiceOption {
                 display_name: "Enabled".into(),
-                modifiers: vec![bool_modifier(
-                    "session_settings.audio.game_audio.enabled",
-                    true,
-                )],
+                modifiers: vec!["session_settings.audio.game_audio.enabled = true".into()],
                 content: None,
             },
         ]
@@ -271,18 +223,12 @@ pub fn microphone_schema() -> PresetSchemaNode {
         options: [
             HigherOrderChoiceOption {
                 display_name: "Disabled".into(),
-                modifiers: vec![bool_modifier(
-                    "session_settings.audio.microphone.enabled",
-                    false,
-                )],
+                modifiers: vec![parse("session_settings.audio.microphone.enabled = false")],
                 content: None,
             },
             HigherOrderChoiceOption {
                 display_name: "Enabled".into(),
-                modifiers: vec![bool_modifier(
-                    "session_settings.audio.microphone.enabled",
-                    true,
-                )],
+                modifiers: vec![parse("session_settings.audio.microphone.enabled = true")],
                 content: None,
             },
         ]
@@ -307,28 +253,22 @@ pub fn game_audio_schema() -> PresetSchemaNode {
         flags: HashSet::new(),
         options: vec![
             HigherOrderChoiceOption {
-                display_name: "Disabled".into(),
-                modifiers: vec![bool_modifier(
-                    "session_settings.audio.game_audio.enabled",
-                    false,
-                )],
+                name: "Disabled".into(),
+                modifiers: vec![parse("session_settings.audio.game_audio.enabled = false")],
                 content: None,
             },
             HigherOrderChoiceOption {
-                display_name: "System Default".to_owned(),
+                name: "System Default".to_owned(),
                 modifiers: vec![
-                    bool_modifier("session_settings.audio.game_audio.enabled", true),
-                    bool_modifier(
-                        "session_settings.audio.game_audio.content.device.set",
-                        false,
-                    ),
+                    parse("session_settings.audio.game_audio.enabled = true"),
+                    parse("session_settings.audio.game_audio.content.device.set = false"),
                 ],
                 content: None,
             },
         ]
         .into_iter()
         .collect(),
-        default_option_display_name: "System Default".into(),
+        default_option_name: "System Default".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -336,11 +276,8 @@ pub fn game_audio_schema() -> PresetSchemaNode {
 #[cfg(not(target_os = "linux"))]
 pub fn microphone_schema() -> PresetSchemaNode {
     let mut microhone_options = vec![HigherOrderChoiceOption {
-        display_name: "Disabled".to_owned(),
-        modifiers: vec![bool_modifier(
-            "session_settings.audio.microphone.enabled",
-            false,
-        )],
+        name: "Disabled".to_owned(),
+        modifiers: vec![parse("session_settings.audio.microphone.enabled = false")],
         content: None,
     }];
 
@@ -354,13 +291,12 @@ pub fn microphone_schema() -> PresetSchemaNode {
             ("VoiceMeeterVaio3", "VoiceMeeter VAIO3"),
         ] {
             microhone_options.push(HigherOrderChoiceOption {
-                display_name: display_name.into(),
+                name: display_name.into(),
                 modifiers: vec![
-                    bool_modifier("session_settings.audio.microphone.enabled", true),
-                    string_modifier(
-                        "session_settings.audio.microphone.content.devices.variant",
-                        key,
-                    ),
+                    parse("session_settings.audio.microphone.enabled = true"),
+                    parse(&format!(
+                        "session_settings.audio.microphone.content.devices.variant = {key}"
+                    )),
                 ],
                 content: None,
             })
@@ -372,7 +308,7 @@ pub fn microphone_schema() -> PresetSchemaNode {
         strings: HashMap::new(),
         flags: HashSet::new(),
         options: microhone_options.into_iter().collect(),
-        default_option_display_name: "Disabled".into(),
+        default_option_name: "Disabled".into(),
         gui: ChoiceControlType::Dropdown,
     })
 }
@@ -391,52 +327,49 @@ ALVR bindings: use ALVR hand tracking button bindings. Check the wiki for help.
         flags: ["steamvr-restart".into()].into_iter().collect(),
         options: [
             HigherOrderChoiceOption {
-                display_name: "Disabled".into(),
+                name: "Disabled".into(),
                 modifiers: vec![
-                    bool_modifier("session_settings.headset.controllers.enabled", true),
-                    bool_modifier(
-                        &format!("{PREFIX}.hand_skeleton.content.steamvr_input_2_0"),
-                        false,
-                    ),
-                    bool_modifier(
-                        &format!("{PREFIX}.hand_tracking_interaction.enabled"),
-                        false,
-                    ),
+                    parse("session_settings.headset.controllers.enabled = false"),
+                    parse(&format!(
+                        "{PREFIX}.hand_skeleton.content.steamvr_input_2_0 = false"
+                    )),
+                    parse(&format!(
+                        "{PREFIX}.hand_tracking_interaction.enabled = false"
+                    )),
                 ],
                 content: None,
             },
             HigherOrderChoiceOption {
-                display_name: "SteamVR Input 2.0".into(),
+                name: "SteamVR Input 2.0".into(),
                 modifiers: vec![
-                    bool_modifier("session_settings.headset.controllers.enabled", true),
-                    bool_modifier(&format!("{PREFIX}.hand_skeleton.enabled"), true),
-                    bool_modifier(
-                        &format!("{PREFIX}.hand_skeleton.content.steamvr_input_2_0"),
-                        true,
-                    ),
-                    bool_modifier(
-                        &format!("{PREFIX}.hand_tracking_interaction.enabled"),
-                        false,
-                    ),
+                    parse("session_settings.headset.controllers.enabled = true"),
+                    parse(&format!("{PREFIX}.hand_skeleton.enabled = true")),
+                    parse(&format!(
+                        "{PREFIX}.hand_skeleton.content.steamvr_input_2_0 = true"
+                    )),
+                    parse(&format!(
+                        "{PREFIX}.hand_tracking_interaction.enabled = false"
+                    )),
                 ],
                 content: None,
             },
             HigherOrderChoiceOption {
-                display_name: "ALVR bindings".into(),
+                name: "ALVR bindings".into(),
                 modifiers: vec![
-                    bool_modifier("session_settings.headset.controllers.enabled", true),
-                    bool_modifier(
-                        &format!("{PREFIX}.hand_skeleton.content.steamvr_input_2_0"),
-                        false,
-                    ),
-                    bool_modifier(&format!("{PREFIX}.hand_tracking_interaction.enabled"), true),
+                    parse("session_settings.headset.controllers.enabled = true"),
+                    parse(&format!(
+                        "{PREFIX}.hand_skeleton.content.steamvr_input_2_0 = false"
+                    )),
+                    parse(&format!(
+                        "{PREFIX}.hand_tracking_interaction.enabled = true"
+                    )),
                 ],
                 content: None,
             },
         ]
         .into_iter()
         .collect(),
-        default_option_display_name: "SteamVR Input 2.0".into(),
+        default_option_name: "SteamVR Input 2.0".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -448,39 +381,30 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
         flags: HashSet::new(),
         options: [
             HigherOrderChoiceOption {
-                display_name: "Disabled".into(),
-                modifiers: vec![bool_modifier(
-                    "session_settings.headset.face_tracking.enabled",
-                    false,
-                )],
+                name: "Disabled".into(),
+                modifiers: vec![parse("session_settings.headset.face_tracking.enabled = false")],
                 content: None,
             },
             HigherOrderChoiceOption {
-                display_name: "VRChat Eye OSC".into(),
+                name: "VRChat Eye OSC".into(),
                 modifiers: vec![
-                    bool_modifier("session_settings.headset.face_tracking.enabled", true),
-                    string_modifier(
-                        "session_settings.headset.face_tracking.content.sink.variant",
-                        "VrchatEyeOsc",
-                    ),
+                    parse("session_settings.headset.face_tracking.enabled = true"),
+                    parse("session_settings.headset.face_tracking.content.sink.variant = VrchatEyeOsc"),
                 ],
                 content: None,
             },
             HigherOrderChoiceOption {
-                display_name: "VRCFaceTracking".into(),
+                name: "VRCFaceTracking".into(),
                 modifiers: vec![
-                    bool_modifier("session_settings.headset.face_tracking.enabled", true),
-                    string_modifier(
-                        "session_settings.headset.face_tracking.content.sink.variant",
-                        "VrcFaceTracking",
-                    ),
+                    parse("session_settings.headset.face_tracking.enabled = true"),
+                    parse("session_settings.headset.face_tracking.content.sink.variant = VrcFaceTracking"),
                 ],
                 content: None,
             },
         ]
         .into_iter()
         .collect(),
-        default_option_display_name: "Disabled".into(),
+        default_option_name: "Disabled".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }

@@ -1,5 +1,5 @@
 use super::{NestingInfo, SettingControl, reset};
-use alvr_packets::PathValuePair;
+use alvr_packets::{PathSegment, PathValuePair};
 use alvr_session::settings_schema::SchemaNode;
 use eframe::{
     egui::{Layout, Ui},
@@ -28,7 +28,7 @@ impl Control {
 
         let control = {
             let mut nesting_info = nesting_info.clone();
-            nesting_info.path.push("content".into());
+            nesting_info.path.push(PathSegment::Name("content".into()));
 
             SettingControl::new(nesting_info, schema_content)
         };
@@ -58,7 +58,11 @@ impl Control {
         let mut request = None;
 
         fn get_request(nesting_info: &NestingInfo, enabled: bool) -> Option<PathValuePair> {
-            super::get_single_value(nesting_info, "enabled".into(), json::Value::Bool(enabled))
+            super::get_single_value(
+                nesting_info,
+                PathSegment::Name("enabled".into()),
+                json::Value::Bool(enabled),
+            )
         }
 
         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {

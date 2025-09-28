@@ -216,12 +216,9 @@ impl eframe::App for Dashboard {
                         SetupWizardRequest::Close { finished } => {
                             if finished {
                                 requests.push(ServerRequest::SetSessionValues(vec![
-                                    PathValuePair {
-                                        path: alvr_packets::parse_path(
-                                            "session_settings.extra.open_setup_wizard",
-                                        ),
-                                        value: serde_json::Value::Bool(false),
-                                    },
+                                    alvr_packets::parse_path_value_pair(
+                                        "session_settings.extra.open_setup_wizard = false",
+                                    ),
                                 ]))
                             }
 

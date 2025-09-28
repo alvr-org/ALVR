@@ -1,5 +1,5 @@
 use super::NestingInfo;
-use alvr_packets::PathValuePair;
+use alvr_packets::{PathSegment, PathValuePair};
 use eframe::egui::Ui;
 use serde_json as json;
 
@@ -19,7 +19,7 @@ pub fn collapsible_button(
         *state_mut = !*state_mut;
         *request = super::get_single_value(
             nesting_info,
-            "gui_collapsed".into(),
+            PathSegment::Name("gui_collapsed".into()),
             json::Value::Bool(*state_mut),
         );
     }

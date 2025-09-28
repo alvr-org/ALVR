@@ -4,6 +4,7 @@ use super::{
 };
 use crate::dashboard::ServerRequest;
 use alvr_gui_common::{DisplayString, theme};
+use alvr_packets::PathSegment;
 use alvr_session::{SessionSettings, Settings};
 use eframe::egui::{self, Align, Frame, Grid, Layout, RichText, ScrollArea, Ui};
 #[cfg(target_arch = "wasm32")]
@@ -41,7 +42,7 @@ pub struct SettingsTab {
 impl SettingsTab {
     pub fn new() -> Self {
         let nesting_info = NestingInfo {
-            path: vec!["session_settings".into()],
+            path: alvr_packets::parse_path("session_settings"),
             indentation_level: 0,
         };
         let schema = Settings::schema(alvr_session::session_settings_default());
@@ -58,7 +59,7 @@ impl SettingsTab {
                 let display = super::get_display_name(&id, &entry.strings);
 
                 let mut nesting_info = nesting_info.clone();
-                nesting_info.path.push(id.clone().into());
+                nesting_info.path.push(PathSegment::Name(id.clone()));
 
                 TopLevelEntry {
                     id: DisplayString { id, display },

@@ -1,6 +1,5 @@
 use crate::dashboard::ServerRequest;
 use alvr_gui_common::ModalButton;
-use alvr_packets::PathValuePair;
 use eframe::egui::{self, Context, OpenUrl, Ui};
 use std::{path::PathBuf, process::Command};
 
@@ -91,12 +90,12 @@ impl NewVersionPopup {
         if let Some(button) = result {
             if button == no_remind_button {
                 Some(CloseAction::CloseWithRequest(
-                    ServerRequest::SetSessionValues(vec![PathValuePair {
-                        path: alvr_packets::parse_path(
-                            "session_settings.extra.new_version_popup.content.hide_while_version",
+                    ServerRequest::SetSessionValues(vec![alvr_packets::parse_path_value_pair(
+                        &format!(
+                            "session_settings.extra.new_version_popup.content.hide_while_version = {}",
+                            self.version
                         ),
-                        value: serde_json::Value::String(self.version.clone()),
-                    }]),
+                    )]),
                 ))
             } else {
                 Some(CloseAction::Close)

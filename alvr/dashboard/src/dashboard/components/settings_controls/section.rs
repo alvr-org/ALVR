@@ -6,7 +6,7 @@ use alvr_gui_common::{
         log_colors::{INFO_LIGHT, WARNING_LIGHT},
     },
 };
-use alvr_packets::PathValuePair;
+use alvr_packets::{PathSegment, PathValuePair};
 use alvr_session::settings_schema::{SchemaEntry, SchemaNode};
 use eframe::egui::Ui;
 use serde_json as json;
@@ -47,7 +47,7 @@ impl Control {
                 let real_time_flag = entry.flags.contains("real-time");
 
                 let mut nesting_info = nesting_info.clone();
-                nesting_info.path.push(id.clone().into());
+                nesting_info.path.push(PathSegment::Name(id.clone()));
 
                 Entry {
                     id: DisplayString { id, display },

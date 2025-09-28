@@ -7,12 +7,14 @@ use alvr_common::{
 use alvr_session::{
     ClientsidePostProcessingConfig, CodecType, PassthroughMode, SessionConfig, Settings,
 };
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use serde_json as json;
 use std::{
     collections::HashSet,
-    fmt::{self, Debug},
+    fmt::{self, Debug, Display},
     net::IpAddr,
+    ops::{Deref, DerefMut},
+    result,
     time::Duration,
 };
 
@@ -241,42 +243,69 @@ pub struct Haptics {
     pub amplitude: f32,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum PathSegment {
     Name(String),
     Index(usize),
 }
 
-impl Debug for PathSegment {
+impl Display for PathSegment {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PathSegment::Name(name) => write!(f, "{name}"),
-            PathSegment::Index(index) => write!(f, "[{index}]"),
+            PathSegment::Name(name) => write!(f, ".{}", name),
+            PathSegment::Index(index) => write!(f, "[{}]", index),
         }
     }
 }
 
-impl From<&str> for PathSegment {
-    fn from(value: &str) -> Self {
-        PathSegment::Name(value.to_owned())
+#[derive(Clone, Debug)]
+pub struct Path(pub Vec<PathSegment>);
+
+impl Deref for Path {
+    type Target = Vec<PathSegment>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
-impl From<String> for PathSegment {
-    fn from(value: String) -> Self {
-        PathSegment::Name(value)
+impl DerefMut for Path {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
-impl From<usize> for PathSegment {
-    fn from(value: usize) -> Self {
-        PathSegment::Index(value)
+impl Display for Path {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(ToString::to_string)
+                .collect::<String>()
+                .trim_start_matches('.')
+        )?;
+
+        Ok(())
     }
 }
 
-// todo: support indices
-pub fn parse_path(path: &str) -> Vec<PathSegment> {
-    path.split('.').map(|s| s.into()).collect()
+// Best effort parsing. It may accept some invalid syntax
+// todo: use regex
+pub fn parse_path(path: &str) -> Path {
+    let segments = path
+        .split('.')
+        .flat_map(|s| {
+            s.trim_end_matches("]").split("[").map(|p| {
+                p.parse::<usize>()
+                    .map(PathSegment::Index)
+                    .unwrap_or_else(|_| PathSegment::Name(p.to_string()))
+            })
+        })
+        .collect();
+
+    Path(segments)
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -304,10 +333,47 @@ pub struct ClientStatistics {
     pub total_pipeline_latency: Duration,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct PathValuePair {
-    pub path: Vec<PathSegment>,
+    pub path: Path,
     pub value: json::Value,
+}
+
+impl Display for PathValuePair {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let path_str = self
+            .path
+            .iter()
+            .map(|seg| seg.to_string())
+            .collect::<Vec<_>>()
+            .concat();
+
+        write!(f, "{} = {}", path_str.trim_start_matches('.'), self.value)
+    }
+}
+
+// Best effort parsing. It may accept some invalid syntax
+pub fn parse_path_value_pair(string: &str) -> PathValuePair {
+    let mut split = string.split('=');
+    let path_str = split.next().unwrap_or_default().trim();
+    let value_str = split.next().unwrap_or_default().trim();
+
+    let path = parse_path(path_str);
+    let value = json::from_str(value_str).unwrap_or(json::Value::String(value_str.to_string()));
+
+    PathValuePair { path, value }
+}
+
+impl Serialize for PathValuePair {
+    fn serialize<S: Serializer>(&self, serializer: S) -> result::Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for PathValuePair {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> result::Result<Self, D::Error> {
+        Ok(parse_path_value_pair(&String::deserialize(deserializer)?))
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

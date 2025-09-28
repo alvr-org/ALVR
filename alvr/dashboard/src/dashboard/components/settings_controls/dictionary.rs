@@ -3,7 +3,7 @@ use crate::dashboard::components::{
     collapsible,
     up_down::{self, UpDownResult},
 };
-use alvr_packets::PathValuePair;
+use alvr_packets::{PathSegment, PathValuePair};
 use alvr_session::settings_schema::SchemaNode;
 use eframe::{
     egui::{Layout, TextEdit, Ui},
@@ -57,7 +57,7 @@ impl Control {
         ) -> Option<PathValuePair> {
             super::get_single_value(
                 nesting_info,
-                "content".into(),
+                PathSegment::Name("content".into()),
                 json::to_value(entries).unwrap(),
             )
         }
@@ -85,9 +85,9 @@ impl Control {
         while session_content.len() > self.controls.len() {
             let mut nesting_info = self.nesting_info.clone();
             nesting_info.path.extend_from_slice(&[
-                "content".into(),
-                self.controls.len().into(),
-                1.into(),
+                PathSegment::Name("content".into()),
+                PathSegment::Index(self.controls.len()),
+                PathSegment::Index(1),
             ]);
 
             self.controls.push(Entry {
@@ -139,13 +139,14 @@ impl Control {
                         if response.lost_focus() {
                             if let Some(editing_key_mut) = editing_key_mut {
                                 let mut nesting_info = self.nesting_info.clone();
-                                nesting_info
-                                    .path
-                                    .extend_from_slice(&["content".into(), idx.into()]);
+                                nesting_info.path.extend_from_slice(&[
+                                    PathSegment::Name("content".into()),
+                                    PathSegment::Index(idx),
+                                ]);
 
                                 request = super::get_single_value(
                                     &nesting_info,
-                                    0.into(),
+                                    PathSegment::Index(0),
                                     json::Value::String(editing_key_mut.clone()),
                                 );
 

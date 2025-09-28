@@ -153,30 +153,30 @@ impl ServerSessionManager {
     }
 
     // Note: "value" can be any session subtree, in json format.
-    pub fn set_session_values(&mut self, descs: Vec<PathValuePair>) -> Result<()> {
+    pub fn set_session_values(&mut self, modifiers: Vec<PathValuePair>) -> Result<()> {
         let mut session_json = serde_json::to_value(self.session_config.clone()).unwrap();
 
-        for desc in descs {
+        for modifier in modifiers {
             let mut session_ref = &mut session_json;
-            for segment in &desc.path {
+            for segment in &*modifier.path {
                 session_ref = match segment {
                     PathSegment::Name(name) => {
                         if let Some(name) = session_ref.get_mut(name) {
                             name
                         } else {
-                            bail!("From path {:?}: segment \"{name}\" not found", desc.path);
+                            bail!("From path {}: segment \"{name}\" not found", modifier.path);
                         }
                     }
                     PathSegment::Index(index) => {
                         if let Some(index) = session_ref.get_mut(index) {
                             index
                         } else {
-                            bail!("From path {:?}: segment [{index}] not found", desc.path);
+                            bail!("From path {}: segment [{index}] not found", modifier.path);
                         }
                     }
                 };
             }
-            *session_ref = desc.value.clone();
+            *session_ref = modifier.value.clone();
         }
 
         // session_json has been updated

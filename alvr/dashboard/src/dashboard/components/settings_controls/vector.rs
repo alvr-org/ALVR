@@ -3,7 +3,7 @@ use crate::dashboard::components::{
     collapsible,
     up_down::{self, UpDownResult},
 };
-use alvr_packets::PathValuePair;
+use alvr_packets::{PathSegment, PathValuePair};
 use alvr_session::settings_schema::SchemaNode;
 use eframe::{
     egui::{Layout, Ui},
@@ -44,7 +44,11 @@ impl Control {
             nesting_info: &NestingInfo,
             elements: Vec<json::Value>,
         ) -> Option<PathValuePair> {
-            super::get_single_value(nesting_info, "content".into(), json::Value::Array(elements))
+            super::get_single_value(
+                nesting_info,
+                PathSegment::Name("content".into()),
+                json::Value::Array(elements),
+            )
         }
 
         let mut request = None;
@@ -69,8 +73,10 @@ impl Control {
 
         while session_content.len() > self.controls.len() {
             let mut nesting_info = self.nesting_info.clone();
-            nesting_info.path.push("content".into());
-            nesting_info.path.push(self.controls.len().into());
+            nesting_info.path.push(PathSegment::Name("content".into()));
+            nesting_info
+                .path
+                .push(PathSegment::Index(self.controls.len()));
 
             self.controls.push(SettingControl::new(
                 nesting_info,

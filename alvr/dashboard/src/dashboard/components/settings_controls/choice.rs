@@ -1,6 +1,6 @@
 use super::{NestingInfo, SettingControl, reset};
 use alvr_gui_common::DisplayString;
-use alvr_packets::PathValuePair;
+use alvr_packets::{PathSegment, PathValuePair};
 use alvr_session::settings_schema::{ChoiceControlType, SchemaEntry, SchemaNode};
 use eframe::{
     egui::{ComboBox, Layout, Ui},
@@ -74,7 +74,9 @@ impl Control {
             .into_iter()
             .map(|entry| {
                 let mut nesting_info = nesting_info.clone();
-                nesting_info.path.push(entry.name.clone().into());
+                nesting_info
+                    .path
+                    .push(PathSegment::Name(entry.name.clone()));
 
                 let control = if let Some(schema) = entry.content {
                     SettingControl::new(nesting_info, schema)
@@ -114,7 +116,7 @@ impl Control {
         fn get_request(nesting_info: &NestingInfo, variant: &str) -> Option<PathValuePair> {
             super::get_single_value(
                 nesting_info,
-                "variant".into(),
+                PathSegment::Name("variant".into()),
                 json::Value::String(variant.to_owned()),
             )
         }

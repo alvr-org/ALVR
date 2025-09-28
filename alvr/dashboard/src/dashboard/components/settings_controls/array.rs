@@ -1,5 +1,5 @@
 use super::{NestingInfo, SettingControl, collapsible};
-use alvr_packets::PathValuePair;
+use alvr_packets::{PathSegment, PathValuePair};
 use alvr_session::settings_schema::SchemaNode;
 use eframe::egui::Ui;
 use serde_json as json;
@@ -16,8 +16,10 @@ impl Control {
             .enumerate()
             .map(|(idx, schema)| {
                 let mut nesting_info = nesting_info.clone();
-                nesting_info.path.push("content".into());
-                nesting_info.path.push(idx.into());
+                nesting_info
+                    .path
+                    .push(PathSegment::Name("content".to_string()));
+                nesting_info.path.push(PathSegment::Index(idx));
 
                 SettingControl::new(nesting_info, schema)
             })

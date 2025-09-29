@@ -7,8 +7,12 @@ use alvr_events::{ButtonEvent, EventType};
 use alvr_packets::{ButtonEntry, ClientListAction, ServerRequest};
 use axum::{
     Json, Router,
-    extract::{State, WebSocketUpgrade, ws::Message},
-    http::{HeaderValue, header::CACHE_CONTROL},
+    extract::{Request, State, WebSocketUpgrade, ws::Message},
+    http::{
+        HeaderValue, Method, StatusCode,
+        header::{CACHE_CONTROL, CONTENT_TYPE},
+    },
+    middleware,
     response::Response,
     routing,
 };
@@ -20,6 +24,25 @@ use tower_http::{
     set_header::SetResponseHeaderLayer,
 };
 
+const X_ALVR: &str = "X-ALVR";
+
+// This is the actual core part of cors
+// We require the X-ALVR header, but the browser forces a cors preflight
+// if the site tries to send a request with it set since it's not-whitelisted
+//
+// The dashboard can just set the header and be allowed through without the preflight
+// thus not getting blocked by allow_untrusted_http being disabled
+async fn ensure_preflight(request: Request, next: middleware::Next) -> Response {
+    if request.headers().contains_key(X_ALVR) || request.method() == Method::OPTIONS {
+        next.run(request).await
+    } else {
+        Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body(format!("missing {X_ALVR} header").into())
+            .unwrap()
+    }
+}
+
 pub async fn web_server(connection_context: Arc<ConnectionContext>) -> Result<()> {
     let allow_untrusted_http;
     let web_server_port;
@@ -30,17 +53,14 @@ pub async fn web_server(connection_context: Arc<ConnectionContext>) -> Result<()
         web_server_port = session_manager.settings().connection.web_server_port;
     }
 
-    let mut cors = CorsLayer::new().allow_methods(cors::Any);
+    let mut cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers([CONTENT_TYPE, X_ALVR.parse().unwrap()]);
     if allow_untrusted_http {
         cors = cors.allow_origin(cors::Any);
     }
 
     let router = Router::new()
-        .layer(cors)
-        .layer(SetResponseHeaderLayer::overriding(
-            CACHE_CONTROL,
-            HeaderValue::from_static("no-cache, no-store, must-revalidate"),
-        ))
         .route("/api/dashboard-request", routing::post(dashboard_request))
         .route("/api/events", routing::get(events))
         .route("/api/set-buttons", routing::post(set_buttons))
@@ -49,6 +69,12 @@ pub async fn web_server(connection_context: Arc<ConnectionContext>) -> Result<()
             routing::get(async || alvr_common::ALVR_VERSION.to_string()),
         )
         .route("/api/ping", routing::get(async || ()))
+        .layer(cors)
+        .layer(SetResponseHeaderLayer::overriding(
+            CACHE_CONTROL,
+            HeaderValue::from_static("no-cache, no-store, must-revalidate"),
+        ))
+        .layer(middleware::from_fn(ensure_preflight))
         .with_state(connection_context);
 
     axum::serve(

@@ -114,22 +114,37 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                             FfiDeviceMotion::default()
                         };
 
-                        let ffi_left_controller_motion = context
-                            .get_device_motion(*HAND_LEFT_ID, poll_timestamp)
-                            .map(|motion| {
-                                let motion =
-                                    motion.predict(poll_timestamp, target_controller_timestamp);
-                                tracking::to_ffi_motion(*HAND_LEFT_ID, motion)
-                            })
-                            .filter(|_| tracked);
-                        let ffi_right_controller_motion = context
-                            .get_device_motion(*HAND_RIGHT_ID, poll_timestamp)
-                            .map(|motion| {
-                                let motion =
-                                    motion.predict(poll_timestamp, target_controller_timestamp);
-                                tracking::to_ffi_motion(*HAND_RIGHT_ID, motion)
-                            })
-                            .filter(|_| tracked);
+                        let (ffi_left_controller_motion, ffi_right_controller_motion) =
+                            if tracked && let Some(config) = &controllers_config {
+                                let ffi_left_controller_motion = context
+                                    .get_device_motion(*HAND_LEFT_ID, poll_timestamp)
+                                    .map(|motion| {
+                                        let motion = motion
+                                            .predict(poll_timestamp, target_controller_timestamp);
+                                        let motion = tracking::offset_controller_motion(
+                                            config,
+                                            *HAND_LEFT_ID,
+                                            motion,
+                                        );
+                                        tracking::to_ffi_motion(*HAND_LEFT_ID, motion)
+                                    });
+                                let ffi_right_controller_motion = context
+                                    .get_device_motion(*HAND_RIGHT_ID, poll_timestamp)
+                                    .map(|motion| {
+                                        let motion = motion
+                                            .predict(poll_timestamp, target_controller_timestamp);
+                                        let motion = tracking::offset_controller_motion(
+                                            config,
+                                            *HAND_RIGHT_ID,
+                                            motion,
+                                        );
+                                        tracking::to_ffi_motion(*HAND_RIGHT_ID, motion)
+                                    });
+
+                                (ffi_left_controller_motion, ffi_right_controller_motion)
+                            } else {
+                                (None, None)
+                            };
 
                         let (
                             ffi_left_hand_skeleton,

@@ -3,9 +3,12 @@ use super::{
     presets::{PresetControl, builtin_schema},
 };
 use crate::dashboard::ServerRequest;
-use alvr_gui_common::{DisplayString, theme};
+use alvr_gui_common::{
+    DisplayString,
+    theme::{self},
+};
 use alvr_session::{SessionSettings, Settings};
-use eframe::egui::{self, Align, Frame, Grid, Layout, RichText, ScrollArea, Ui};
+use eframe::egui::{Align, Frame, Grid, Layout, RichText, ScrollArea, Ui};
 #[cfg(target_arch = "wasm32")]
 use instant::Instant;
 use serde_json as json;
@@ -125,7 +128,7 @@ impl SettingsTab {
         ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
             Frame::group(ui.style())
                 .fill(theme::DARKER_BG)
-                .inner_margin(egui::vec2(15.0, 12.0))
+                .inner_margin(theme::FRAME_PADDING)
                 .show(ui, |ui| {
                     ui.horizontal_wrapped(|ui| {
                         ui.selectable_value(

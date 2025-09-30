@@ -1,4 +1,4 @@
-use crate::command;
+use crate::{CommonBuildFlags, command};
 use alvr_filesystem::{self as afs, Layout};
 use std::{
     env,
@@ -27,7 +27,11 @@ impl Display for Profile {
     }
 }
 
-pub fn build_server_lib(profile: Profile, root: Option<String>, reproducible: bool) {
+pub fn build_server_lib(
+    profile: Profile,
+    root: Option<String>,
+    common_build_flags: CommonBuildFlags,
+) {
     let sh = Shell::new().unwrap();
 
     let mut flags = vec![];
@@ -39,8 +43,11 @@ pub fn build_server_lib(profile: Profile, root: Option<String>, reproducible: bo
         Profile::Release => flags.push("--release"),
         Profile::Debug => (),
     }
-    if reproducible {
+    if common_build_flags.locked {
         flags.push("--locked");
+    }
+    if common_build_flags.offline {
+        flags.push("--offline");
     }
     let flags_ref = &flags;
 
@@ -75,8 +82,7 @@ pub fn build_streamer(
     profile: Profile,
     gpl: bool,
     root: Option<String>,
-    reproducible: bool,
-    profiling: bool,
+    common_build_flags: CommonBuildFlags,
     keep_config: bool,
 ) {
     let sh = Shell::new().unwrap();
@@ -92,8 +98,14 @@ pub fn build_streamer(
         Profile::Release => common_flags.push("--release"),
         Profile::Debug => (),
     }
-    if reproducible {
+    if common_build_flags.locked {
         common_flags.push("--locked");
+    }
+    if common_build_flags.frozen {
+        common_flags.push("--frozen");
+    }
+    if common_build_flags.offline {
+        common_flags.push("--offline");
     }
 
     let artifacts_dir = if cfg!(all(windows, target_arch = "aarch64")) {
@@ -136,7 +148,7 @@ pub fn build_streamer(
             vec![]
         };
 
-        let profiling_flag = if profiling {
+        let profiling_flag = if common_build_flags.profiling {
             vec!["--features", "alvr_server_core/trace-performance"]
         } else {
             vec![]
@@ -273,7 +285,7 @@ pub fn build_streamer(
     }
 }
 
-pub fn build_launcher(profile: Profile, reproducible: bool) {
+pub fn build_launcher(profile: Profile, common_build_flags: CommonBuildFlags) {
     let sh = Shell::new().unwrap();
 
     let mut common_flags = vec![];
@@ -285,8 +297,11 @@ pub fn build_launcher(profile: Profile, reproducible: bool) {
         Profile::Release => common_flags.push("--release"),
         Profile::Debug => (),
     }
-    if reproducible {
+    if common_build_flags.locked {
         common_flags.push("--locked");
+    }
+    if common_build_flags.offline {
+        common_flags.push("--offline");
     }
     let common_flags_ref = &common_flags;
 

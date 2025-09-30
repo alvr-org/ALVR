@@ -15,7 +15,7 @@ use pico_args::Arguments;
 use std::{fs, process, time::Instant};
 use xshell::{Shell, cmd};
 
-const HELP_STR: &str = r#"
+const HELP_STR: &str = r"
 cargo xtask
 Developement actions for ALVR.
 
@@ -23,53 +23,68 @@ USAGE:
     cargo xtask <SUBCOMMAND> [FLAG] [ARGS]
 
 SUBCOMMANDS:
-    prepare-deps        Download and compile streamer and client external dependencies
-    build-streamer      Build streamer, then copy binaries to build folder
-    build-launcher      Build launcher, then copy binaries to build folder
-    build-server-lib    Build a C-ABI ALVR server library and header
-    build-client        Build client, then copy binaries to build folder
-    build-client-lib    Build a C-ABI ALVR client library and header
-    build-client-xr-lib Build a C-ABI ALVR OpenXR entry point client library and header
-    run-streamer        Build streamer and then open the dashboard
-    run-launcher        Build launcher and then open it
-    format              Autoformat all code
-    check-format        Check if code is correctly formatted
-    package-streamer    Build streamer with distribution profile, make archive
-    package-launcher    Build launcher with distribution profile, make archive
-    package-client      Build client with distribution profile
-    package-client-lib  Build client library then zip it
-    clean               Removes all build artifacts and dependencies
-    bump                Bump streamer and client package versions
-    clippy              Show warnings for selected clippy lints
-    kill-oculus         Kill all Oculus processes
+    prepare-deps            Download and compile streamer and client external dependencies
+    download-server-deps    Download streamer external dependencies
+    build-server-deps       Compile streamer external dependencies
+    build-streamer          Build streamer, then copy binaries to build folder
+    build-launcher          Build launcher, then copy binaries to build folder
+    build-server-lib        Build a C-ABI ALVR server library and header
+    build-client            Build client, then copy binaries to build folder
+    build-client-lib        Build a C-ABI ALVR client library and header
+    build-client-xr-lib     Build a C-ABI ALVR OpenXR entry point client library and header
+    run-streamer            Build streamer and then open the dashboard
+    run-launcher            Build launcher and then open it
+    format                  Autoformat all code
+    check-format            Check if code is correctly formatted
+    package-streamer        Build streamer with distribution profile, make archive
+    package-launcher        Build launcher with distribution profile, make archive
+    package-client          Build client with distribution profile
+    package-client-lib      Build client library then zip it
+    clean                   Removes all build artifacts and dependencies
+    bump                    Bump streamer and client package versions
+    clippy                  Show warnings for selected clippy lints
+    kill-oculus             Kill all Oculus processes
 
 FLAGS:
-    --help              Print this text
-    --keep-config       Preserve the configuration file between rebuilds (session.json)
-    --no-nvidia         Disables nVidia support on Linux. For prepare-deps subcommand
-    --release           Optimized build with less debug checks. For build subcommands
-    --profiling         Enable Profiling
-    --gpl               Bundle GPL libraries (FFmpeg). Only for Windows
-    --nightly           Append nightly tag to versions. For bump subcommand
-    --no-rebuild        Do not rebuild the streamer with run-streamer
-    --ci                Do some CI related tweaks. Depends on the other flags and subcommand
-    --no-stdcpp         Disable linking to libc++_shared with build-client-lib
-    --all-targets       For prepare-deps and build-client-lib subcommand, will build for all android supported ABI targets
-    --meta-store        For package-client subcommand, build for Meta Store
-    --pico-store        For package-client subcommand, build for Pico Store
+    --help                  Print this text
+    --keep-config           Preserve the configuration file between rebuilds (session.json)
+    --no-nvidia             Disables nVidia support on Linux. For prepare-deps subcommand
+    --release               Optimized build with less debug checks. For build subcommands
+    --profiling             Enable Profiling
+    --gpl                   Bundle GPL libraries (FFmpeg, x264)
+    --nightly               Append nightly tag to versions. For bump subcommand
+    --no-rebuild            Do not rebuild the streamer with run-streamer
+    --ci                    Do some CI related tweaks. Depends on the other flags and subcommand
+    --no-stdcpp             Disable linking to libc++_shared with build-client-lib
+    --all-targets           For prepare-deps and build-client-lib subcommand, will build for all android supported ABI targets
+    --meta-store            For package-client subcommand, build for Meta Store
+    --pico-store            For package-client subcommand, build for Pico Store
+    --locked                Forces build subcommands to use only dependencies specified from Cargo.lock 
+    --frozen                Forces build subcommands to use locally cached dependencies specified in Cargo.lock
+                            and fail if internet access was required during build
+    --offline               Forces build subcommands to fail if they try to use internet. 
+                            Note that 'xtask' and 'cargo about' dependencies are downloaded and built during build of alvr
 
 ARGS:
-    --platform <NAME>   Can be one of: windows, linux, macos, android. Can be omitted
-    --version <VERSION> Specify version to set with the bump-versions subcommand
-    --root <PATH>       Installation root. By default no root is set and paths are calculated using
-                        relative paths, which requires conforming to FHS on Linux
-"#;
+    --platform <NAME>       Can be one of: windows, linux, macos, android. Can be omitted
+    --version <VERSION>     Specify version to set with the bump-versions subcommand
+    --root <PATH>           Installation root. By default no root is set and paths are calculated using
+                            relative paths, which requires conforming to FHS on Linux
+";
 
 enum BuildPlatform {
     Windows,
     Linux,
     Macos,
     Android,
+}
+
+#[derive(Default)]
+pub struct CommonBuildFlags {
+    locked: bool,
+    frozen: bool,
+    offline: bool,
+    profiling: bool,
 }
 
 pub fn print_help_and_exit(message: &str) -> ! {
@@ -176,7 +191,6 @@ fn main() {
         } else {
             Profile::Debug
         };
-        let profiling = args.contains("--profiling");
         let gpl = args.contains("--gpl");
         let is_nightly = args.contains("--nightly");
         let no_rebuild = args.contains("--no-rebuild");
@@ -184,6 +198,12 @@ fn main() {
         let keep_config = args.contains("--keep-config");
         let link_stdcpp = !args.contains("--no-stdcpp");
         let all_targets = args.contains("--all-targets");
+        let common_build_flags = CommonBuildFlags {
+            locked: args.contains("--locked"),
+            frozen: args.contains("--frozen"),
+            offline: args.contains("--offline"),
+            profiling: args.contains("--profiling"),
+        };
 
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
         let platform = platform.as_deref().map(|platform| match platform {
@@ -210,7 +230,7 @@ fn main() {
                 "prepare-deps" => {
                     if let Some(platform) = platform {
                         if matches!(platform, BuildPlatform::Android) {
-                            dependencies::build_android_deps(
+                            dependencies::android::build_deps(
                                 for_ci,
                                 all_targets,
                                 OpenXRLoadersSelection::All,
@@ -221,18 +241,22 @@ fn main() {
                     } else {
                         dependencies::prepare_server_deps(platform, for_ci, !no_nvidia);
 
-                        dependencies::build_android_deps(
+                        dependencies::android::build_deps(
                             for_ci,
                             all_targets,
                             OpenXRLoadersSelection::All,
                         );
                     }
                 }
-                "build-streamer" => {
-                    build::build_streamer(profile, gpl, None, false, profiling, keep_config)
+                "download-server-deps" => {
+                    dependencies::download_server_deps(platform, for_ci, !no_nvidia)
                 }
-                "build-launcher" => build::build_launcher(profile, false),
-                "build-server-lib" => build::build_server_lib(profile, None, false),
+                "build-server-deps" => dependencies::build_server_deps(platform, !no_nvidia),
+                "build-streamer" => {
+                    build::build_streamer(profile, gpl, None, common_build_flags, keep_config)
+                }
+                "build-launcher" => build::build_launcher(profile, common_build_flags),
+                "build-server-lib" => build::build_server_lib(profile, None, common_build_flags),
                 "build-client" => build::build_android_client(profile),
                 "build-client-lib" => {
                     build::build_android_client_core_lib(profile, link_stdcpp, all_targets)
@@ -242,13 +266,13 @@ fn main() {
                 }
                 "run-streamer" => {
                     if !no_rebuild {
-                        build::build_streamer(profile, gpl, None, false, profiling, keep_config);
+                        build::build_streamer(profile, gpl, None, common_build_flags, keep_config);
                     }
                     run_streamer();
                 }
                 "run-launcher" => {
                     if !no_rebuild {
-                        build::build_launcher(profile, false);
+                        build::build_launcher(profile, common_build_flags);
                     }
                     run_launcher();
                 }
@@ -264,9 +288,9 @@ fn main() {
                 "bump" => version::bump_version(version, is_nightly),
                 "clippy" => {
                     if for_ci {
-                        ci::clippy_ci()
+                        ci::clippy_ci();
                     } else {
-                        clippy()
+                        clippy();
                     }
                 }
                 "check-msrv" => version::check_msrv(),

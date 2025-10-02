@@ -12,7 +12,7 @@ use alvr_common::{
     error, info,
 };
 use alvr_events::EventType;
-use alvr_packets::{ClientConnectionsAction, PathSegment, PathValuePair};
+use alvr_packets::{ClientConnectionsAction, PathSegment, PathValuePairList};
 use alvr_session::{ClientConnectionConfig, SessionConfig, Settings};
 use serde_json as json;
 use std::{
@@ -153,10 +153,10 @@ impl ServerSessionManager {
     }
 
     // Note: "value" can be any session subtree, in json format.
-    pub fn set_session_values(&mut self, modifiers: Vec<PathValuePair>) -> Result<()> {
+    pub fn set_session_values(&mut self, modifiers: PathValuePairList) -> Result<()> {
         let mut session_json = serde_json::to_value(self.session_config.clone()).unwrap();
 
-        for modifier in modifiers {
+        for modifier in &*modifiers {
             let mut session_ref = &mut session_json;
             for segment in &*modifier.path {
                 session_ref = match segment {

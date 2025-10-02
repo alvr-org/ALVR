@@ -4,7 +4,7 @@ use crate::{
 };
 use alvr_common::{ConnectionState, LogEntry, anyhow::Result, error, info, log};
 use alvr_events::{ButtonEvent, EventType};
-use alvr_packets::{ButtonEntry, ClientConnectionsAction, FirewallRulesAction, PathValuePair};
+use alvr_packets::{ButtonEntry, ClientConnectionsAction, FirewallRulesAction, PathValuePairList};
 use alvr_session::SessionConfig;
 use axum::{
     Json, Router,
@@ -167,7 +167,7 @@ async fn update_session(Json(config): Json<SessionConfig>) {
     *SESSION_MANAGER.write().session_mut() = config;
 }
 
-async fn set_session_values(Json(descs): Json<Vec<PathValuePair>>) {
+async fn set_session_values(Json(descs): Json<PathValuePairList>) {
     SESSION_MANAGER.write().set_session_values(descs).ok();
 }
 

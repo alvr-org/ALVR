@@ -90,12 +90,12 @@ impl NewVersionPopup {
         if let Some(button) = result {
             if button == no_remind_button {
                 Some(CloseAction::CloseWithRequest(
-                    ServerRequest::SetSessionValues(vec![alvr_packets::parse_path_value_pair(
+                    ServerRequest::SetSessionValues(alvr_packets::parse_path_value_pairs(
                         &format!(
                             "session_settings.extra.new_version_popup.content.hide_while_version = {}",
                             self.version
                         ),
-                    )]),
+                    ).unwrap()),
                 ))
             } else {
                 Some(CloseAction::Close)

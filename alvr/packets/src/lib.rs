@@ -1,6 +1,6 @@
 use alvr_common::{
     BodySkeleton, ConnectionState, DeviceMotion, LogSeverity, Pose, ViewParams,
-    anyhow::Result,
+    anyhow::{self, Result},
     glam::{Quat, UVec2, Vec2},
     semver::Version,
 };
@@ -243,7 +243,7 @@ pub struct Haptics {
     pub amplitude: f32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum PathSegment {
     Name(String),
     Index(usize),
@@ -291,23 +291,6 @@ impl Display for Path {
     }
 }
 
-// Best effort parsing. It may accept some invalid syntax
-// todo: use regex
-pub fn parse_path(path: &str) -> Path {
-    let segments = path
-        .split('.')
-        .flat_map(|s| {
-            s.trim_end_matches("]").split("[").map(|p| {
-                p.parse::<usize>()
-                    .map(PathSegment::Index)
-                    .unwrap_or_else(|_| PathSegment::Name(p.to_string()))
-            })
-        })
-        .collect();
-
-    Path(segments)
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ClientConnectionsAction {
     AddIfMissing {
@@ -352,27 +335,115 @@ impl Display for PathValuePair {
     }
 }
 
-// Best effort parsing. It may accept some invalid syntax
-pub fn parse_path_value_pair(string: &str) -> PathValuePair {
-    let mut split = string.split('=');
-    let path_str = split.next().unwrap_or_default().trim();
-    let value_str = split.next().unwrap_or_default().trim();
+#[derive(Clone)]
+pub struct PathValuePairList(pub Vec<PathValuePair>);
 
-    let path = parse_path(path_str);
-    let value = json::from_str(value_str).unwrap_or(json::Value::String(value_str.to_string()));
+impl Deref for PathValuePairList {
+    type Target = Vec<PathValuePair>;
 
-    PathValuePair { path, value }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
-impl Serialize for PathValuePair {
+impl Display for PathValuePairList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for pair in &self.0 {
+            writeln!(f, "{pair}")?;
+        }
+
+        Ok(())
+    }
+}
+
+impl Debug for PathValuePairList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
+
+pub fn parse_path_value_pairs(modifiers: &str) -> Result<PathValuePairList> {
+    use nom::{
+        IResult, Parser,
+        branch::alt,
+        bytes::complete::take_while1,
+        character::complete::{self as nomchar, char, space0},
+        combinator::map,
+        multi::separated_list1,
+        sequence::{delimited, preceded, separated_pair, terminated},
+    };
+
+    fn parse_identifier(input: &str) -> IResult<&str, PathSegment> {
+        map(
+            take_while1(|c: char| c.is_alphanumeric() || c == '_'),
+            |s: &str| PathSegment::Name(s.to_string()),
+        )
+        .parse(input)
+    }
+
+    fn parse_path(input: &str) -> IResult<&str, (PathSegment, Vec<PathSegment>)> {
+        terminated(
+            separated_pair(
+                parse_identifier,
+                space0,
+                separated_list1(
+                    space0,
+                    alt((
+                        // Index parser
+                        delimited(
+                            char('['),
+                            delimited(space0, map(nomchar::usize, PathSegment::Index), space0),
+                            char(']'),
+                        ),
+                        // Field parser
+                        preceded(preceded(char('.'), space0), parse_identifier),
+                    )),
+                ),
+            ),
+            preceded(space0, char('=')),
+        )
+        .parse(input)
+    }
+
+    let mut pairs = vec![];
+    for line in modifiers.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        let (remaining, (first, mut segments)) = parse_path(trimmed)
+            .map_err(|e| anyhow::anyhow!("Failed to parse path {trimmed:?}: {e:?}"))?;
+        segments.insert(0, first);
+        let value = json::from_str::<json::Value>(remaining.trim())?;
+
+        pairs.push(PathValuePair {
+            path: Path(segments),
+            value,
+        });
+    }
+
+    Ok(PathValuePairList(pairs))
+}
+
+impl Serialize for PathValuePairList {
     fn serialize<S: Serializer>(&self, serializer: S) -> result::Result<S::Ok, S::Error> {
         serializer.serialize_str(&self.to_string())
     }
 }
 
-impl<'de> Deserialize<'de> for PathValuePair {
+impl<'de> Deserialize<'de> for PathValuePairList {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> result::Result<Self, D::Error> {
-        Ok(parse_path_value_pair(&String::deserialize(deserializer)?))
+        parse_path_value_pairs(&String::deserialize(deserializer)?)
+            .map_err(serde::de::Error::custom)
     }
 }
 

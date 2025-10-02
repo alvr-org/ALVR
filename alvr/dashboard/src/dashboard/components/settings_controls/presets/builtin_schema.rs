@@ -1,11 +1,8 @@
 use super::schema::{HigherOrderChoiceOption, HigherOrderChoiceSchema, PresetSchemaNode};
-use alvr_packets::parse_path_value_pair as parse;
 use settings_schema::ChoiceControlType;
 use std::collections::{HashMap, HashSet};
 
 pub fn resolution_schema() -> PresetSchemaNode {
-    const PREFIX: &str = "session_settings.video";
-
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
         name: "resolution".into(),
         strings: [(
@@ -18,38 +15,26 @@ pub fn resolution_schema() -> PresetSchemaNode {
         .collect(),
         flags: ["steamvr-restart".into()].into_iter().collect(),
         options: [
-            ("Very Low (width: 3072)", "1536"),
-            ("Low (width: 3712)", "1856"),
-            ("Medium (width: 4288)", "2144"),
-            ("High (width: 5184)", "2592"),
-            ("Ultra (width: 5632)", "2816"),
-            ("Extreme (width: 6080)", "3040"),
+            ("Very Low (width: 3072)", 1536),
+            ("Low (width: 3712)", 1856),
+            ("Medium (width: 4288)", 2144),
+            ("High (width: 5184)", 2592),
+            ("Ultra (width: 5632)", 2816),
+            ("Extreme (width: 6080)", 3040),
         ]
         .into_iter()
         .map(|(key, value)| HigherOrderChoiceOption {
             name: key.into(),
-            modifiers: [
-                parse(&format!(
-                    "{PREFIX}.transcoding_view_resolution.variant = Absolute"
-                )),
-                parse(&format!(
-                    "{PREFIX}.transcoding_view_resolution.Absolute.width = {value}"
-                )),
-                parse(&format!(
-                    "{PREFIX}.transcoding_view_resolution.Absolute.height.set = false"
-                )),
-                parse(&format!(
-                    "{PREFIX}.emulated_headset_view_resolution.variant = Absolute"
-                )),
-                parse(&format!(
-                    "{PREFIX}.emulated_headset_view_resolution.Absolute.width = {value}"
-                )),
-                parse(&format!(
-                    "{PREFIX}.emulated_headset_view_resolution.Absolute.height.set = false"
-                )),
-            ]
-            .into_iter()
-            .collect(),
+            modifiers: alvr_packets::parse_path_value_pairs(&format!(
+                r#"session_settings.video.transcoding_view_resolution.variant = "Absolute"
+                session_settings.video.transcoding_view_resolution.Absolute.width = {value}
+                session_settings.video.transcoding_view_resolution.Absolute.height.set = false
+                session_settings.video.emulated_headset_view_resolution.variant = "Absolute"
+                session_settings.video.emulated_headset_view_resolution.Absolute.width = {value}
+                session_settings.video.emulated_headset_view_resolution.Absolute.height.set = false
+                "#
+            ))
+            .unwrap(),
             content: None,
         })
         .collect(),
@@ -67,12 +52,11 @@ pub fn framerate_schema() -> PresetSchemaNode {
             .into_iter()
             .map(|framerate| HigherOrderChoiceOption {
                 name: format!("{framerate}Hz"),
-                modifiers: [parse(&format!(
+                modifiers: alvr_packets::parse_path_value_pairs(&format!(
                     "session_settings.video.preferred_fps = {}",
                     framerate as f32
-                ))]
-                .into_iter()
-                .collect(),
+                ))
+                .unwrap(),
                 content: None,
             })
             .collect(),
@@ -98,11 +82,10 @@ pub fn codec_preset_schema() -> PresetSchemaNode {
             .into_iter()
             .map(|(key, val_codec)| HigherOrderChoiceOption {
                 name: key.into(),
-                modifiers: [parse(&format!(
-                    "session_settings.video.preferred_codec.variant = {val_codec}"
-                ))]
-                .into_iter()
-                .collect(),
+                modifiers: alvr_packets::parse_path_value_pairs(&format!(
+                    r#"session_settings.video.preferred_codec.variant = "{val_codec}""#
+                ))
+                .unwrap(),
                 content: None,
             })
             .collect(),
@@ -129,16 +112,11 @@ pub fn encoder_preset_schema() -> PresetSchemaNode {
         .into_iter()
         .map(|(key, val_amd, val_nv)| HigherOrderChoiceOption {
             name: key.into(),
-            modifiers: [
-                parse(&format!(
-                    "session_settings.video.encoder_config.nvenc.quality_preset.variant = {val_nv}"
-                )),
-                parse(&format!(
-                    "session_settings.video.encoder_config.quality_preset.variant = {val_amd}"
-                )),
-            ]
-            .into_iter()
-            .collect(),
+            modifiers: alvr_packets::parse_path_value_pairs(&format!(
+                r#"session_settings.video.encoder_config.nvenc.quality_preset.variant = "{val_nv}"
+                session_settings.video.encoder_config.quality_preset.variant = "{val_amd}""#
+            ))
+            .unwrap(),
             content: None,
         })
         .collect(),
@@ -148,7 +126,6 @@ pub fn encoder_preset_schema() -> PresetSchemaNode {
 }
 
 pub fn foveation_preset_schema() -> PresetSchemaNode {
-    const PREFIX: &str = "session_settings.video.foveated_encoding";
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
         name: "foveation_preset".into(),
         strings: [(
@@ -171,15 +148,14 @@ shutterring and high encode/decode latency!"
         .map(
             |(key, val_size_x, val_size_y, val_edge_x, val_edge_y)| HigherOrderChoiceOption {
                 name: key.into(),
-                modifiers: [
-                    parse(&format!("{PREFIX}.enabled = true")),
-                    parse(&format!("{PREFIX}.content.center_size_x = {val_size_x}")),
-                    parse(&format!("{PREFIX}.content.center_size_y = {val_size_y}")),
-                    parse(&format!("{PREFIX}.content.edge_ratio_x = {val_edge_x}")),
-                    parse(&format!("{PREFIX}.content.edge_ratio_y = {val_edge_y}")),
-                ]
-                .into_iter()
-                .collect(),
+                modifiers: alvr_packets::parse_path_value_pairs(&format!(
+                    r"session_settings.video.foveated_encoding.enabled = true
+                    session_settings.video.foveated_encoding.content.center_size_x = {val_size_x}
+                    session_settings.video.foveated_encoding.content.center_size_y = {val_size_y}
+                    session_settings.video.foveated_encoding.content.edge_ratio_x = {val_edge_x}
+                    session_settings.video.foveated_encoding.content.edge_ratio_y = {val_edge_y}"
+                ))
+                .unwrap(),
                 content: None,
             },
         )
@@ -197,19 +173,25 @@ pub fn game_audio_schema() -> PresetSchemaNode {
         flags: HashSet::new(),
         options: [
             HigherOrderChoiceOption {
-                display_name: "Disabled".into(),
-                modifiers: vec!["session_settings.audio.game_audio.enabled = false".into()],
+                name: "Disabled".into(),
+                modifiers: alvr_packets::parse_path_value_pairs(
+                    "session_settings.audio.game_audio.enabled = false",
+                )
+                .unwrap(),
                 content: None,
             },
             HigherOrderChoiceOption {
-                display_name: "Enabled".into(),
-                modifiers: vec!["session_settings.audio.game_audio.enabled = true".into()],
+                name: "Enabled".into(),
+                modifiers: alvr_packets::parse_path_value_pairs(
+                    "session_settings.audio.game_audio.enabled = true",
+                )
+                .unwrap(),
                 content: None,
             },
         ]
         .into_iter()
         .collect(),
-        default_option_display_name: "Enabled".into(),
+        default_option_name: "Enabled".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -222,19 +204,25 @@ pub fn microphone_schema() -> PresetSchemaNode {
         flags: HashSet::new(),
         options: [
             HigherOrderChoiceOption {
-                display_name: "Disabled".into(),
-                modifiers: vec![parse("session_settings.audio.microphone.enabled = false")],
+                name: "Disabled".into(),
+                modifiers: alvr_packets::parse_path_value_pairs(
+                    "session_settings.audio.microphone.enabled = false",
+                )
+                .unwrap(),
                 content: None,
             },
             HigherOrderChoiceOption {
-                display_name: "Enabled".into(),
-                modifiers: vec![parse("session_settings.audio.microphone.enabled = true")],
+                name: "Enabled".into(),
+                modifiers: alvr_packets::parse_path_value_pairs(
+                    "session_settings.audio.microphone.enabled = true",
+                )
+                .unwrap(),
                 content: None,
             },
         ]
         .into_iter()
         .collect(),
-        default_option_display_name: "Enabled".into(),
+        default_option_name: "Enabled".into(),
         gui: ChoiceControlType::ButtonGroup,
     })
 }
@@ -254,15 +242,19 @@ pub fn game_audio_schema() -> PresetSchemaNode {
         options: vec![
             HigherOrderChoiceOption {
                 name: "Disabled".into(),
-                modifiers: vec![parse("session_settings.audio.game_audio.enabled = false")],
+                modifiers: alvr_packets::parse_path_value_pairs(
+                    "session_settings.audio.game_audio.enabled = false",
+                )
+                .unwrap(),
                 content: None,
             },
             HigherOrderChoiceOption {
                 name: "System Default".to_owned(),
-                modifiers: vec![
-                    parse("session_settings.audio.game_audio.enabled = true"),
-                    parse("session_settings.audio.game_audio.content.device.set = false"),
-                ],
+                modifiers: alvr_packets::parse_path_value_pairs(
+                    r"session_settings.audio.game_audio.enabled = true
+                    session_settings.audio.game_audio.content.device.set = false",
+                )
+                .unwrap(),
                 content: None,
             },
         ]
@@ -277,7 +269,10 @@ pub fn game_audio_schema() -> PresetSchemaNode {
 pub fn microphone_schema() -> PresetSchemaNode {
     let mut microhone_options = vec![HigherOrderChoiceOption {
         name: "Disabled".to_owned(),
-        modifiers: vec![parse("session_settings.audio.microphone.enabled = false")],
+        modifiers: alvr_packets::parse_path_value_pairs(
+            "session_settings.audio.microphone.enabled = false",
+        )
+        .unwrap(),
         content: None,
     }];
 
@@ -292,12 +287,11 @@ pub fn microphone_schema() -> PresetSchemaNode {
         ] {
             microhone_options.push(HigherOrderChoiceOption {
                 name: display_name.into(),
-                modifiers: vec![
-                    parse("session_settings.audio.microphone.enabled = true"),
-                    parse(&format!(
-                        "session_settings.audio.microphone.content.devices.variant = {key}"
-                    )),
-                ],
+                modifiers: alvr_packets::parse_path_value_pairs(&format!(
+                    r#"session_settings.audio.microphone.enabled = true
+                    session_settings.audio.microphone.content.devices.variant = "{key}""#,
+                ))
+                .unwrap(),
                 content: None,
             })
         }
@@ -328,42 +322,33 @@ ALVR bindings: use ALVR hand tracking button bindings. Check the wiki for help.
         options: [
             HigherOrderChoiceOption {
                 name: "Disabled".into(),
-                modifiers: vec![
-                    parse("session_settings.headset.controllers.enabled = false"),
-                    parse(&format!(
-                        "{PREFIX}.hand_skeleton.content.steamvr_input_2_0 = false"
-                    )),
-                    parse(&format!(
-                        "{PREFIX}.hand_tracking_interaction.enabled = false"
-                    )),
-                ],
+                modifiers: alvr_packets::parse_path_value_pairs(&format!(
+                    r"session_settings.headset.controllers.enabled = false
+                    {PREFIX}.hand_skeleton.content.steamvr_input_2_0 = false
+                    {PREFIX}.hand_tracking_interaction.enabled = false"
+                ))
+                .unwrap(),
                 content: None,
             },
             HigherOrderChoiceOption {
                 name: "SteamVR Input 2.0".into(),
-                modifiers: vec![
-                    parse("session_settings.headset.controllers.enabled = true"),
-                    parse(&format!("{PREFIX}.hand_skeleton.enabled = true")),
-                    parse(&format!(
-                        "{PREFIX}.hand_skeleton.content.steamvr_input_2_0 = true"
-                    )),
-                    parse(&format!(
-                        "{PREFIX}.hand_tracking_interaction.enabled = false"
-                    )),
-                ],
+                modifiers: alvr_packets::parse_path_value_pairs(&format!(
+                    r"session_settings.headset.controllers.enabled = true
+                    {PREFIX}.hand_skeleton.enabled = true
+                    {PREFIX}.hand_skeleton.content.steamvr_input_2_0 = true
+                    {PREFIX}.hand_tracking_interaction.enabled = false"
+                ))
+                .unwrap(),
                 content: None,
             },
             HigherOrderChoiceOption {
                 name: "ALVR bindings".into(),
-                modifiers: vec![
-                    parse("session_settings.headset.controllers.enabled = true"),
-                    parse(&format!(
-                        "{PREFIX}.hand_skeleton.content.steamvr_input_2_0 = false"
-                    )),
-                    parse(&format!(
-                        "{PREFIX}.hand_tracking_interaction.enabled = true"
-                    )),
-                ],
+                modifiers: alvr_packets::parse_path_value_pairs(&format!(
+                    r"session_settings.headset.controllers.enabled = true
+                    {PREFIX}.hand_skeleton.content.steamvr_input_2_0 = false
+                    {PREFIX}.hand_tracking_interaction.enabled = true"
+                ))
+                .unwrap(),
                 content: None,
             },
         ]
@@ -382,23 +367,28 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
         options: [
             HigherOrderChoiceOption {
                 name: "Disabled".into(),
-                modifiers: vec![parse("session_settings.headset.face_tracking.enabled = false")],
+                modifiers: alvr_packets::parse_path_value_pairs(
+                    "session_settings.headset.face_tracking.enabled = false"
+                )
+                .unwrap(),
                 content: None,
             },
             HigherOrderChoiceOption {
                 name: "VRChat Eye OSC".into(),
-                modifiers: vec![
-                    parse("session_settings.headset.face_tracking.enabled = true"),
-                    parse("session_settings.headset.face_tracking.content.sink.variant = VrchatEyeOsc"),
-                ],
+                modifiers: alvr_packets::parse_path_value_pairs(
+                    r#"session_settings.headset.face_tracking.enabled = true
+                    session_settings.headset.face_tracking.content.sink.variant = "VrchatEyeOsc""#
+                )
+                .unwrap(),
                 content: None,
             },
             HigherOrderChoiceOption {
                 name: "VRCFaceTracking".into(),
-                modifiers: vec![
-                    parse("session_settings.headset.face_tracking.enabled = true"),
-                    parse("session_settings.headset.face_tracking.content.sink.variant = VrcFaceTracking"),
-                ],
+                modifiers: alvr_packets::parse_path_value_pairs(
+                    r#"session_settings.headset.face_tracking.enabled = true
+                    session_settings.headset.face_tracking.content.sink.variant = "VrcFaceTracking""#
+                )
+                .unwrap(),
                 content: None,
             },
         ]

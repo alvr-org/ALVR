@@ -219,10 +219,7 @@ impl DataSources {
 
                 while running.value() {
                     while let Ok(request) = requests_receiver.try_recv() {
-                        debug!(
-                            "Dashboard request: {}",
-                            serde_json::to_string(&request).unwrap()
-                        );
+                        debug!("Dashboard request: {request:?}");
 
                         if let SessionSource::Local(session_manager) = &mut *session_source.lock() {
                             match request {

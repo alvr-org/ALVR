@@ -13,7 +13,7 @@ use alvr_common::{
 };
 use alvr_events::EventType;
 use alvr_gui_common::theme;
-use alvr_packets::{ClientConnectionsAction, PathValuePair};
+use alvr_packets::{ClientConnectionsAction, PathValuePairList};
 use alvr_session::SessionConfig;
 use eframe::egui::{self, Align, CentralPanel, Frame, Layout, Margin, RichText, SidePanel, Stroke};
 use serde::{Deserialize, Serialize};
@@ -24,7 +24,7 @@ pub enum ServerRequest {
     Log(LogEntry),
     GetSession,
     UpdateSession(Box<SessionConfig>),
-    SetSessionValues(Vec<PathValuePair>),
+    SetSessionValues(PathValuePairList),
     UpdateClientList {
         hostname: String,
         action: ClientConnectionsAction,
@@ -215,11 +215,12 @@ impl eframe::App for Dashboard {
                         }
                         SetupWizardRequest::Close { finished } => {
                             if finished {
-                                requests.push(ServerRequest::SetSessionValues(vec![
-                                    alvr_packets::parse_path_value_pair(
+                                requests.push(ServerRequest::SetSessionValues(
+                                    alvr_packets::parse_path_value_pairs(
                                         "session_settings.extra.open_setup_wizard = false",
-                                    ),
-                                ]))
+                                    )
+                                    .unwrap(),
+                                ))
                             }
 
                             self.setup_wizard_open = false;

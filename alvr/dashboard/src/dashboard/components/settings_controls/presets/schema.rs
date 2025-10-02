@@ -1,4 +1,4 @@
-use alvr_packets::PathValuePair;
+use alvr_packets::PathValuePairList;
 use serde::{Deserialize, Serialize};
 use settings_schema::ChoiceControlType;
 use std::collections::{HashMap, HashSet};
@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet};
 #[derive(Serialize, Deserialize)]
 pub struct HigherOrderChoiceOption {
     pub name: String,
-    pub modifiers: Vec<PathValuePair>,
+    pub modifiers: PathValuePairList,
     pub content: Option<PresetSchemaNode>,
 }
 

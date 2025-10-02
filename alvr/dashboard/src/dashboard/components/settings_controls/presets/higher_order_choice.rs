@@ -33,7 +33,7 @@ impl Control {
         let modifiers = schema
             .options
             .iter()
-            .map(|option| (option.name.clone(), option.modifiers.clone()))
+            .map(|option| (option.name.clone(), option.modifiers.0.clone()))
             .collect();
         let control_schema = SchemaNode::Choice {
             default: schema

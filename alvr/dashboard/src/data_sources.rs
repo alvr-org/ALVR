@@ -316,7 +316,7 @@ impl DataSources {
                             }
                         } else {
                             let get = |path: &str| {
-                                rq.get(format!("{base_uri}{path}"))
+                                rq.get(format!("{base_uri}/api/{path}"))
                                     .header("X-ALVR", "true")
                                     .call()
                                     .ok();
@@ -329,7 +329,7 @@ impl DataSources {
                                 body: Option<impl Serialize>,
                             ) {
                                 let builder = rq
-                                    .post(format!("{base_uri}{path}"))
+                                    .post(format!("{base_uri}/api/{path}"))
                                     .header("X-ALVR", "true");
                                 if let Some(body) = body {
                                     builder.send_json(body).ok();
@@ -341,38 +341,34 @@ impl DataSources {
 
                             match request {
                                 ServerRequest::Log(entry) => {
-                                    post_body(&rq, &base_uri, "/api/log", Some(entry))
+                                    post_body(&rq, &base_uri, "log", Some(entry))
                                 }
-                                ServerRequest::GetSession => get("/api/session"),
+                                ServerRequest::GetSession => get("session"),
                                 ServerRequest::UpdateSession(session) => {
-                                    post_body(&rq, &base_uri, "/api/session", Some(&*session))
+                                    post_body(&rq, &base_uri, "session", Some(&*session))
                                 }
                                 ServerRequest::SetSessionValues(values) => {
-                                    post_body(&rq, &base_uri, "/api/session/values", Some(values))
+                                    post_body(&rq, &base_uri, "session/values", Some(values))
                                 }
                                 ServerRequest::UpdateClientList { hostname, action } => post_body(
                                     &rq,
                                     &base_uri,
-                                    "/api/session/client-connections",
+                                    "session/client-connections",
                                     Some((hostname, action)),
                                 ),
-                                ServerRequest::AddFirewallRules => post("/api/firewall-rules/add"),
-                                ServerRequest::RemoveFirewallRules => {
-                                    post("/api/firewall-rules/remove")
-                                }
-                                ServerRequest::GetDriverList => get("/api/drivers"),
-                                ServerRequest::RegisterAlvrDriver => {
-                                    post("/api/drivers/register-alvr")
-                                }
+                                ServerRequest::AddFirewallRules => post("firewall-rules/add"),
+                                ServerRequest::RemoveFirewallRules => post("firewall-rules/remove"),
+                                ServerRequest::GetDriverList => get("drivers"),
+                                ServerRequest::RegisterAlvrDriver => post("drivers/register-alvr"),
                                 ServerRequest::UnregisterDriver(path) => {
-                                    post_body(&rq, &base_uri, "/api/drivers/unregister", Some(path))
+                                    post_body(&rq, &base_uri, "drivers/unregister", Some(path))
                                 }
-                                ServerRequest::CaptureFrame => post("/api/capture-frame"),
-                                ServerRequest::InsertIdr => post("/api/insert-idr"),
-                                ServerRequest::StartRecording => post("/api/recording/start"),
-                                ServerRequest::StopRecording => post("/api/recording/stop"),
-                                ServerRequest::RestartSteamvr => post("/api/restart-steamvr"),
-                                ServerRequest::ShutdownSteamvr => post("/api/shutdown-steamvr"),
+                                ServerRequest::CaptureFrame => post("capture-frame"),
+                                ServerRequest::InsertIdr => post("insert-idr"),
+                                ServerRequest::StartRecording => post("recording/start"),
+                                ServerRequest::StopRecording => post("recording/stop"),
+                                ServerRequest::RestartSteamvr => post("restart-steamvr"),
+                                ServerRequest::ShutdownSteamvr => post("shutdown-steamvr"),
                             }
                         }
                     }

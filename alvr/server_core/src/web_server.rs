@@ -62,40 +62,55 @@ pub async fn web_server(connection_context: Arc<ConnectionContext>) -> Result<()
     }
 
     let router = Router::new()
-        .route("/api/events", routing::get(events_websocket))
-        .route("/api/log", routing::post(set_log))
-        .route(
-            "/api/session",
-            routing::get(get_session).post(update_session),
+        .nest(
+            "/api",
+            Router::new()
+                .route("/events", routing::get(events_websocket))
+                .route("/log", routing::post(set_log))
+                .nest(
+                    "/session",
+                    Router::new()
+                        .route("/", routing::get(get_session).post(update_session))
+                        .route("/values", routing::post(set_session_values))
+                        .route(
+                            "/client-connections",
+                            routing::post(update_client_connections),
+                        ),
+                )
+                .route("/buttons", routing::post(set_buttons))
+                .route("/insert-idr", routing::post(insert_idr))
+                .route("/capture-frame", routing::post(capture_frame))
+                .nest(
+                    "/recording",
+                    Router::new()
+                        .route("/start", routing::post(start_recording))
+                        .route("/stop", routing::post(stop_recording)),
+                )
+                .nest(
+                    "/firewall-rules",
+                    Router::new()
+                        .route("/add", routing::post(add_firewall_rules))
+                        .route("/remove", routing::post(remove_firewall_rules)),
+                )
+                .nest(
+                    "/drivers",
+                    Router::new()
+                        .route("/", routing::get(get_driver_list))
+                        .route("/register-alvr", routing::post(register_alvr_driver))
+                        .route("/unregister", routing::post(unregister_driver)),
+                )
+                .nest(
+                    "/steamvr",
+                    Router::new()
+                        .route("/restart", routing::post(restart_steamvr))
+                        .route("/shutdown", routing::post(shutdown_steamvr)),
+                )
+                .route(
+                    "/version",
+                    routing::get(async || alvr_common::ALVR_VERSION.to_string()),
+                )
+                .route("/ping", routing::get(async || ())),
         )
-        .route("/api/session/values", routing::post(set_session_values))
-        .route(
-            "/api/session/client-connections",
-            routing::post(update_client_connections),
-        )
-        .route("/api/buttons", routing::post(set_buttons))
-        .route("/api/insert-idr", routing::post(insert_idr))
-        .route("/api/capture-frame", routing::post(capture_frame))
-        .route("/api/recording/start", routing::post(start_recording))
-        .route("/api/recording/stop", routing::post(stop_recording))
-        .route("/api/firewall-rules/add", routing::post(add_firewall_rules))
-        .route(
-            "/api/firewall-rules/remove",
-            routing::post(remove_firewall_rules),
-        )
-        .route("/api/drivers", routing::get(get_driver_list))
-        .route(
-            "/api/drivers/register-alvr",
-            routing::post(register_alvr_driver),
-        )
-        .route("/api/drivers/unregister", routing::post(unregister_driver))
-        .route("/api/steamvr/restart", routing::post(restart_steamvr))
-        .route("/api/steamvr/shutdown", routing::post(shutdown_steamvr))
-        .route(
-            "/api/version",
-            routing::get(async || alvr_common::ALVR_VERSION.to_string()),
-        )
-        .route("/api/ping", routing::get(async || ()))
         .layer(cors)
         .layer(SetResponseHeaderLayer::overriding(
             CACHE_CONTROL,

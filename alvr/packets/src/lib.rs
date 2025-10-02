@@ -1,5 +1,5 @@
 use alvr_common::{
-    BodySkeleton, ConnectionState, DeviceMotion, LogEntry, LogSeverity, Pose, ViewParams,
+    BodySkeleton, ConnectionState, DeviceMotion, LogSeverity, Pose, ViewParams,
     anyhow::Result,
     glam::{Quat, UVec2, Vec2},
     semver::Version,
@@ -13,7 +13,6 @@ use std::{
     collections::HashSet,
     fmt::{self, Debug},
     net::IpAddr,
-    path::PathBuf,
     time::Duration,
 };
 
@@ -281,7 +280,7 @@ pub fn parse_path(path: &str) -> Vec<PathSegment> {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum ClientListAction {
+pub enum ClientConnectionsAction {
     AddIfMissing {
         trusted: bool,
         manual_ips: Vec<IpAddr>,
@@ -315,28 +314,6 @@ pub struct PathValuePair {
 pub enum FirewallRulesAction {
     Add,
     Remove,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum ServerRequest {
-    Log(LogEntry),
-    GetSession,
-    UpdateSession(Box<SessionConfig>),
-    SetValues(Vec<PathValuePair>),
-    UpdateClientList {
-        hostname: String,
-        action: ClientListAction,
-    },
-    CaptureFrame,
-    InsertIdr,
-    StartRecording,
-    StopRecording,
-    FirewallRules(FirewallRulesAction),
-    RegisterAlvrDriver,
-    UnregisterDriver(PathBuf),
-    GetDriverList,
-    RestartSteamvr,
-    ShutdownSteamvr,
 }
 
 // Note: server sends a packet to the client at low frequency, binary encoding, without ensuring

@@ -12,7 +12,7 @@ use alvr_common::{
     error, info,
 };
 use alvr_events::EventType;
-use alvr_packets::{ClientListAction, PathSegment, PathValuePair};
+use alvr_packets::{ClientConnectionsAction, PathSegment, PathValuePair};
 use alvr_session::{ClientConnectionConfig, SessionConfig, Settings};
 use serde_json as json;
 use std::{
@@ -153,7 +153,7 @@ impl ServerSessionManager {
     }
 
     // Note: "value" can be any session subtree, in json format.
-    pub fn set_values(&mut self, descs: Vec<PathValuePair>) -> Result<()> {
+    pub fn set_session_values(&mut self, descs: Vec<PathValuePair>) -> Result<()> {
         let mut session_json = serde_json::to_value(self.session_config.clone()).unwrap();
 
         for desc in descs {
@@ -196,14 +196,14 @@ impl ServerSessionManager {
         &self.session_config.client_connections
     }
 
-    pub fn update_client_list(&mut self, hostname: String, action: ClientListAction) {
+    pub fn update_client_connections(&mut self, hostname: String, action: ClientConnectionsAction) {
         let mut client_connections = self.session_config.client_connections.clone();
 
         let maybe_client_entry = client_connections.entry(hostname);
 
         let mut updated = false;
         match action {
-            ClientListAction::AddIfMissing {
+            ClientConnectionsAction::AddIfMissing {
                 trusted,
                 manual_ips,
             } => {
@@ -220,35 +220,35 @@ impl ServerSessionManager {
                     updated = true;
                 }
             }
-            ClientListAction::SetDisplayName(name) => {
+            ClientConnectionsAction::SetDisplayName(name) => {
                 if let Entry::Occupied(mut entry) = maybe_client_entry {
                     entry.get_mut().display_name = name;
 
                     updated = true;
                 }
             }
-            ClientListAction::Trust => {
+            ClientConnectionsAction::Trust => {
                 if let Entry::Occupied(mut entry) = maybe_client_entry {
                     entry.get_mut().trusted = true;
 
                     updated = true;
                 }
             }
-            ClientListAction::SetManualIps(ips) => {
+            ClientConnectionsAction::SetManualIps(ips) => {
                 if let Entry::Occupied(mut entry) = maybe_client_entry {
                     entry.get_mut().manual_ips = ips.into_iter().collect();
 
                     updated = true;
                 }
             }
-            ClientListAction::RemoveEntry => {
+            ClientConnectionsAction::RemoveEntry => {
                 if let Entry::Occupied(entry) = maybe_client_entry {
                     entry.remove_entry();
 
                     updated = true;
                 }
             }
-            ClientListAction::UpdateCurrentIp(current_ip) => {
+            ClientConnectionsAction::UpdateCurrentIp(current_ip) => {
                 if let Entry::Occupied(mut entry) = maybe_client_entry
                     && entry.get().current_ip != current_ip
                 {
@@ -257,7 +257,7 @@ impl ServerSessionManager {
                     updated = true;
                 }
             }
-            ClientListAction::SetConnectionState(state) => {
+            ClientConnectionsAction::SetConnectionState(state) => {
                 if let Entry::Occupied(mut entry) = maybe_client_entry
                     && entry.get().connection_state != state
                 {
@@ -291,17 +291,20 @@ impl ServerSessionManager {
         let connections = self.client_list().clone();
         for (hostname, connection) in connections {
             if connection.trusted {
-                self.update_client_list(
+                self.update_client_connections(
                     hostname,
-                    ClientListAction::SetConnectionState(ConnectionState::Disconnected),
+                    ClientConnectionsAction::SetConnectionState(ConnectionState::Disconnected),
                 )
             } else {
-                self.update_client_list(hostname, ClientListAction::RemoveEntry);
+                self.update_client_connections(hostname, ClientConnectionsAction::RemoveEntry);
             }
         }
 
         for hostname in self.client_hostnames() {
-            self.update_client_list(hostname.clone(), ClientListAction::UpdateCurrentIp(None));
+            self.update_client_connections(
+                hostname.clone(),
+                ClientConnectionsAction::UpdateCurrentIp(None),
+            );
         }
     }
 }

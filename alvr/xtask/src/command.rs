@@ -56,18 +56,3 @@ pub fn date_utc_yyyymmdd(sh: &Shell) -> Result<String, xshell::Error> {
         cmd!(sh, "date -u +%Y.%m.%d").read()
     }
 }
-
-pub fn copy_recursive(sh: &Shell, source_dir: &Path, dest_dir: &Path) -> Result<(), xshell::Error> {
-    sh.create_dir(dest_dir)?;
-
-    for path in sh.read_dir(source_dir)? {
-        let dest_path = dest_dir.join(path.file_name().unwrap());
-        if path.is_dir() {
-            copy_recursive(sh, &path, &dest_path)?;
-        } else {
-            sh.copy_file(path, dest_path)?;
-        }
-    }
-
-    Ok(())
-}

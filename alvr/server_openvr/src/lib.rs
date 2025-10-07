@@ -15,8 +15,8 @@ mod bindings {
 use bindings::*;
 
 use alvr_common::{
-    BODY_LEFT_FOOT_ID, BODY_RIGHT_FOOT_ID, BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID,
-    HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID, Pose, ViewParams, error,
+    BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
+    Pose, ViewParams, error,
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
     warn,
@@ -89,9 +89,10 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                     let track_body = headset_config.body_tracking.enabled();
 
                     let tracked = controllers_config.as_ref().is_some_and(|c| c.tracked);
-                    let detached_controllers = controllers_config
-                        .as_ref()
-                        .is_some_and(|c| c.multimodal_tracking);
+                    let detached_controllers = headset_config
+                        .multimodal_tracking
+                        .as_option()
+                        .is_some_and(|c| c.detached_controllers_steamvr_sink);
 
                     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
                         let target_timestamp =
@@ -221,18 +222,8 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                             predictHandSkeleton: predict_hand_skeleton,
                         };
 
-                        let ffi_body_tracker_motions = if track_body {
+                        let ffi_body_tracker_motions = if track_body || detached_controllers {
                             tracking::BODY_TRACKER_IDS
-                                .iter()
-                                .filter_map(|id| {
-                                    Some(tracking::to_ffi_motion(
-                                        *id,
-                                        context.get_device_motion(*id, poll_timestamp)?,
-                                    ))
-                                })
-                                .collect::<Vec<_>>()
-                        } else if detached_controllers {
-                            [*BODY_LEFT_FOOT_ID, *BODY_RIGHT_FOOT_ID]
                                 .iter()
                                 .filter_map(|id| {
                                     Some(tracking::to_ffi_motion(

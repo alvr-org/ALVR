@@ -161,9 +161,9 @@ impl InteractionSourcesConfig {
             prefers_multimodal_input: config
                 .settings
                 .headset
-                .controllers
+                .multimodal_tracking
                 .as_option()
-                .is_some_and(|c| c.multimodal_tracking),
+                .is_some_and(|c| c.enabled),
         }
     }
 }

@@ -1,6 +1,7 @@
 use super::{GraphicsContext, MAX_PUSH_CONSTANTS_SIZE, SDR_FORMAT};
+use crate::HandData;
 use alvr_common::{
-    BodySkeleton, DeviceMotion, Pose, ViewParams,
+    BodySkeleton, DeviceMotion, ViewParams,
     glam::{IVec2, Mat4, Quat, UVec2, Vec3},
 };
 use glyph_brush_layout::{
@@ -402,7 +403,7 @@ impl LobbyRenderer {
     pub fn render(
         &self,
         view_params: [LobbyViewParams; 2],
-        hand_data: [(Option<DeviceMotion>, Option<[Pose; 26]>); 2],
+        hand_data: [HandData; 2],
         body_skeleton: Option<BodySkeleton>,
         additional_motions: Option<Vec<DeviceMotion>>,
         render_background: bool,
@@ -503,6 +504,7 @@ impl LobbyRenderer {
                 motion: &DeviceMotion,
                 view_proj: Mat4,
                 show_velocities: bool,
+                color: &[u8; 4],
             ) {
                 let hand_transform = Mat4::from_scale_rotation_translation(
                     Vec3::ONE * 0.2,
@@ -516,11 +518,7 @@ impl LobbyRenderer {
                     Mat4::from_rotation_y(FRAC_PI_2),
                     Mat4::from_rotation_x(FRAC_PI_2),
                 ];
-                pass.set_push_constants(
-                    ShaderStages::VERTEX_FRAGMENT,
-                    COLOR_CONST_OFFSET,
-                    &[255, 255, 255, 255],
-                );
+                pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, COLOR_CONST_OFFSET, color);
                 for rot in &segment_rotations {
                     let transform = hand_transform
                         * *rot
@@ -560,8 +558,8 @@ impl LobbyRenderer {
 
             // Render hands and body skeleton
             pass.set_pipeline(&self.line_pipeline);
-            for (maybe_motion, maybe_skeleton) in &hand_data {
-                if let Some(skeleton) = maybe_skeleton {
+            for data in &hand_data {
+                if let Some(skeleton) = data.skeleton_joints {
                     pass.set_push_constants(
                         ShaderStages::VERTEX_FRAGMENT,
                         COLOR_CONST_OFFSET,
@@ -581,14 +579,36 @@ impl LobbyRenderer {
                     }
                 }
 
-                if let Some(motion) = maybe_motion {
-                    draw_crosshair(&mut pass, motion, view_proj, show_velocities);
+                if let Some(motion) = data.grip_motion {
+                    draw_crosshair(
+                        &mut pass,
+                        &motion,
+                        view_proj,
+                        show_velocities,
+                        &[255, 255, 255, 255],
+                    );
+                }
+
+                if let Some(motion) = data.detached_grip_motion {
+                    draw_crosshair(
+                        &mut pass,
+                        &motion,
+                        view_proj,
+                        show_velocities,
+                        &[50, 50, 50, 255],
+                    );
                 }
             }
 
             if let Some(motions) = &additional_motions {
                 for motion in motions {
-                    draw_crosshair(&mut pass, motion, view_proj, show_velocities);
+                    draw_crosshair(
+                        &mut pass,
+                        motion,
+                        view_proj,
+                        show_velocities,
+                        &[255, 255, 255, 255],
+                    );
                 }
             }
 

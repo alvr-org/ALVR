@@ -1,8 +1,8 @@
 use alvr_common::{
     BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID,
-    BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, BodySkeleton, DeviceMotion,
-    GENERIC_TRACKER_1_ID, GENERIC_TRACKER_2_ID, GENERIC_TRACKER_3_ID, HEAD_ID, anyhow::Result,
-    glam::Vec3,
+    BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, BodySkeleton,
+    DETACHED_CONTROLLER_LEFT_ID, DETACHED_CONTROLLER_RIGHT_ID, DeviceMotion, GENERIC_TRACKER_1_ID,
+    GENERIC_TRACKER_2_ID, GENERIC_TRACKER_3_ID, HEAD_ID, anyhow::Result, glam::Vec3,
 };
 use alvr_session::BodyTrackingSinkConfig;
 use rosc::{OscMessage, OscPacket, OscType};
@@ -103,6 +103,21 @@ impl BodyTrackingSink {
             BodyTrackingSinkConfig::FakeViveTracker => {}
         }
     }
+}
+
+pub fn get_default_body_trackers_from_detached_controllers(
+    device_motions: &[(u64, DeviceMotion)],
+) -> Vec<(u64, DeviceMotion)> {
+    let mut poses = Vec::new();
+    for (id, motion) in device_motions {
+        if *id == *DETACHED_CONTROLLER_LEFT_ID {
+            poses.push((*BODY_LEFT_FOOT_ID, *motion));
+        } else if *id == *DETACHED_CONTROLLER_RIGHT_ID {
+            poses.push((*BODY_RIGHT_FOOT_ID, *motion));
+        }
+    }
+
+    poses
 }
 
 // TODO: make this customizable

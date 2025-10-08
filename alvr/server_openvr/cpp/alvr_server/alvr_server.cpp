@@ -430,8 +430,9 @@ void SetTracking(
         }
 
         for (auto id : BODY_IDS) {
-            auto* maybeTracker = (FakeViveTracker*)g_driver_provider.tracked_devices.at(id);
-            if (maybeTracker) {
+            auto it = g_driver_provider.tracked_devices.find(id);
+            if (it != g_driver_provider.tracked_devices.end()) {
+                auto* maybeTracker = (FakeViveTracker*)it->second;
                 auto res = motionsMap.find(id);
                 auto* maybeMotion = res != motionsMap.end() ? &res->second : nullptr;
 

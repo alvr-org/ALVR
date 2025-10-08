@@ -6,7 +6,7 @@ pub use lobby::*;
 pub use stream::*;
 
 use alvr_common::{
-    Fov,
+    DeviceMotion, Fov, Pose,
     glam::{Mat4, UVec2, Vec4},
 };
 use glow::{self as gl, HasContext};
@@ -32,6 +32,12 @@ type CreateImageFn = unsafe extern "C" fn(
 type DestroyImageFn = unsafe extern "C" fn(egl::EGLDisplay, egl::EGLImage) -> egl::Boolean;
 type GetNativeClientBufferFn = unsafe extern "C" fn(*const c_void) -> egl::EGLClientBuffer;
 type ImageTargetTexture2DFn = unsafe extern "C" fn(egl::Enum, egl::EGLImage);
+
+pub struct HandData {
+    pub grip_motion: Option<DeviceMotion>,
+    pub detached_grip_motion: Option<DeviceMotion>,
+    pub skeleton_joints: Option<[Pose; 26]>,
+}
 
 pub fn check_error(gl: &gl::Context, message_context: &str) {
     let err = unsafe { gl.get_error() };

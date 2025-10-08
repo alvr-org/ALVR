@@ -7,7 +7,8 @@ use alvr_client_core::{
     video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
 };
 use alvr_common::{
-    HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID, Pose, RelaxedAtomic, ViewParams,
+    DETACHED_CONTROLLER_LEFT_ID, DETACHED_CONTROLLER_RIGHT_ID, HAND_LEFT_ID, HAND_RIGHT_ID,
+    HEAD_ID, Pose, RelaxedAtomic, ViewParams,
     anyhow::Result,
     error,
     glam::{UVec2, Vec2},
@@ -565,7 +566,7 @@ fn stream_input_loop(
 
         device_motions.push((*HEAD_ID, head_motion));
 
-        let (left_hand_motion, left_hand_skeleton) = crate::interaction::get_hand_data(
+        let left_hand_data = crate::interaction::get_hand_data(
             &xr_session,
             platform,
             stage_reference_space,
@@ -575,7 +576,7 @@ fn stream_input_loop(
             &mut last_controller_poses[0],
             &mut last_palm_poses[0],
         );
-        let (right_hand_motion, right_hand_skeleton) = crate::interaction::get_hand_data(
+        let right_hand_data = crate::interaction::get_hand_data(
             &xr_session,
             platform,
             stage_reference_space,
@@ -588,15 +589,26 @@ fn stream_input_loop(
 
         // Note: When multimodal input is enabled, we are sure that when free hands are used
         // (not holding controllers) the controller data is None.
-        if (int_ctx.multimodal_hands_enabled || left_hand_skeleton.is_none())
-            && let Some(motion) = left_hand_motion
+        if (int_ctx.multimodal_hands_enabled || left_hand_data.skeleton_joints.is_none())
+            && let Some(motion) = left_hand_data.grip_motion
         {
             device_motions.push((*HAND_LEFT_ID, motion));
         }
-        if (int_ctx.multimodal_hands_enabled || right_hand_skeleton.is_none())
-            && let Some(motion) = right_hand_motion
+        if (int_ctx.multimodal_hands_enabled || right_hand_data.skeleton_joints.is_none())
+            && let Some(motion) = right_hand_data.grip_motion
         {
             device_motions.push((*HAND_RIGHT_ID, motion));
+        }
+
+        if int_ctx.multimodal_hands_enabled
+            && let Some(detached_controller) = left_hand_data.detached_grip_motion
+        {
+            device_motions.push((*DETACHED_CONTROLLER_LEFT_ID, detached_controller));
+        }
+        if int_ctx.multimodal_hands_enabled
+            && let Some(detached_controller) = right_hand_data.detached_grip_motion
+        {
+            device_motions.push((*DETACHED_CONTROLLER_RIGHT_ID, detached_controller));
         }
 
         let face = interaction::get_face_data(
@@ -623,7 +635,10 @@ fn stream_input_loop(
         core_ctx.send_tracking(TrackingData {
             poll_timestamp: target_time,
             device_motions,
-            hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
+            hand_skeletons: [
+                left_hand_data.skeleton_joints,
+                right_hand_data.skeleton_joints,
+            ],
             face,
             body,
         });

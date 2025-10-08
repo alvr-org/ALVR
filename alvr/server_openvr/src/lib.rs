@@ -293,9 +293,9 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
 
                     unsafe { ShutdownSteamvr() };
                 }
-                ServerCoreEvent::ProximityState(proximity_state) => {                    
-                    unsafe { SetProximityState(proximity_state) }
-                }
+                ServerCoreEvent::ProximityState(proximity_state) => unsafe {
+                    SetProximityState(proximity_state)
+                },
             }
         }
 

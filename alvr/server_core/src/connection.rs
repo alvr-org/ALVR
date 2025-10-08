@@ -1278,9 +1278,9 @@ fn connection_pipeline(
                     }
                     ClientControlPacket::KeepAlive | ClientControlPacket::StreamReady => (),
                     ClientControlPacket::Reserved(_) | ClientControlPacket::ReservedBuffer(_) => (),
-                    ClientControlPacket::ProximityState(is_user_present) => {
+                    ClientControlPacket::ProximityState(headset_is_worn) => {
                         ctx.events_sender
-                            .send(ServerCoreEvent::ProximityState(is_user_present))
+                            .send(ServerCoreEvent::ProximityState(headset_is_worn))
                             .ok();
                     }
                 }

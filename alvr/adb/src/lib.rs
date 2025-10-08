@@ -2,11 +2,13 @@ pub mod commands;
 mod parse;
 
 use alvr_common::anyhow::Result;
-use alvr_common::{dbg_connection, error};
+use alvr_common::{dbg_connection, error, warn};
+use alvr_session::WiredClientAutoLaunchConfig;
 use alvr_system_info::{
     ClientFlavor, PACKAGE_NAME_GITHUB_DEV, PACKAGE_NAME_GITHUB_STABLE, PACKAGE_NAME_STORE,
 };
 use std::collections::HashSet;
+use std::time::Duration;
 
 pub enum WiredConnectionStatus {
     Ready,
@@ -32,7 +34,7 @@ impl WiredConnection {
         control_port: u16,
         stream_port: u16,
         client_type: &ClientFlavor,
-        client_autolaunch: bool,
+        client_autolaunch: Option<WiredClientAutoLaunchConfig>,
     ) -> Result<WiredConnectionStatus> {
         let Some(device_serial) = commands::list_devices(&self.adb_path)?
             .into_iter()
@@ -66,7 +68,22 @@ impl WiredConnection {
         };
 
         if commands::get_process_id(&self.adb_path, &device_serial, &process_name)?.is_none() {
-            if client_autolaunch {
+            if let Some(client_autolaunch) = client_autolaunch {
+                if client_autolaunch.boot_delay > 0 {
+                    match commands::get_uptime(&self.adb_path, &device_serial) {
+                        Ok(uptime) => {
+                            if uptime < Duration::from_secs(client_autolaunch.boot_delay.into()) {
+                                return Ok(WiredConnectionStatus::NotReady(
+                                    "Waiting for device boot".to_owned(),
+                                ));
+                            }
+                        }
+                        Err(failure) => {
+                            warn!("wired_connection: get_uptime failed with {}", failure);
+                        }
+                    }
+                }
+
                 commands::start_application(&self.adb_path, &device_serial, &process_name)?;
                 Ok(WiredConnectionStatus::NotReady(
                     "Starting ALVR client".to_owned(),

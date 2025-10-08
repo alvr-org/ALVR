@@ -184,6 +184,7 @@ version = "21.0.0-dev10"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
+ "alvr_session",
  "alvr_system_info",
  "anyhow",
  "ureq",

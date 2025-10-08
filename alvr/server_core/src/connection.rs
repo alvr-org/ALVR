@@ -297,7 +297,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                 let connection = &session_manager_lock.settings().connection;
                 stream_port = connection.stream_port;
                 client_type = connection.wired_client_type.clone();
-                client_autolaunch = connection.wired_client_autolaunch;
+                client_autolaunch = connection.wired_client_autolaunch.as_option().cloned();
             }
 
             let status = match wired_connection.setup(

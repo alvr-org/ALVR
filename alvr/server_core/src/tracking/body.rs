@@ -111,9 +111,9 @@ pub fn get_default_body_trackers_from_detached_controllers(
     let mut poses = Vec::new();
     for (id, motion) in device_motions {
         if *id == *DETACHED_CONTROLLER_LEFT_ID {
-            poses.push((*BODY_LEFT_FOOT_ID, *motion));
+            poses.push((*BODY_LEFT_ELBOW_ID, *motion));
         } else if *id == *DETACHED_CONTROLLER_RIGHT_ID {
-            poses.push((*BODY_RIGHT_FOOT_ID, *motion));
+            poses.push((*BODY_RIGHT_ELBOW_ID, *motion));
         }
     }
 

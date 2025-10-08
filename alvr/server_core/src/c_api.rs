@@ -71,6 +71,7 @@ pub enum AlvrEvent {
     CaptureFrame,
     RestartPending,
     ShutdownPending,
+    ProximityState(bool),
 }
 
 #[repr(C)]
@@ -292,8 +293,10 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
                 *out_event = AlvrEvent::ShutdownPending;
             },
             ServerCoreEvent::GameRenderLatencyFeedback(_)
-            | ServerCoreEvent::SetOpenvrProperty { .. }
-            | ServerCoreEvent::UserPresence(_) => {} // implementation not needed
+            | ServerCoreEvent::SetOpenvrProperty { .. } => {} // implementation not needed
+            ServerCoreEvent::UserPresence(proximity_state) => unsafe {
+                *out_event = AlvrEvent::ProximityState(proximity_state);
+            }
         }
 
         true

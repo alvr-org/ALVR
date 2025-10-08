@@ -193,9 +193,9 @@ pub enum ClientControlPacket {
         level: LogSeverity,
         message: String,
     },
+    UserPresence(bool),
     Reserved(String),
     ReservedBuffer(Vec<u8>),
-    UserPresence(bool),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

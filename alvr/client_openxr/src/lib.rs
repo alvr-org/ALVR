@@ -237,12 +237,6 @@ pub fn entry_point() {
         let (xr_session, mut xr_frame_waiter, mut xr_frame_stream) =
             create_session(&xr_instance, xr_system, &graphics_context);
 
-        if extra_extensions::supports_user_presence(&xr_session, xr_system) {
-            alvr_common::info!("user presence supported");
-        } else {
-            alvr_common::info!("user presence NOT supported");
-        }
-
         let views_config = xr_instance
             .enumerate_view_configuration_views(
                 xr_system,
@@ -327,7 +321,7 @@ pub fn entry_point() {
         let mut passthrough_layer = None;
 
         let mut event_storage = xr::EventDataBuffer::new();
-        let mut user_is_present = true;
+        let mut headset_is_worn = true;
         'render_loop: loop {
             while let Some(event) = xr_instance.poll_event(&mut event_storage).unwrap() {
                 match event {
@@ -388,9 +382,9 @@ pub fn entry_point() {
                     }
                     xr::Event::UserPresenceChangedEXT(event) => {
                         alvr_common::info!("user present: {:?}", event.is_user_present());
-                        user_is_present = event.is_user_present();
+                        headset_is_worn = event.is_user_present();
 
-                        core_context.send_user_presence(event.is_user_present());
+                        core_context.send_proximity_state(event.is_user_present());
                     }
                     _ => (),
                 }
@@ -425,7 +419,7 @@ pub fn entry_point() {
 
                         stream_context = Some(context);
 
-                        core_context.send_user_presence(user_is_present);
+                        core_context.send_proximity_state(headset_is_worn);
                     }
                     ClientCoreEvent::StreamingStopped => {
                         if passthrough_layer.is_none() {

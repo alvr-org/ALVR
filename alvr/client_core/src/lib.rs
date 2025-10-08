@@ -222,12 +222,10 @@ impl ClientCoreContext {
         }
     }
 
-    pub fn send_user_presence(&self, user_is_present: bool) {
-        dbg_client_core!("send_user_presence");
-
+    pub fn send_proximity_state(&self, headset_is_worn: bool) {
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender
-                .send(&ClientControlPacket::UserPresence(user_is_present))
+                .send(&ClientControlPacket::ProximityState(headset_is_worn))
                 .ok();
         }
     }

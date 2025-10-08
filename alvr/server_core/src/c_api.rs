@@ -294,7 +294,7 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
             },
             ServerCoreEvent::GameRenderLatencyFeedback(_)
             | ServerCoreEvent::SetOpenvrProperty { .. } => {} // implementation not needed
-            ServerCoreEvent::UserPresence(proximity_state) => unsafe {
+            ServerCoreEvent::ProximityState(proximity_state) => unsafe {
                 *out_event = AlvrEvent::ProximityState(proximity_state);
             }
         }

@@ -293,8 +293,8 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
 
                     unsafe { ShutdownSteamvr() };
                 }
-                ServerCoreEvent::UserPresence(is_user_present) => {                    
-                    unsafe { SetUserPresence(is_user_present) }
+                ServerCoreEvent::ProximityState(proximity_state) => {                    
+                    unsafe { SetProximityState(proximity_state) }
                 }
             }
         }

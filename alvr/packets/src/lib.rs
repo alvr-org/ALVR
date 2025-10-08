@@ -193,7 +193,7 @@ pub enum ClientControlPacket {
         level: LogSeverity,
         message: String,
     },
-    UserPresence(bool),
+    ProximityState(bool),
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }

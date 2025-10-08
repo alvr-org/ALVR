@@ -512,9 +512,9 @@ void SetButton(unsigned long long buttonID, FfiButtonValue value) {
     }
 }
 
-void SetUserPresence(bool is_user_present) {
+void SetProximityState(bool headset_is_worn) {
     if (g_driver_provider.hmd) {
-        g_driver_provider.hmd->SetUserPresence(is_user_present);
+        g_driver_provider.hmd->SetProximityState(headset_is_worn);
     }
 }
 

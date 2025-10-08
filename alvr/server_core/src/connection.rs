@@ -1279,7 +1279,6 @@ fn connection_pipeline(
                     ClientControlPacket::KeepAlive | ClientControlPacket::StreamReady => (),
                     ClientControlPacket::Reserved(_) | ClientControlPacket::ReservedBuffer(_) => (),
                     ClientControlPacket::UserPresence(is_user_present) => {
-                        info!("Received user presence: {is_user_present}");
                         ctx.events_sender
                             .send(ServerCoreEvent::UserPresence(is_user_present))
                             .ok();

@@ -161,6 +161,7 @@ extern "C" void RegisterButton(void* instancePtr, unsigned long long buttonID);
 extern "C" void SetLocalViewParams(const FfiViewParams params[2]);
 extern "C" void SetBattery(unsigned long long deviceID, float gauge_value, bool is_plugged);
 extern "C" void SetButton(unsigned long long buttonID, FfiButtonValue value);
+extern "C" void SetProximityState(bool headset_is_worn);
 
 extern "C" void InitOpenvrClient();
 extern "C" void ShutdownOpenvrClient();

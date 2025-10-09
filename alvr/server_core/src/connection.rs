@@ -1278,6 +1278,11 @@ fn connection_pipeline(
                     }
                     ClientControlPacket::KeepAlive | ClientControlPacket::StreamReady => (),
                     ClientControlPacket::Reserved(_) | ClientControlPacket::ReservedBuffer(_) => (),
+                    ClientControlPacket::ProximityState(headset_is_worn) => {
+                        ctx.events_sender
+                            .send(ServerCoreEvent::ProximityState(headset_is_worn))
+                            .ok();
+                    }
                 }
 
                 disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;

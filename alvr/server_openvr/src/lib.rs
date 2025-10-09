@@ -293,8 +293,8 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
 
                     unsafe { ShutdownSteamvr() };
                 }
-                ServerCoreEvent::ProximityState(proximity_state) => unsafe {
-                    SetProximityState(proximity_state)
+                ServerCoreEvent::ProximityState(headset_is_worn) => unsafe {
+                    SetProximityState(headset_is_worn)
                 },
             }
         }

@@ -53,6 +53,7 @@ pub fn set_theme(ctx: &Context) {
     style.spacing.item_spacing = egui::vec2(15.0, 15.0);
     style.spacing.button_padding = egui::vec2(10.0, 10.0);
     style.text_styles.get_mut(&TextStyle::Body).unwrap().size = 14.0;
+    style.interaction.tooltip_delay = 0.0;
 
     ctx.set_style(style);
 

@@ -7,6 +7,7 @@ use settings_schema::{SchemaEntry, SchemaNode};
 use std::collections::{HashMap, HashSet};
 
 pub struct Control {
+    name: String,
     modifiers: HashMap<String, Vec<PathValuePair>>,
     control: SettingControl,
     preset_json: json::Value,
@@ -35,11 +36,11 @@ impl Control {
             .collect();
 
         let mut strings = schema.strings;
-        strings.insert("display_name".into(), schema.name);
+        strings.insert("display_name".into(), schema.name.clone());
 
         let control_schema = SchemaNode::Section {
             entries: vec![SchemaEntry {
-                name: "".into(),
+                name: schema.name.clone(),
                 strings,
                 flags: schema.flags,
                 content: SchemaNode::Choice {
@@ -76,9 +77,10 @@ impl Control {
             control_schema,
         );
 
-        let preset_json = json::json!({ "": { "variant": "" } });
+        let preset_json = json::json!({ {&schema.name}: { "variant": "" } });
 
         Self {
+            name: schema.name,
             modifiers,
             control,
             preset_json,
@@ -124,7 +126,7 @@ impl Control {
         }
 
         // Note: if no modifier matched, the control will unselect all options
-        self.preset_json[""]["variant"] = json::Value::String(selected_option);
+        self.preset_json[&self.name]["variant"] = json::Value::String(selected_option);
     }
 
     pub fn ui(&mut self, ui: &mut Ui) -> Vec<PathValuePair> {

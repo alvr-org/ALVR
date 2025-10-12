@@ -98,7 +98,7 @@ impl Control {
                         ui.style_mut().spacing.interact_size.y = SCROLLBAR_DOT_DIAMETER;
                         ui.add(slider)
                     };
-                    
+
                     let mut drag_value = DragValue::new(editing_value_mut);
                     // Note: the following ifs cannot be merged with the ones above to avoid double
                     // mutable borrow of editing_value_mut.

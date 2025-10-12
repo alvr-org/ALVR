@@ -766,6 +766,7 @@ If you want to reduce the amount of pixelation on the edges, increase the center
     #[schema(flag = "steamvr-restart")]
     pub adapter_index: u32,
 
+    #[schema(strings(display_name = "Client-side foveation"))]
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,
 
     #[schema(strings(
@@ -1131,6 +1132,7 @@ pub struct HapticsConfig {
 pub struct HandSkeletonConfig {
     #[schema(flag = "steamvr-restart")]
     #[schema(strings(
+        display_name = "SteamVR input 2.0",
         help = r"Enabling this will use separate tracker objects with the full skeletal tracking level when hand tracking is detected. This is required for VRChat hand tracking."
     ))]
     pub steamvr_input_2_0: bool,
@@ -1183,6 +1185,7 @@ Currently this cannot be reliably estimated automatically. The correct value sho
     pub emulation_mode: ControllersEmulationMode,
 
     #[schema(flag = "steamvr-restart")]
+    #[schema(strings(display_name = "Extra OpenVR props"))]
     pub extra_openvr_props: Vec<OpenvrProperty>,
 
     #[schema(flag = "real-time")]
@@ -1265,6 +1268,7 @@ Tilted: the world gets tilted when long pressing the oculus button. This is usef
     pub emulation_mode: HeadsetEmulationMode,
 
     #[schema(flag = "steamvr-restart")]
+    #[schema(strings(display_name = "Extra OpenVR props"))]
     pub extra_openvr_props: Vec<OpenvrProperty>,
 
     #[schema(flag = "steamvr-restart")]
@@ -1372,6 +1376,7 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     pub enable_on_disconnect_script: bool,
 
     #[schema(strings(
+        display_name = "Allow untrusted HTTP",
         help = "Allow cross-origin browser requests to control ALVR settings remotely."
     ))]
     pub allow_untrusted_http: bool,
@@ -1386,6 +1391,8 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
 
     pub stream_port: u16,
     pub web_server_port: u16,
+
+    #[schema(strings(display_name = "OSC local port"))]
     pub osc_local_port: u16,
 
     #[schema(strings(display_name = "Streamer send buffer size"))]
@@ -1414,6 +1421,7 @@ This could happen on TCP. A IDR frame is requested in this case."#
     #[schema(gui(slider(min = 5, max = 1000, step = 5)), suffix = "ms")]
     pub minimum_idr_interval_ms: u64,
 
+    #[schema(strings(display_name = "DSCP"))]
     pub dscp: Option<DscpTos>,
 }
 

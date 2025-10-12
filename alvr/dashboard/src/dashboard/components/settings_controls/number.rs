@@ -1,5 +1,6 @@
 use super::{NestingInfo, reset};
 use crate::dashboard::components::f64_eq;
+use alvr_gui_common::theme::SCROLLBAR_DOT_DIAMETER;
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{NumberType, NumericGuiType};
 use eframe::{
@@ -78,45 +79,53 @@ impl Control {
                 &mut session_value
             };
 
-            let response = match &self.gui_type {
-                NumericGuiType::Slider {
-                    range,
-                    step,
-                    logarithmic,
-                } => {
-                    let mut slider =
-                        Slider::new(editing_value_mut, range.clone()).logarithmic(*logarithmic);
+            let mut is_editing = false;
+            let mut finished_editing = false;
 
-                    if let Some(step) = step {
-                        slider = slider.step_by(*step);
-                    }
-                    if !matches!(self.ty, NumberType::Float) {
-                        slider = slider.integer();
-                    }
-                    if let Some(suffix) = &self.suffix {
-                        slider = slider.suffix(suffix);
-                    }
+            if let NumericGuiType::Slider {
+                range,
+                step,
+                logarithmic,
+            } = &self.gui_type
+            {
+                let mut slider = Slider::new(editing_value_mut, range.clone())
+                    .logarithmic(*logarithmic)
+                    .show_value(false);
 
-                    // todo: investigate why the slider does not get centered vertically
-                    ui.with_layout(Layout::left_to_right(Align::Center), |ui| ui.add(slider))
-                        .inner
+                if let Some(step) = step {
+                    slider = slider.step_by(*step);
                 }
-                NumericGuiType::TextBox => {
-                    let mut textbox = DragValue::new(editing_value_mut);
-
-                    if !matches!(self.ty, NumberType::Float) {
-                        textbox = textbox.fixed_decimals(0);
-                    }
-                    if let Some(suffix) = &self.suffix {
-                        textbox = textbox.suffix(suffix);
-                    }
-
-                    ui.add(textbox)
+                if !matches!(self.ty, NumberType::Float) {
+                    slider = slider.integer();
                 }
-            };
-            if response.drag_started() || response.gained_focus() {
+                if let Some(suffix) = &self.suffix {
+                    slider = slider.suffix(suffix);
+                }
+
+                ui.scope(|ui| {
+                    ui.style_mut().spacing.interact_size.y = SCROLLBAR_DOT_DIAMETER;
+                    let slider_response = ui.add(slider);
+
+                    is_editing = slider_response.drag_started() || slider_response.gained_focus();
+                    finished_editing =
+                        slider_response.drag_stopped() || slider_response.lost_focus();
+                });
+            }
+
+            let mut drag_value = DragValue::new(editing_value_mut);
+
+            if !matches!(self.ty, NumberType::Float) {
+                drag_value = drag_value.fixed_decimals(0);
+            }
+            if let Some(suffix) = &self.suffix {
+                drag_value = drag_value.suffix(suffix);
+            }
+
+            let response = ui.add(drag_value);
+
+            if is_editing || response.drag_started() || response.gained_focus() {
                 self.editing_value_f64 = Some(session_value)
-            } else if response.drag_stopped() || response.lost_focus() {
+            } else if finished_editing || response.drag_stopped() || response.lost_focus() {
                 request = get_request(&self.nesting_info, *editing_value_mut, self.ty);
                 *session_fragment = to_json_value(*editing_value_mut, self.ty);
 

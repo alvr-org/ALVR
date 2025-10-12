@@ -1,6 +1,5 @@
-use egui::{self, Response, Sense, StrokeKind, Ui, WidgetInfo, WidgetType};
-
 use crate::theme::SWITCH_DOT_DIAMETER;
+use egui::{self, Response, Sense, StrokeKind, Ui, WidgetInfo, WidgetType};
 
 pub fn switch(ui: &mut Ui, on: &mut bool) -> Response {
     let desired_size = SWITCH_DOT_DIAMETER * egui::vec2(2.0, 1.0);

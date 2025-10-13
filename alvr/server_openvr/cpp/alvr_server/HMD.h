@@ -26,7 +26,7 @@ public:
     Hmd();
     virtual ~Hmd();
     void OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion);
-    void StartStreaming();
+    void StartStreaming(bool headset_is_worn);
     void StopStreaming();
     void SetViewParams(const FfiViewParams params[2]);
     void SetProximityState(bool headsetIsWorn);

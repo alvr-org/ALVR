@@ -56,8 +56,8 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                 ServerCoreEvent::SetOpenvrProperty { device_id, prop } => {
                     props::set_openvr_prop(None, device_id, prop)
                 }
-                ServerCoreEvent::ClientConnected => unsafe {
-                    if InitializeStreaming() {
+                ServerCoreEvent::ClientConnected(headset_is_worn) => unsafe {
+                    if InitializeStreaming(headset_is_worn) {
                         RequestDriverResync();
                     } else {
                         SERVER_CORE_CONTEXT.write().take();
@@ -545,7 +545,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
             // When there is already a ALVR dashboard running, initialize the HMD device early to
             // avoid buggy SteamVR behavior
             // NB: we already bail out before if the dashboards don't belong to this streamer
-            let early_hmd_initialization = !dashboard_process_paths.is_empty();
+            let early_hmd_initialization = true;
 
             CppInit(early_hmd_initialization);
         }

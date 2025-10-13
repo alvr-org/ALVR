@@ -30,7 +30,10 @@ use alvr_session::CodecType;
 use connection::{ConnectionContext, DecoderCallback};
 use std::{
     collections::{HashSet, VecDeque},
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     thread::{self, JoinHandle},
     time::Duration,
 };
@@ -77,6 +80,7 @@ pub struct ClientCoreContext {
     connection_context: Arc<ConnectionContext>,
     connection_thread: Arc<Mutex<Option<JoinHandle<()>>>>,
     last_good_global_view_params: Mutex<[ViewParams; 2]>,
+    headset_is_worn: Arc<AtomicBool>,
 }
 
 impl ClientCoreContext {
@@ -99,16 +103,19 @@ impl ClientCoreContext {
         let lifecycle_state = Arc::new(RwLock::new(LifecycleState::Idle));
         let event_queue = Arc::new(Mutex::new(VecDeque::new()));
         let connection_context = Arc::new(ConnectionContext::default());
+        let headset_is_worn = Arc::new(AtomicBool::new(true));
         let connection_thread = thread::spawn({
             let lifecycle_state = Arc::clone(&lifecycle_state);
             let connection_context = Arc::clone(&connection_context);
             let event_queue = Arc::clone(&event_queue);
+            let headset_is_worn = Arc::clone(&headset_is_worn);
             move || {
                 connection::connection_lifecycle_loop(
                     capabilities,
                     connection_context,
                     lifecycle_state,
                     event_queue,
+                    headset_is_worn,
                 )
             }
         });
@@ -119,6 +126,7 @@ impl ClientCoreContext {
             connection_context,
             connection_thread: Arc::new(Mutex::new(Some(connection_thread))),
             last_good_global_view_params: Mutex::new([ViewParams::DUMMY; 2]),
+            headset_is_worn,
         }
     }
 
@@ -223,6 +231,8 @@ impl ClientCoreContext {
     }
 
     pub fn send_proximity_state(&self, headset_is_worn: bool) {
+        self.headset_is_worn
+            .store(headset_is_worn, Ordering::Release);
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender
                 .send(&ClientControlPacket::ProximityState(headset_is_worn))

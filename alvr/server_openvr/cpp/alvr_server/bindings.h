@@ -139,7 +139,7 @@ extern "C" void (*WaitForVSync)();
 
 extern "C" void CppInit(bool earlyHmdInitialization);
 extern "C" void* CppOpenvrEntryPoint(const char* pInterfaceName, int* pReturnCode);
-extern "C" bool InitializeStreaming();
+extern "C" bool InitializeStreaming(bool headset_is_worn);
 extern "C" void DeinitializeStreaming();
 extern "C" void SendVSync();
 extern "C" void RequestIDR();

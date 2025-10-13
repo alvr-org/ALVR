@@ -244,7 +244,7 @@ void* CppOpenvrEntryPoint(const char* interface_name, int* return_code) {
     }
 }
 
-bool InitializeStreaming() {
+bool InitializeStreaming(bool headset_is_worn) {
     Settings::Instance().Load();
 
     if (!g_driver_provider.devices_initialized) {
@@ -365,7 +365,7 @@ bool InitializeStreaming() {
     }
 
     if (g_driver_provider.hmd) {
-        g_driver_provider.hmd->StartStreaming();
+        g_driver_provider.hmd->StartStreaming(headset_is_worn);
     }
 
     return true;

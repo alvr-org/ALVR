@@ -64,6 +64,7 @@ pub enum ClientConnectionResult {
     ConnectionAccepted {
         client_protocol_id: u64,
         display_name: String,
+        headset_is_worn: bool,
         server_ip: IpAddr,
         streaming_capabilities: Option<VideoStreamingCapabilities>,
     },

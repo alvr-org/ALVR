@@ -221,10 +221,10 @@ void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
 #endif
 }
 
-void Hmd::StartStreaming() {
+void Hmd::StartStreaming(bool headset_is_worn) {
     Debug("Hmd::StartStreaming");
 
-    vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, true, 0.0);
+    vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, headset_is_worn, 0.0);
 
     if (m_streamComponentsInitialized) {
         return;

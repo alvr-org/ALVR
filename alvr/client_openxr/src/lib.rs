@@ -321,7 +321,6 @@ pub fn entry_point() {
         let mut passthrough_layer = None;
 
         let mut event_storage = xr::EventDataBuffer::new();
-        let mut headset_is_worn = true;
         'render_loop: loop {
             while let Some(event) = xr_instance.poll_event(&mut event_storage).unwrap() {
                 match event {
@@ -382,8 +381,6 @@ pub fn entry_point() {
                     }
                     xr::Event::UserPresenceChangedEXT(event) => {
                         alvr_common::info!("user present: {:?}", event.is_user_present());
-                        headset_is_worn = event.is_user_present();
-
                         core_context.send_proximity_state(event.is_user_present());
                     }
                     _ => (),
@@ -418,8 +415,6 @@ pub fn entry_point() {
                         }
 
                         stream_context = Some(context);
-
-                        core_context.send_proximity_state(headset_is_worn);
                     }
                     ClientCoreEvent::StreamingStopped => {
                         if passthrough_layer.is_none() {

@@ -1,5 +1,5 @@
-use alvr_gui_common::theme::{self};
-use alvr_packets::{FirewallRulesAction, ServerRequest};
+use crate::dashboard::ServerRequest;
+use alvr_gui_common::theme;
 use eframe::{
     egui::{Frame, Grid, Layout, RichText, Ui},
     emath::Align,
@@ -52,12 +52,12 @@ impl InstallationTab {
             ui.columns(2, |ui| {
                 if ui[0].button("Add firewall rules").clicked() {
                     requests.push(InstallationTabRequest::ServerRequest(
-                        ServerRequest::FirewallRules(FirewallRulesAction::Add),
+                        ServerRequest::AddFirewallRules,
                     ));
                 }
                 if ui[1].button("Remove firewall rules").clicked() {
                     requests.push(InstallationTabRequest::ServerRequest(
-                        ServerRequest::FirewallRules(FirewallRulesAction::Remove),
+                        ServerRequest::RemoveFirewallRules,
                     ));
                 }
             });

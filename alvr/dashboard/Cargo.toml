@@ -18,7 +18,7 @@ alvr_gui_common.workspace = true
 alvr_audio.workspace = true
 
 chrono = "0.4"
-eframe = "0.31"
+eframe = "0.32"
 env_logger = "0.11"
 ico = "0.4"
 rand = "0.9"
@@ -29,8 +29,8 @@ statrs = "0.18"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 alvr_server_io.workspace = true
-sysinfo = "0.33"
-tungstenite = "0.26"
+sysinfo = "0.37"
+tungstenite = "0.27"
 ureq = { version = "3", features = ["json"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]

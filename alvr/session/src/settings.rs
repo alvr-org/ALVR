@@ -866,6 +866,8 @@ pub struct AudioConfig {
 pub enum HeadsetEmulationMode {
     #[schema(strings(display_name = "Rift S"))]
     RiftS,
+    #[schema(strings(display_name = "Quest 1"))]
+    Quest1,
     #[schema(strings(display_name = "Quest 2"))]
     Quest2,
     #[schema(strings(display_name = "Quest Pro"))]
@@ -963,6 +965,8 @@ pub struct VMCConfig {
 pub enum ControllersEmulationMode {
     #[schema(strings(display_name = "Rift S Touch"))]
     RiftSTouch,
+    #[schema(strings(display_name = "Quest 1 Touch"))]
+    Quest1Touch,
     #[schema(strings(display_name = "Quest 2 Touch"))]
     Quest2Touch,
     #[schema(strings(display_name = "Quest 3 Touch Plus"))]
@@ -971,6 +975,8 @@ pub enum ControllersEmulationMode {
     QuestPro,
     #[schema(strings(display_name = "Pico 4"))]
     Pico4,
+    #[schema(strings(display_name = "PSVR2 Sense Controller"))]
+    PSVR2Sense,
     #[schema(strings(display_name = "Valve Index"))]
     ValveIndex,
     #[schema(strings(display_name = "Vive Wand"))]
@@ -1313,6 +1319,14 @@ pub enum SocketBufferSize {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct WiredClientAutoLaunchConfig {
+    #[schema(strings(
+        help = "Delay in seconds to wait after booting the headset before trying to launch the client."
+    ))]
+    pub boot_delay: u32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ConnectionConfig {
     #[schema(strings(
         help = r#"UDP: Faster, but less stable than TCP. Try this if your network is well optimized and free of interference.
@@ -1330,7 +1344,7 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     #[schema(strings(
         help = r#"Wether ALVR should try to automatically launch the client when establishing a wired connection."#
     ))]
-    pub wired_client_autolaunch: bool,
+    pub wired_client_autolaunch: Switch<WiredClientAutoLaunchConfig>,
 
     #[cfg_attr(
         windows,
@@ -1365,7 +1379,6 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
         display_name = "Allow untrusted HTTP",
         help = "Allow cross-origin browser requests to control ALVR settings remotely."
     ))]
-    #[schema(flag = "real-time")]
     pub allow_untrusted_http: bool,
 
     #[schema(strings(
@@ -1478,8 +1491,23 @@ pub struct LoggingConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct SteamvrLauncher {
-    #[schema(strings(display_name = "Open and close SteamVR with dashboard"))]
+    #[schema(strings(
+        display_name = "Open and close SteamVR automatically",
+        help = "Launches SteamVR automatically when the ALVR dashboard is opened, and closes it when the dashboard is closed."
+    ))]
     pub open_close_steamvr_with_dashboard: bool,
+
+    #[cfg_attr(
+        windows,
+        schema(strings(help = "Directly start the VR server, bypassing Steam. \
+                Will run start_server.bat if it exists alongside session.json, and try to automatically find SteamVR otherwise."))
+    )]
+    #[cfg_attr(
+        not(windows),
+        schema(strings(help = "Directly start the VR server, bypassing Steam. \
+                Will run start_server.sh if it exists alongside session.json, and try to automatically find SteamVR otherwise."))
+    )]
+    pub direct_launch: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1521,6 +1549,7 @@ pub struct NewVersionPopupConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ExtraConfig {
+    #[schema(strings(display_name = "SteamVR Launcher"))]
     pub steamvr_launcher: SteamvrLauncher,
     pub capture: CaptureConfig,
     pub logging: LoggingConfig,
@@ -2069,7 +2098,10 @@ pub fn session_settings_default() -> SettingsDefault {
                     ClientFlavorDefaultVariant::Github
                 },
             },
-            wired_client_autolaunch: true,
+            wired_client_autolaunch: SwitchDefault {
+                enabled: true,
+                content: WiredClientAutoLaunchConfigDefault { boot_delay: 0 },
+            },
             web_server_port: 8082,
             stream_port: 9944,
             osc_local_port: 9942,
@@ -2141,6 +2173,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             steamvr_launcher: SteamvrLauncherDefault {
                 open_close_steamvr_with_dashboard: false,
+                direct_launch: false,
             },
             capture: CaptureConfigDefault {
                 startup_video_recording: false,

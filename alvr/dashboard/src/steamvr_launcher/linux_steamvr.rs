@@ -6,7 +6,7 @@ use alvr_common::anyhow::bail;
 use alvr_common::{debug, error, info, warn};
 use sysinfo::Process;
 
-pub fn start_steamvr() {
+pub fn launch_steamvr_with_steam() {
     Command::new("steam")
         .args(["steam://rungameid/250820"])
         .spawn()
@@ -24,7 +24,7 @@ pub fn maybe_wrap_vrcompositor_launcher() -> alvr_common::anyhow::Result<()> {
     let steamvr_vrserver_path = steamvr_bin_dir.join("vrserver");
     debug!(
         "File path used to check for linux files: {}",
-        steamvr_vrserver_path.display().to_string()
+        steamvr_vrserver_path.display()
     );
     match steamvr_vrserver_path.try_exists() {
         Ok(exists) => {
@@ -153,9 +153,9 @@ fn linux_gpu_checks(device_infos: &[(&wgpu::Adapter, DeviceInfo)]) {
         Ok(dir) => dir,
         Err(e) => {
             error!(
-                "Couldn't detect openvr or steamvr files. \
-            Please make sure you have installed and ran SteamVR at least once. \
-            Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR. {e}"
+                "Couldn't find OpenVR or SteamVR files. \
+                Please make sure you have installed and ran SteamVR at least once. \
+                Or if you're using Flatpak Steam, make sure to use ALVR Dashboard from Flatpak ALVR. {e}"
             );
             return;
         }

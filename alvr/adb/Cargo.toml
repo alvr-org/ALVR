@@ -10,7 +10,8 @@ license.workspace = true
 alvr_common.workspace = true
 alvr_filesystem.workspace = true
 alvr_system_info.workspace = true
+alvr_session.workspace = true
 
 anyhow = "1"
 ureq = "3"
-zip = "2"
+zip = "4"

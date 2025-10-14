@@ -77,3 +77,15 @@ jobs:
         run:  cargo xtask prepare-deps --platform linux --no-nvidia
 
       - run: cargo xtask check-msrv
+
+  check-licenses:
+    if: github.event_name == 'merge_group'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo xtask check-licenses

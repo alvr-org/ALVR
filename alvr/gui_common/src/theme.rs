@@ -63,6 +63,7 @@ pub fn set_theme(ctx: &Context) {
     style.spacing.window_margin = egui::Margin::from(FRAME_PADDING);
 
     style.text_styles.get_mut(&TextStyle::Body).unwrap().size = 14.0;
+    style.interaction.tooltip_delay = 0.0;
 
     ctx.set_style(style);
 

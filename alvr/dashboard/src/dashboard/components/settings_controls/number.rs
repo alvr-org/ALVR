@@ -79,51 +79,57 @@ impl Control {
                 &mut session_value
             };
 
-            let mut is_editing = false;
-            let mut finished_editing = false;
+            let response = match &self.gui_type {
+                NumericGuiType::Slider {
+                    range,
+                    step,
+                    logarithmic,
+                } => {
+                    let mut slider = Slider::new(editing_value_mut, range.clone())
+                        .logarithmic(*logarithmic)
+                        .show_value(false);
+                    if let Some(step) = step {
+                        slider = slider.step_by(*step);
+                    }
+                    if !matches!(self.ty, NumberType::Float) {
+                        slider = slider.integer();
+                    }
+                    let slider_response = {
+                        ui.style_mut().spacing.interact_size.y = SCROLLBAR_DOT_DIAMETER;
+                        ui.add(slider)
+                    };
 
-            if let NumericGuiType::Slider {
-                range,
-                step,
-                logarithmic,
-            } = &self.gui_type
-            {
-                let mut slider = Slider::new(editing_value_mut, range.clone())
-                    .logarithmic(*logarithmic)
-                    .show_value(false);
+                    let mut drag_value = DragValue::new(editing_value_mut);
+                    // Note: the following ifs cannot be merged with the ones above to avoid double
+                    // mutable borrow of editing_value_mut.
+                    if let Some(step) = step {
+                        drag_value = drag_value.speed(*step);
+                    }
+                    if !matches!(self.ty, NumberType::Float) {
+                        drag_value = drag_value.fixed_decimals(0);
+                    }
+                    if let Some(suffix) = &self.suffix {
+                        drag_value = drag_value.suffix(suffix);
+                    }
+                    let textbox_response = ui.add(drag_value);
 
-                if let Some(step) = step {
-                    slider = slider.step_by(*step);
+                    slider_response.union(textbox_response)
                 }
-                if !matches!(self.ty, NumberType::Float) {
-                    slider = slider.integer();
+                NumericGuiType::TextBox => {
+                    let mut drag_value = DragValue::new(editing_value_mut);
+
+                    if !matches!(self.ty, NumberType::Float) {
+                        drag_value = drag_value.fixed_decimals(0);
+                    }
+                    if let Some(suffix) = &self.suffix {
+                        drag_value = drag_value.suffix(suffix);
+                    }
+
+                    ui.add(drag_value)
                 }
-                if let Some(suffix) = &self.suffix {
-                    slider = slider.suffix(suffix);
-                }
+            };
 
-                ui.scope(|ui| {
-                    ui.style_mut().spacing.interact_size.y = SCROLLBAR_DOT_DIAMETER;
-                    let slider_response = ui.add(slider);
-
-                    is_editing = slider_response.drag_started() || slider_response.gained_focus();
-                    finished_editing =
-                        slider_response.drag_stopped() || slider_response.lost_focus();
-                });
-            }
-
-            let mut drag_value = DragValue::new(editing_value_mut);
-
-            if !matches!(self.ty, NumberType::Float) {
-                drag_value = drag_value.fixed_decimals(0);
-            }
-            if let Some(suffix) = &self.suffix {
-                drag_value = drag_value.suffix(suffix);
-            }
-
-            let response = ui.add(drag_value);
-
-            if is_editing || response.drag_started() || response.gained_focus() {
+            if response.drag_started() || response.gained_focus() {
                 self.editing_value_f64 = Some(session_value)
             } else if finished_editing || response.drag_stopped() || response.lost_focus() {
                 request = get_request(&self.nesting_info, *editing_value_mut, self.ty);

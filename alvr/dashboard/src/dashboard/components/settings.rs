@@ -222,7 +222,7 @@ impl SettingsTab {
         }
 
         if !path_value_pairs.is_empty() {
-            requests.push(ServerRequest::SetValues(path_value_pairs));
+            requests.push(ServerRequest::SetSessionValues(path_value_pairs));
         }
 
         requests

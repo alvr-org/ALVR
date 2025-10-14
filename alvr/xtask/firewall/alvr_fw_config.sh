@@ -10,7 +10,7 @@
 
 firewalld_cfg() {
     # Iterate around each active zone
-    for zone in $(firewall-cmd --get-active-zones | grep -P '^\w+'); do
+    for zone in $(firewall-cmd --get-active-zones | grep -P --only-matching '^[\w/-]+'); do
         if [ "${1}" == 'add' ]; then
             # If running or permanent alvr service is missing, add it
             if ! firewall-cmd --zone="${zone}" --list-services | grep 'alvr' >/dev/null 2>&1; then

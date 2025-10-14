@@ -207,6 +207,14 @@ impl Layout {
         }
     }
 
+    pub fn server_start_script(&self) -> PathBuf {
+        self.config_dir.join(if cfg!(windows) {
+            "start_server.bat"
+        } else {
+            "start_server.sh"
+        })
+    }
+
     pub fn connect_script(&self) -> PathBuf {
         self.config_dir.join(if cfg!(windows) {
             "on_connect.bat"

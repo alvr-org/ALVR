@@ -7,6 +7,7 @@ use std::{
     collections::HashSet,
     io::{Cursor, Read},
     process::Command,
+    str::FromStr,
     time::Duration,
 };
 use zip::ZipArchive;
@@ -275,6 +276,28 @@ pub fn get_adb_path(layout: &afs::Layout) -> Option<String> {
             .unwrap_or(false)
             .then(|| path.to_string_lossy().to_string())
     })
+}
+
+////////
+// Utility
+pub fn get_uptime(adb_path: &str, device_serial: &str) -> Result<Duration> {
+    let output = get_command(
+        adb_path,
+        &["-s", device_serial, "shell", "cat", "/proc/uptime"],
+    )
+    .output()
+    .context("Failed to get system uptime")?;
+
+    let output_str = String::from_utf8_lossy(&output.stdout);
+
+    let uptime_string = output_str
+        .split_ascii_whitespace()
+        .next()
+        .context("Empty result from /proc/uptime")?;
+
+    let uptime = f64::from_str(uptime_string).context("Cannot parse uptime into an f64")?;
+
+    Duration::try_from_secs_f64(uptime).context("Invalid f64 value for a duration ")
 }
 
 //////////////////

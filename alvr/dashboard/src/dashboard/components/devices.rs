@@ -1,7 +1,7 @@
 use crate::dashboard::ServerRequest;
 use alvr_common::ConnectionState;
 use alvr_gui_common::theme::{self, log_colors};
-use alvr_packets::ClientListAction;
+use alvr_packets::ClientConnectionsAction;
 use alvr_session::{ClientConnectionConfig, SessionConfig};
 use alvr_sockets::WIRED_CLIENT_HOSTNAME;
 use eframe::{
@@ -161,7 +161,7 @@ impl DevicesTab {
                             if state.new_devices {
                                 requests.push(ServerRequest::UpdateClientList {
                                     hostname: state.hostname,
-                                    action: ClientListAction::AddIfMissing {
+                                    action: ClientConnectionsAction::AddIfMissing {
                                         trusted: true,
                                         manual_ips,
                                     },
@@ -169,7 +169,7 @@ impl DevicesTab {
                             } else {
                                 requests.push(ServerRequest::UpdateClientList {
                                     hostname: state.hostname,
-                                    action: ClientListAction::SetManualIps(manual_ips),
+                                    action: ClientConnectionsAction::SetManualIps(manual_ips),
                                 });
                             }
                         } else {
@@ -210,7 +210,7 @@ fn wired_client_section(
                                 if wired {
                                     request = Some(ServerRequest::UpdateClientList {
                                         hostname: WIRED_CLIENT_HOSTNAME.to_owned(),
-                                        action: ClientListAction::AddIfMissing {
+                                        action: ClientConnectionsAction::AddIfMissing {
                                             trusted: true,
                                             manual_ips: Vec::new(),
                                         },
@@ -218,7 +218,7 @@ fn wired_client_section(
                                 } else {
                                     request = Some(ServerRequest::UpdateClientList {
                                         hostname: WIRED_CLIENT_HOSTNAME.to_owned(),
-                                        action: ClientListAction::RemoveEntry,
+                                        action: ClientConnectionsAction::RemoveEntry,
                                     });
                                 }
                             }
@@ -292,7 +292,7 @@ fn new_clients_section(
                                     if ui.button("Trust").clicked() {
                                         request = Some(ServerRequest::UpdateClientList {
                                             hostname: hostname.clone(),
-                                            action: ClientListAction::Trust,
+                                            action: ClientConnectionsAction::Trust,
                                         });
                                     };
                                 });
@@ -360,7 +360,7 @@ fn trusted_clients_section(
                                     if ui.button("Remove").clicked() {
                                         request = Some(ServerRequest::UpdateClientList {
                                             hostname: hostname.clone(),
-                                            action: ClientListAction::RemoveEntry,
+                                            action: ClientConnectionsAction::RemoveEntry,
                                         });
                                     }
                                     if ui.button("Edit").clicked() {

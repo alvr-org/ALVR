@@ -44,9 +44,11 @@ fn main() {
     logging_backend::init_logging(server_events_sender.clone());
 
     // Kill any other dashboard instance
-    let self_path = std::env::current_exe().unwrap();
+    let self_path = std::env::current_exe().unwrap().canonicalize().unwrap();
     for proc in sysinfo::System::new_all().processes_by_name(OsStr::new(&afs::dashboard_fname())) {
-        if let Some(other_path) = proc.exe()
+        // According to implementation notes, on linux the returned path can be empty due to
+        // privileges, so canonicalize can fail
+        if let Some(other_path) = proc.exe().and_then(|path| path.canonicalize().ok())
             && other_path != self_path
         {
             info!(

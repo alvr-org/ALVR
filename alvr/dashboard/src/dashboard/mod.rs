@@ -7,13 +7,40 @@ use crate::{
     DataSources,
     dashboard::components::{CloseAction, NewVersionPopup, StatisticsTab},
 };
-use alvr_common::parking_lot::{Condvar, Mutex};
+use alvr_common::{
+    LogEntry,
+    parking_lot::{Condvar, Mutex},
+};
 use alvr_events::EventType;
 use alvr_gui_common::theme;
-use alvr_packets::{PathValuePair, ServerRequest};
+use alvr_packets::{ClientConnectionsAction, PathValuePair};
 use alvr_session::SessionConfig;
 use eframe::egui::{self, Align, CentralPanel, Frame, Layout, Margin, RichText, SidePanel, Stroke};
-use std::{collections::BTreeMap, sync::Arc};
+use serde::{Deserialize, Serialize};
+use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ServerRequest {
+    Log(LogEntry),
+    GetSession,
+    UpdateSession(Box<SessionConfig>),
+    SetSessionValues(Vec<PathValuePair>),
+    UpdateClientList {
+        hostname: String,
+        action: ClientConnectionsAction,
+    },
+    CaptureFrame,
+    InsertIdr,
+    StartRecording,
+    StopRecording,
+    AddFirewallRules,
+    RemoveFirewallRules,
+    GetDriverList,
+    RegisterAlvrDriver,
+    UnregisterDriver(PathBuf),
+    RestartSteamvr,
+    ShutdownSteamvr,
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 enum Tab {
@@ -188,12 +215,14 @@ impl eframe::App for Dashboard {
                         }
                         SetupWizardRequest::Close { finished } => {
                             if finished {
-                                requests.push(ServerRequest::SetValues(vec![PathValuePair {
-                                    path: alvr_packets::parse_path(
-                                        "session_settings.extra.open_setup_wizard",
-                                    ),
-                                    value: serde_json::Value::Bool(false),
-                                }]))
+                                requests.push(ServerRequest::SetSessionValues(vec![
+                                    PathValuePair {
+                                        path: alvr_packets::parse_path(
+                                            "session_settings.extra.open_setup_wizard",
+                                        ),
+                                        value: serde_json::Value::Bool(false),
+                                    },
+                                ]))
                             }
 
                             self.setup_wizard_open = false;

@@ -121,6 +121,7 @@ fn serial_number(device_id: u64) -> String {
     if device_id == *HEAD_ID {
         match &settings.headset.emulation_mode {
             HeadsetEmulationMode::RiftS => "1WMGH000XX0000".into(),
+            HeadsetEmulationMode::Quest1 => "1PASH0X0X00000".into(),
             HeadsetEmulationMode::Quest2 => "1WMHH000X00000".into(),
             HeadsetEmulationMode::QuestPro => "230YC0XXXX00XX".into(),
             HeadsetEmulationMode::Vive => "HTCVive-001".into(),
@@ -129,11 +130,13 @@ fn serial_number(device_id: u64) -> String {
     } else if device_id == *HAND_LEFT_ID || device_id == *HAND_RIGHT_ID {
         if let Switch::Enabled(controllers) = &settings.headset.controllers {
             let serial_number = match &controllers.emulation_mode {
+                ControllersEmulationMode::Quest1Touch => "1PALCXXXX00000_Controller", // 1PALCLC left, 1PALCRC right
                 ControllersEmulationMode::Quest2Touch => "1WMHH000X00000_Controller",
                 ControllersEmulationMode::Quest3Plus => "2G0YXX0X0000XX_Controller", // 2G0YY Left 2G0YZ Right
                 ControllersEmulationMode::QuestPro => "230YXXXXXXXXXX_Controller", // 230YT left, 230YV right
                 ControllersEmulationMode::RiftSTouch
                 | ControllersEmulationMode::Pico4
+                | ControllersEmulationMode::PSVR2Sense
                 | ControllersEmulationMode::ValveIndex
                 | ControllersEmulationMode::ViveWand
                 | ControllersEmulationMode::ViveTracker => "ALVR Remote Controller",
@@ -264,6 +267,14 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
                 set_prop(DriverVersionString, "1.42.0");
                 set_icons("{oculus}/icons/rifts_headset");
             }
+            HeadsetEmulationMode::Quest1 => {
+                set_prop(TrackingSystemNameString, "oculus");
+                set_prop(ModelNumberString, "Oculus Quest");
+                set_prop(ManufacturerNameString, "Oculus");
+                set_prop(RenderModelNameString, "generic_hmd");
+                set_prop(DriverVersionString, "1.111.0");
+                set_oculus_common_headset_props();
+            }
             HeadsetEmulationMode::Quest2 => {
                 set_prop(TrackingSystemNameString, "oculus");
                 set_prop(ModelNumberString, "Miramar");
@@ -358,6 +369,19 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
                     set_prop(InputProfilePathString, "{oculus}/input/touch_profile.json");
                     set_oculus_common_props();
                 }
+                ControllersEmulationMode::Quest1Touch => {
+                    set_prop(ManufacturerNameString, "Oculus");
+                    if left_hand {
+                        set_prop(ModelNumberString, "Oculus Quest (Left Controller)");
+                        set_prop(RenderModelNameString, "oculus_quest_controller_left");
+                    } else if right_hand {
+                        set_prop(ModelNumberString, "Oculus Quest (Right Controller)");
+                        set_prop(RenderModelNameString, "oculus_quest_controller_right");
+                    }
+                    set_prop(ControllerTypeString, "oculus_touch");
+                    set_prop(InputProfilePathString, "{oculus}/input/touch_profile.json");
+                    set_oculus_common_props();
+                }
                 ControllersEmulationMode::Quest2Touch => {
                     set_prop(ManufacturerNameString, "Oculus");
                     if left_hand {
@@ -419,6 +443,33 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
                     set_prop(
                         InputProfilePathString,
                         "{vrlink}/input/pico_controller_profile.json",
+                    );
+                }
+                ControllersEmulationMode::PSVR2Sense => {
+                    set_prop(TrackingSystemNameString, "playstation_vr2");
+                    if left_hand {
+                        set_prop(ModelNumberString, "PlayStation VR2 Sense Left");
+                        set_prop(SerialNumberString, "playstation_vr2_sense_controller_left");
+                        set_prop(
+                            RenderModelNameString,
+                            "{alvr_server}/rendermodels/playstation_vr2_sense_left",
+                        );
+                        set_icons("{alvr_server}/icons/left_controller_status");
+                    } else if right_hand {
+                        set_prop(ModelNumberString, "PlayStation VR2 Sense Right");
+                        set_prop(SerialNumberString, "playstation_vr2_sense_controller_right");
+                        set_prop(
+                            RenderModelNameString,
+                            "{alvr_server}/rendermodels/playstation_vr2_sense_right",
+                        );
+                        set_icons("{alvr_server}/icons/right_controller_status");
+                    }
+                    set_prop(TrackingFirmwareVersionString, "0303");
+                    set_prop(HardwareRevisionString, "MP");
+                    set_prop(ControllerTypeString, "playstation_vr2_sense");
+                    set_prop(
+                        InputProfilePathString,
+                        "{alvr_server}/input/playstation_vr2_sense_controller_profile.json",
                     );
                 }
                 ControllersEmulationMode::ValveIndex => {

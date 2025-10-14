@@ -79,7 +79,8 @@ void VideoEncoderVPL::Transmit(
     auto encSurface = VplImportTexture(pTexture);
 
     mfxEncodeCtrl encodeCtrl = {};
-    encodeCtrl.FrameType = insertIDR ? MFX_FRAMETYPE_IDR : 0;
+    // setting idr breaks avc encoding (error -15)
+    encodeCtrl.FrameType = (insertIDR && m_vplCodec != MFX_CODEC_AVC) ? MFX_FRAMETYPE_IDR : 0;
 
     mfxStatus sts = MFX_ERR_NONE;
     mfxSyncPoint syncp = {};

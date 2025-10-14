@@ -240,6 +240,19 @@ void VideoEncoderVPL::ChooseParams() {
     m_refreshRate = s.m_refreshRate;
     m_codec = s.m_codec;
 
+    // h264 encoding is currently broken due to an encoding
+    // error when forcing the idr frame type:
+    //
+    // mfxEncodeCtrl encodeCtrl = {};
+    // encodeCtrl.FrameType = MFX_FRAMETYPE_IDR;
+    //
+    // Results in error -15 (MFX_ERR_INVALID_VIDEO_PARAM)
+    // when encoding a frame.
+    if (m_codec == ALVR_CODEC_H264) {
+        VPL_WARN("h264 codec currently unsupported, forcing HEVC");
+        m_codec = ALVR_CODEC_HEVC;
+    }
+
     if (s.m_enableHdr) {
         if (s.m_use10bitEncoder) {
             m_dxColorFormat = DXGI_FORMAT_P010;
@@ -256,7 +269,7 @@ void VideoEncoderVPL::ChooseParams() {
         m_vplChromaFormat = MFX_CHROMAFORMAT_YUV444;
     }
 
-    switch (s.m_codec) {
+    switch (m_codec) {
     case ALVR_CODEC_H264:
         m_vplCodec = MFX_CODEC_AVC;
         break;
@@ -271,7 +284,7 @@ void VideoEncoderVPL::ChooseParams() {
     }
 
     m_vplCodecProfile = MFX_PROFILE_UNKNOWN;
-    if (s.m_codec == ALVR_CODEC_H264) {
+    if (m_codec == ALVR_CODEC_H264) {
         switch (s.m_h264Profile) {
         case ALVR_H264_PROFILE_BASELINE:
             m_vplCodecProfile = MFX_PROFILE_AVC_BASELINE;
@@ -288,7 +301,7 @@ void VideoEncoderVPL::ChooseParams() {
     }
 
     if (s.m_use10bitEncoder) {
-        switch (s.m_codec) {
+        switch (m_codec) {
         case ALVR_CODEC_H264:
             m_vplCodecProfile = MFX_PROFILE_AVC_HIGH10;
             break;

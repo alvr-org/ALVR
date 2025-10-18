@@ -1360,9 +1360,9 @@ fn connection_pipeline(
     );
 
     ctx.events_sender
-        .send(ServerCoreEvent::ClientConnected(
-            headset_is_worn_initial_state,
-        ))
+        .send(ServerCoreEvent::ClientConnected {
+            headset_is_worn: headset_is_worn_initial_state,
+        })
         .ok();
 
     dbg_connection!("connection_pipeline: handshake finished; unlocking streams");

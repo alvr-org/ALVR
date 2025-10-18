@@ -56,7 +56,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                 ServerCoreEvent::SetOpenvrProperty { device_id, prop } => {
                     props::set_openvr_prop(None, device_id, prop)
                 }
-                ServerCoreEvent::ClientConnected(headset_is_worn) => unsafe {
+                ServerCoreEvent::ClientConnected { headset_is_worn } => unsafe {
                     if InitializeStreaming(headset_is_worn) {
                         RequestDriverResync();
                     } else {

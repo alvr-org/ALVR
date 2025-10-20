@@ -1238,8 +1238,8 @@ pub struct MultimodalTracking {
 
     #[schema(flag = "steamvr-restart")]
     #[schema(strings(
-        display_name = "Map controllers to SteamVR trackers",
-        help = "Controllers are mapped to left and right feet.
+        display_name = "Map non-held controllers to SteamVR trackers",
+        help = "Non-held controllers are mapped to left and right feet.
 This will be configurable in the future."
     ))]
     pub detached_controllers_steamvr_sink: bool,

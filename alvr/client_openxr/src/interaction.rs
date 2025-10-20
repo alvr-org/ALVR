@@ -312,11 +312,10 @@ impl InteractionContext {
         let mut left_detached_grip_action = None;
         let mut right_detached_grip_action = None;
         if multimodal_handle.is_some() {
-            // Note: when multimodal input is enabled, both controllers and hands will always be active.
-            // To be able to detect when controllers are actually held, we have to register detached
-            // controllers pose; the controller pose will be diverted to the detached controllers when
-            // they are not held. Currently the detached controllers pose is ignored
-            let left_detached_grip_action = left_detached_grip_action.get_or_insert(
+            // Note: when multimodal input is enabled, both controllers and hands will always be
+            // active. Held controllers and detached controllers are sent to the server as separate
+            // devices.
+            let left_detached_grip_action = left_detached_grip_action.insert(
                 action_set
                     .create_action::<xr::Posef>(
                         "left_detached_grip_pose",
@@ -325,7 +324,7 @@ impl InteractionContext {
                     )
                     .unwrap(),
             );
-            let right_detached_grip_action = right_detached_grip_action.get_or_insert(
+            let right_detached_grip_action = right_detached_grip_action.insert(
                 action_set
                     .create_action::<xr::Posef>(
                         "right_detached_grip_pose",

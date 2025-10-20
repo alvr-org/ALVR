@@ -71,7 +71,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
     let mut controller_is_tracker = false;
     let mut controller_profile = 0;
     let mut use_separate_hand_trackers = false;
-    let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
+    let controllers_enabled = if let Switch::Enabled(config) = &settings.headset.controllers {
         controller_is_tracker =
             matches!(config.emulation_mode, ControllersEmulationMode::ViveTracker);
         // These numbers don't mean anything, they're just for triggering SteamVR resets.
@@ -103,6 +103,8 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
     let body_tracking_vive_enabled =
         if let Switch::Enabled(config) = &settings.headset.body_tracking {
             matches!(config.sink, BodyTrackingSinkConfig::FakeViveTracker)
+        } else if let Switch::Enabled(config) = settings.headset.multimodal_tracking {
+            config.detached_controllers_steamvr_sink
         } else {
             false
         };

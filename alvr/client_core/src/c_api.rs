@@ -14,7 +14,7 @@ use alvr_common::{
     warn,
 };
 use alvr_graphics::{
-    GraphicsContext, LobbyRenderer, LobbyViewParams, SDR_FORMAT_GL, StreamRenderer,
+    GraphicsContext, HandData, LobbyRenderer, LobbyViewParams, SDR_FORMAT_GL, StreamRenderer,
     StreamViewParams,
 };
 use alvr_packets::{ButtonEntry, ButtonValue, FaceData, TrackingData};
@@ -733,7 +733,18 @@ pub extern "C" fn alvr_render_lobby_opengl(
         if let Some(renderer) = renderer {
             renderer.render(
                 view_inputs,
-                [(None, None), (None, None)],
+                [
+                    HandData {
+                        grip_motion: None,
+                        detached_grip_motion: None,
+                        skeleton_joints: None,
+                    },
+                    HandData {
+                        grip_motion: None,
+                        detached_grip_motion: None,
+                        skeleton_joints: None,
+                    },
+                ],
                 None,
                 None,
                 render_background,

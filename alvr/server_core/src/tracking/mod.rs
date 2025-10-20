@@ -342,6 +342,11 @@ pub fn tracking_loop(
             let headset_config = &session_manager_lock.settings().headset;
 
             tracking.device_motions.extend_from_slice(
+                &body::get_default_body_trackers_from_detached_controllers(
+                    &tracking.device_motions,
+                ),
+            );
+            tracking.device_motions.extend_from_slice(
                 &body::get_default_body_trackers_from_motion_trackers_bd(&tracking.device_motions),
             );
             if let Some(skeleton) = &tracking.body {

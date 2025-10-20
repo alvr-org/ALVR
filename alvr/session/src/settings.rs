@@ -1155,12 +1155,6 @@ pub struct ControllersConfig {
     ))]
     pub hand_skeleton: Switch<HandSkeletonConfig>,
 
-    #[schema(strings(
-        help = r"Track hand skeleton while holding controllers. This will reduce hand tracking frequency to 30Hz.
-Because of runtime limitations, this option is ignored when body tracking is active."
-    ))]
-    pub multimodal_tracking: bool,
-
     #[schema(flag = "real-time")]
     #[schema(strings(
         help = "Enabling this allows using hand gestures to emulate controller inputs."
@@ -1240,6 +1234,19 @@ pub enum RotationRecenteringMode {
     Tilted,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
+pub struct MultimodalTracking {
+    pub enabled: bool,
+
+    #[schema(flag = "steamvr-restart")]
+    #[schema(strings(
+        display_name = "Map non-held controllers to SteamVR trackers",
+        help = "Non-held controllers are mapped to left and right feet.
+This will be configurable in the future."
+    ))]
+    pub detached_controllers_steamvr_sink: bool,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct HeadsetConfig {
     #[schema(strings(
@@ -1274,6 +1281,13 @@ Tilted: the world gets tilted when long pressing the oculus button. This is usef
     pub enable_vive_tracker_proxy: bool,
 
     pub face_tracking: Switch<FaceTrackingConfig>,
+
+    #[schema(flag = "steamvr-restart")]
+    #[schema(strings(
+        help = r"Track hand skeleton while holding controllers. This will reduce hand tracking frequency to 30Hz.
+Because of runtime limitations, this option is ignored when body tracking is active."
+    ))]
+    pub multimodal_tracking: Switch<MultimodalTracking>,
 
     #[schema(flag = "steamvr-restart")]
     pub body_tracking: Switch<BodyTrackingConfig>,
@@ -1913,6 +1927,13 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                 },
             },
+            multimodal_tracking: SwitchDefault {
+                enabled: false,
+                content: MultimodalTrackingDefault {
+                    enabled: true,
+                    detached_controllers_steamvr_sink: false,
+                },
+            },
             body_tracking: SwitchDefault {
                 enabled: false,
                 content: BodyTrackingConfigDefault {
@@ -1959,7 +1980,6 @@ pub fn session_settings_default() -> SettingsDefault {
                             predict: false,
                         },
                     },
-                    multimodal_tracking: false,
                     emulation_mode: ControllersEmulationModeDefault {
                         Custom: ControllersEmulationModeCustomDefault {
                             serial_number: "ALVR Controller".into(),

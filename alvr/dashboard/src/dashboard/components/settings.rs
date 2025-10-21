@@ -3,10 +3,7 @@ use super::{
     presets::{PresetControl, builtin_schema},
 };
 use crate::dashboard::ServerRequest;
-use alvr_gui_common::{
-    DisplayString,
-    theme::{self},
-};
+use alvr_gui_common::{DisplayString, theme};
 use alvr_session::{SessionSettings, Settings};
 use eframe::egui::{Align, Frame, Grid, Layout, RichText, ScrollArea, Ui};
 #[cfg(target_arch = "wasm32")]

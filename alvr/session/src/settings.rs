@@ -1185,7 +1185,7 @@ Currently this cannot be reliably estimated automatically. The correct value sho
     pub emulation_mode: ControllersEmulationMode,
 
     #[schema(flag = "steamvr-restart")]
-    #[schema(strings(display_name = "Extra OpenVR props"))]
+    #[schema(strings(display_name = "Extra OpenVR properties"))]
     pub extra_openvr_props: Vec<OpenvrProperty>,
 
     #[schema(flag = "real-time")]
@@ -1268,7 +1268,7 @@ Tilted: the world gets tilted when long pressing the oculus button. This is usef
     pub emulation_mode: HeadsetEmulationMode,
 
     #[schema(flag = "steamvr-restart")]
-    #[schema(strings(display_name = "Extra OpenVR props"))]
+    #[schema(strings(display_name = "Extra OpenVR properties"))]
     pub extra_openvr_props: Vec<OpenvrProperty>,
 
     #[schema(flag = "steamvr-restart")]
@@ -1392,7 +1392,7 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     pub stream_port: u16,
     pub web_server_port: u16,
 
-    #[schema(strings(display_name = "OSC local port"))]
+    #[schema(strings(display_name = "Local OSC port"))]
     pub osc_local_port: u16,
 
     #[schema(strings(display_name = "Streamer send buffer size"))]
@@ -1421,7 +1421,7 @@ This could happen on TCP. A IDR frame is requested in this case."#
     #[schema(gui(slider(min = 5, max = 1000, step = 5)), suffix = "ms")]
     pub minimum_idr_interval_ms: u64,
 
-    #[schema(strings(display_name = "DSCP"))]
+    #[schema(strings(display_name = "DSCP (packet prio hints)"))]
     pub dscp: Option<DscpTos>,
 }
 

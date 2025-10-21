@@ -14,7 +14,7 @@ use alvr_common::{
     settings_schema::Switch, warn,
 };
 use alvr_session::{
-    ControllersEmulationMode, HeadsetEmulationMode, OpenvrPropKey, OpenvrPropType, OpenvrProperty,
+    ControllersEmulationMode, HmdEmulationMode, OpenvrPropKey, OpenvrPropType, OpenvrProperty,
 };
 use std::{
     ffi::{CString, c_char, c_void},
@@ -119,16 +119,16 @@ fn serial_number(device_id: u64) -> String {
     let settings = alvr_server_core::settings();
 
     if device_id == *HEAD_ID {
-        match &settings.headset.emulation_mode {
-            HeadsetEmulationMode::RiftS => "1WMGH000XX0000".into(),
-            HeadsetEmulationMode::Quest1 => "1PASH0X0X00000".into(),
-            HeadsetEmulationMode::Quest2 => "1WMHH000X00000".into(),
-            HeadsetEmulationMode::QuestPro => "230YC0XXXX00XX".into(),
-            HeadsetEmulationMode::Vive => "HTCVive-001".into(),
-            HeadsetEmulationMode::Custom { serial_number, .. } => serial_number.clone(),
+        match &settings.inputs.emulation_mode {
+            HmdEmulationMode::RiftS => "1WMGH000XX0000".into(),
+            HmdEmulationMode::Quest1 => "1PASH0X0X00000".into(),
+            HmdEmulationMode::Quest2 => "1WMHH000X00000".into(),
+            HmdEmulationMode::QuestPro => "230YC0XXXX00XX".into(),
+            HmdEmulationMode::Vive => "HTCVive-001".into(),
+            HmdEmulationMode::Custom { serial_number, .. } => serial_number.clone(),
         }
     } else if device_id == *HAND_LEFT_ID || device_id == *HAND_RIGHT_ID {
-        if let Switch::Enabled(controllers) = &settings.headset.controllers {
+        if let Switch::Enabled(controllers) = &settings.inputs.controllers {
             let serial_number = match &controllers.emulation_mode {
                 ControllersEmulationMode::Quest1Touch => "1PALCXXXX00000_Controller", // 1PALCLC left, 1PALCRC right
                 ControllersEmulationMode::Quest2Touch => "1WMHH000X00000_Controller",
@@ -258,8 +258,8 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
         };
 
         // Per-device props
-        match &settings.headset.emulation_mode {
-            HeadsetEmulationMode::RiftS => {
+        match &settings.inputs.emulation_mode {
+            HmdEmulationMode::RiftS => {
                 set_prop(TrackingSystemNameString, "oculus");
                 set_prop(ModelNumberString, "Oculus Rift S");
                 set_prop(ManufacturerNameString, "Oculus");
@@ -267,7 +267,7 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
                 set_prop(DriverVersionString, "1.42.0");
                 set_icons("{oculus}/icons/rifts_headset");
             }
-            HeadsetEmulationMode::Quest1 => {
+            HmdEmulationMode::Quest1 => {
                 set_prop(TrackingSystemNameString, "oculus");
                 set_prop(ModelNumberString, "Oculus Quest");
                 set_prop(ManufacturerNameString, "Oculus");
@@ -275,7 +275,7 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
                 set_prop(DriverVersionString, "1.111.0");
                 set_oculus_common_headset_props();
             }
-            HeadsetEmulationMode::Quest2 => {
+            HmdEmulationMode::Quest2 => {
                 set_prop(TrackingSystemNameString, "oculus");
                 set_prop(ModelNumberString, "Miramar");
                 set_prop(ManufacturerNameString, "Oculus");
@@ -283,7 +283,7 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
                 set_prop(DriverVersionString, "1.55.0");
                 set_oculus_common_headset_props();
             }
-            HeadsetEmulationMode::QuestPro => {
+            HmdEmulationMode::QuestPro => {
                 set_prop(TrackingSystemNameString, "oculus");
                 set_prop(ModelNumberString, "Meta Quest Pro");
                 set_prop(ManufacturerNameString, "Oculus");
@@ -291,7 +291,7 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
                 set_prop(DriverVersionString, "1.55.0");
                 set_oculus_common_headset_props();
             }
-            HeadsetEmulationMode::Vive => {
+            HmdEmulationMode::Vive => {
                 set_prop(TrackingSystemNameString, "Vive Tracker");
                 set_prop(ModelNumberString, "ALVR driver server");
                 set_prop(ManufacturerNameString, "HTC");
@@ -300,7 +300,7 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
                 set_prop(DriverVersionString, "");
                 set_icons("{htc}/icons/vive_headset");
             }
-            HeadsetEmulationMode::Custom { .. } => (),
+            HmdEmulationMode::Custom { .. } => (),
         }
 
         set_prop(UserIpdMetersFloat, "0.063");
@@ -320,7 +320,7 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
         set_prop(DeviceProvidesBatteryStatusBool, "true");
         set_prop(ContainsProximitySensorBool, "true");
 
-        for prop in &settings.headset.extra_openvr_props {
+        for prop in &settings.inputs.extra_openvr_props {
             set_prop(prop.key, &prop.value);
         }
     } else if device_id == *HAND_LEFT_ID
@@ -332,7 +332,7 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
         let right_hand = device_id == *HAND_RIGHT_ID || device_id == *HAND_TRACKER_RIGHT_ID;
         let full_skeletal_hand =
             device_id == *HAND_TRACKER_LEFT_ID || device_id == *HAND_TRACKER_RIGHT_ID;
-        if let Switch::Enabled(config) = &settings.headset.controllers {
+        if let Switch::Enabled(config) = &settings.inputs.controllers {
             // Closure for all the common Oculus/Meta controller properties
             let set_oculus_common_props = || {
                 set_prop(TrackingSystemNameString, "oculus");

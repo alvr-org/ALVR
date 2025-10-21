@@ -22,7 +22,7 @@ use alvr_common::{
 use alvr_events::{EventType, TrackingEvent};
 use alvr_packets::TrackingData;
 use alvr_session::{
-    BodyTrackingConfig, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode, Settings,
+    BodyTrackingConfig, InputsConfig, PositionRecenteringMode, RotationRecenteringMode, Settings,
     VMCConfig, settings_schema::Switch,
 };
 use alvr_sockets::StreamReceiver;
@@ -120,7 +120,7 @@ impl TrackingManager {
     // Performs all kinds of tracking transformations, driven by settings.
     pub fn report_device_motions(
         &mut self,
-        headset_config: &HeadsetConfig,
+        headset_config: &InputsConfig,
         timestamp: Duration,
         device_motions: &[(u64, DeviceMotion)],
     ) {
@@ -277,7 +277,7 @@ pub fn tracking_loop(
 ) {
     let mut gestures_button_mapping_manager =
         initial_settings
-            .headset
+            .inputs
             .controllers
             .as_option()
             .map(|config| {
@@ -289,7 +289,7 @@ pub fn tracking_loop(
             });
 
     let mut face_tracking_sink = initial_settings
-        .headset
+        .inputs
         .face_tracking
         .into_option()
         .and_then(|config| {
@@ -297,7 +297,7 @@ pub fn tracking_loop(
         });
 
     let mut body_tracking_sink = initial_settings
-        .headset
+        .inputs
         .body_tracking
         .into_option()
         .and_then(|config| {
@@ -305,7 +305,7 @@ pub fn tracking_loop(
         });
 
     let mut vmc_sink = initial_settings
-        .headset
+        .inputs
         .vmc
         .into_option()
         .and_then(|config| VMCSink::new(config).ok());
@@ -330,7 +330,7 @@ pub fn tracking_loop(
             let data_lock = SESSION_MANAGER.read();
             data_lock
                 .settings()
-                .headset
+                .inputs
                 .controllers
                 .clone()
                 .into_option()
@@ -339,7 +339,7 @@ pub fn tracking_loop(
         let device_motion_keys = {
             let mut tracking_manager_lock = ctx.tracking_manager.write();
             let session_manager_lock = SESSION_MANAGER.read();
-            let headset_config = &session_manager_lock.settings().headset;
+            let headset_config = &session_manager_lock.settings().inputs;
 
             tracking.device_motions.extend_from_slice(
                 &body::get_default_body_trackers_from_detached_controllers(
@@ -461,12 +461,12 @@ pub fn tracking_loop(
             .ok();
 
         let publish_vmc = matches!(
-            SESSION_MANAGER.read().settings().headset.vmc,
+            SESSION_MANAGER.read().settings().inputs.vmc,
             Switch::Enabled(VMCConfig { publish: true, .. })
         );
         if publish_vmc {
             let orientation_correction = matches!(
-                SESSION_MANAGER.read().settings().headset.vmc,
+                SESSION_MANAGER.read().settings().inputs.vmc,
                 Switch::Enabled(VMCConfig {
                     orientation_correction: true,
                     ..
@@ -498,7 +498,7 @@ pub fn tracking_loop(
         }
 
         let track_body = matches!(
-            SESSION_MANAGER.read().settings().headset.body_tracking,
+            SESSION_MANAGER.read().settings().inputs.body_tracking,
             Switch::Enabled(BodyTrackingConfig { tracked: true, .. })
         );
         if track_body && let Some(sink) = &mut body_tracking_sink {

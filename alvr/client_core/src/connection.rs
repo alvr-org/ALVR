@@ -195,7 +195,7 @@ fn connection_pipeline(
     let settings = stream_config.settings;
     let negotiated_config = stream_config.negotiated_config;
 
-    *ctx.max_prediction.write() = Duration::from_millis(settings.headset.max_prediction_ms);
+    *ctx.max_prediction.write() = Duration::from_millis(settings.inputs.max_prediction_ms);
 
     *ctx.statistics_manager.lock() = Some(StatisticsManager::new(
         settings.connection.statistics_history_size,

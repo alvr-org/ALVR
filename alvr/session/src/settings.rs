@@ -862,7 +862,7 @@ pub struct AudioConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub enum HeadsetEmulationMode {
+pub enum HmdEmulationMode {
     #[schema(strings(display_name = "Rift S"))]
     RiftS,
     #[schema(strings(display_name = "Quest 1"))]
@@ -872,30 +872,12 @@ pub enum HeadsetEmulationMode {
     #[schema(strings(display_name = "Quest Pro"))]
     QuestPro,
     Vive,
-    Custom {
-        serial_number: String,
-    },
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-pub enum FaceTrackingSourcesConfig {
+pub enum FaceTrackingConfig {
     PreferEyeTrackingOnly,
     PreferFullFaceTracking,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub enum FaceTrackingSinkConfig {
-    #[schema(strings(display_name = "VRChat Eye OSC"))]
-    VrchatEyeOsc { port: u16 },
-    #[schema(strings(display_name = "VRCFaceTracking"))]
-    VrcFaceTracking,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[schema(collapsible)]
-pub struct FaceTrackingConfig {
-    pub sources: FaceTrackingSourcesConfig,
-    pub sink: FaceTrackingSinkConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Default)]
@@ -924,40 +906,15 @@ pub enum BodyTrackingBDConfig {
     ObjectTracking,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-pub struct BodyTrackingSourcesConfig {
-    pub meta: BodyTrackingMetaConfig,
-    pub bd: BodyTrackingBDConfig,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub enum BodyTrackingSinkConfig {
-    #[schema(strings(display_name = "Fake Vive Trackers"))]
-    FakeViveTracker,
-    #[schema(strings(display_name = "VRChat Body OSC"))]
-    VrchatBodyOsc { port: u16 },
-}
-
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct BodyTrackingConfig {
-    pub sources: BodyTrackingSourcesConfig,
-    pub sink: BodyTrackingSinkConfig,
     #[schema(strings(help = "Turn this off to temporarily pause tracking."))]
     #[schema(flag = "real-time")]
     pub tracked: bool,
-}
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[schema(collapsible)]
-pub struct VMCConfig {
-    pub host: String,
-    pub port: u16,
-    #[schema(strings(help = "Turn this off to temporarily pause sending data."))]
-    #[schema(flag = "real-time")]
-    pub publish: bool,
-    #[schema(flag = "real-time")]
-    pub orientation_correction: bool,
+    pub meta: BodyTrackingMetaConfig,
+    pub bd: BodyTrackingBDConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -980,12 +937,6 @@ pub enum ControllersEmulationMode {
     ValveIndex,
     #[schema(strings(display_name = "Vive Wand"))]
     ViveWand,
-    #[schema(strings(display_name = "Vive Tracker"))]
-    ViveTracker,
-    Custom {
-        serial_number: String,
-        button_set: Vec<String>,
-    },
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -1111,30 +1062,7 @@ pub struct HandTrackingInteractionConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[schema(collapsible)]
-pub struct HapticsConfig {
-    #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 0.0, max = 5.0, step = 0.1)))]
-    pub intensity_multiplier: f32,
-
-    #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
-    pub amplitude_curve: f32,
-
-    #[schema(strings(display_name = "Minimum duration"))]
-    #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 0.0, max = 0.1, step = 0.001)), suffix = "s")]
-    pub min_duration_s: f32,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct HandSkeletonConfig {
-    #[schema(flag = "steamvr-restart")]
-    #[schema(strings(
-        help = r"Enabling this will use separate tracker objects with the full skeletal tracking level when hand tracking is detected. This is required for VRChat hand tracking."
-    ))]
-    pub steamvr_input_2_0: bool,
-
     #[schema(flag = "real-time")]
     #[schema(strings(
         help = r"Predict hand skeleton to make it less floaty. It may make hands too jittery."
@@ -1149,10 +1077,10 @@ pub struct ControllersConfig {
     #[schema(flag = "real-time")]
     pub tracked: bool,
 
-    #[schema(flag = "steamvr-restart")]
     #[schema(strings(
         help = "Enabling this passes skeletal hand data (finger tracking) to SteamVR."
     ))]
+    #[schema(flag = "real-time")]
     pub hand_skeleton: Switch<HandSkeletonConfig>,
 
     #[schema(flag = "real-time")]
@@ -1162,22 +1090,13 @@ pub struct ControllersConfig {
     pub hand_tracking_interaction: Switch<HandTrackingInteractionConfig>,
 
     #[schema(strings(
-        display_name = "Prediction",
-        help = r"Higher values make the controllers track smoother.
-Technically, this is the time (counted in frames) between pose submitted to SteamVR and the corresponding virtual vsync happens.
-Currently this cannot be reliably estimated automatically. The correct value should be 2 but 3 is default for smoother tracking at the cost of slight lag."
+        help = r"Track hand skeleton while holding controllers. This will reduce hand tracking frequency to 30Hz.
+Because of runtime limitations, this option is ignored when body tracking is active."
     ))]
-    #[schema(gui(slider(min = 1.0, max = 10.0, logarithmic)), suffix = "frames")]
-    pub steamvr_pipeline_frames: f32,
-
-    #[schema(flag = "real-time")]
-    pub haptics: Switch<HapticsConfig>,
+    pub multimodal_tracking: bool,
 
     #[schema(flag = "steamvr-restart")]
     pub emulation_mode: ControllersEmulationMode,
-
-    #[schema(flag = "steamvr-restart")]
-    pub extra_openvr_props: Vec<OpenvrProperty>,
 
     #[schema(flag = "real-time")]
     // note: logarithmic scale seems to be glitchy for this control
@@ -1188,28 +1107,6 @@ Currently this cannot be reliably estimated automatically. The correct value sho
     // note: logarithmic scale seems to be glitchy for this control
     #[schema(gui(slider(min = 0.0, max = 100.0, step = 1.0)), suffix = "°/s")]
     pub angular_velocity_cutoff: f32,
-
-    #[schema(flag = "real-time")]
-    #[schema(strings(help = "Right controller offset is mirrored horizontally"))]
-    // note: logarithmic scale seems to be glitchy for this control
-    #[schema(gui(slider(min = -0.5, max = 0.5, step = 0.001)), suffix = "m")]
-    pub left_controller_position_offset: [f32; 3],
-
-    #[schema(flag = "real-time")]
-    #[schema(strings(help = "Right controller offset is mirrored horizontally"))]
-    #[schema(gui(slider(min = -180.0, max = 180.0, step = 1.0)), suffix = "°")]
-    pub left_controller_rotation_offset: [f32; 3],
-
-    #[schema(flag = "real-time")]
-    #[schema(strings(help = "Right controller offset is mirrored horizontally"))]
-    // note: logarithmic scale seems to be glitchy for this control
-    #[schema(gui(slider(min = -0.5, max = 0.5, step = 0.001)), suffix = "m")]
-    pub left_hand_tracking_position_offset: [f32; 3],
-
-    #[schema(flag = "real-time")]
-    #[schema(strings(help = "Right controller offset is mirrored horizontally"))]
-    #[schema(gui(slider(min = -180.0, max = 180.0, step = 1.0)), suffix = "°")]
-    pub left_hand_tracking_rotation_offset: [f32; 3],
 
     #[schema(strings(help = "List of OpenXR-syle paths"))]
     pub button_mappings: Option<Vec<(String, Vec<ButtonBindingTarget>)>>,
@@ -1235,20 +1132,71 @@ pub enum RotationRecenteringMode {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
-pub struct MultimodalTracking {
-    pub enabled: bool,
+pub enum InputTrackerType {
+    Head,
+    LeftController,
+    RightController,
+    LeftHandSkeleton,
+    RightHandSkeleton,
+    LeftDetachedController,
+    RightDetachedController,
+    Chest,
+    LeftShoulder,
+    RightShoulder,
+    LeftElbow,
+    RightElbow,
+    LeftWrist,
+    RightWrist,
+    Waist,
+    LeftKnee,
+    RightKnee,
+    LeftAnkle,
+    RightAnkle,
+    LeftFoot,
+    RightFoot,
+    Generic1,
+    Generic2,
+    Generic3,
+    Generic4,
+    Generic5,
+}
 
-    #[schema(flag = "steamvr-restart")]
-    #[schema(strings(
-        display_name = "Map non-held controllers to SteamVR trackers",
-        help = "Non-held controllers are mapped to left and right feet.
-This will be configurable in the future."
-    ))]
-    pub detached_controllers_steamvr_sink: bool,
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
+pub enum OutputTrackerType {
+    Head,
+    LeftController,
+    RightController,
+    LeftHandSkeleton,
+    RightHandSkeleton,
+    Chest,
+    LeftShoulder,
+    RightShoulder,
+    LeftElbow,
+    RightElbow,
+    LeftWrist,
+    RightWrist,
+    Waist,
+    LeftKnee,
+    RightKnee,
+    LeftAnkle,
+    RightAnkle,
+    LeftFoot,
+    RightFoot,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
+pub struct TrackerMapping {
+    input: InputTrackerType,
+    output: OutputTrackerType,
+
+    #[schema(suffix = "m")]
+    position_offset: [f32; 3],
+    #[schema(suffix = "°")]
+    rotation_offset: [f32; 3],
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct HeadsetConfig {
+pub struct InputsConfig {
     #[schema(strings(
         help = r#"Disabled: the playspace origin is determined by the room-scale guardian setup.
 Local floor: the origin is on the floor and resets when long pressing the oculus button.
@@ -1266,13 +1214,73 @@ Tilted: the world gets tilted when long pressing the oculus button. This is usef
     pub rotation_recentering_mode: RotationRecenteringMode,
 
     #[schema(flag = "steamvr-restart")]
-    pub controllers: Switch<ControllersConfig>,
+    pub hmd_emulation_mode: HmdEmulationMode,
 
     #[schema(flag = "steamvr-restart")]
-    pub emulation_mode: HeadsetEmulationMode,
+    pub controllers: Switch<ControllersConfig>,
+    pub face_tracking: Switch<FaceTrackingConfig>,
+    pub body_tracking: Switch<BodyTrackingConfig>,
+
+    pub tracker_mappings: Vec<TrackerMapping>,
+
+    #[schema(strings(
+        help = "Maximum prediction for head and controllers. Used to avoid too much jitter during loading."
+    ))]
+    #[schema(gui(slider(min = 0, max = 200, step = 5)), suffix = "ms")]
+    pub max_prediction_ms: u64,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct SteamvrLauncherConfig {
+    #[schema(strings(
+        display_name = "Open and close SteamVR automatically",
+        help = "Launches SteamVR automatically when the ALVR dashboard is opened, and closes it when the dashboard is closed."
+    ))]
+    pub open_close_with_dashboard: bool,
+
+    #[cfg_attr(
+        windows,
+        schema(strings(help = "Directly start the VR server, bypassing Steam. \
+                Will run start_server.bat if it exists alongside session.json, and try to automatically find SteamVR otherwise."))
+    )]
+    #[cfg_attr(
+        not(windows),
+        schema(strings(help = "Directly start the VR server, bypassing Steam. \
+                Will run start_server.sh if it exists alongside session.json, and try to automatically find SteamVR otherwise."))
+    )]
+    pub direct_launch: bool,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct SteamvrTrackerConfig {
+    #[schema(flag = "steamvr-restart")]
+    pub tracker_type: OutputTrackerType,
 
     #[schema(flag = "steamvr-restart")]
     pub extra_openvr_props: Vec<OpenvrProperty>,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct SteamvrConfig {
+    pub launcher: SteamvrLauncherConfig,
+
+    #[schema(flag = "steamvr-restart")]
+    pub enabled_trackers: Vec<SteamvrTrackerConfig>,
+
+    #[schema(flag = "steamvr-restart")]
+    #[schema(strings(
+        help = r"Enabling this will use separate tracker objects with the full skeletal tracking level when hand tracking is detected. This is required for VRChat hand tracking."
+    ))]
+    pub steamvr_input_2_0: bool,
+
+    #[schema(strings(
+        display_name = "Controllers prediction",
+        help = r"Higher values make the controllers track smoother.
+Technically, this is the time (counted in frames) between pose submitted to SteamVR and the corresponding virtual vsync happens.
+Currently this cannot be reliably estimated automatically. The correct value should be 2 but 3 is default for smoother tracking at the cost of slight lag."
+    ))]
+    #[schema(gui(slider(min = 1.0, max = 10.0, logarithmic)), suffix = "frames")]
+    pub steamvr_pipeline_frames: f32,
 
     #[schema(flag = "steamvr-restart")]
     pub tracking_ref_only: bool,
@@ -1280,27 +1288,17 @@ Tilted: the world gets tilted when long pressing the oculus button. This is usef
     #[schema(flag = "steamvr-restart")]
     pub enable_vive_tracker_proxy: bool,
 
-    pub face_tracking: Switch<FaceTrackingConfig>,
+    #[schema(flag = "real-time")]
+    pub left_controller_position_offset: [f32; 3],
 
-    #[schema(flag = "steamvr-restart")]
-    #[schema(strings(
-        help = r"Track hand skeleton while holding controllers. This will reduce hand tracking frequency to 30Hz.
-Because of runtime limitations, this option is ignored when body tracking is active."
-    ))]
-    pub multimodal_tracking: Switch<MultimodalTracking>,
+    #[schema(flag = "real-time")]
+    pub left_controller_rotation_offset: [f32; 3],
 
-    #[schema(flag = "steamvr-restart")]
-    pub body_tracking: Switch<BodyTrackingConfig>,
+    #[schema(flag = "real-time")]
+    pub left_hand_tracking_position_offset: [f32; 3],
 
-    #[schema(flag = "steamvr-restart")]
-    #[schema(strings(display_name = "VMC"))]
-    pub vmc: Switch<VMCConfig>,
-
-    #[schema(strings(
-        help = "Maximum prediction for head and controllers. Used to avoid too much jitter during loading."
-    ))]
-    #[schema(gui(slider(min = 0, max = 200, step = 5)), suffix = "ms")]
-    pub max_prediction_ms: u64,
+    #[schema(flag = "real-time")]
+    pub left_hand_tracking_rotation_offset: [f32; 3],
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -1321,6 +1319,14 @@ pub struct DiscoveryConfig {
     pub auto_trust_clients: bool,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct WiredClientAutoLaunchConfig {
+    #[schema(strings(
+        help = "Delay in seconds to wait after booting the headset before trying to launch the client."
+    ))]
+    pub boot_delay: u32,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
 pub enum SocketBufferSize {
     Default,
@@ -1328,12 +1334,28 @@ pub enum SocketBufferSize {
     Custom(#[schema(suffix = "B")] u32),
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct WiredClientAutoLaunchConfig {
-    #[schema(strings(
-        help = "Delay in seconds to wait after booting the headset before trying to launch the client."
-    ))]
-    pub boot_delay: u32,
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
+#[repr(u8)]
+#[schema(gui = "button_group")]
+pub enum DropProbability {
+    Low = 0x01,
+    Medium = 0x10,
+    High = 0x11,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
+pub enum DscpTos {
+    BestEffort,
+
+    ClassSelector(#[schema(gui(slider(min = 1, max = 7)))] u8),
+
+    AssuredForwarding {
+        #[schema(gui(slider(min = 1, max = 4)))]
+        class: u8,
+        drop_probability: DropProbability,
+    },
+
+    ExpeditedForwarding,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1431,28 +1453,42 @@ This could happen on TCP. A IDR frame is requested in this case."#
     pub dscp: Option<DscpTos>,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
-#[repr(u8)]
-#[schema(gui = "button_group")]
-pub enum DropProbability {
-    Low = 0x01,
-    Medium = 0x10,
-    High = 0x11,
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[schema(collapsible)]
+pub struct HapticsConfig {
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0.0, max = 5.0, step = 0.1)))]
+    pub intensity_multiplier: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
+    pub amplitude_curve: f32,
+
+    #[schema(strings(display_name = "Minimum duration"))]
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0.0, max = 0.1, step = 0.001)), suffix = "s")]
+    pub min_duration_s: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
-pub enum DscpTos {
-    BestEffort,
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum FaceTrackingOscOutputConfig {
+    #[schema(strings(display_name = "VRChat Eye OSC"))]
+    VrchatEyes { port: u16 },
+    #[schema(strings(display_name = "VRCFaceTracking"))]
+    VrcFaceTracking,
+}
 
-    ClassSelector(#[schema(gui(slider(min = 1, max = 7)))] u8),
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct VMCConfig {
+    pub host: String,
+    pub port: u16,
 
-    AssuredForwarding {
-        #[schema(gui(slider(min = 1, max = 4)))]
-        class: u8,
-        drop_probability: DropProbability,
-    },
+    #[schema(strings(help = "Turn this off to temporarily pause sending data."))]
+    #[schema(flag = "real-time")]
+    pub publish: bool,
 
-    ExpeditedForwarding,
+    #[schema(flag = "real-time")]
+    pub orientation_correction: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1496,27 +1532,6 @@ pub struct LoggingConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct SteamvrLauncher {
-    #[schema(strings(
-        display_name = "Open and close SteamVR automatically",
-        help = "Launches SteamVR automatically when the ALVR dashboard is opened, and closes it when the dashboard is closed."
-    ))]
-    pub open_close_steamvr_with_dashboard: bool,
-
-    #[cfg_attr(
-        windows,
-        schema(strings(help = "Directly start the VR server, bypassing Steam. \
-                Will run start_server.bat if it exists alongside session.json, and try to automatically find SteamVR otherwise."))
-    )]
-    #[cfg_attr(
-        not(windows),
-        schema(strings(help = "Directly start the VR server, bypassing Steam. \
-                Will run start_server.sh if it exists alongside session.json, and try to automatically find SteamVR otherwise."))
-    )]
-    pub direct_launch: bool,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct RollingVideoFilesConfig {
     #[schema(strings(display_name = "Duration"))]
     #[schema(suffix = "s")]
@@ -1555,10 +1570,18 @@ pub struct NewVersionPopupConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ExtraConfig {
-    #[schema(strings(display_name = "SteamVR Launcher"))]
-    pub steamvr_launcher: SteamvrLauncher,
+    #[schema(flag = "real-time")]
+    pub haptics: Switch<HapticsConfig>,
+
+    pub face_tracking_osc_output: FaceTrackingOscOutputConfig,
+    pub vrchat_body_osc_port: Switch<u16>,
+
+    #[schema(strings(display_name = "VMC"))]
+    pub vmc: Switch<VMCConfig>,
+
     pub capture: CaptureConfig,
     pub logging: LoggingConfig,
+
     #[cfg_attr(not(target_os = "linux"), schema(flag = "hidden"))]
     pub patches: Patches,
 
@@ -1576,7 +1599,8 @@ It does not update in real time.")
 pub struct Settings {
     pub video: VideoConfig,
     pub audio: AudioConfig,
-    pub headset: HeadsetConfig,
+    pub inputs: InputsConfig,
+    pub steamvr: SteamvrConfig,
     pub connection: ConnectionConfig,
     pub extra: ExtraConfig,
 }
@@ -1598,20 +1622,48 @@ pub fn session_settings_default() -> SettingsDefault {
         Index: 0,
         variant: CustomAudioDeviceConfigDefaultVariant::NameSubstring,
     };
-    let default_custom_openvr_props = VectorDefault {
-        gui_collapsed: true,
-        element: OpenvrPropertyDefault {
-            key: OpenvrPropKeyDefault {
-                variant: OpenvrPropKeyDefaultVariant::TrackingSystemNameString,
-            },
-            value: "".into(),
-        },
-        content: vec![],
-    };
     let socket_buffer = SocketBufferSizeDefault {
         Custom: 100000,
         variant: SocketBufferSizeDefaultVariant::Maximum,
     };
+
+    fn tracker_mapping_default(
+        input: InputTrackerTypeDefaultVariant,
+        output: OutputTrackerTypeDefaultVariant,
+    ) -> TrackerMappingDefault {
+        TrackerMappingDefault {
+            input: InputTrackerTypeDefault { variant: input },
+            output: OutputTrackerTypeDefault { variant: output },
+            position_offset: ArrayDefault {
+                gui_collapsed: true,
+                content: [0.0, 0.0, 0.0],
+            },
+            rotation_offset: ArrayDefault {
+                gui_collapsed: true,
+                content: [0.0, 0.0, 0.0],
+            },
+        }
+    }
+
+    fn steamvr_tracker_default(
+        tracker_type: OutputTrackerTypeDefaultVariant,
+    ) -> SteamvrTrackerConfigDefault {
+        SteamvrTrackerConfigDefault {
+            tracker_type: OutputTrackerTypeDefault {
+                variant: tracker_type,
+            },
+            extra_openvr_props: VectorDefault {
+                gui_collapsed: true,
+                element: OpenvrPropertyDefault {
+                    key: OpenvrPropKeyDefault {
+                        variant: OpenvrPropKeyDefaultVariant::TrackingSystemNameString,
+                    },
+                    value: "".into(),
+                },
+                content: vec![],
+            },
+        }
+    }
 
     SettingsDefault {
         video: VideoConfigDefault {
@@ -1904,69 +1956,16 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
         },
-        headset: HeadsetConfigDefault {
-            emulation_mode: HeadsetEmulationModeDefault {
-                Custom: HeadsetEmulationModeCustomDefault {
-                    serial_number: "Unknown".into(),
-                },
-                variant: HeadsetEmulationModeDefaultVariant::Quest2,
+        inputs: InputsConfigDefault {
+            position_recentering_mode: PositionRecenteringModeDefault {
+                Local: PositionRecenteringModeLocalDefault { view_height: 1.5 },
+                variant: PositionRecenteringModeDefaultVariant::LocalFloor,
             },
-            extra_openvr_props: default_custom_openvr_props.clone(),
-            tracking_ref_only: false,
-            enable_vive_tracker_proxy: false,
-            face_tracking: SwitchDefault {
-                enabled: false,
-                content: FaceTrackingConfigDefault {
-                    gui_collapsed: true,
-                    sources: FaceTrackingSourcesConfigDefault {
-                        variant: FaceTrackingSourcesConfigDefaultVariant::PreferFullFaceTracking,
-                    },
-                    sink: FaceTrackingSinkConfigDefault {
-                        VrchatEyeOsc: FaceTrackingSinkConfigVrchatEyeOscDefault { port: 9000 },
-                        variant: FaceTrackingSinkConfigDefaultVariant::VrchatEyeOsc,
-                    },
-                },
+            rotation_recentering_mode: RotationRecenteringModeDefault {
+                variant: RotationRecenteringModeDefaultVariant::Yaw,
             },
-            multimodal_tracking: SwitchDefault {
-                enabled: false,
-                content: MultimodalTrackingDefault {
-                    enabled: true,
-                    detached_controllers_steamvr_sink: false,
-                },
-            },
-            body_tracking: SwitchDefault {
-                enabled: false,
-                content: BodyTrackingConfigDefault {
-                    gui_collapsed: true,
-                    sources: BodyTrackingSourcesConfigDefault {
-                        meta: BodyTrackingMetaConfigDefault {
-                            prefer_full_body: true,
-                            prefer_high_fidelity: true,
-                        },
-                        bd: BodyTrackingBDConfigDefault {
-                            BodyTracking: BodyTrackingBDConfigBodyTrackingDefault {
-                                high_accuracy: true,
-                                prompt_calibration_on_start: true,
-                            },
-                            variant: BodyTrackingBDConfigDefaultVariant::BodyTracking,
-                        },
-                    },
-                    sink: BodyTrackingSinkConfigDefault {
-                        VrchatBodyOsc: BodyTrackingSinkConfigVrchatBodyOscDefault { port: 9000 },
-                        variant: BodyTrackingSinkConfigDefaultVariant::FakeViveTracker,
-                    },
-                    tracked: true,
-                },
-            },
-            vmc: SwitchDefault {
-                enabled: false,
-                content: VMCConfigDefault {
-                    gui_collapsed: true,
-                    host: "127.0.0.1".into(),
-                    port: 39539,
-                    publish: true,
-                    orientation_correction: true,
-                },
+            hmd_emulation_mode: HmdEmulationModeDefault {
+                variant: HmdEmulationModeDefaultVariant::Quest2,
             },
             controllers: SwitchDefault {
                 enabled: true,
@@ -1975,23 +1974,29 @@ pub fn session_settings_default() -> SettingsDefault {
                     tracked: true,
                     hand_skeleton: SwitchDefault {
                         enabled: true,
-                        content: HandSkeletonConfigDefault {
-                            steamvr_input_2_0: true,
-                            predict: false,
+                        content: HandSkeletonConfigDefault { predict: false },
+                    },
+                    hand_tracking_interaction: SwitchDefault {
+                        enabled: false,
+                        content: HandTrackingInteractionConfigDefault {
+                            only_touch: false,
+                            pinch_touch_distance: 0.0,
+                            pinch_trigger_distance: 0.25,
+                            curl_touch_distance: 2.0,
+                            curl_trigger_distance: 2.5,
+                            joystick_deadzone: 40.0,
+                            joystick_offset_horizontal: 0.0,
+                            joystick_offset_vertical: 0.0,
+                            joystick_range: 1.0,
+                            repeat_delay: 100,
+                            activation_delay: 50,
+                            deactivation_delay: 100,
                         },
                     },
+                    multimodal_tracking: false,
                     emulation_mode: ControllersEmulationModeDefault {
-                        Custom: ControllersEmulationModeCustomDefault {
-                            serial_number: "ALVR Controller".into(),
-                            button_set: VectorDefault {
-                                gui_collapsed: false,
-                                element: "/user/hand/left/input/a/click".into(),
-                                content: vec![],
-                            },
-                        },
                         variant: ControllersEmulationModeDefaultVariant::Quest2Touch,
                     },
-                    extra_openvr_props: default_custom_openvr_props,
                     button_mappings: OptionalDefault {
                         set: false,
                         content: DictionaryDefault {
@@ -2036,61 +2041,109 @@ pub fn session_settings_default() -> SettingsDefault {
                         },
                         force_threshold: 0.8,
                     },
-                    hand_tracking_interaction: SwitchDefault {
-                        enabled: false,
-                        content: HandTrackingInteractionConfigDefault {
-                            only_touch: false,
-                            pinch_touch_distance: 0.0,
-                            pinch_trigger_distance: 0.25,
-                            curl_touch_distance: 2.0,
-                            curl_trigger_distance: 2.5,
-                            joystick_deadzone: 40.0,
-                            joystick_offset_horizontal: 0.0,
-                            joystick_offset_vertical: 0.0,
-                            joystick_range: 1.0,
-                            repeat_delay: 100,
-                            activation_delay: 50,
-                            deactivation_delay: 100,
-                        },
-                    },
-                    steamvr_pipeline_frames: 2.1,
                     linear_velocity_cutoff: 0.05,
                     angular_velocity_cutoff: 10.0,
-                    left_controller_position_offset: ArrayDefault {
-                        gui_collapsed: true,
-                        content: [0.0, 0.0, -0.11],
+                },
+            },
+            face_tracking: SwitchDefault {
+                enabled: false,
+                content: FaceTrackingConfigDefault {
+                    variant: FaceTrackingConfigDefaultVariant::PreferFullFaceTracking,
+                },
+            },
+            body_tracking: SwitchDefault {
+                enabled: false,
+                content: BodyTrackingConfigDefault {
+                    gui_collapsed: true,
+                    tracked: true,
+                    meta: BodyTrackingMetaConfigDefault {
+                        prefer_full_body: true,
+                        prefer_high_fidelity: true,
                     },
-                    left_controller_rotation_offset: ArrayDefault {
-                        gui_collapsed: true,
-                        content: [0.0; 3],
-                    },
-                    left_hand_tracking_position_offset: ArrayDefault {
-                        gui_collapsed: true,
-                        content: [0.04, -0.02, -0.13],
-                    },
-                    left_hand_tracking_rotation_offset: ArrayDefault {
-                        gui_collapsed: true,
-                        content: [0.0, -45.0, -90.0],
-                    },
-                    haptics: SwitchDefault {
-                        enabled: true,
-                        content: HapticsConfigDefault {
-                            gui_collapsed: true,
-                            intensity_multiplier: 1.0,
-                            amplitude_curve: 1.0,
-                            min_duration_s: 0.01,
+                    bd: BodyTrackingBDConfigDefault {
+                        BodyTracking: BodyTrackingBDConfigBodyTrackingDefault {
+                            high_accuracy: true,
+                            prompt_calibration_on_start: true,
                         },
+                        variant: BodyTrackingBDConfigDefaultVariant::BodyTracking,
                     },
                 },
             },
-            position_recentering_mode: PositionRecenteringModeDefault {
-                Local: PositionRecenteringModeLocalDefault { view_height: 1.5 },
-                variant: PositionRecenteringModeDefaultVariant::LocalFloor,
-            },
-            rotation_recentering_mode: RotationRecenteringModeDefault {
-                variant: RotationRecenteringModeDefaultVariant::Yaw,
+            tracker_mappings: VectorDefault {
+                gui_collapsed: true,
+                element: tracker_mapping_default(
+                    InputTrackerTypeDefaultVariant::Head,
+                    OutputTrackerTypeDefaultVariant::Head,
+                ),
+                content: vec![
+                    tracker_mapping_default(
+                        InputTrackerTypeDefaultVariant::LeftDetachedController,
+                        OutputTrackerTypeDefaultVariant::LeftFoot,
+                    ),
+                    tracker_mapping_default(
+                        InputTrackerTypeDefaultVariant::RightDetachedController,
+                        OutputTrackerTypeDefaultVariant::RightFoot,
+                    ),
+                    tracker_mapping_default(
+                        InputTrackerTypeDefaultVariant::Generic1,
+                        OutputTrackerTypeDefaultVariant::Waist,
+                    ),
+                    tracker_mapping_default(
+                        InputTrackerTypeDefaultVariant::Generic2,
+                        OutputTrackerTypeDefaultVariant::LeftFoot,
+                    ),
+                    tracker_mapping_default(
+                        InputTrackerTypeDefaultVariant::Generic3,
+                        OutputTrackerTypeDefaultVariant::RightFoot,
+                    ),
+                    tracker_mapping_default(
+                        InputTrackerTypeDefaultVariant::Generic4,
+                        OutputTrackerTypeDefaultVariant::LeftElbow,
+                    ),
+                    tracker_mapping_default(
+                        InputTrackerTypeDefaultVariant::Generic5,
+                        OutputTrackerTypeDefaultVariant::RightElbow,
+                    ),
+                ],
             },
             max_prediction_ms: 100,
+        },
+        steamvr: SteamvrConfigDefault {
+            launcher: SteamvrLauncherConfigDefault {
+                open_close_with_dashboard: false,
+                direct_launch: false,
+            },
+            enabled_trackers: VectorDefault {
+                gui_collapsed: true,
+                element: steamvr_tracker_default(OutputTrackerTypeDefaultVariant::Waist),
+                content: vec![
+                    steamvr_tracker_default(OutputTrackerTypeDefaultVariant::Head),
+                    steamvr_tracker_default(OutputTrackerTypeDefaultVariant::LeftController),
+                    steamvr_tracker_default(OutputTrackerTypeDefaultVariant::RightController),
+                    steamvr_tracker_default(OutputTrackerTypeDefaultVariant::LeftHandSkeleton),
+                    steamvr_tracker_default(OutputTrackerTypeDefaultVariant::RightHandSkeleton),
+                ],
+            },
+            steamvr_input_2_0: true,
+            steamvr_pipeline_frames: 2.1,
+            tracking_ref_only: false,
+            enable_vive_tracker_proxy: false,
+            left_controller_position_offset: ArrayDefault {
+                gui_collapsed: true,
+                content: [0.0, 0.0, -0.11],
+            },
+            left_controller_rotation_offset: ArrayDefault {
+                gui_collapsed: true,
+                content: [0.0, 0.0, 0.0],
+            },
+            left_hand_tracking_position_offset: ArrayDefault {
+                gui_collapsed: true,
+                content: [0.04, -0.02, -0.13],
+            },
+            left_hand_tracking_rotation_offset: ArrayDefault {
+                gui_collapsed: true,
+                content: [0.0, -45.0, -90.0],
+            },
         },
         connection: ConnectionConfigDefault {
             stream_protocol: SocketProtocolDefault {
@@ -2144,6 +2197,32 @@ pub fn session_settings_default() -> SettingsDefault {
             statistics_history_size: 256,
         },
         extra: ExtraConfigDefault {
+            haptics: SwitchDefault {
+                enabled: true,
+                content: HapticsConfigDefault {
+                    gui_collapsed: true,
+                    intensity_multiplier: 1.0,
+                    amplitude_curve: 1.0,
+                    min_duration_s: 0.01,
+                },
+            },
+            face_tracking_osc_output: FaceTrackingOscOutputConfigDefault {
+                variant: FaceTrackingOscOutputConfigDefaultVariant::VrchatEyes,
+                VrchatEyes: FaceTrackingOscOutputConfigVrchatEyesDefault { port: 9000 },
+            },
+            vrchat_body_osc_port: SwitchDefault {
+                enabled: false,
+                content: 9000,
+            },
+            vmc: SwitchDefault {
+                enabled: false,
+                content: VMCConfigDefault {
+                    host: "127.0.0.1".into(),
+                    port: 39539,
+                    publish: true,
+                    orientation_correction: true,
+                },
+            },
             logging: LoggingConfigDefault {
                 client_log_report_level: SwitchDefault {
                     enabled: true,
@@ -2182,10 +2261,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     encoder: false,
                     decoder: false,
                 },
-            },
-            steamvr_launcher: SteamvrLauncherDefault {
-                open_close_steamvr_with_dashboard: false,
-                direct_launch: false,
             },
             capture: CaptureConfigDefault {
                 startup_video_recording: false,

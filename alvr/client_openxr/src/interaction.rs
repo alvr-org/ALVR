@@ -12,7 +12,7 @@ use alvr_common::{
 };
 use alvr_graphics::HandData;
 use alvr_packets::{ButtonEntry, ButtonValue, FaceData, FaceExpressions, StreamConfig};
-use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
+use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, FaceTrackingConfig};
 use openxr as xr;
 use std::{
     collections::{HashMap, HashSet},
@@ -138,7 +138,7 @@ pub enum BodyTracker {
 
 #[derive(Clone)]
 pub struct InteractionSourcesConfig {
-    pub face_tracking: Option<FaceTrackingSourcesConfig>,
+    pub face_tracking: Option<FaceTrackingConfig>,
     pub body_tracking: Option<BodyTrackingSourcesConfig>,
     pub prefers_multimodal_input: bool,
 }
@@ -148,19 +148,19 @@ impl InteractionSourcesConfig {
         Self {
             face_tracking: config
                 .settings
-                .headset
+                .inputs
                 .face_tracking
                 .as_option()
                 .map(|c| c.sources.clone()),
             body_tracking: config
                 .settings
-                .headset
+                .inputs
                 .body_tracking
                 .as_option()
                 .map(|c| c.sources.clone()),
             prefers_multimodal_input: config
                 .settings
-                .headset
+                .inputs
                 .multimodal_tracking
                 .as_option()
                 .is_some_and(|c| c.enabled),
@@ -523,7 +523,7 @@ impl InteractionContext {
 
         if let Some(config) = &config.face_tracking {
             if matches!(self.platform, Platform::QuestPro)
-                && matches!(config, FaceTrackingSourcesConfig::PreferFullFaceTracking)
+                && matches!(config, FaceTrackingConfig::PreferFullFaceTracking)
             {
                 #[cfg(target_os = "android")]
                 {
@@ -535,7 +535,7 @@ impl InteractionContext {
             if matches!(
                 self.platform,
                 Platform::PicoNeo3 | Platform::Pico4Pro | Platform::Pico4Enterprise
-            ) && matches!(config, FaceTrackingSourcesConfig::PreferFullFaceTracking)
+            ) && matches!(config, FaceTrackingConfig::PreferFullFaceTracking)
                 && extra_extensions::supports_eye_gaze_interaction(&self.xr_session, self.xr_system)
             {
                 #[cfg(target_os = "android")]
@@ -569,7 +569,7 @@ impl InteractionContext {
             self.face_sources.eyes_social =
                 check_ext_object("EyeTrackerSocial", EyeTrackerSocial::new(&self.xr_session));
 
-            if matches!(config, FaceTrackingSourcesConfig::PreferFullFaceTracking) {
+            if matches!(config, FaceTrackingConfig::PreferFullFaceTracking) {
                 if let Some(tracker) = check_ext_object(
                     "FaceTracker2FB",
                     FaceTracker2FB::new(self.xr_session.clone(), true, true),

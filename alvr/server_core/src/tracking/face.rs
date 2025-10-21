@@ -1,6 +1,6 @@
 use alvr_common::{anyhow::Result, glam::EulerRot};
 use alvr_packets::{FaceData, FaceExpressions};
-use alvr_session::FaceTrackingSinkConfig;
+use alvr_session::FaceTrackingOscOutputConfig;
 use rosc::{OscMessage, OscPacket, OscType};
 use std::{f32::consts::PI, net::UdpSocket};
 
@@ -9,16 +9,16 @@ const RAD_TO_DEG: f32 = 180.0 / PI;
 const VRCFT_PORT: u16 = 0xA1F7;
 
 pub struct FaceTrackingSink {
-    config: FaceTrackingSinkConfig,
+    config: FaceTrackingOscOutputConfig,
     socket: UdpSocket,
     packet_buffer: Vec<u8>,
 }
 
 impl FaceTrackingSink {
-    pub fn new(config: FaceTrackingSinkConfig, local_osc_port: u16) -> Result<Self> {
+    pub fn new(config: FaceTrackingOscOutputConfig, local_osc_port: u16) -> Result<Self> {
         let port = match config {
-            FaceTrackingSinkConfig::VrchatEyeOsc { port } => port,
-            FaceTrackingSinkConfig::VrcFaceTracking => VRCFT_PORT,
+            FaceTrackingOscOutputConfig::VrchatEyes { port } => port,
+            FaceTrackingOscOutputConfig::VrcFaceTracking => VRCFT_PORT,
         };
 
         let socket = UdpSocket::bind(format!("127.0.0.1:{local_osc_port}"))?;
@@ -53,7 +53,7 @@ impl FaceTrackingSink {
 
     pub fn send_tracking(&mut self, face_data: &FaceData) {
         match self.config {
-            FaceTrackingSinkConfig::VrchatEyeOsc { .. } => {
+            FaceTrackingOscOutputConfig::VrchatEyes { .. } => {
                 if let [Some(left), Some(right)] = face_data.eyes_social {
                     let (left_pitch, left_yaw, _) = left.to_euler(EulerRot::XYZ);
                     let (right_pitch, right_yaw, _) = right.to_euler(EulerRot::XYZ);
@@ -100,7 +100,7 @@ impl FaceTrackingSink {
                     );
                 }
             }
-            FaceTrackingSinkConfig::VrcFaceTracking => {
+            FaceTrackingOscOutputConfig::VrcFaceTracking => {
                 self.packet_buffer.clear();
 
                 if let [Some(left_quat), Some(right_quat)] = face_data.eyes_social {

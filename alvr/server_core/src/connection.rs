@@ -71,7 +71,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
     let mut controller_is_tracker = false;
     let mut controller_profile = 0;
     let mut use_separate_hand_trackers = false;
-    let controllers_enabled = if let Switch::Enabled(config) = &settings.headset.controllers {
+    let controllers_enabled = if let Switch::Enabled(config) = &settings.inputs.controllers {
         controller_is_tracker =
             matches!(config.emulation_mode, ControllersEmulationMode::ViveTracker);
         // These numbers don't mean anything, they're just for triggering SteamVR resets.
@@ -101,9 +101,9 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
     };
 
     let body_tracking_vive_enabled =
-        if let Switch::Enabled(config) = &settings.headset.body_tracking {
+        if let Switch::Enabled(config) = &settings.inputs.body_tracking {
             matches!(config.sink, BodyTrackingSinkConfig::FakeViveTracker)
-        } else if let Switch::Enabled(config) = settings.headset.multimodal_tracking {
+        } else if let Switch::Enabled(config) = settings.inputs.multimodal_tracking {
             config.detached_controllers_steamvr_sink
         } else {
             false
@@ -111,7 +111,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
 
     // Should be true if using full body tracking
     let body_tracking_has_legs = settings
-        .headset
+        .inputs
         .body_tracking
         .as_option()
         .map(|c| c.sources.meta.prefer_full_body)
@@ -158,8 +158,8 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
     let hdr_controls = settings.video.encoder_config.hdr;
 
     OpenvrConfig {
-        tracking_ref_only: settings.headset.tracking_ref_only,
-        enable_vive_tracker_proxy: settings.headset.enable_vive_tracker_proxy,
+        tracking_ref_only: settings.inputs.tracking_ref_only,
+        enable_vive_tracker_proxy: settings.inputs.enable_vive_tracker_proxy,
         minimum_idr_interval_ms: settings.connection.minimum_idr_interval_ms,
         adapter_index: settings.video.adapter_index,
         codec: settings.video.preferred_codec as _,
@@ -792,7 +792,7 @@ fn connection_pipeline(
     *ctx.statistics_manager.write() = Some(StatisticsManager::new(
         initial_settings.connection.statistics_history_size,
         Duration::from_secs_f32(1.0 / fps),
-        if let Switch::Enabled(config) = &initial_settings.headset.controllers {
+        if let Switch::Enabled(config) = &initial_settings.inputs.controllers {
             config.steamvr_pipeline_frames
         } else {
             0.0
@@ -1125,7 +1125,7 @@ fn connection_pipeline(
 
         let controllers_config = session_manager_lock
             .settings()
-            .headset
+            .inputs
             .controllers
             .as_option();
         let mut controller_button_mapping_manager = controllers_config.map(|config| {
@@ -1169,9 +1169,9 @@ fn connection_pipeline(
 
                 match packet {
                     ClientControlPacket::PlayspaceSync(packet) => {
-                        if !initial_settings.headset.tracking_ref_only {
+                        if !initial_settings.inputs.tracking_ref_only {
                             let session_manager_lock = SESSION_MANAGER.read();
-                            let config = &session_manager_lock.settings().headset;
+                            let config = &session_manager_lock.settings().inputs;
                             ctx.tracking_manager.write().recenter(
                                 config.position_recentering_mode,
                                 config.rotation_recentering_mode,
@@ -1258,7 +1258,7 @@ fn connection_pipeline(
                     }
                     ClientControlPacket::ActiveInteractionProfile { input_ids, .. } => {
                         controller_button_mapping_manager = if let Switch::Enabled(config) =
-                            &SESSION_MANAGER.read().settings().headset.controllers
+                            &SESSION_MANAGER.read().settings().inputs.controllers
                         {
                             if let Some(mappings) = &config.button_mappings {
                                 Some(ButtonMappingManager::new_manual(mappings))

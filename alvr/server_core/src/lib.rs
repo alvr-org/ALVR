@@ -155,7 +155,7 @@ pub fn settings() -> Settings {
 
 pub fn registered_button_set() -> HashSet<u64> {
     let session_manager = SESSION_MANAGER.read();
-    if let Switch::Enabled(input_mapping) = &session_manager.settings().headset.controllers {
+    if let Switch::Enabled(input_mapping) = &session_manager.settings().inputs.controllers {
         input_mapping::registered_button_set(&input_mapping.emulation_mode)
     } else {
         HashSet::new()
@@ -193,7 +193,7 @@ impl ServerCoreContext {
         let stats = StatisticsManager::new(
             initial_settings.connection.statistics_history_size,
             Duration::from_secs_f32(1.0 / 90.0),
-            if let Switch::Enabled(config) = &initial_settings.headset.controllers {
+            if let Switch::Enabled(config) = &initial_settings.inputs.controllers {
                 config.steamvr_pipeline_frames
             } else {
                 0.0
@@ -287,7 +287,7 @@ impl ServerCoreContext {
             .unwrap_or_default();
 
         let max_prediction =
-            Duration::from_millis(SESSION_MANAGER.read().settings().headset.max_prediction_ms);
+            Duration::from_millis(SESSION_MANAGER.read().settings().inputs.max_prediction_ms);
 
         if latency > max_prediction {
             warn!("Latency is too high. Clamping prediction");
@@ -329,7 +329,7 @@ impl ServerCoreContext {
 
             session_manager_lock
                 .settings()
-                .headset
+                .inputs
                 .controllers
                 .as_option()
                 .and_then(|c| c.haptics.as_option().cloned())

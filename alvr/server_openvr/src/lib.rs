@@ -83,7 +83,7 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                     SetLocalViewParams(ffi_params.as_ptr());
                 },
                 ServerCoreEvent::Tracking { poll_timestamp } => {
-                    let headset_config = &alvr_server_core::settings().headset;
+                    let headset_config = &alvr_server_core::settings().inputs;
 
                     let controllers_config = headset_config.controllers.clone().into_option();
                     let track_body = headset_config.body_tracking.enabled();

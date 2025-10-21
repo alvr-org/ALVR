@@ -645,6 +645,6 @@ mod tests {
         let settings = session.to_settings();
 
         assert_eq!(settings.video.preferred_fps, 60.0);
-        assert!(settings.headset.controllers.as_option().is_none());
+        assert!(settings.inputs.controllers.as_option().is_none());
     }
 }

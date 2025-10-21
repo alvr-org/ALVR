@@ -6,7 +6,7 @@ use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     settings_schema::Switch,
 };
-use alvr_session::{ControllersConfig, HeadsetConfig};
+use alvr_session::{ControllersConfig, InputsConfig};
 use std::{
     f32::consts::{FRAC_PI_2, PI},
     sync::LazyLock,
@@ -70,7 +70,7 @@ pub fn to_ffi_view_params(params: ViewParams) -> FfiViewParams {
     }
 }
 
-fn get_hand_skeleton_offsets(config: &HeadsetConfig) -> (Pose, Pose) {
+fn get_hand_skeleton_offsets(config: &InputsConfig) -> (Pose, Pose) {
     let left_offset;
     let right_offset;
     if let Switch::Enabled(controllers) = &config.controllers {
@@ -121,7 +121,7 @@ fn to_ffi_skeleton(skeleton: &[Pose; 31]) -> FfiHandSkeleton {
 }
 
 pub fn to_openvr_ffi_hand_skeleton(
-    config: &HeadsetConfig,
+    config: &InputsConfig,
     device_id: u64,
     hand_skeleton: &[Pose; 26],
 ) -> FfiHandSkeleton {

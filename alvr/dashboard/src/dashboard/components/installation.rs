@@ -64,9 +64,9 @@ impl InstallationTab {
 
             Frame::group(ui.style())
                 .fill(theme::SECTION_BG)
+                .inner_margin(theme::FRAME_PADDING)
                 .show(ui, |ui| {
                     ui.vertical_centered(|ui| {
-                        ui.add_space(5.0);
                         ui.label(RichText::new("Registered drivers").size(18.0));
                     });
 

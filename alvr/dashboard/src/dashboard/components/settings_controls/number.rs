@@ -1,5 +1,6 @@
 use super::{NestingInfo, reset};
 use crate::dashboard::components::f64_eq;
+use alvr_gui_common::theme::SCROLLBAR_DOT_DIAMETER;
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{NumberType, NumericGuiType};
 use eframe::{
@@ -84,36 +85,50 @@ impl Control {
                     step,
                     logarithmic,
                 } => {
-                    let mut slider =
-                        Slider::new(editing_value_mut, range.clone()).logarithmic(*logarithmic);
-
+                    let mut slider = Slider::new(editing_value_mut, range.clone())
+                        .logarithmic(*logarithmic)
+                        .show_value(false);
                     if let Some(step) = step {
                         slider = slider.step_by(*step);
                     }
                     if !matches!(self.ty, NumberType::Float) {
                         slider = slider.integer();
                     }
-                    if let Some(suffix) = &self.suffix {
-                        slider = slider.suffix(suffix);
-                    }
+                    let slider_response = {
+                        ui.style_mut().spacing.interact_size.y = SCROLLBAR_DOT_DIAMETER;
+                        ui.add(slider)
+                    };
 
-                    // todo: investigate why the slider does not get centered vertically
-                    ui.with_layout(Layout::left_to_right(Align::Center), |ui| ui.add(slider))
-                        .inner
+                    let mut drag_value = DragValue::new(editing_value_mut);
+                    // Note: the following ifs cannot be merged with the ones above to avoid double
+                    // mutable borrow of editing_value_mut.
+                    if let Some(step) = step {
+                        drag_value = drag_value.speed(*step);
+                    }
+                    if !matches!(self.ty, NumberType::Float) {
+                        drag_value = drag_value.fixed_decimals(0);
+                    }
+                    if let Some(suffix) = &self.suffix {
+                        drag_value = drag_value.suffix(suffix);
+                    }
+                    let textbox_response = ui.add(drag_value);
+
+                    slider_response.union(textbox_response)
                 }
                 NumericGuiType::TextBox => {
-                    let mut textbox = DragValue::new(editing_value_mut);
+                    let mut drag_value = DragValue::new(editing_value_mut);
 
                     if !matches!(self.ty, NumberType::Float) {
-                        textbox = textbox.fixed_decimals(0);
+                        drag_value = drag_value.fixed_decimals(0);
                     }
                     if let Some(suffix) = &self.suffix {
-                        textbox = textbox.suffix(suffix);
+                        drag_value = drag_value.suffix(suffix);
                     }
 
-                    ui.add(textbox)
+                    ui.add(drag_value)
                 }
             };
+
             if response.drag_started() || response.gained_focus() {
                 self.editing_value_f64 = Some(session_value)
             } else if response.drag_stopped() || response.lost_focus() {

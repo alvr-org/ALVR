@@ -1,19 +1,89 @@
-use crate::backend::{SocketReader, SocketWriter, tcp};
-
-use super::CONTROL_PORT;
-use alvr_common::{ConResult, HandleTryAgain, ToCon, anyhow::Result};
-use alvr_session::SocketBufferSize;
+use crate::{CONTROL_PORT, LOCAL_IP};
+use alvr_common::{ConResult, HandleTryAgain, ToCon, anyhow::Result, con_bail};
+use alvr_session::{DscpTos, SocketBufferSize};
 use bincode::config;
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
+    io::{Read, Write},
     marker::PhantomData,
     mem,
-    net::{IpAddr, TcpListener, TcpStream},
+    net::{IpAddr, SocketAddr, TcpListener, TcpStream},
     time::{Duration, Instant},
 };
 
 // This corresponds to the length of the payload
 const FRAMED_PREFIX_LENGTH: usize = mem::size_of::<u32>();
+
+pub fn bind(
+    timeout: Duration,
+    port: u16,
+    dscp: Option<DscpTos>,
+    send_buffer_bytes: SocketBufferSize,
+    recv_buffer_bytes: SocketBufferSize,
+) -> Result<TcpListener> {
+    let socket = TcpListener::bind((LOCAL_IP, port))?.into();
+
+    crate::set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes).ok();
+
+    crate::set_dscp(&socket, dscp);
+
+    socket.set_read_timeout(Some(timeout))?;
+
+    Ok(socket.into())
+}
+
+pub fn accept_from_server(
+    listener: &TcpListener,
+    server_ip: Option<IpAddr>,
+    timeout: Duration,
+) -> ConResult<(TcpStream, TcpStream)> {
+    // Uses timeout set during bind()
+    let (socket, server_address) = listener.accept().handle_try_again()?;
+
+    if let Some(ip) = server_ip
+        && server_address.ip() != ip
+    {
+        con_bail!(
+            "Connected to wrong client: Expected: {ip}, Found {}",
+            server_address.ip()
+        );
+    }
+
+    socket.set_read_timeout(Some(timeout)).to_con()?;
+    socket.set_nodelay(true).to_con()?;
+
+    Ok((socket.try_clone().to_con()?, socket))
+}
+
+pub fn connect_to_client(
+    timeout: Duration,
+    client_ips: &[IpAddr],
+    port: u16,
+    send_buffer_bytes: SocketBufferSize,
+    recv_buffer_bytes: SocketBufferSize,
+) -> ConResult<(TcpStream, TcpStream)> {
+    let split_timeout = timeout / client_ips.len() as u32;
+
+    let mut res = alvr_common::try_again();
+    for ip in client_ips {
+        res = TcpStream::connect_timeout(&SocketAddr::new(*ip, port), split_timeout)
+            .handle_try_again();
+
+        if res.is_ok() {
+            break;
+        }
+    }
+    let socket = res?.into();
+
+    crate::set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes).ok();
+    socket.set_read_timeout(Some(timeout)).to_con()?;
+
+    let socket = TcpStream::from(socket);
+
+    socket.set_nodelay(true).to_con()?;
+
+    Ok((socket.try_clone().to_con()?, socket))
+}
 
 fn framed_send<S: Serialize>(
     socket: &mut TcpStream,
@@ -26,7 +96,7 @@ fn framed_send<S: Serialize>(
 
     buffer[0..FRAMED_PREFIX_LENGTH].copy_from_slice(&(encoded_size as u32).to_le_bytes());
 
-    socket.send(&buffer[0..FRAMED_PREFIX_LENGTH + encoded_size])?;
+    socket.write_all(buffer)?;
 
     Ok(())
 }
@@ -42,10 +112,10 @@ fn framed_recv<R: DeserializeOwned>(
     let recv_cursor_ref = if let Some(cursor) = recv_cursor {
         cursor
     } else {
-        let mut payload_length_bytes = [0; FRAMED_PREFIX_LENGTH];
+        let mut payload_size_bytes = [0; FRAMED_PREFIX_LENGTH];
 
         loop {
-            let count = socket.peek(&mut payload_length_bytes).handle_try_again()?;
+            let count = socket.peek(&mut payload_size_bytes).handle_try_again()?;
             if count == FRAMED_PREFIX_LENGTH {
                 break;
             } else if Instant::now() > deadline {
@@ -53,16 +123,16 @@ fn framed_recv<R: DeserializeOwned>(
             }
         }
 
-        let packet_length =
-            FRAMED_PREFIX_LENGTH + u32::from_le_bytes(payload_length_bytes) as usize;
-
-        buffer.resize(packet_length, 0);
+        let size = FRAMED_PREFIX_LENGTH + u32::from_le_bytes(payload_size_bytes) as usize;
+        buffer.resize(size, 0);
 
         recv_cursor.insert(0)
     };
 
     loop {
-        *recv_cursor_ref += socket.recv(&mut buffer[*recv_cursor_ref..])?;
+        *recv_cursor_ref += socket
+            .read(&mut buffer[*recv_cursor_ref..])
+            .handle_try_again()?;
 
         if *recv_cursor_ref == buffer.len() {
             break;
@@ -111,7 +181,7 @@ impl<R: DeserializeOwned> ControlSocketReceiver<R> {
 }
 
 pub fn get_server_listener(timeout: Duration) -> Result<TcpListener> {
-    let listener = tcp::bind(
+    let listener = bind(
         timeout,
         CONTROL_PORT,
         None,
@@ -137,7 +207,7 @@ impl ProtoControlSocket {
     pub fn connect_to(timeout: Duration, peer: PeerType<'_>) -> ConResult<(Self, IpAddr)> {
         let socket = match peer {
             PeerType::AnyClient(ips) => {
-                tcp::connect_to_client(
+                connect_to_client(
                     timeout,
                     &ips,
                     CONTROL_PORT,
@@ -146,7 +216,7 @@ impl ProtoControlSocket {
                 )?
                 .0
             }
-            PeerType::Server(listener) => tcp::accept_from_server(listener, None, timeout)?.0,
+            PeerType::Server(listener) => accept_from_server(listener, None, timeout)?.0,
         };
 
         let peer_ip = socket.peer_addr().to_con()?.ip();

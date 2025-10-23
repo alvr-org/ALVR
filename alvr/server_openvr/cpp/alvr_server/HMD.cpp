@@ -221,10 +221,10 @@ void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
 #endif
 }
 
-void Hmd::StartStreaming() {
+void Hmd::StartStreaming(bool headset_is_worn) {
     Debug("Hmd::StartStreaming");
 
-    vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, true, 0.0);
+    vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, headset_is_worn, 0.0);
 
     if (m_streamComponentsInitialized) {
         return;
@@ -294,6 +294,10 @@ void Hmd::SetViewParams(const FfiViewParams params[2]) {
     vr::VRServerDriverHost()->VendorSpecificEvent(
         object_id, vr::VREvent_LensDistortionChanged, {}, 0
     );
+}
+
+void Hmd::SetProximityState(bool headsetIsWorn) {
+    vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, headsetIsWorn, 0.0);
 }
 
 void Hmd::GetWindowBounds(int32_t* pnX, int32_t* pnY, uint32_t* pnWidth, uint32_t* pnHeight) {

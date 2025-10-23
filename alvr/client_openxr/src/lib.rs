@@ -166,6 +166,7 @@ pub fn entry_point() {
     exts.ext_eye_gaze_interaction = available_extensions.ext_eye_gaze_interaction;
     exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
     exts.ext_local_floor = available_extensions.ext_local_floor;
+    exts.ext_user_presence = available_extensions.ext_user_presence;
     exts.fb_body_tracking = available_extensions.fb_body_tracking;
     exts.fb_color_space = available_extensions.fb_color_space;
     exts.fb_composition_layer_settings = available_extensions.fb_composition_layer_settings;
@@ -377,6 +378,10 @@ pub fn entry_point() {
                     xr::Event::InteractionProfileChanged(_)
                     | xr::Event::PassthroughStateChangedFB(_) => {
                         // todo
+                    }
+                    xr::Event::UserPresenceChangedEXT(event) => {
+                        alvr_common::info!("user present: {:?}", event.is_user_present());
+                        core_context.send_proximity_state(event.is_user_present());
                     }
                     _ => (),
                 }

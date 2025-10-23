@@ -56,8 +56,8 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                 ServerCoreEvent::SetOpenvrProperty { device_id, prop } => {
                     props::set_openvr_prop(None, device_id, prop)
                 }
-                ServerCoreEvent::ClientConnected => unsafe {
-                    if InitializeStreaming() {
+                ServerCoreEvent::ClientConnected { headset_is_worn } => unsafe {
+                    if InitializeStreaming(headset_is_worn) {
                         RequestDriverResync();
                     } else {
                         SERVER_CORE_CONTEXT.write().take();
@@ -297,6 +297,9 @@ fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
 
                     unsafe { ShutdownSteamvr() };
                 }
+                ServerCoreEvent::ProximityState(headset_is_worn) => unsafe {
+                    SetProximityState(headset_is_worn)
+                },
             }
         }
 

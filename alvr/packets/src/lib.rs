@@ -64,6 +64,7 @@ pub enum ClientConnectionResult {
     ConnectionAccepted {
         client_protocol_id: u64,
         display_name: String,
+        headset_is_worn: bool,
         server_ip: IpAddr,
         streaming_capabilities: Option<VideoStreamingCapabilities>,
     },
@@ -193,6 +194,7 @@ pub enum ClientControlPacket {
         level: LogSeverity,
         message: String,
     },
+    ProximityState(bool),
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }

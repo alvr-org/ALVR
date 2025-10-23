@@ -75,7 +75,9 @@ pub enum ServerCoreEvent {
         device_id: u64,
         prop: OpenvrProperty,
     },
-    ClientConnected,
+    ClientConnected {
+        headset_is_worn: bool,
+    },
     ClientDisconnected,
     Battery(BatteryInfo),
     PlayspaceSync(Vec2),
@@ -89,6 +91,7 @@ pub enum ServerCoreEvent {
     GameRenderLatencyFeedback(Duration), // only used for SteamVR
     ShutdownPending,
     RestartPending,
+    ProximityState(bool),
 }
 
 pub struct ConnectionContext {

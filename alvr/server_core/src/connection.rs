@@ -542,13 +542,16 @@ fn connection_pipeline(
         Err(e) => return Err(e),
     };
 
+    let headset_is_worn_initial_state;
     let maybe_streaming_caps = if let ClientConnectionResult::ConnectionAccepted {
         client_protocol_id,
         display_name,
+        headset_is_worn,
         streaming_capabilities,
         ..
     } = connection_result
     {
+        headset_is_worn_initial_state = headset_is_worn;
         session_manager_lock.update_client_connections(
             client_hostname.clone(),
             ClientConnectionsAction::SetDisplayName(display_name),
@@ -1280,6 +1283,11 @@ fn connection_pipeline(
                     }
                     ClientControlPacket::KeepAlive | ClientControlPacket::StreamReady => (),
                     ClientControlPacket::Reserved(_) | ClientControlPacket::ReservedBuffer(_) => (),
+                    ClientControlPacket::ProximityState(headset_is_worn) => {
+                        ctx.events_sender
+                            .send(ServerCoreEvent::ProximityState(headset_is_worn))
+                            .ok();
+                    }
                 }
 
                 disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;
@@ -1354,7 +1362,9 @@ fn connection_pipeline(
     );
 
     ctx.events_sender
-        .send(ServerCoreEvent::ClientConnected)
+        .send(ServerCoreEvent::ClientConnected {
+            headset_is_worn: headset_is_worn_initial_state,
+        })
         .ok();
 
     dbg_connection!("connection_pipeline: handshake finished; unlocking streams");

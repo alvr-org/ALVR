@@ -22,8 +22,7 @@ impl PerformanceSettings {
     }
 
     pub fn set_performance_level(&self, domain: xr::PerfSettingsDomainEXT, level: xr::PerfSettingsLevelEXT) {
-        // let level = xr::PerfSettingsLevelEXT::POWER_SAVINGS;
-        alvr_common::info!("OpenXR setting performance level for domain domain to level level.");
+        alvr_common::info!("OpenXR setting performance level for domain {:?} to level {:?}.", domain, level);
         unsafe {
             (self.ext_set_performance_level)(self.session.as_raw(), domain, level);
         }

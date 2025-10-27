@@ -263,6 +263,7 @@ pub fn entry_point() {
                 .unwrap();
         }
 
+        alvr_common::info!("OpenXR trying to set performance level.");
         if let Some(performance_settings) = PerformanceSettings::new(xr_session.clone()).ok() {
             performance_settings.enable_power_saving();
         }

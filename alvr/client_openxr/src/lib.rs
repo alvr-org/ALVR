@@ -261,13 +261,15 @@ pub fn entry_point() {
                 .unwrap();
         }
 
+        alvr_common::info!("OpenXR checking performance setting availability.");
         if let Some(ext_performance_settings)= xr_instance.exts().ext_performance_settings {
             let set_performance_level = ext_performance_settings.perf_settings_set_performance_level;
-            let domain: xr::PerfSettingsDomainEXT = xr::PerfSettingsDomainEXT::CPU;
-            let level: xr::PerfSettingsLevelEXT = xr::PerfSettingsLevelEXT::POWER_SAVINGS;
-            let raw_session: xr::sys::Session = xr_session.as_raw();
+            let level = xr::PerfSettingsLevelEXT::POWER_SAVINGS;
+            let raw_session = xr_session.as_raw();
+            alvr_common::info!("OpenXR setting performance level.");
             unsafe {
-                set_performance_level(raw_session, domain, level);
+                set_performance_level(raw_session, xr::PerfSettingsDomainEXT::CPU, level);
+                set_performance_level(raw_session, xr::PerfSettingsDomainEXT::GPU, level);
             }
         }
 

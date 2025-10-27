@@ -36,6 +36,7 @@ pub enum Platform {
     PlayForDreamMR,
     Lynx,
     AndroidUnknown,
+    AndroidXR,
     AppleHeadset,
     WindowsPc,
     LinuxPc,
@@ -105,6 +106,7 @@ impl Display for Platform {
             Platform::PlayForDreamMR => "Play For Dream MR",
             Platform::Lynx => "Lynx Headset",
             Platform::AndroidUnknown => "Android (unknown)",
+            Platform::AndroidXR => "Android XR Headset",
             Platform::AppleHeadset => "Apple Headset",
             Platform::WindowsPc => "Windows PC",
             Platform::LinuxPc => "Linux PC",
@@ -122,6 +124,9 @@ pub fn platform() -> Platform {
         let model = android::model_name();
         let device = android::device_name();
         let product = android::product_name();
+
+        // TODO: Better Android XR heuristic
+        // (Maybe check runtime json for /system/lib64/libopenxr.google.so?)
 
         alvr_common::info!(
             "manufacturer: {manufacturer}, model: {model}, device: {device}, product: {product}"
@@ -153,6 +158,7 @@ pub fn platform() -> Platform {
             ("YVR", _, _, _) => Platform::Yvr,
             ("Play For Dream", _, _, _) => Platform::PlayForDreamMR,
             ("Lynx Mixed Reality", _, _, _) => Platform::Lynx,
+            ("samsung", _, "xrvst2", _) => Platform::AndroidXR,
             _ => Platform::AndroidUnknown,
         }
     }

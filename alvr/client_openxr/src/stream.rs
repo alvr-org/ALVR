@@ -195,9 +195,10 @@ impl StreamContext {
             format,
             config.foveated_encoding_config.clone(),
             platform != Platform::Lynx
-                && !((platform.is_pico() || (platform == Platform::AndroidUnknown))
+                && !((platform.is_pico() || (platform == Platform::AndroidXR))
                     && config.enable_hdr),
-            (platform != Platform::AndroidUnknown) && !config.enable_hdr,
+            // TODO: Find a driver heuristic for the limited range bug instead?
+            (platform != Platform::AndroidXR) && !config.enable_hdr,
             config.encoding_gamma,
             config.upscaling.clone(),
         );

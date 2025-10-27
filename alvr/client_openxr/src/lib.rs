@@ -262,10 +262,9 @@ pub fn entry_point() {
                 .unwrap();
         }
 
-        alvr_common::info!("OpenXR trying to set performance level.");
         if let Some(performance_settings) = xr_instance.exts().ext_performance_settings {
-            alvr_common::info!("OpenXR setting performance level to power save.");
             let level = xr::PerfSettingsLevelEXT::POWER_SAVINGS;
+            
             let set_performance_level = performance_settings.perf_settings_set_performance_level;
             unsafe {
                 set_performance_level(xr_session.as_raw(), xr::PerfSettingsDomainEXT::CPU, level);

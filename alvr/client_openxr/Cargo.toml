@@ -236,3 +236,7 @@ required = false
 [[package.metadata.android.application.property]]
 name = "android.window.PROPERTY_XR_ACTIVITY_START_MODE"
 value = "XR_ACTIVITY_START_MODE_FULL_SPACE_UNMANAGED"
+
+[[package.metadata.android.application.property]]
+name = "android.window.PROPERTY_XR_BOUNDARY_TYPE_RECOMMENDED"
+value = "XR_BOUNDARY_TYPE_LARGE"

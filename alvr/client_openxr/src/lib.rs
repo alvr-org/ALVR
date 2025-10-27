@@ -6,7 +6,7 @@ mod lobby;
 mod passthrough;
 mod stream;
 
-use crate::{stream::ParsedStreamConfig};
+use crate::stream::ParsedStreamConfig;
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
     Fov, HAND_LEFT_ID, Pose, error,
@@ -262,16 +262,6 @@ pub fn entry_point() {
                 .unwrap();
         }
 
-        if let Some(performance_settings) = xr_instance.exts().ext_performance_settings {
-            let level = xr::PerfSettingsLevelEXT::POWER_SAVINGS;
-            
-            let set_performance_level = performance_settings.perf_settings_set_performance_level;
-            unsafe {
-                set_performance_level(xr_session.as_raw(), xr::PerfSettingsDomainEXT::CPU, level);
-                set_performance_level(xr_session.as_raw(), xr::PerfSettingsDomainEXT::GPU, level);
-            }
-        }
-
         let capabilities = ClientCapabilities {
             default_view_resolution,
             refresh_rates,
@@ -325,6 +315,16 @@ pub fn entry_point() {
         interaction_context
             .write()
             .select_sources(&lobby_interaction_sources);
+
+        if let Some(performance_settings) = xr_instance.exts().ext_performance_settings {
+            let level = xr::PerfSettingsLevelEXT::POWER_SAVINGS;
+
+            let set_performance_level = performance_settings.perf_settings_set_performance_level;
+            unsafe {
+                set_performance_level(xr_session.as_raw(), xr::PerfSettingsDomainEXT::CPU, level);
+                set_performance_level(xr_session.as_raw(), xr::PerfSettingsDomainEXT::GPU, level);
+            }
+        }
 
         let mut session_running = false;
         let mut stream_context = None::<StreamContext>;

@@ -263,19 +263,6 @@ pub fn entry_point() {
                 .unwrap();
         }
 
-        // alvr_common::info!("OpenXR checking performance setting availability.");
-        // if let Some(ext_performance_settings) = xr_instance.exts().ext_performance_settings {
-        //     let set_performance_level = ext_performance_settings.perf_settings_set_performance_level;
-        //     let level = xr::PerfSettingsLevelEXT::POWER_SAVINGS;
-        //     let raw_session = xr_session.as_raw();
-        //     alvr_common::info!("OpenXR setting performance level.");
-        //     unsafe {
-        //         set_performance_level(raw_session, xr::PerfSettingsDomainEXT::CPU, level);
-        //         set_performance_level(raw_session, xr::PerfSettingsDomainEXT::GPU, level);
-        //     }
-        // }
-
-        
         if let Some(performance_settings) = PerformanceSettings::new(xr_session.clone()).ok() {
             performance_settings.enable_power_saving();
         }

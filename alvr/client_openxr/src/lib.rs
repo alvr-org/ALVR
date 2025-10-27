@@ -181,6 +181,7 @@ pub fn entry_point() {
     exts.htc_passthrough = available_extensions.htc_passthrough;
     exts.htc_vive_focus3_controller_interaction =
         available_extensions.htc_vive_focus3_controller_interaction;
+    exts.ext_performance_settings = available_extensions.ext_performance_settings;
     #[cfg(target_os = "android")]
     {
         exts.khr_android_create_instance = true;
@@ -199,7 +200,6 @@ pub fn entry_point() {
                 BD_BODY_TRACKING_EXTENSION_NAME,
                 BD_MOTION_TRACKING_EXTENSION_NAME,
                 PICO_CONFIGURATION_EXTENSION_NAME,
-                PERFORMANCE_SETTINGS_EXTENSION_NAME,
             ]
             .contains(&ext.as_str())
         })

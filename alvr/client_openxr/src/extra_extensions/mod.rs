@@ -9,6 +9,7 @@ mod motion_tracking_bd;
 mod multimodal_input;
 mod passthrough_fb;
 mod passthrough_htc;
+mod performance_settings;
 
 pub use body_tracking_bd::*;
 pub use body_tracking_fb::*;
@@ -21,6 +22,7 @@ pub use motion_tracking_bd::*;
 pub use multimodal_input::*;
 pub use passthrough_fb::*;
 pub use passthrough_htc::*;
+pub use performance_settings::*;
 use std::ffi::CString;
 use std::mem;
 

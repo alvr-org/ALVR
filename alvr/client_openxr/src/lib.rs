@@ -6,7 +6,7 @@ mod lobby;
 mod passthrough;
 mod stream;
 
-use crate::stream::ParsedStreamConfig;
+use crate::{extra_extensions::PerformanceSettings, stream::ParsedStreamConfig};
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
     Fov, HAND_LEFT_ID, Pose, error,
@@ -22,6 +22,7 @@ use extra_extensions::{
     META_BODY_TRACKING_FIDELITY_EXTENSION_NAME, META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
     META_DETACHED_CONTROLLERS_EXTENSION_NAME,
     META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME, PICO_CONFIGURATION_EXTENSION_NAME,
+    PERFORMANCE_SETTINGS_EXTENSION_NAME
 };
 use interaction::{InteractionContext, InteractionSourcesConfig};
 use lobby::Lobby;
@@ -198,6 +199,7 @@ pub fn entry_point() {
                 BD_BODY_TRACKING_EXTENSION_NAME,
                 BD_MOTION_TRACKING_EXTENSION_NAME,
                 PICO_CONFIGURATION_EXTENSION_NAME,
+                PERFORMANCE_SETTINGS_EXTENSION_NAME,
             ]
             .contains(&ext.as_str())
         })
@@ -261,16 +263,21 @@ pub fn entry_point() {
                 .unwrap();
         }
 
-        alvr_common::info!("OpenXR checking performance setting availability.");
-        if let Some(ext_performance_settings)= xr_instance.exts().ext_performance_settings {
-            let set_performance_level = ext_performance_settings.perf_settings_set_performance_level;
-            let level = xr::PerfSettingsLevelEXT::POWER_SAVINGS;
-            let raw_session = xr_session.as_raw();
-            alvr_common::info!("OpenXR setting performance level.");
-            unsafe {
-                set_performance_level(raw_session, xr::PerfSettingsDomainEXT::CPU, level);
-                set_performance_level(raw_session, xr::PerfSettingsDomainEXT::GPU, level);
-            }
+        // alvr_common::info!("OpenXR checking performance setting availability.");
+        // if let Some(ext_performance_settings) = xr_instance.exts().ext_performance_settings {
+        //     let set_performance_level = ext_performance_settings.perf_settings_set_performance_level;
+        //     let level = xr::PerfSettingsLevelEXT::POWER_SAVINGS;
+        //     let raw_session = xr_session.as_raw();
+        //     alvr_common::info!("OpenXR setting performance level.");
+        //     unsafe {
+        //         set_performance_level(raw_session, xr::PerfSettingsDomainEXT::CPU, level);
+        //         set_performance_level(raw_session, xr::PerfSettingsDomainEXT::GPU, level);
+        //     }
+        // }
+
+        
+        if let Some(performance_settings) = PerformanceSettings::new(xr_session.clone()).ok() {
+            performance_settings.enable_power_saving();
         }
 
         let capabilities = ClientCapabilities {

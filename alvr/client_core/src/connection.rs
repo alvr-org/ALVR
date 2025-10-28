@@ -25,11 +25,7 @@ use alvr_sockets::{
 };
 use std::{
     collections::VecDeque,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-        mpsc,
-    },
+    sync::{Arc, mpsc},
     thread,
     time::{Duration, Instant},
 };
@@ -94,7 +90,6 @@ pub fn connection_lifecycle_loop(
     ctx: Arc<ConnectionContext>,
     lifecycle_state: Arc<RwLock<LifecycleState>>,
     event_queue: Arc<Mutex<VecDeque<ClientCoreEvent>>>,
-    headset_is_worn: Arc<AtomicBool>,
 ) {
     dbg_connection!("connection_lifecycle_loop: Begin");
 
@@ -107,7 +102,6 @@ pub fn connection_lifecycle_loop(
                 Arc::clone(&ctx),
                 Arc::clone(&lifecycle_state),
                 Arc::clone(&event_queue),
-                Arc::clone(&headset_is_worn),
             ) {
                 let message = format!("Connection error:\n{e}\nCheck the PC for more details");
                 set_hud_message(&event_queue, &message);
@@ -131,7 +125,6 @@ fn connection_pipeline(
     ctx: Arc<ConnectionContext>,
     lifecycle_state: Arc<RwLock<LifecycleState>>,
     event_queue: Arc<Mutex<VecDeque<ClientCoreEvent>>>,
-    headset_is_worn: Arc<AtomicBool>,
 ) -> ConResult {
     dbg_connection!("connection_pipeline: Begin");
 
@@ -172,7 +165,6 @@ fn connection_pipeline(
         .send(&ClientConnectionResult::ConnectionAccepted {
             client_protocol_id: alvr_common::protocol_id_u64(),
             display_name: alvr_system_info::platform().to_string(),
-            headset_is_worn: headset_is_worn.load(Ordering::Acquire),
             server_ip,
             streaming_capabilities: Some(
                 VideoStreamingCapabilities {

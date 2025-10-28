@@ -75,9 +75,7 @@ pub enum ServerCoreEvent {
         device_id: u64,
         prop: OpenvrProperty,
     },
-    ClientConnected {
-        headset_is_worn: bool,
-    },
+    ClientConnected,
     ClientDisconnected,
     Battery(BatteryInfo),
     PlayspaceSync(Vec2),

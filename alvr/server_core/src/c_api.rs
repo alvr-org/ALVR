@@ -60,7 +60,7 @@ pub struct AlvrBatteryInfo {
 
 #[repr(u8)]
 pub enum AlvrEvent {
-    ClientConnected { headset_is_worn: bool },
+    ClientConnected,
     ClientDisconnected,
     Battery(AlvrBatteryInfo),
     PlayspaceSync([f32; 2]),
@@ -253,8 +253,8 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
         && let Ok(event) = receiver.recv_timeout(Duration::from_nanos(timeout_ns))
     {
         match event {
-            ServerCoreEvent::ClientConnected { headset_is_worn } => unsafe {
-                *out_event = AlvrEvent::ClientConnected { headset_is_worn };
+            ServerCoreEvent::ClientConnected => unsafe {
+                *out_event = AlvrEvent::ClientConnected;
             },
             ServerCoreEvent::ClientDisconnected => unsafe {
                 *out_event = AlvrEvent::ClientDisconnected;

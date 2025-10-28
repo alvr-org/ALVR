@@ -166,6 +166,7 @@ pub fn entry_point() {
     exts.ext_eye_gaze_interaction = available_extensions.ext_eye_gaze_interaction;
     exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
     exts.ext_local_floor = available_extensions.ext_local_floor;
+    exts.ext_performance_settings = available_extensions.ext_performance_settings;
     exts.fb_body_tracking = available_extensions.fb_body_tracking;
     exts.fb_color_space = available_extensions.fb_color_space;
     exts.fb_composition_layer_settings = available_extensions.fb_composition_layer_settings;
@@ -180,7 +181,6 @@ pub fn entry_point() {
     exts.htc_passthrough = available_extensions.htc_passthrough;
     exts.htc_vive_focus3_controller_interaction =
         available_extensions.htc_vive_focus3_controller_interaction;
-    exts.ext_performance_settings = available_extensions.ext_performance_settings;
     #[cfg(target_os = "android")]
     {
         exts.khr_android_create_instance = true;

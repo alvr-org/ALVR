@@ -1280,12 +1280,12 @@ fn connection_pipeline(
                         info!("Client {client_hostname}: [{level:?}] {message}")
                     }
                     ClientControlPacket::KeepAlive | ClientControlPacket::StreamReady => (),
-                    ClientControlPacket::Reserved(_) | ClientControlPacket::ReservedBuffer(_) => (),
                     ClientControlPacket::ProximityState(headset_is_worn) => {
                         ctx.events_sender
                             .send(ServerCoreEvent::ProximityState(headset_is_worn))
                             .ok();
                     }
+                    ClientControlPacket::Reserved(_) | ClientControlPacket::ReservedBuffer(_) => (),
                 }
 
                 disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;

@@ -49,7 +49,6 @@ pub struct AlvrClientCapabilities {
     encoder_10_bits: bool,
     encoder_av1: bool,
     prefer_10bit: bool,
-    prefer_full_range: bool,
     preferred_encoding_gamma: f32,
     prefer_hdr: bool,
 }
@@ -210,6 +209,7 @@ pub extern "C" fn alvr_initialize(capabilities: AlvrClientCapabilities) {
     .to_vec();
 
     let capabilities = ClientCapabilities {
+        platform: alvr_system_info::platform(None, None),
         default_view_resolution,
         refresh_rates,
         foveated_encoding: capabilities.foveated_encoding,
@@ -217,7 +217,6 @@ pub extern "C" fn alvr_initialize(capabilities: AlvrClientCapabilities) {
         encoder_10_bits: capabilities.encoder_10_bits,
         encoder_av1: capabilities.encoder_av1,
         prefer_10bit: capabilities.prefer_10bit,
-        prefer_full_range: capabilities.prefer_full_range,
         preferred_encoding_gamma: capabilities.preferred_encoding_gamma,
         prefer_hdr: capabilities.prefer_hdr,
     };

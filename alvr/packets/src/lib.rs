@@ -7,6 +7,7 @@ use alvr_common::{
 use alvr_session::{
     ClientsidePostProcessingConfig, CodecType, PassthroughMode, SessionConfig, Settings,
 };
+use alvr_system_info::Platform;
 use serde::{Deserialize, Serialize};
 use serde_json as json;
 use std::{
@@ -60,13 +61,16 @@ impl VideoStreamingCapabilities {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct ConnectionAcceptedInfo {
+    pub client_protocol_id: u64,
+    pub platform: Platform,
+    pub server_ip: IpAddr,
+    pub streaming_capabilities: Option<VideoStreamingCapabilities>,
+}
+
+#[derive(Serialize, Deserialize)]
 pub enum ClientConnectionResult {
-    ConnectionAccepted {
-        client_protocol_id: u64,
-        display_name: String,
-        server_ip: IpAddr,
-        streaming_capabilities: Option<VideoStreamingCapabilities>,
-    },
+    ConnectionAccepted(Box<ConnectionAcceptedInfo>),
     ClientStandby,
 }
 

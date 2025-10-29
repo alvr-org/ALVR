@@ -111,7 +111,7 @@ impl Lobby {
         let future_time = vsync_time + Duration::from_millis(80);
         let left_hand_data = interaction::get_hand_data(
             &self.xr_session,
-            self.platform,
+            &self.platform,
             &self.reference_space,
             vsync_time,
             future_time,
@@ -121,7 +121,7 @@ impl Lobby {
         );
         let right_hand_data = interaction::get_hand_data(
             &self.xr_session,
-            self.platform,
+            &self.platform,
             &self.reference_space,
             vsync_time,
             future_time,

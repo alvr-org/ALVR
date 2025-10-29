@@ -13,6 +13,7 @@ use alvr_common::{
 use alvr_graphics::HandData;
 use alvr_packets::{ButtonEntry, ButtonValue, FaceData, FaceExpressions, StreamConfig};
 use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
+use alvr_system_info::PlatformType;
 use openxr as xr;
 use std::{
     collections::{HashMap, HashSet},
@@ -32,27 +33,27 @@ const IPD_CHANGE_EPS: f32 = 0.001;
 fn get_controller_offset(platform: Platform, is_right_hand: bool) -> Pose {
     const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
 
-    let left_offset = match platform {
-        Platform::Quest1 => Pose {
+    let left_offset = match platform.platform_type() {
+        PlatformType::Quest1 => Pose {
             position: Vec3::new(-0.013, -0.005, 0.0),
             orientation: Quat::from_rotation_x(-20.0 * DEG_TO_RAD),
         },
         // todo: check Quest 2
-        p if p.is_quest() => Pose {
+        _ if platform.is_quest() => Pose {
             position: Vec3::new(-0.005, -0.005, 0.00),
             orientation: Quat::from_rotation_x(-15.0 * DEG_TO_RAD),
         },
-        Platform::PicoNeo3 => Pose {
+        PlatformType::PicoNeo3 => Pose {
             position: Vec3::new(-0.013, -0.035, 0.0),
             orientation: Quat::IDENTITY,
         },
         // todo: check (base) Pico 4
-        p if p.is_pico() => Pose {
+        _ if platform.is_pico() => Pose {
             position: Vec3::new(-0.01, -0.035, 0.0),
             orientation: Quat::from_rotation_y(6.0 * DEG_TO_RAD)
                 * Quat::from_rotation_x(-6.0 * DEG_TO_RAD),
         },
-        p if p.is_vive() => Pose {
+        _ if platform.is_vive() => Pose {
             position: Vec3::new(0.0, 0.0, -0.02),
             orientation: Quat::IDENTITY,
         },
@@ -201,17 +202,17 @@ impl InteractionContext {
             xr::Binding::new(action, action.instance().string_to_path(path).unwrap())
         }
 
-        let controllers_profile_path = match platform {
-            p if p.is_quest() => QUEST_CONTROLLER_PROFILE_PATH, // todo: create new controller profile for quest pro and 3
-            Platform::PicoG3 => PICO_G3_CONTROLLER_PROFILE_PATH,
-            Platform::PicoNeo3 => PICO_NEO3_CONTROLLER_PROFILE_PATH,
-            Platform::Pico4Ultra => PICO4S_CONTROLLER_PROFILE_PATH,
-            Platform::Pico4 | Platform::Pico4Pro | Platform::Pico4Enterprise => {
+        let controllers_profile_path = match platform.platform_type() {
+            _ if platform.is_quest() => QUEST_CONTROLLER_PROFILE_PATH, // todo: create new controller profile for quest pro and 3
+            PlatformType::PicoG3 => PICO_G3_CONTROLLER_PROFILE_PATH,
+            PlatformType::PicoNeo3 => PICO_NEO3_CONTROLLER_PROFILE_PATH,
+            PlatformType::Pico4Ultra => PICO4S_CONTROLLER_PROFILE_PATH,
+            PlatformType::Pico4 | PlatformType::Pico4Pro | PlatformType::Pico4Enterprise => {
                 PICO4_CONTROLLER_PROFILE_PATH
             }
-            p if p.is_pico() => PICO4S_CONTROLLER_PROFILE_PATH,
-            p if p.is_vive() => FOCUS3_CONTROLLER_PROFILE_PATH,
-            p if p.is_yvr() => YVR_CONTROLLER_PROFILE_PATH,
+            _ if platform.is_pico() => PICO4S_CONTROLLER_PROFILE_PATH,
+            _ if platform.is_vive() => FOCUS3_CONTROLLER_PROFILE_PATH,
+            _ if platform.is_yvr() => YVR_CONTROLLER_PROFILE_PATH,
             _ => QUEST_CONTROLLER_PROFILE_PATH,
         };
         let controllers_profile_id = alvr_common::hash_string(controllers_profile_path);
@@ -390,12 +391,12 @@ impl InteractionContext {
 
         let eyes_combined =
             if extra_extensions::supports_eye_gaze_interaction(&xr_session, xr_system) {
-                if matches!(platform, Platform::QuestPro) {
+                if matches!(platform.platform_type(), PlatformType::QuestPro) {
                     #[cfg(target_os = "android")]
                     alvr_system_info::try_get_permission("com.oculus.permission.EYE_TRACKING");
                 } else if matches!(
-                    platform,
-                    Platform::PicoNeo3 | Platform::Pico4Pro | Platform::Pico4Enterprise
+                    platform.platform_type(),
+                    PlatformType::PicoNeo3 | PlatformType::Pico4Pro | PlatformType::Pico4Enterprise
                 ) {
                     #[cfg(target_os = "android")]
                     alvr_system_info::try_get_permission("com.picovr.permission.EYE_TRACKING");
@@ -454,14 +455,14 @@ impl InteractionContext {
             xr_session,
             xr_system,
             extra_extensions,
-            platform,
+            platform: platform.clone(),
             action_set,
             button_actions,
             hands_interaction: [
                 HandInteraction {
                     controllers_profile_id,
                     input_ids: button_set.clone(),
-                    pose_offset: get_controller_offset(platform, false),
+                    pose_offset: get_controller_offset(platform.clone(), false),
                     grip_action: left_grip_action,
                     grip_space: left_grip_space,
                     aim_action: left_aim_action,
@@ -522,7 +523,7 @@ impl InteractionContext {
         self.body_source = None;
 
         if let Some(config) = &config.face_tracking {
-            if matches!(self.platform, Platform::QuestPro)
+            if matches!(self.platform.platform_type(), PlatformType::QuestPro)
                 && matches!(config, FaceTrackingSourcesConfig::PreferFullFaceTracking)
             {
                 #[cfg(target_os = "android")]
@@ -533,8 +534,8 @@ impl InteractionContext {
             }
 
             if matches!(
-                self.platform,
-                Platform::PicoNeo3 | Platform::Pico4Pro | Platform::Pico4Enterprise
+                self.platform.platform_type(),
+                PlatformType::PicoNeo3 | PlatformType::Pico4Pro | PlatformType::Pico4Enterprise
             ) && matches!(config, FaceTrackingSourcesConfig::PreferFullFaceTracking)
                 && extra_extensions::supports_eye_gaze_interaction(&self.xr_session, self.xr_system)
             {
@@ -548,7 +549,7 @@ impl InteractionContext {
 
         if config.body_tracking.is_some()
             && self.platform.is_quest()
-            && self.platform != Platform::Quest1
+            && self.platform.platform_type() != PlatformType::Quest1
         {
             #[cfg(target_os = "android")]
             alvr_system_info::try_get_permission("com.oculus.permission.BODY_TRACKING")
@@ -678,7 +679,7 @@ pub fn get_reference_space(
 
 pub fn get_head_data(
     xr_session: &xr::Session<xr::OpenGlEs>,
-    platform: Platform,
+    platform: &Platform,
     stage_reference_space: &xr::Space,
     view_reference_space: &xr::Space,
     time: Duration,
@@ -789,7 +790,7 @@ pub fn get_head_data(
 #[expect(clippy::too_many_arguments)]
 pub fn get_hand_data(
     xr_session: &xr::Session<xr::OpenGlEs>,
-    platform: Platform,
+    platform: &Platform,
     reference_space: &xr::Space,
     time: Duration,
     future_time: Duration,

@@ -135,9 +135,9 @@ fn create_session(
 pub fn entry_point() {
     alvr_client_core::init_logging();
 
-    let platform_pre_loader = alvr_system_info::platform(None, None);
+    let platform = alvr_system_info::platform();
 
-    let loader_suffix = match platform_pre_loader {
+    let loader_suffix = match platform {
         Platform::Quest1 => "_quest1",
         Platform::PicoNeo3
         | Platform::PicoG3
@@ -218,10 +218,6 @@ pub fn entry_point() {
             &[],
         )
         .unwrap();
-
-    let runtime_name = xr_instance.properties().ok().map(|s| s.runtime_name);
-    let runtime_version = xr_instance.properties().ok().map(|s| s.runtime_version.into_raw());
-    let platform = alvr_system_info::platform(runtime_name, runtime_version);
 
     let graphics_context = Rc::new(GraphicsContext::new_gl());
 

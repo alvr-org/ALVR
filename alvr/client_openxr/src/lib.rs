@@ -244,12 +244,10 @@ pub fn entry_point() {
             .unwrap();
         assert_eq!(views_config.len(), 2);
 
-        let system_properties = xr_instance.system_properties(xr_system).unwrap();
-
         let default_view_resolution = UVec2::new(
-            system_properties.graphics_properties.max_swapchain_image_width,
-            system_properties.graphics_properties.max_swapchain_image_height,
-        );
+            views_config[0].recommended_image_rect_width,
+            views_config[0].recommended_image_rect_height,
+        ) * 2;
 
         let refresh_rates = if exts.fb_display_refresh_rate {
             xr_session.enumerate_display_refresh_rates().unwrap()

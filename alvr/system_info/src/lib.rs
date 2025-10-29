@@ -138,7 +138,7 @@ pub fn platform(runtime_name: Option<String>, runtime_version: Option<u64>) -> P
             device.as_str(),
             product.as_str(),
             runtime_name.as_str(),
-            runtime_version
+            runtime_version,
         ) {
             ("Oculus", _, "monterey", _, _, _) => Platform::Quest1,
             ("Oculus", _, "hollywood", _, _, _) => Platform::Quest2,

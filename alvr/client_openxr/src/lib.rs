@@ -220,7 +220,10 @@ pub fn entry_point() {
         .unwrap();
 
     let runtime_name = xr_instance.properties().ok().map(|s| s.runtime_name);
-    let runtime_version = xr_instance.properties().ok().map(|s| s.runtime_version.into_raw());
+    let runtime_version = xr_instance
+        .properties()
+        .ok()
+        .map(|s| s.runtime_version.into_raw());
     let platform = alvr_system_info::platform(runtime_name, runtime_version);
 
     let graphics_context = Rc::new(GraphicsContext::new_gl());

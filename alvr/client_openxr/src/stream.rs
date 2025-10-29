@@ -523,8 +523,16 @@ fn stream_input_loop(
     refresh_rate: f32,
     running: Arc<RelaxedAtomic>,
 ) {
-    let runtime_name = xr_session.instance().properties().ok().map(|s| s.runtime_name);
-    let runtime_version = xr_session.instance().properties().ok().map(|s| s.runtime_version.into_raw());
+    let runtime_name = xr_session
+        .instance()
+        .properties()
+        .ok()
+        .map(|s| s.runtime_name);
+    let runtime_version = xr_session
+        .instance()
+        .properties()
+        .ok()
+        .map(|s| s.runtime_version.into_raw());
     let platform = alvr_system_info::platform(runtime_name, runtime_version);
 
     let mut last_controller_poses = [Pose::IDENTITY; 2];

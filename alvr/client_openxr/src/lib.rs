@@ -244,7 +244,7 @@ pub fn entry_point() {
             .unwrap();
         assert_eq!(views_config.len(), 2);
 
-        let view_resolution = match platform {
+        let default_view_resolution = match platform {
             Platform::Quest1 => UVec2::new(1440, 1600),
             Platform::Quest2 => UVec2::new(1832, 1920),
             Platform::Quest3 => UVec2::new(2064, 2208),
@@ -269,7 +269,7 @@ pub fn entry_point() {
         }
 
         let capabilities = ClientCapabilities {
-            default_view_resolution: view_resolution,
+            default_view_resolution,
             refresh_rates,
             foveated_encoding: platform != Platform::Unknown,
             encoder_high_profile: platform != Platform::Unknown,
@@ -297,7 +297,7 @@ pub fn entry_point() {
             Rc::clone(&graphics_context),
             Arc::clone(&interaction_context),
             platform,
-            view_resolution,
+            default_view_resolution,
             &last_lobby_message,
         );
 

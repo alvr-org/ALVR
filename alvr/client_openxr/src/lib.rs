@@ -253,7 +253,7 @@ pub fn entry_point() {
             _ => UVec2::new(
                 views_config[0].recommended_image_rect_width,
                 views_config[0].recommended_image_rect_height,
-            )
+            ),
         };
 
         let refresh_rates = if exts.fb_display_refresh_rate {

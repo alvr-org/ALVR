@@ -106,7 +106,7 @@ impl Display for Platform {
             Platform::PlayForDreamMR => "Play For Dream MR",
             Platform::Lynx => "Lynx Headset",
             Platform::AndroidXR => "Android XR Headset",
-            Platform::AndroidUnknown => "Android (unknown)",
+            Platform::AndroidUnknown => "Android Headset",
             Platform::AppleHeadset => "Apple Headset",
             Platform::WindowsPc => "Windows PC",
             Platform::LinuxPc => "Linux PC",
@@ -117,19 +117,19 @@ impl Display for Platform {
     }
 }
 
-pub fn platform() -> Platform {
+pub fn platform(runtime_name: Option<String>, runtime_version: Option<u64>) -> Platform {
     #[cfg(target_os = "android")]
     {
         let manufacturer = android::manufacturer_name();
         let model = android::model_name();
         let device = android::device_name();
         let product = android::product_name();
-
-        // TODO: Better Android XR heuristic
-        // (Maybe check runtime json for /system/lib64/libopenxr.google.so?)
+        let runtime_name = runtime_name.unwrap_or(String::from("unknown runtime"));
+        let runtime_version = runtime_version.unwrap_or(0x0);
 
         alvr_common::info!(
-            "manufacturer: {manufacturer}, model: {model}, device: {device}, product: {product}"
+            "manufacturer: {manufacturer}, model: {model}, device: {device}, product: {product}, runtime_name: {runtime_name}, runtime_version: {:#x}",
+            runtime_version
         );
 
         match (
@@ -137,28 +137,30 @@ pub fn platform() -> Platform {
             model.as_str(),
             device.as_str(),
             product.as_str(),
+            runtime_name.as_str(),
+            runtime_version
         ) {
-            ("Oculus", _, "monterey", _) => Platform::Quest1,
-            ("Oculus", _, "hollywood", _) => Platform::Quest2,
-            ("Oculus", _, "eureka", _) => Platform::Quest3,
-            ("Oculus", _, "panther", _) => Platform::Quest3S,
-            ("Oculus", _, "seacliff", _) => Platform::QuestPro,
-            ("Oculus", _, _, _) => Platform::QuestUnknown,
-            ("Pico", "Pico Neo 3" | "Pico Neo3 Link", _, _) => Platform::PicoNeo3,
-            ("Pico", _, _, "PICO 4 Pro") => Platform::Pico4Pro,
-            ("Pico", _, _, "PICO 4 Enterprise") => Platform::Pico4Enterprise,
-            ("Pico", _, _, "PICO 4") => Platform::Pico4,
-            ("Pico", _, _, "PICO 4 Ultra") => Platform::Pico4Ultra,
-            ("Pico", _, _, "PICO G3") => Platform::PicoG3,
-            ("Pico", _, _, _) => Platform::PicoUnknown,
-            ("HTC", "VIVE Focus 3", _, _) => Platform::Focus3,
-            ("HTC", "VIVE Focus Vision", _, _) => Platform::FocusVision,
-            ("HTC", "VIVE XR Series", _, _) => Platform::XRElite,
-            ("HTC", _, _, _) => Platform::ViveUnknown,
-            ("YVR", _, _, _) => Platform::Yvr,
-            ("Play For Dream", _, _, _) => Platform::PlayForDreamMR,
-            ("Lynx Mixed Reality", _, _, _) => Platform::Lynx,
-            ("samsung", _, "xrvst2", _) => Platform::AndroidXR,
+            ("Oculus", _, "monterey", _, _, _) => Platform::Quest1,
+            ("Oculus", _, "hollywood", _, _, _) => Platform::Quest2,
+            ("Oculus", _, "eureka", _, _, _) => Platform::Quest3,
+            ("Oculus", _, "panther", _, _, _) => Platform::Quest3S,
+            ("Oculus", _, "seacliff", _, _, _) => Platform::QuestPro,
+            ("Oculus", _, _, _, _, _) => Platform::QuestUnknown,
+            ("Pico", "Pico Neo 3" | "Pico Neo3 Link", _, _, _, _) => Platform::PicoNeo3,
+            ("Pico", _, _, "PICO 4 Pro", _, _) => Platform::Pico4Pro,
+            ("Pico", _, _, "PICO 4 Enterprise", _, _) => Platform::Pico4Enterprise,
+            ("Pico", _, _, "PICO 4", _, _) => Platform::Pico4,
+            ("Pico", _, _, "PICO 4 Ultra", _, _) => Platform::Pico4Ultra,
+            ("Pico", _, _, "PICO G3", _, _) => Platform::PicoG3,
+            ("Pico", _, _, _, _, _) => Platform::PicoUnknown,
+            ("HTC", "VIVE Focus 3", _, _, _, _) => Platform::Focus3,
+            ("HTC", "VIVE Focus Vision", _, _, _, _) => Platform::FocusVision,
+            ("HTC", "VIVE XR Series", _, _, _, _) => Platform::XRElite,
+            ("HTC", _, _, _, _, _) => Platform::ViveUnknown,
+            ("YVR", _, _, _, _, _) => Platform::Yvr,
+            ("Play For Dream", _, _, _, _, _) => Platform::PlayForDreamMR,
+            ("Lynx Mixed Reality", _, _, _, _, _) => Platform::Lynx,
+            (_, _, _, _, "Android XR", _) => Platform::AndroidXR,
             _ => Platform::AndroidUnknown,
         }
     }

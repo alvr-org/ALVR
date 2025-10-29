@@ -1185,11 +1185,15 @@ pub enum OutputTrackerType {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
-pub struct TrackerMapping {
-    input: InputTrackerType,
+pub struct TrackerConfig {
+    #[schema(flag = "steamvr-restart")]
+    #[schema(strings(help = "This is the tracker type as seen by SteamVR"))]
     output: OutputTrackerType,
 
-    #[schema(suffix = "m")]
+    #[schema(strings(help = "This is the tracker type where data comes from"))]
+    input: InputTrackerType,
+
+    #[schema(suffix = "mm")]
     position_offset: [f32; 3],
     #[schema(suffix = "°")]
     rotation_offset: [f32; 3],
@@ -1218,10 +1222,15 @@ Tilted: the world gets tilted when long pressing the oculus button. This is usef
 
     #[schema(flag = "steamvr-restart")]
     pub controllers: Switch<ControllersConfig>,
+
     pub face_tracking: Switch<FaceTrackingConfig>,
     pub body_tracking: Switch<BodyTrackingConfig>,
 
-    pub tracker_mappings: Vec<TrackerMapping>,
+    #[schema(flag = "steamvr-restart")]
+    #[schema(strings(
+        help = "Head and controllers don't have to be added to this list to be enabled"
+    ))]
+    pub trackers: Vec<TrackerConfig>,
 
     #[schema(strings(
         help = "Maximum prediction for head and controllers. Used to avoid too much jitter during loading."
@@ -1252,12 +1261,12 @@ pub struct SteamvrLauncherConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct SteamvrTrackerConfig {
+pub struct ExtraOpenvrPropsConfig {
     #[schema(flag = "steamvr-restart")]
     pub tracker_type: OutputTrackerType,
 
     #[schema(flag = "steamvr-restart")]
-    pub extra_openvr_props: Vec<OpenvrProperty>,
+    pub props: Vec<OpenvrProperty>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1265,7 +1274,7 @@ pub struct SteamvrConfig {
     pub launcher: SteamvrLauncherConfig,
 
     #[schema(flag = "steamvr-restart")]
-    pub enabled_trackers: Vec<SteamvrTrackerConfig>,
+    pub extra_openvr_props: Vec<ExtraOpenvrPropsConfig>,
 
     #[schema(flag = "steamvr-restart")]
     #[schema(strings(
@@ -1627,11 +1636,11 @@ pub fn session_settings_default() -> SettingsDefault {
         variant: SocketBufferSizeDefaultVariant::Maximum,
     };
 
-    fn tracker_mapping_default(
+    fn tracker_config_default(
         input: InputTrackerTypeDefaultVariant,
         output: OutputTrackerTypeDefaultVariant,
-    ) -> TrackerMappingDefault {
-        TrackerMappingDefault {
+    ) -> TrackerConfigDefault {
+        TrackerConfigDefault {
             input: InputTrackerTypeDefault { variant: input },
             output: OutputTrackerTypeDefault { variant: output },
             position_offset: ArrayDefault {
@@ -1641,26 +1650,6 @@ pub fn session_settings_default() -> SettingsDefault {
             rotation_offset: ArrayDefault {
                 gui_collapsed: true,
                 content: [0.0, 0.0, 0.0],
-            },
-        }
-    }
-
-    fn steamvr_tracker_default(
-        tracker_type: OutputTrackerTypeDefaultVariant,
-    ) -> SteamvrTrackerConfigDefault {
-        SteamvrTrackerConfigDefault {
-            tracker_type: OutputTrackerTypeDefault {
-                variant: tracker_type,
-            },
-            extra_openvr_props: VectorDefault {
-                gui_collapsed: true,
-                element: OpenvrPropertyDefault {
-                    key: OpenvrPropKeyDefault {
-                        variant: OpenvrPropKeyDefaultVariant::TrackingSystemNameString,
-                    },
-                    value: "".into(),
-                },
-                content: vec![],
             },
         }
     }
@@ -2069,38 +2058,38 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                 },
             },
-            tracker_mappings: VectorDefault {
+            trackers: VectorDefault {
                 gui_collapsed: true,
-                element: tracker_mapping_default(
+                element: tracker_config_default(
                     InputTrackerTypeDefaultVariant::Head,
                     OutputTrackerTypeDefaultVariant::Head,
                 ),
                 content: vec![
-                    tracker_mapping_default(
+                    tracker_config_default(
                         InputTrackerTypeDefaultVariant::LeftDetachedController,
                         OutputTrackerTypeDefaultVariant::LeftFoot,
                     ),
-                    tracker_mapping_default(
+                    tracker_config_default(
                         InputTrackerTypeDefaultVariant::RightDetachedController,
                         OutputTrackerTypeDefaultVariant::RightFoot,
                     ),
-                    tracker_mapping_default(
+                    tracker_config_default(
                         InputTrackerTypeDefaultVariant::Generic1,
                         OutputTrackerTypeDefaultVariant::Waist,
                     ),
-                    tracker_mapping_default(
+                    tracker_config_default(
                         InputTrackerTypeDefaultVariant::Generic2,
                         OutputTrackerTypeDefaultVariant::LeftFoot,
                     ),
-                    tracker_mapping_default(
+                    tracker_config_default(
                         InputTrackerTypeDefaultVariant::Generic3,
                         OutputTrackerTypeDefaultVariant::RightFoot,
                     ),
-                    tracker_mapping_default(
+                    tracker_config_default(
                         InputTrackerTypeDefaultVariant::Generic4,
                         OutputTrackerTypeDefaultVariant::LeftElbow,
                     ),
-                    tracker_mapping_default(
+                    tracker_config_default(
                         InputTrackerTypeDefaultVariant::Generic5,
                         OutputTrackerTypeDefaultVariant::RightElbow,
                     ),
@@ -2113,16 +2102,24 @@ pub fn session_settings_default() -> SettingsDefault {
                 open_close_with_dashboard: false,
                 direct_launch: false,
             },
-            enabled_trackers: VectorDefault {
+            extra_openvr_props: VectorDefault {
                 gui_collapsed: true,
-                element: steamvr_tracker_default(OutputTrackerTypeDefaultVariant::Waist),
-                content: vec![
-                    steamvr_tracker_default(OutputTrackerTypeDefaultVariant::Head),
-                    steamvr_tracker_default(OutputTrackerTypeDefaultVariant::LeftController),
-                    steamvr_tracker_default(OutputTrackerTypeDefaultVariant::RightController),
-                    steamvr_tracker_default(OutputTrackerTypeDefaultVariant::LeftHandSkeleton),
-                    steamvr_tracker_default(OutputTrackerTypeDefaultVariant::RightHandSkeleton),
-                ],
+                element: ExtraOpenvrPropsConfigDefault {
+                    tracker_type: OutputTrackerTypeDefault {
+                        variant: OutputTrackerTypeDefaultVariant::Head,
+                    },
+                    props: VectorDefault {
+                        gui_collapsed: true,
+                        element: OpenvrPropertyDefault {
+                            key: OpenvrPropKeyDefault {
+                                variant: OpenvrPropKeyDefaultVariant::TrackingSystemNameString,
+                            },
+                            value: "".into(),
+                        },
+                        content: vec![],
+                    },
+                },
+                content: vec![],
             },
             steamvr_input_2_0: true,
             steamvr_pipeline_frames: 2.1,

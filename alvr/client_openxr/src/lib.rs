@@ -246,17 +246,20 @@ pub fn entry_point() {
 
         let use_native_resolution = true;
 
+        let default_view_resolution = UVec2::new(
+            views_config[0].recommended_image_rect_width,
+            views_config[0].recommended_image_rect_height,
+        );
+
         let view_resolution = if use_native_resolution {
-            UVec2::new(
-                views_config[0].max_image_rect_width,
-                views_config[0].max_image_rect_height,
-            );
+            match platform {
+                Platform::Quest2 => UVec2::new(1832, 1920),
+                Platform::Quest3 => UVec2::new(1920, 1920),
+                _ => default_view_resolution,
+            }
         } else {
-            UVec2::new(
-                views_config[0].recommended_image_rect_width,
-                views_config[0].recommended_image_rect_height,
-            );
-        }
+            default_view_resolution
+        };
 
         let refresh_rates = if exts.fb_display_refresh_rate {
             xr_session.enumerate_display_refresh_rates().unwrap()

@@ -27,6 +27,7 @@ use alvr_packets::{
     BatteryInfo, ButtonEntry, ClientControlPacket, RealTimeConfig, StreamConfig, TrackingData,
 };
 use alvr_session::CodecType;
+use alvr_system_info::Platform;
 use connection::{ConnectionContext, DecoderCallback};
 use std::{
     collections::{HashSet, VecDeque},
@@ -59,6 +60,7 @@ pub enum ClientCoreEvent {
 // Note: this struct may change without breaking network protocol changes
 #[derive(Clone)]
 pub struct ClientCapabilities {
+    pub platform: Platform,
     pub default_view_resolution: UVec2,
     pub refresh_rates: Vec<f32>,
     pub foveated_encoding: bool,
@@ -66,12 +68,12 @@ pub struct ClientCapabilities {
     pub encoder_10_bits: bool,
     pub encoder_av1: bool,
     pub prefer_10bit: bool,
-    pub prefer_full_range: bool,
     pub preferred_encoding_gamma: f32,
     pub prefer_hdr: bool,
 }
 
 pub struct ClientCoreContext {
+    platform: Platform,
     lifecycle_state: Arc<RwLock<LifecycleState>>,
     event_queue: Arc<Mutex<VecDeque<ClientCoreEvent>>>,
     connection_context: Arc<ConnectionContext>,
@@ -100,6 +102,7 @@ impl ClientCoreContext {
         let event_queue = Arc::new(Mutex::new(VecDeque::new()));
         let connection_context = Arc::new(ConnectionContext::default());
         let connection_thread = thread::spawn({
+            let capabilities = capabilities.clone();
             let lifecycle_state = Arc::clone(&lifecycle_state);
             let connection_context = Arc::clone(&connection_context);
             let event_queue = Arc::clone(&event_queue);
@@ -114,6 +117,7 @@ impl ClientCoreContext {
         });
 
         Self {
+            platform: capabilities.platform.clone(),
             lifecycle_state,
             event_queue,
             connection_context,
@@ -293,6 +297,10 @@ impl ClientCoreContext {
                 }
             }
         }
+    }
+
+    pub fn platform(&self) -> &Platform {
+        &self.platform
     }
 }
 

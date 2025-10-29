@@ -16,7 +16,7 @@ use alvr_common::{
 };
 use alvr_graphics::GraphicsContext;
 use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig};
-use alvr_system_info::Platform;
+use alvr_system_info::{Platform, PlatformType};
 use extra_extensions::{
     BD_BODY_TRACKING_EXTENSION_NAME, BD_MOTION_TRACKING_EXTENSION_NAME,
     META_BODY_TRACKING_FIDELITY_EXTENSION_NAME, META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
@@ -135,28 +135,14 @@ fn create_session(
 pub fn entry_point() {
     alvr_client_core::init_logging();
 
-    let platform = alvr_system_info::platform();
-
-    let loader_suffix = match platform {
-        Platform::Quest1 => "_quest1",
-        Platform::PicoNeo3
-        | Platform::PicoG3
-        | Platform::Pico4
-        | Platform::Pico4Pro
-        | Platform::Pico4Enterprise => "_pico_old",
-        p if p.is_yvr() => "_yvr",
-        Platform::Lynx => "_lynx",
-        _ => "",
-    };
-    let xr_entry = unsafe {
-        xr::Entry::load_from(Path::new(&format!("libopenxr_loader{loader_suffix}.so"))).unwrap()
-    };
+    let loader_fname = alvr_system_info::openxr_loader_fname();
+    let xr_entry = unsafe { xr::Entry::load_from(Path::new(&loader_fname)).unwrap() };
 
     #[cfg(target_os = "android")]
     xr_entry.initialize_android_loader().unwrap();
 
     let available_extensions = xr_entry.enumerate_extensions().unwrap();
-    alvr_common::info!("OpenXR available extensions: {available_extensions:#?}");
+    info!("OpenXR available extensions: {available_extensions:#?}");
 
     // todo: switch to vulkan
     assert!(available_extensions.khr_opengl_es_enable);
@@ -219,6 +205,19 @@ pub fn entry_point() {
         )
         .unwrap();
 
+    let platform = alvr_system_info::platform(
+        xr_instance
+            .properties()
+            .ok()
+            .map(|s| s.runtime_name.to_owned()),
+        xr_instance
+            .properties()
+            .ok()
+            .map(|s| s.runtime_version.into_raw()),
+    );
+
+    info!("{platform}");
+
     let graphics_context = Rc::new(GraphicsContext::new_gl());
 
     let mut last_lobby_message = String::new();
@@ -262,17 +261,17 @@ pub fn entry_point() {
         }
 
         let capabilities = ClientCapabilities {
+            platform: platform.clone(),
             default_view_resolution,
             refresh_rates,
-            foveated_encoding: platform != Platform::Unknown,
-            encoder_high_profile: platform != Platform::Unknown,
-            encoder_10_bits: platform != Platform::Unknown,
+            foveated_encoding: platform.platform_type() != PlatformType::Unknown,
+            encoder_high_profile: platform.platform_type() != PlatformType::Unknown,
+            encoder_10_bits: platform.platform_type() != PlatformType::Unknown,
             encoder_av1: matches!(
-                platform,
-                Platform::Quest3 | Platform::Quest3S | Platform::Pico4Ultra
+                platform.platform_type(),
+                PlatformType::Quest3 | PlatformType::Quest3S | PlatformType::Pico4Ultra
             ),
             prefer_10bit: false,
-            prefer_full_range: true,
             preferred_encoding_gamma: 1.0,
             prefer_hdr: false,
         };
@@ -282,14 +281,14 @@ pub fn entry_point() {
             xr_session.clone(),
             exts.other.clone(),
             xr_system,
-            platform,
+            platform.clone(),
         )));
 
         let mut lobby = Lobby::new(
             xr_session.clone(),
             Rc::clone(&graphics_context),
             Arc::clone(&interaction_context),
-            platform,
+            platform.clone(),
             default_view_resolution,
             &last_lobby_message,
         );
@@ -335,7 +334,8 @@ pub fn entry_point() {
 
                             core_context.resume();
 
-                            passthrough_layer = PassthroughLayer::new(&xr_session, platform).ok();
+                            passthrough_layer =
+                                PassthroughLayer::new(&xr_session, platform.clone()).ok();
 
                             session_running = true;
                         }
@@ -401,7 +401,6 @@ pub fn entry_point() {
                             xr_session.clone(),
                             Rc::clone(&graphics_context),
                             Arc::clone(&interaction_context),
-                            platform,
                             config,
                         );
 
@@ -413,7 +412,8 @@ pub fn entry_point() {
                     }
                     ClientCoreEvent::StreamingStopped => {
                         if passthrough_layer.is_none() {
-                            passthrough_layer = PassthroughLayer::new(&xr_session, platform).ok();
+                            passthrough_layer =
+                                PassthroughLayer::new(&xr_session, platform.clone()).ok();
                         }
 
                         interaction_context
@@ -450,7 +450,8 @@ pub fn entry_point() {
                     }
                     ClientCoreEvent::RealTimeConfig(config) => {
                         if config.passthrough.is_some() && passthrough_layer.is_none() {
-                            passthrough_layer = PassthroughLayer::new(&xr_session, platform).ok();
+                            passthrough_layer =
+                                PassthroughLayer::new(&xr_session, platform.clone()).ok();
                         } else if config.passthrough.is_none() && passthrough_layer.is_some() {
                             passthrough_layer = None;
                         }

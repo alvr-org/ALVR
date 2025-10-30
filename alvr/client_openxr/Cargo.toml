@@ -207,3 +207,36 @@ value = "vr_only"
 name = "com.ultraleap.tracking.service"
 [[package.metadata.android.queries.package]]
 name = "com.ultraleap.openxr.api_layer"
+
+# Android XR
+[[package.metadata.android.uses_feature]]
+name = "android.software.xr.api.spatial"
+required = true
+
+[[package.metadata.android.uses_feature]]
+name = "android.software.xr.api.openxr"
+required = true
+
+[[package.metadata.android.uses_feature]]
+name = "android.software.xr.input.controller"
+required = false
+
+[[package.metadata.android.uses_feature]]
+name = "android.software.xr.input.hand_tracking"
+required = false
+
+[[package.metadata.android.uses_feature]]
+name = "android.software.xr.input.eye_tracking"
+required = false
+
+[[package.metadata.android.application.uses_native_library]]
+name = "libopenxr.google.so"
+required = false
+
+[[package.metadata.android.application.property]]
+name = "android.window.PROPERTY_XR_ACTIVITY_START_MODE"
+value = "XR_ACTIVITY_START_MODE_FULL_SPACE_UNMANAGED"
+
+[[package.metadata.android.application.property]]
+name = "android.window.PROPERTY_XR_BOUNDARY_TYPE_RECOMMENDED"
+value = "XR_BOUNDARY_TYPE_LARGE"

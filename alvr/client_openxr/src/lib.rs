@@ -247,7 +247,7 @@ pub fn entry_point() {
         let default_view_resolution = UVec2::new(
             views_config[0].recommended_image_rect_width,
             views_config[0].recommended_image_rect_height,
-        );
+        ) * 2;
 
         let refresh_rates = if exts.fb_display_refresh_rate {
             xr_session.enumerate_display_refresh_rates().unwrap()

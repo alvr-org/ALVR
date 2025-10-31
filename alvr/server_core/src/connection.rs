@@ -599,13 +599,40 @@ fn connection_pipeline(
         UVec2::new(align32(res.x), align32(res.y))
     }
 
-    let transcoding_view_resolution = UVec2::min(
-        get_view_res(
-            initial_settings.video.transcoding_view_resolution.clone(),
-            streaming_caps.default_view_resolution,
-        ),
-        streaming_caps.max_view_resolution,
+    let mut transcoding_view_resolution = get_view_res(
+        initial_settings.video.transcoding_view_resolution.clone(),
+        streaming_caps.default_view_resolution,
     );
+    if transcoding_view_resolution.x > streaming_caps.max_view_resolution.x
+        || transcoding_view_resolution.y > streaming_caps.max_view_resolution.y
+    {
+        warn!(
+            "Chosen resolution {}x{} exceeds client maximum supported resolution of {}x{}. \
+            Using maximum supported resolution at same aspect ratio.",
+            transcoding_view_resolution.x,
+            transcoding_view_resolution.y,
+            streaming_caps.max_view_resolution.x,
+            streaming_caps.max_view_resolution.y,
+        );
+
+        let transcoding_ratio =
+            transcoding_view_resolution.x as f32 / transcoding_view_resolution.y as f32;
+
+        if transcoding_ratio
+            > streaming_caps.max_view_resolution.x as f32
+                / streaming_caps.max_view_resolution.y as f32
+        {
+            transcoding_view_resolution = UVec2::new(
+                align32(streaming_caps.max_view_resolution.x as f32),
+                align32(streaming_caps.max_view_resolution.x as f32 / transcoding_ratio),
+            );
+        } else {
+            transcoding_view_resolution = UVec2::new(
+                align32(streaming_caps.max_view_resolution.y as f32 * transcoding_ratio),
+                align32(streaming_caps.max_view_resolution.y as f32),
+            );
+        }
+    }
 
     let emulated_headset_view_resolution = get_view_res(
         initial_settings

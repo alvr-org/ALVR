@@ -513,6 +513,12 @@ void SetButton(unsigned long long buttonID, FfiButtonValue value) {
     }
 }
 
+void SetProximityState(bool headset_is_worn) {
+    if (g_driver_provider.hmd) {
+        g_driver_provider.hmd->SetProximityState(headset_is_worn);
+    }
+}
+
 void SetChaperoneArea(float areaWidth, float areaHeight) {
     _SetChaperoneArea(areaWidth, areaHeight);
 }

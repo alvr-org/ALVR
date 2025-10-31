@@ -169,6 +169,7 @@ fn connection_pipeline(
             streaming_capabilities: Some(
                 VideoStreamingCapabilities {
                     default_view_resolution: capabilities.default_view_resolution,
+                    max_view_resolution: capabilities.max_view_resolution,
                     refresh_rates: capabilities.refresh_rates,
                     microphone_sample_rate,
                     foveated_encoding: capabilities.foveated_encoding,

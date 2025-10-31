@@ -60,6 +60,7 @@ pub enum ClientCoreEvent {
 #[derive(Clone)]
 pub struct ClientCapabilities {
     pub default_view_resolution: UVec2,
+    pub max_view_resolution: UVec2,
     pub refresh_rates: Vec<f32>,
     pub foveated_encoding: bool,
     pub encoder_high_profile: bool,

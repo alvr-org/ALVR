@@ -247,7 +247,12 @@ pub fn entry_point() {
         let default_view_resolution = UVec2::new(
             views_config[0].recommended_image_rect_width,
             views_config[0].recommended_image_rect_height,
-        ) * 2;
+        );
+
+        let max_view_resolution = UVec2::new(
+            views_config[0].max_image_rect_width,
+            views_config[0].max_image_rect_height,
+        );
 
         let refresh_rates = if exts.fb_display_refresh_rate {
             xr_session.enumerate_display_refresh_rates().unwrap()
@@ -263,6 +268,7 @@ pub fn entry_point() {
 
         let capabilities = ClientCapabilities {
             default_view_resolution,
+            max_view_resolution,
             refresh_rates,
             foveated_encoding: platform != Platform::Unknown,
             encoder_high_profile: platform != Platform::Unknown,
@@ -290,7 +296,7 @@ pub fn entry_point() {
             Rc::clone(&graphics_context),
             Arc::clone(&interaction_context),
             platform,
-            default_view_resolution,
+            UVec2::min(default_view_resolution * 2, max_view_resolution),
             &last_lobby_message,
         );
 

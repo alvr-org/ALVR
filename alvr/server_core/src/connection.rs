@@ -599,12 +599,42 @@ fn connection_pipeline(
         UVec2::new(align32(res.x), align32(res.y))
     }
 
-    let stream_view_resolution = get_view_res(
+    let mut transcoding_view_resolution = get_view_res(
         initial_settings.video.transcoding_view_resolution.clone(),
         streaming_caps.default_view_resolution,
     );
+    if transcoding_view_resolution.x > streaming_caps.max_view_resolution.x
+        || transcoding_view_resolution.y > streaming_caps.max_view_resolution.y
+    {
+        warn!(
+            "Chosen resolution {}x{} exceeds client maximum supported resolution of {}x{}. \
+            Using maximum supported resolution at same aspect ratio.",
+            transcoding_view_resolution.x,
+            transcoding_view_resolution.y,
+            streaming_caps.max_view_resolution.x,
+            streaming_caps.max_view_resolution.y,
+        );
 
-    let target_view_resolution = get_view_res(
+        let transcoding_ratio =
+            transcoding_view_resolution.x as f32 / transcoding_view_resolution.y as f32;
+
+        if transcoding_ratio
+            > streaming_caps.max_view_resolution.x as f32
+                / streaming_caps.max_view_resolution.y as f32
+        {
+            transcoding_view_resolution = UVec2::new(
+                align32(streaming_caps.max_view_resolution.x as f32),
+                align32(streaming_caps.max_view_resolution.x as f32 / transcoding_ratio),
+            );
+        } else {
+            transcoding_view_resolution = UVec2::new(
+                align32(streaming_caps.max_view_resolution.y as f32 * transcoding_ratio),
+                align32(streaming_caps.max_view_resolution.y as f32),
+            );
+        }
+    }
+
+    let emulated_headset_view_resolution = get_view_res(
         initial_settings
             .video
             .emulated_headset_view_resolution
@@ -740,7 +770,7 @@ fn connection_pipeline(
     let stream_config_packet = StreamConfigPacket::new(
         session_manager_lock.session(),
         NegotiatedStreamingConfig {
-            view_resolution: stream_view_resolution,
+            view_resolution: transcoding_view_resolution,
             refresh_rate_hint: fps,
             game_audio_sample_rate,
             enable_foveated_encoding,
@@ -758,10 +788,10 @@ fn connection_pipeline(
         proto_socket.split(STREAMING_RECV_TIMEOUT).to_con()?;
 
     let mut new_openvr_config = contruct_openvr_config(session_manager_lock.session());
-    new_openvr_config.eye_resolution_width = stream_view_resolution.x;
-    new_openvr_config.eye_resolution_height = stream_view_resolution.y;
-    new_openvr_config.target_eye_resolution_width = target_view_resolution.x;
-    new_openvr_config.target_eye_resolution_height = target_view_resolution.y;
+    new_openvr_config.eye_resolution_width = transcoding_view_resolution.x;
+    new_openvr_config.eye_resolution_height = transcoding_view_resolution.y;
+    new_openvr_config.target_eye_resolution_width = emulated_headset_view_resolution.x;
+    new_openvr_config.target_eye_resolution_height = emulated_headset_view_resolution.y;
     new_openvr_config.refresh_rate = fps as _;
     new_openvr_config.enable_foveated_encoding = enable_foveated_encoding;
     new_openvr_config.h264_profile = encoder_profile as _;

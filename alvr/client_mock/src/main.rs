@@ -191,6 +191,7 @@ fn client_thread(
 ) {
     let capabilities = ClientCapabilities {
         default_view_resolution: UVec2::new(1920, 1832),
+        max_view_resolution: UVec2::new(1920, 1832),
         refresh_rates: vec![60.0, 72.0, 80.0, 90.0, 120.0],
         foveated_encoding: false,
         encoder_high_profile: false,

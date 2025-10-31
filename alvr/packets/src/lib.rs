@@ -30,6 +30,7 @@ pub struct VideoStreamingCapabilitiesExt {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct VideoStreamingCapabilities {
     pub default_view_resolution: UVec2,
+    pub max_view_resolution: UVec2,
     pub refresh_rates: Vec<f32>,
     pub microphone_sample_rate: u32,
     pub foveated_encoding: bool,

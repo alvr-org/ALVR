@@ -166,6 +166,7 @@ pub fn entry_point() {
     exts.ext_eye_gaze_interaction = available_extensions.ext_eye_gaze_interaction;
     exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
     exts.ext_local_floor = available_extensions.ext_local_floor;
+    exts.ext_performance_settings = available_extensions.ext_performance_settings;
     exts.fb_body_tracking = available_extensions.fb_body_tracking;
     exts.fb_color_space = available_extensions.fb_color_space;
     exts.fb_composition_layer_settings = available_extensions.fb_composition_layer_settings;
@@ -320,6 +321,16 @@ pub fn entry_point() {
         interaction_context
             .write()
             .select_sources(&lobby_interaction_sources);
+
+        if let Some(performance_settings) = xr_instance.exts().ext_performance_settings {
+            let level = xr::PerfSettingsLevelEXT::POWER_SAVINGS;
+
+            let set_performance_level = performance_settings.perf_settings_set_performance_level;
+            unsafe {
+                set_performance_level(xr_session.as_raw(), xr::PerfSettingsDomainEXT::CPU, level);
+                set_performance_level(xr_session.as_raw(), xr::PerfSettingsDomainEXT::GPU, level);
+            }
+        }
 
         let mut session_running = false;
         let mut stream_context = None::<StreamContext>;

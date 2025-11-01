@@ -134,6 +134,7 @@ fn serial_number(device_id: u64) -> String {
                 ControllersEmulationMode::QuestPro => "230YXXXXXXXXXX_Controller", // 230YT left, 230YV right
                 ControllersEmulationMode::RiftSTouch
                 | ControllersEmulationMode::Pico4
+                | ControllersEmulationMode::PSVR2Sense
                 | ControllersEmulationMode::ValveIndex
                 | ControllersEmulationMode::ViveWand
                 | ControllersEmulationMode::ViveTracker => "ALVR Remote Controller",
@@ -419,6 +420,33 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
                     set_prop(
                         InputProfilePathString,
                         "{vrlink}/input/pico_controller_profile.json",
+                    );
+                }
+                ControllersEmulationMode::PSVR2Sense => {
+                    set_prop(TrackingSystemNameString, "playstation_vr2");
+                    if left_hand {
+                        set_prop(ModelNumberString, "PlayStation VR2 Sense Left");
+                        set_prop(SerialNumberString, "playstation_vr2_sense_controller_left");
+                        set_prop(
+                            RenderModelNameString,
+                            "{alvr_server}/rendermodels/playstation_vr2_sense_left",
+                        );
+                        set_icons("{alvr_server}/icons/left_controller_status");
+                    } else if right_hand {
+                        set_prop(ModelNumberString, "PlayStation VR2 Sense Right");
+                        set_prop(SerialNumberString, "playstation_vr2_sense_controller_right");
+                        set_prop(
+                            RenderModelNameString,
+                            "{alvr_server}/rendermodels/playstation_vr2_sense_right",
+                        );
+                        set_icons("{alvr_server}/icons/right_controller_status");
+                    }
+                    set_prop(TrackingFirmwareVersionString, "0303");
+                    set_prop(HardwareRevisionString, "MP");
+                    set_prop(ControllerTypeString, "playstation_vr2_sense");
+                    set_prop(
+                        InputProfilePathString,
+                        "{alvr_server}/input/playstation_vr2_sense_controller_profile.json",
                     );
                 }
                 ControllersEmulationMode::ValveIndex => {

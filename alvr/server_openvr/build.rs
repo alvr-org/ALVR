@@ -101,6 +101,22 @@ fn main() {
     #[cfg(feature = "gpl")]
     build.define("ALVR_GPL", None);
 
+    #[cfg(target_os = "windows")]
+    {
+        let vpl_path = alvr_filesystem::deps_dir().join("windows/libvpl/alvr_build");
+        let vpl_include_path = vpl_path.join("include");
+        let vpl_lib_path = vpl_path.join("lib");
+
+        println!(
+            "cargo:rustc-link-search=native={}",
+            vpl_lib_path.to_string_lossy()
+        );
+
+        build.define("ONEVPL_EXPERIMENTAL", None);
+        build.include(vpl_include_path);
+        println!("cargo:rustc-link-lib=static=vpl");
+    }
+
     build.compile("bindings");
 
     #[cfg(all(target_os = "linux", feature = "gpl"))]

@@ -2,7 +2,7 @@
 
 * [ ] Intel Core i5-4590/AMD FX 8350 equivalent or better
 * [ ] At least 4GB of Ram
-* [ ] NVIDIA GeForce GTX 970, AMD Radeon R9 290 equivalent or better
+* [ ] NVIDIA GeForce GTX 970, AMD Radeon R9 290, Intel ARC equivalent or better
 * [ ] A 5Ghz router/access point or my PC can create its own 5Ghz hotspot
 
 ## Network settings

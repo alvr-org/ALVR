@@ -74,6 +74,35 @@ pub fn prepare_ffmpeg_windows(deps_path: &Path) {
     .unwrap();
 }
 
+fn prepare_libvpl_windows(deps_path: &Path) {
+    let sh = Shell::new().unwrap();
+
+    const VERSION: &str = "2.15.0";
+
+    command::download_and_extract_zip(
+        &format!("https://github.com/intel/libvpl/archive/refs/tags/v{VERSION}.zip"),
+        deps_path,
+    )
+    .unwrap();
+
+    let final_path = deps_path.join("libvpl");
+
+    fs::rename(deps_path.join(format!("libvpl-{VERSION}")), &final_path).unwrap();
+
+    let install_prefix = final_path.join("alvr_build");
+    let _push_guard = sh.push_dir(final_path);
+
+    cmd!(sh, "cmake -B build -DCMAKE_INSTALL_PREFIX={install_prefix}")
+        .run()
+        .unwrap();
+    cmd!(sh, "cmake --build build --config Release")
+        .run()
+        .unwrap();
+    cmd!(sh, "cmake --install build --config Release")
+        .run()
+        .unwrap();
+}
+
 pub fn prepare_windows_deps(skip_admin_priv: bool) {
     let sh = Shell::new().unwrap();
 
@@ -84,13 +113,21 @@ pub fn prepare_windows_deps(skip_admin_priv: bool) {
     if !skip_admin_priv {
         choco_install(
             &sh,
-            &["zip", "unzip", "llvm", "vulkan-sdk", "pkgconfiglite"],
+            &[
+                "zip",
+                "unzip",
+                "llvm",
+                "vulkan-sdk",
+                "pkgconfiglite",
+                "cmake",
+            ],
         )
         .unwrap();
     }
 
     prepare_x264_windows(&deps_path);
     prepare_ffmpeg_windows(&deps_path);
+    prepare_libvpl_windows(&deps_path);
 }
 
 pub fn prepare_linux_deps(enable_nvenc: bool) {

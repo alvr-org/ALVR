@@ -20,32 +20,16 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1739486406,
-        "narHash": "sha256-b3JGAmrZLF8LK/Ufguac8R/eDJ4RouCOnk9FN/0CLCM=",
+        "lastModified": 1761907660,
+        "narHash": "sha256-kJ8lIZsiPOmbkJypG+B5sReDXSD1KGu2VEPNqhRa/ew=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "4ef254b3bd20bd0553c903f124e2321d5814a370",
+        "rev": "2fb006b87f04c4d3bdf08cfdbc7fab9c13d94a15",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
-        "ref": "master",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
-    "nixpkgsStaging": {
-      "locked": {
-        "lastModified": 1739470556,
-        "narHash": "sha256-D67sFmdCo8vLqlQJHxB7eTSjv0+g5LyrWv+H7AJg22c=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "496b396e7d429afe3d8fdf16097744d2dadd1051",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "staging",
+        "ref": "nixos-unstable",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -53,11 +37,11 @@
     "openvr": {
       "flake": false,
       "locked": {
-        "lastModified": 1711497237,
-        "narHash": "sha256-bIKjZ7DvJVmDK386WgXaAFQrS0E1TNEUMhfQp7FNnvk=",
+        "lastModified": 1755298685,
+        "narHash": "sha256-G+xoFIabSbYEaWATGSzHP3SWkaqQhQQ6kMkYfjBXBUU=",
         "owner": "ValveSoftware",
         "repo": "openvr",
-        "rev": "ae46a8dd0172580648c8922658a100439115d3eb",
+        "rev": "91825305130f446f82054c1ec3d416321ace0072",
         "type": "github"
       },
       "original": {
@@ -70,7 +54,6 @@
       "inputs": {
         "flakeUtils": "flakeUtils",
         "nixpkgs": "nixpkgs",
-        "nixpkgsStaging": "nixpkgsStaging",
         "openvr": "openvr"
       }
     },

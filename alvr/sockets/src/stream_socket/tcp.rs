@@ -2,7 +2,7 @@ use super::{
     MultiplexedSocketReader, MultiplexedSocketWriter, ReconstructedPacket, StreamRecvQueues,
 };
 use crate::LOCAL_IP;
-use alvr_common::{ConResult, HandleTryAgain, ToCon, anyhow::Result, con_bail, error};
+use alvr_common::{ConResult, HandleTryAgain, ToCon, anyhow::Result, con_bail};
 use alvr_session::{DscpTos, SocketBufferSize};
 use socket2::Socket;
 use std::{
@@ -143,7 +143,6 @@ impl MultiplexedSocketReader for MultiplexedTcpReader {
                         &mut *(&mut prefix_bytes as *mut [u8] as *mut [MaybeUninit<u8>])
                     })
                     .handle_try_again()?;
-                error!("recv: peek count {}", count);
                 if count == PACKET_PREFIX_SIZE {
                     break;
                 }

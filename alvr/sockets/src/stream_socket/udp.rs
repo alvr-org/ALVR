@@ -128,8 +128,8 @@ impl MultiplexedSocketReader for MultiplexedUdpReader {
         };
 
         let mut prefix_bytes = [0; SHARD_PREFIX_SIZE];
-        let size = socket_peek(&mut self.inner, &mut prefix_bytes)?;
-        if size < SHARD_PREFIX_SIZE {
+        let peek_size = socket_peek(&mut self.inner, &mut prefix_bytes)?;
+        if peek_size < SHARD_PREFIX_SIZE {
             return discard_and_try_again(&self.inner);
         }
 
@@ -201,6 +201,7 @@ impl MultiplexedSocketReader for MultiplexedUdpReader {
         // This call should never fail because the peek call succeded before.
         // Note: in unexpected circumstances, here .to_con() is used not to emit TryAgain, which
         // would mess with the state of the code. The connection would need to be closed instead.
+        // NB: the received_size contains the prefix
         let received_size = self.inner.recv(sub_buffer).to_con()?;
 
         // Restore backed up bytes
@@ -208,7 +209,7 @@ impl MultiplexedSocketReader for MultiplexedUdpReader {
 
         in_progress_packet.buffer_size = usize::max(
             in_progress_packet.buffer_size,
-            packet_start_index + SHARD_PREFIX_SIZE + received_size,
+            packet_start_index + received_size,
         );
 
         in_progress_packet

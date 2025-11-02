@@ -2,13 +2,9 @@
   description = "Stream VR games from your PC to your headset via Wi-Fi";
 
   inputs = {
+    self.submodules = true;
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    #nixpkgsStaging.url = "github:NixOS/nixpkgs/staging";
     flakeUtils.url = "github:numtide/flake-utils"; # TODO use upstream nix utils
-    openvr = {
-      url = "github:ValveSoftware/openvr";
-      flake = false;
-    };
   };
 
   outputs =
@@ -16,7 +12,6 @@
       self,
       nixpkgs,
       flakeUtils,
-      openvr,
     }:
     flakeUtils.lib.eachDefaultSystem (
       system:
@@ -26,16 +21,19 @@
           alsa-lib
           cargo
           libclang
+          ffmpeg
           ffmpeg.dev
-          jack1
+          jack2
           git
           llvmPackages.libclang
           openssl
+          pipewire
           pipewire.dev
           pkg-config
-          #nixpkgsStaging.legacyPackages.${system}.rustc
           rustc
+          rustPlatform.bindgenHook
           vulkan-headers
+          vulkan-loader
         ];
 
         dependencyPackages = [
@@ -70,6 +68,8 @@
           xorg.libXi
           xorg.libXrandr
           xvidcore
+          bzip2
+          gmp
         ];
 
         nvidiaPackages = with cudaPackages; [
@@ -91,7 +91,6 @@
             stdenv = stdenv;
           })
             {
-              # LIBCLANG_PATH="${llvmPackages.libclang.lib}";
               LIBCLANG_PATH = "${libclang.lib}/lib";
               buildInputs =
                 buildPackages
@@ -100,47 +99,62 @@
                 ++ [
                   watchexec
                 ];
-              # LIBS_PATCH = writeText "libs.patch" libsPatch;
+              NIX_CFLAGS_COMPILE = toString [
+                "-lbrotlicommon"
+                "-lbrotlidec"
+                "-lcrypto"
+                "-lpng"
+                "-lssl"
+              ];
+
               RUSTFLAGS = map (a: "-C link-arg=${a}") [
                 "-Wl,--push-state,--no-as-needed"
                 "-lEGL"
-                "-lclang"
-                "-lva"
-                "-lpng"
-                "-lbrotlidec"
                 "-lwayland-client"
                 "-lxkbcommon"
                 "-Wl,--pop-state"
               ];
-              RUST_BACKTRACE = "1"; # TODO
+              RUST_BACKTRACE = "1";
               shellHook = ''
                 git apply ${libsPatch}
               '';
             };
       in
       {
-        /*
         packages.default = pkgs.rustPlatform.buildRustPackage rec {
           pname = "alvr";
-
-	  #BINDGEN_EXTRA_CLANG_ARGS = [
-          #  ''-I"${pkgs.llvmPackages.libclang.lib}/lib/clang/${pkgs.llvmPackages.libclang.version}/include"''
-          #  "-I ${pkgs.glibc.dev}/include"
-          #]; # TODO
-
-          version = "master"; # TODO
-          OPENVR_PATH = "${openvr}";
-          doCheck = false; # TODO
-          #LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
-          postUnpack = ''
-            # Deal with submodules which is still annoying in Nix.
-            ln -s $OPENVR_PATH $(ls | grep -- -source)/openvr
-          '';
+          LIBCLANG_PATH = "${libclang.lib}/lib";
+          env.NIX_CFLAGS_COMPILE = toString [
+            "-lbrotlicommon"
+            "-lbrotlidec"
+            "-lcrypto"
+            "-lpng"
+            "-lssl"
+          ];
+          RUSTFLAGS = map (a: "-C link-args=${a}") [
+            "-Wl,--push-state,--no-as-needed"
+            "-lEGL"
+            "-lwayland-client"
+            "-lxkbcommon"
+            "-Wl,--pop-state"
+          ];
+          cargoBuildFlags = [
+            "--exclude alvr_xtask"
+            "--workspace"
+          ];
+          buildNoDefaultFeatures = true;
+          patches = [
+            (replaceVars ./fix-finding-libs.patch {
+              ffmpeg = lib.getDev ffmpeg;
+              x264 = lib.getDev x264;
+            })
+          ];
+          version = "21.0.0-master"; # TODO Change to the release
+          doCheck = false; # TODO Broken right now
           src = ./.;
-          RUST_BACKTRACE = "full"; # TODO
+          RUST_BACKTRACE = "full";
           nativeBuildInputs = buildPackages;
           buildInputs = buildPackages ++ dependencyPackages;
-          dontCargoInstall = true; # TODO
           cargoLock = {
             lockFile = ./Cargo.lock;
             outputHashes = {
@@ -148,18 +162,39 @@
               "settings-schema-0.2.0" = "sha256-luEdAKDTq76dMeo5kA+QDTHpRMFUg3n0qvyQ7DkId0k=";
             };
           };
-          CARGO_MANIFEST_DIR = ./.; # probably unneeded
+          postInstall = ''
+            install -Dm755 ${src}/alvr/xtask/resources/alvr.desktop $out/share/applications/alvr.desktop
+            install -Dm644 ${src}/resources/ALVR-Icon.svg $out/share/icons/hicolor/scalable/apps/alvr.svg
+
+            # Install SteamVR driver
+            mkdir -p $out/{libexec,lib/alvr,share}
+            cp -r ./build/alvr_streamer_linux/lib64/. $out/lib
+            cp -r ./build/alvr_streamer_linux/libexec/. $out/libexec
+            cp -r ./build/alvr_streamer_linux/share/. $out/share
+            ln -s $out/lib $out/lib64
+          '';
+          postBuild = ''
+            # Build SteamVR driver ("streamer")
+            cargo xtask build-streamer --release
+          '';
+          meta = {
+            description = "Stream VR games from your PC to your headset via Wi-Fi";
+            homepage = "https://github.com/alvr-org/ALVR/";
+            changelog = "https://github.com/alvr-org/ALVR/releases/tag/v${version}";
+            license = lib.licenses.mit;
+            mainProgram = "alvr_dashboard";
+          };
         };
-	*/
         formatter = pkgs.nixfmt-tree;
         devShells.default = devShell {
           stdenv = clangStdenv;
           nvidia = false;
         };
-        devShells.nvidia = devShell {
-          stdenv = clangStdenv;
-          nvidia = true;
-        };
+        # TODO BROKEN
+        #devShells.nvidia = devShell {
+        #  stdenv = clangStdenv;
+        #  nvidia = true;
+        #};
       }
     );
 }

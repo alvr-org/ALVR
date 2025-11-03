@@ -9,7 +9,7 @@ mod stream;
 use crate::stream::ParsedStreamConfig;
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
-    Fov, HAND_LEFT_ID, Pose, error,
+    Fov, HAND_LEFT_ID, Pose, debug, error,
     glam::{Quat, UVec2, Vec3},
     info,
     parking_lot::RwLock,
@@ -381,7 +381,7 @@ pub fn entry_point() {
                         // todo
                     }
                     xr::Event::UserPresenceChangedEXT(event) => {
-                        alvr_common::info!("user present: {:?}", event.is_user_present());
+                        debug!("user present: {:?}", event.is_user_present());
                         headset_is_worn = event.is_user_present();
 
                         core_context.send_proximity_state(event.is_user_present());

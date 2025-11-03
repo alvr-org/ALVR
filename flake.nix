@@ -5,6 +5,10 @@
     self.submodules = true;
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flakeUtils.url = "github:numtide/flake-utils"; # TODO use upstream nix utils
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -12,6 +16,7 @@
       self,
       nixpkgs,
       flakeUtils,
+      fenix,
     }:
     flakeUtils.lib.eachDefaultSystem (
       system:
@@ -19,7 +24,6 @@
       let
         buildPackages = [
           alsa-lib
-          cargo
           libclang
           ffmpeg
           ffmpeg.dev
@@ -30,10 +34,12 @@
           pipewire
           pipewire.dev
           pkg-config
-          rustc
+          rustToolchain
           rustPlatform.bindgenHook
+	  llvmPackages.bintools
           vulkan-headers
           vulkan-loader
+          #libGL
         ];
 
         dependencyPackages = [
@@ -70,6 +76,8 @@
           xvidcore
           bzip2
           gmp
+          jdk
+          jre
         ];
 
         nvidiaPackages = with cudaPackages; [
@@ -85,6 +93,28 @@
           }
         );
 
+        androidComposition = androidenv.composeAndroidPackages {
+          minPlatformVersion = "28";
+          maxPlatformVersion = "32";
+          abiVersions = [
+            "armeabi-v7a"
+            "arm64-v8a"
+            "x86-64"
+          ];
+          includeNDK = true;
+          includeSystemImages = false;
+          includeEmulator = false;
+        };
+
+        rustToolchain =
+          with fenix.packages.${system};
+          combine [
+            stable.toolchain
+            targets."armv7-linux-androideabi".stable.rust-std
+            targets."aarch64-linux-android".stable.rust-std
+            targets."x86_64-linux-android".stable.rust-std
+          ];
+
         devShell =
           { stdenv, nvidia }:
           (mkShell.override {
@@ -97,8 +127,12 @@
                 ++ dependencyPackages
                 ++ (lib.optionals nvidia nvidiaPackages)
                 ++ [
+                  androidComposition.androidsdk
                   watchexec
                 ];
+              JAVA_HOME = "${pkgs.jdk.home}";
+              ANDROID_HOME = "${androidComposition.androidsdk}/libexec/android-sdk";
+              ANDROID_NDK_ROOT = "${androidComposition.androidsdk}/libexec/android-sdk/ndk-bundle";
               NIX_CFLAGS_COMPILE = toString [
                 "-lbrotlicommon"
                 "-lbrotlidec"
@@ -107,12 +141,15 @@
                 "-lssl"
               ];
 
-              RUSTFLAGS = map (a: "-C link-arg=${a}") [
-                "-Wl,--push-state,--no-as-needed"
-                "-lEGL"
-                "-lwayland-client"
-                "-lxkbcommon"
-                "-Wl,--pop-state"
+              RUSTFLAGS = toString [
+                "-C link-self-contained=-linker"
+                (map (a: "-C link-arg=${a}") [
+                  "-Wl,--push-state,--no-as-needed"
+                  "-lEGL"
+                  "-lwayland-client"
+                  "-lxkbcommon"
+                  "-Wl,--pop-state"
+                ])
               ];
               RUST_BACKTRACE = "1";
               shellHook = ''
@@ -131,12 +168,15 @@
             "-lpng"
             "-lssl"
           ];
-          RUSTFLAGS = map (a: "-C link-args=${a}") [
-            "-Wl,--push-state,--no-as-needed"
-            "-lEGL"
-            "-lwayland-client"
-            "-lxkbcommon"
-            "-Wl,--pop-state"
+          RUSTFLAGS = toString [
+	    "-C link-self-contained=-linker"
+            (map (a: "-C link-args=${a}") [
+              "-Wl,--push-state,--no-as-needed"
+              "-lEGL"
+              "-lwayland-client"
+              "-lxkbcommon"
+              "-Wl,--pop-state"
+            ])
           ];
           cargoBuildFlags = [
             "--exclude alvr_xtask"

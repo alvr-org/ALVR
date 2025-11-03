@@ -129,7 +129,7 @@ impl Control {
                 }
             };
 
-            if response.drag_started() || response.clicked() {
+            if response.drag_started() || response.gained_focus() || response.clicked() {
                 self.editing_value_f64 = Some(session_value)
             } else if response.drag_stopped() || response.lost_focus() {
                 request = get_request(&self.nesting_info, *editing_value_mut, self.ty);

@@ -1309,6 +1309,11 @@ fn connection_pipeline(
                         info!("Client {client_hostname}: [{level:?}] {message}")
                     }
                     ClientControlPacket::KeepAlive | ClientControlPacket::StreamReady => (),
+                    ClientControlPacket::ProximityState(headset_is_worn) => {
+                        ctx.events_sender
+                            .send(ServerCoreEvent::ProximityState(headset_is_worn))
+                            .ok();
+                    }
                     ClientControlPacket::Reserved(_) | ClientControlPacket::ReservedBuffer(_) => (),
                 }
 

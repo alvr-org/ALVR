@@ -89,6 +89,7 @@ pub enum ServerCoreEvent {
     GameRenderLatencyFeedback(Duration), // only used for SteamVR
     ShutdownPending,
     RestartPending,
+    ProximityState(bool),
 }
 
 pub struct ConnectionContext {

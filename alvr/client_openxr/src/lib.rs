@@ -9,7 +9,7 @@ mod stream;
 use crate::stream::ParsedStreamConfig;
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
-    Fov, HAND_LEFT_ID, Pose, error,
+    Fov, HAND_LEFT_ID, Pose, debug, error,
     glam::{Quat, UVec2, Vec3},
     info,
     parking_lot::RwLock,
@@ -166,6 +166,7 @@ pub fn entry_point() {
     exts.ext_eye_gaze_interaction = available_extensions.ext_eye_gaze_interaction;
     exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
     exts.ext_local_floor = available_extensions.ext_local_floor;
+    exts.ext_user_presence = available_extensions.ext_user_presence;
     exts.fb_body_tracking = available_extensions.fb_body_tracking;
     exts.fb_color_space = available_extensions.fb_color_space;
     exts.fb_composition_layer_settings = available_extensions.fb_composition_layer_settings;
@@ -326,6 +327,7 @@ pub fn entry_point() {
         let mut passthrough_layer = None;
 
         let mut event_storage = xr::EventDataBuffer::new();
+        let mut headset_is_worn = true;
         'render_loop: loop {
             while let Some(event) = xr_instance.poll_event(&mut event_storage).unwrap() {
                 match event {
@@ -384,6 +386,12 @@ pub fn entry_point() {
                     | xr::Event::PassthroughStateChangedFB(_) => {
                         // todo
                     }
+                    xr::Event::UserPresenceChangedEXT(event) => {
+                        debug!("user present: {:?}", event.is_user_present());
+                        headset_is_worn = event.is_user_present();
+
+                        core_context.send_proximity_state(event.is_user_present());
+                    }
                     _ => (),
                 }
             }
@@ -416,6 +424,8 @@ pub fn entry_point() {
                         }
 
                         stream_context = Some(context);
+
+                        core_context.send_proximity_state(headset_is_worn);
                     }
                     ClientCoreEvent::StreamingStopped => {
                         if passthrough_layer.is_none() {

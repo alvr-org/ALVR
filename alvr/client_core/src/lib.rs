@@ -223,6 +223,14 @@ impl ClientCoreContext {
         }
     }
 
+    pub fn send_proximity_state(&self, headset_is_worn: bool) {
+        if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
+            sender
+                .send(&ClientControlPacket::ProximityState(headset_is_worn))
+                .ok();
+        }
+    }
+
     pub fn get_total_prediction_offset(&self) -> Duration {
         dbg_client_core!("get_total_prediction_offset");
 

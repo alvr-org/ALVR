@@ -36,10 +36,9 @@
           pkg-config
           rustToolchain
           rustPlatform.bindgenHook
-	  llvmPackages.bintools
+          llvmPackages.bintools
           vulkan-headers
           vulkan-loader
-          #libGL
         ];
 
         dependencyPackages = [
@@ -76,8 +75,6 @@
           xvidcore
           bzip2
           gmp
-          jdk
-          jre
         ];
 
         nvidiaPackages = with cudaPackages; [
@@ -85,13 +82,6 @@
           cuda_nvcc
           libnpp
         ];
-
-        libsPatch = toString (
-          replaceVars ./fix-finding-libs.patch {
-            ffmpeg = lib.getDev ffmpeg;
-            x264 = lib.getDev x264;
-          }
-        );
 
         androidComposition = androidenv.composeAndroidPackages {
           minPlatformVersion = "28";
@@ -152,9 +142,6 @@
                 ])
               ];
               RUST_BACKTRACE = "1";
-              shellHook = ''
-                git apply ${libsPatch}
-              '';
             };
       in
       {
@@ -169,7 +156,7 @@
             "-lssl"
           ];
           RUSTFLAGS = toString [
-	    "-C link-self-contained=-linker"
+            "-C link-self-contained=-linker"
             (map (a: "-C link-args=${a}") [
               "-Wl,--push-state,--no-as-needed"
               "-lEGL"
@@ -179,16 +166,11 @@
             ])
           ];
           cargoBuildFlags = [
-            "--exclude alvr_xtask"
             "--workspace"
+            "--exclude alvr_xtask"
           ];
           buildNoDefaultFeatures = true;
-          patches = [
-            (replaceVars ./fix-finding-libs.patch {
-              ffmpeg = lib.getDev ffmpeg;
-              x264 = lib.getDev x264;
-            })
-          ];
+          buildFeatures = [ "nix" ];
           version = "21.0.0-master"; # TODO Change to the release
           doCheck = false; # TODO Broken right now
           src = ./.;
@@ -213,6 +195,7 @@
             cp -r ./build/alvr_streamer_linux/share/. $out/share
             ln -s $out/lib $out/lib64
           '';
+          # TODO FIX that it needs to run the below command.
           postBuild = ''
             # Build SteamVR driver ("streamer")
             cargo xtask build-streamer --release

@@ -135,9 +135,8 @@ fn create_session(
 pub fn entry_point() {
     alvr_client_core::init_logging();
 
-    let platform = alvr_system_info::platform();
-
-    let loader_suffix = match platform {
+    // Using a provisional platform, before we can get the runtime info
+    let loader_suffix = match alvr_system_info::platform(None, None) {
         Platform::Quest1 => "_quest1",
         Platform::PicoNeo3
         | Platform::PicoG3
@@ -156,7 +155,7 @@ pub fn entry_point() {
     xr_entry.initialize_android_loader().unwrap();
 
     let available_extensions = xr_entry.enumerate_extensions().unwrap();
-    alvr_common::info!("OpenXR available extensions: {available_extensions:#?}");
+    info!("OpenXR available extensions: {available_extensions:#?}");
 
     // todo: switch to vulkan
     assert!(available_extensions.khr_opengl_es_enable);
@@ -220,6 +219,17 @@ pub fn entry_point() {
         )
         .unwrap();
 
+    let platform = alvr_system_info::platform(
+        xr_instance
+            .properties()
+            .ok()
+            .map(|s| s.runtime_name.to_owned()),
+        xr_instance
+            .properties()
+            .ok()
+            .map(|s| s.runtime_version.into_raw()),
+    );
+
     let graphics_context = Rc::new(GraphicsContext::new_gl());
 
     let mut last_lobby_message = String::new();
@@ -268,6 +278,7 @@ pub fn entry_point() {
         }
 
         let capabilities = ClientCapabilities {
+            platform,
             default_view_resolution,
             max_view_resolution,
             refresh_rates,
@@ -279,7 +290,6 @@ pub fn entry_point() {
                 Platform::Quest3 | Platform::Quest3S | Platform::Pico4Ultra
             ),
             prefer_10bit: false,
-            prefer_full_range: true,
             preferred_encoding_gamma: 1.0,
             prefer_hdr: false,
         };
@@ -415,7 +425,6 @@ pub fn entry_point() {
                             xr_session.clone(),
                             Rc::clone(&graphics_context),
                             Arc::clone(&interaction_context),
-                            platform,
                             config,
                         );
 

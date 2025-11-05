@@ -61,13 +61,16 @@ impl VideoStreamingCapabilities {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct ConnectionAcceptedInfo {
+    pub client_protocol_id: u64,
+    pub platform_string: String,
+    pub server_ip: IpAddr,
+    pub streaming_capabilities: Option<VideoStreamingCapabilities>,
+}
+
+#[derive(Serialize, Deserialize)]
 pub enum ClientConnectionResult {
-    ConnectionAccepted {
-        client_protocol_id: u64,
-        display_name: String,
-        server_ip: IpAddr,
-        streaming_capabilities: Option<VideoStreamingCapabilities>,
-    },
+    ConnectionAccepted(Box<ConnectionAcceptedInfo>),
     ClientStandby,
 }
 

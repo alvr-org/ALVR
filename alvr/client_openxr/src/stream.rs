@@ -107,7 +107,6 @@ impl StreamContext {
         xr_session: xr::Session<xr::OpenGlEs>,
         gfx_ctx: Rc<GraphicsContext>,
         interaction_ctx: Arc<RwLock<InteractionContext>>,
-        platform: Platform,
         config: ParsedStreamConfig,
     ) -> StreamContext {
         interaction_ctx
@@ -194,11 +193,12 @@ impl StreamContext {
             ],
             format,
             config.foveated_encoding_config.clone(),
-            platform != Platform::Lynx
-                && !((platform.is_pico() || (platform == Platform::SamsungGalaxyXR))
+            core_ctx.platform() != Platform::Lynx
+                && !((core_ctx.platform().is_pico()
+                    || (core_ctx.platform() == Platform::SamsungGalaxyXR))
                     && config.enable_hdr),
             // TODO: Find a driver heuristic for the limited range bug instead?
-            (platform != Platform::SamsungGalaxyXR) && !config.enable_hdr,
+            core_ctx.platform() != Platform::SamsungGalaxyXR && !config.enable_hdr,
             config.encoding_gamma,
             config.upscaling.clone(),
         );
@@ -229,6 +229,7 @@ impl StreamContext {
         ));
 
         let mut this = StreamContext {
+            use_custom_reprojection: core_ctx.platform().is_yvr(),
             core_context: core_ctx,
             xr_session,
             interaction_context: interaction_ctx,
@@ -242,7 +243,6 @@ impl StreamContext {
             target_view_resolution,
             renderer,
             decoder: None,
-            use_custom_reprojection: platform.is_yvr(),
         };
 
         this.update_reference_space();
@@ -523,8 +523,6 @@ fn stream_input_loop(
     refresh_rate: f32,
     running: Arc<RelaxedAtomic>,
 ) {
-    let platform = alvr_system_info::platform();
-
     let mut last_controller_poses = [Pose::IDENTITY; 2];
     let mut last_palm_poses = [Pose::IDENTITY; 2];
     let mut last_view_params = [ViewParams::DUMMY; 2];
@@ -550,7 +548,7 @@ fn stream_input_loop(
 
         let Some((head_motion, local_views)) = interaction::get_head_data(
             &xr_session,
-            platform,
+            core_ctx.platform(),
             stage_reference_space,
             view_reference_space,
             now,
@@ -571,7 +569,7 @@ fn stream_input_loop(
 
         let left_hand_data = crate::interaction::get_hand_data(
             &xr_session,
-            platform,
+            core_ctx.platform(),
             stage_reference_space,
             now,
             target_time,
@@ -581,7 +579,7 @@ fn stream_input_loop(
         );
         let right_hand_data = crate::interaction::get_hand_data(
             &xr_session,
-            platform,
+            core_ctx.platform(),
             stage_reference_space,
             now,
             target_time,

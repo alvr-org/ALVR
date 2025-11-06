@@ -375,7 +375,6 @@ version = "21.0.0-dev11"
 dependencies = [
  "alvr_common",
  "alvr_session",
- "alvr_system_info",
  "serde",
  "serde_json",
 ]

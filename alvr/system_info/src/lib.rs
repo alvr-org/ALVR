@@ -107,7 +107,7 @@ impl Display for Platform {
             Self::Lynx => "Lynx Headset",
             Self::SamsungGalaxyXR => "Samsung Galaxy XR",
             Self::AndroidUnknown => "Android (unknown)",
-            Self::VisionOSHeadset => "VisionOS Headset",
+            Self::VisionOSHeadset => "visionOS Headset",
             Self::WindowsPc => "Windows PC",
             Self::LinuxPc => "Linux PC",
             Self::Macos => "macOS",

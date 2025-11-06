@@ -11,6 +11,7 @@ alvr_common.workspace = true
 alvr_client_core.workspace = true
 alvr_packets.workspace = true
 alvr_session.workspace = true
+alvr_system_info.workspace = true
 
 eframe = "0.32"
 env_logger = "0.11"

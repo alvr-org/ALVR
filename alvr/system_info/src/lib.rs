@@ -37,7 +37,7 @@ pub enum Platform {
     Lynx,
     SamsungGalaxyXR,
     AndroidUnknown,
-    AppleHeadset,
+    VisionOSHeadset,
     WindowsPc,
     LinuxPc,
     Macos,
@@ -48,76 +48,77 @@ impl Platform {
     pub const fn is_quest(&self) -> bool {
         matches!(
             self,
-            Platform::Quest1
-                | Platform::Quest2
-                | Platform::Quest3
-                | Platform::Quest3S
-                | Platform::QuestPro
-                | Platform::QuestUnknown
+            Self::Quest1
+                | Self::Quest2
+                | Self::Quest3
+                | Self::Quest3S
+                | Self::QuestPro
+                | Self::QuestUnknown
         )
     }
 
     pub const fn is_pico(&self) -> bool {
         matches!(
             self,
-            Platform::PicoG3
-                | Platform::PicoNeo3
-                | Platform::Pico4
-                | Platform::Pico4Pro
-                | Platform::Pico4Enterprise
-                | Platform::Pico4Ultra
-                | Platform::PicoUnknown
+            Self::PicoG3
+                | Self::PicoNeo3
+                | Self::Pico4
+                | Self::Pico4Pro
+                | Self::Pico4Enterprise
+                | Self::Pico4Ultra
+                | Self::PicoUnknown
         )
     }
 
     pub const fn is_vive(&self) -> bool {
         matches!(
             self,
-            Platform::Focus3 | Platform::FocusVision | Platform::XRElite | Platform::ViveUnknown
+            Self::Focus3 | Self::FocusVision | Self::XRElite | Self::ViveUnknown
         )
     }
 
     pub const fn is_yvr(&self) -> bool {
-        matches!(self, Platform::Yvr | Platform::PlayForDreamMR)
+        matches!(self, Self::Yvr | Self::PlayForDreamMR)
     }
 }
 
 impl Display for Platform {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let name = match self {
-            Platform::Quest1 => "Quest 1",
-            Platform::Quest2 => "Quest 2",
-            Platform::Quest3 => "Quest 3",
-            Platform::Quest3S => "Quest 3S",
-            Platform::QuestPro => "Quest Pro",
-            Platform::QuestUnknown => "Quest (unknown)",
-            Platform::PicoNeo3 => "Pico Neo 3",
-            Platform::Pico4 => "Pico 4",
-            Platform::Pico4Pro => "Pico 4 Pro",
-            Platform::Pico4Enterprise => "Pico 4 Enterprise",
-            Platform::Pico4Ultra => "Pico 4 Ultra",
-            Platform::PicoG3 => "Pico G3",
-            Platform::PicoUnknown => "Pico (unknown)",
-            Platform::Focus3 => "VIVE Focus 3",
-            Platform::FocusVision => "VIVE Focus Vision",
-            Platform::XRElite => "VIVE XR Elite",
-            Platform::ViveUnknown => "HTC VIVE (unknown)",
-            Platform::Yvr => "YVR",
-            Platform::PlayForDreamMR => "Play For Dream MR",
-            Platform::Lynx => "Lynx Headset",
-            Platform::SamsungGalaxyXR => "Samsung Galaxy XR",
-            Platform::AndroidUnknown => "Android (unknown)",
-            Platform::AppleHeadset => "Apple Headset",
-            Platform::WindowsPc => "Windows PC",
-            Platform::LinuxPc => "Linux PC",
-            Platform::Macos => "macOS",
-            Platform::Unknown => "Unknown",
+            Self::Quest1 => "Quest 1",
+            Self::Quest2 => "Quest 2",
+            Self::Quest3 => "Quest 3",
+            Self::Quest3S => "Quest 3S",
+            Self::QuestPro => "Quest Pro",
+            Self::QuestUnknown => "Quest (unknown)",
+            Self::PicoNeo3 => "Pico Neo 3",
+            Self::Pico4 => "Pico 4",
+            Self::Pico4Pro => "Pico 4 Pro",
+            Self::Pico4Enterprise => "Pico 4 Enterprise",
+            Self::Pico4Ultra => "Pico 4 Ultra",
+            Self::PicoG3 => "Pico G3",
+            Self::PicoUnknown => "Pico (unknown)",
+            Self::Focus3 => "VIVE Focus 3",
+            Self::FocusVision => "VIVE Focus Vision",
+            Self::XRElite => "VIVE XR Elite",
+            Self::ViveUnknown => "HTC VIVE (unknown)",
+            Self::Yvr => "YVR",
+            Self::PlayForDreamMR => "Play For Dream MR",
+            Self::Lynx => "Lynx Headset",
+            Self::SamsungGalaxyXR => "Samsung Galaxy XR",
+            Self::AndroidUnknown => "Android (unknown)",
+            Self::VisionOSHeadset => "visionOS Headset",
+            Self::WindowsPc => "Windows PC",
+            Self::LinuxPc => "Linux PC",
+            Self::Macos => "macOS",
+            Self::Unknown => "Unknown",
         };
         write!(f, "{name}")
     }
 }
 
-pub fn platform() -> Platform {
+#[cfg_attr(not(target_os = "android"), expect(unused_variables))]
+pub fn platform(runtime_name: Option<String>, runtime_version: Option<u64>) -> Platform {
     #[cfg(target_os = "android")]
     {
         let manufacturer = android::manufacturer_name();
@@ -129,7 +130,8 @@ pub fn platform() -> Platform {
         // (Maybe check runtime json for /system/lib64/libopenxr.google.so?)
 
         alvr_common::info!(
-            "manufacturer: {manufacturer}, model: {model}, device: {device}, product: {product}"
+            "manufacturer: {manufacturer}, model: {model}, device: {device}, product: {product}, \
+            runtime_name: {runtime_name:?}, runtime_version: {runtime_version:?}",
         );
 
         match (
@@ -162,31 +164,15 @@ pub fn platform() -> Platform {
             _ => Platform::AndroidUnknown,
         }
     }
-    #[cfg(target_os = "ios")]
+    #[cfg(not(target_os = "android"))]
     {
-        Platform::AppleHeadset
-    }
-    #[cfg(windows)]
-    {
-        Platform::WindowsPc
-    }
-    #[cfg(target_os = "linux")]
-    {
-        Platform::LinuxPc
-    }
-    #[cfg(target_os = "macos")]
-    {
-        Platform::Macos
-    }
-    #[cfg(not(any(
-        target_os = "android",
-        target_os = "ios",
-        windows,
-        target_os = "linux",
-        target_os = "macos"
-    )))]
-    {
-        Platform::Unknown
+        match std::env::consts::OS {
+            "visionos" => Platform::VisionOSHeadset,
+            "windows" => Platform::WindowsPc,
+            "linux" => Platform::LinuxPc,
+            "macos" => Platform::Macos,
+            _ => Platform::Unknown,
+        }
     }
 }
 

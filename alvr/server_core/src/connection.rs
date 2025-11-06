@@ -542,33 +542,28 @@ fn connection_pipeline(
         Err(e) => return Err(e),
     };
 
-    let maybe_streaming_caps = if let ClientConnectionResult::ConnectionAccepted {
-        client_protocol_id,
-        display_name,
-        streaming_capabilities,
-        ..
-    } = connection_result
-    {
-        session_manager_lock.update_client_connections(
-            client_hostname.clone(),
-            ClientConnectionsAction::SetDisplayName(display_name),
-        );
-
-        if client_protocol_id != alvr_common::protocol_id_u64() {
-            warn!(
-                "Trusted client is incompatible! Expected protocol ID: {}, found: {}",
-                alvr_common::protocol_id_u64(),
-                client_protocol_id,
+    let maybe_streaming_caps =
+        if let ClientConnectionResult::ConnectionAccepted(info) = connection_result {
+            session_manager_lock.update_client_connections(
+                client_hostname.clone(),
+                ClientConnectionsAction::SetDisplayName(info.platform_string),
             );
 
-            return Ok(());
-        }
+            if info.client_protocol_id != alvr_common::protocol_id_u64() {
+                warn!(
+                    "Trusted client is incompatible! Expected protocol ID: {}, found: {}",
+                    alvr_common::protocol_id_u64(),
+                    info.client_protocol_id,
+                );
 
-        streaming_capabilities
-    } else {
-        debug!("Found client in standby. Retrying");
-        return Ok(());
-    };
+                return Ok(());
+            }
+
+            info.streaming_capabilities
+        } else {
+            debug!("Found client in standby. Retrying");
+            return Ok(());
+        };
 
     let Some(streaming_caps) = maybe_streaming_caps else {
         con_bail!("Only streaming clients are supported for now");

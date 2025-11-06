@@ -79,7 +79,7 @@ impl Control {
                 &mut session_value
             };
 
-            let response = match &self.gui_type {
+            match &self.gui_type {
                 NumericGuiType::Slider {
                     range,
                     step,
@@ -111,9 +111,16 @@ impl Control {
                     if let Some(suffix) = &self.suffix {
                         drag_value = drag_value.suffix(suffix);
                     }
-                    let textbox_response = ui.add(drag_value);
+                    let sliding_textbox_response = ui.add(drag_value);
 
-                    slider_response.union(textbox_response)
+                    if slider_response.drag_started() || sliding_textbox_response.drag_started() || sliding_textbox_response.gained_focus() {
+                        self.editing_value_f64 = Some(session_value);
+                    } else if slider_response.drag_stopped() || sliding_textbox_response.drag_stopped() || slider_response.lost_focus() || sliding_textbox_response.lost_focus() {
+                        if let Some(editing_value) = self.editing_value_f64.take() {
+                            request = get_request(&self.nesting_info, editing_value, self.ty);
+                            *session_fragment = to_json_value(editing_value, self.ty);
+                        }
+                    }
                 }
                 NumericGuiType::TextBox => {
                     let mut drag_value = DragValue::new(editing_value_mut);
@@ -124,19 +131,18 @@ impl Control {
                     if let Some(suffix) = &self.suffix {
                         drag_value = drag_value.suffix(suffix);
                     }
+                    let textbox_response = ui.add(drag_value);
 
-                    ui.add(drag_value)
+                    if textbox_response.drag_started() || textbox_response.gained_focus() {
+                        self.editing_value_f64 = Some(session_value);
+                    } else if textbox_response.drag_stopped() || textbox_response.lost_focus() {
+                        if let Some(editing_value) = self.editing_value_f64.take() {
+                            request = get_request(&self.nesting_info, editing_value, self.ty);
+                            *session_fragment = to_json_value(editing_value, self.ty);
+                        }
+                    }
                 }
             };
-
-            if response.drag_started() || response.gained_focus() || response.clicked() {
-                self.editing_value_f64 = Some(session_value)
-            } else if response.drag_stopped() || response.lost_focus() {
-                request = get_request(&self.nesting_info, *editing_value_mut, self.ty);
-                *session_fragment = to_json_value(*editing_value_mut, self.ty);
-
-                self.editing_value_f64 = None;
-            }
 
             if reset::reset_button(
                 ui,

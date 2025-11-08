@@ -114,13 +114,10 @@ pub struct Launcher {
 
 impl Launcher {
     pub fn launch_steamvr(&self) {
-        // The ADB server might be left running because of a unclean termination of SteamVR
-        // Note that this will also kill a system wide ADB server not started by ALVR
-        let wired_enabled = data_sources::get_read_only_local_session()
-            .session()
-            .client_connections
-            .contains_key(alvr_sockets::WIRED_CLIENT_HOSTNAME);
-        if wired_enabled && let Some(path) = adb::get_adb_path(&crate::get_filesystem_layout()) {
+        // The ADB server might be left running because of an unclean termination of SteamVR.
+        // Kill it unconditionally to ensure clean state, regardless of current connection mode.
+        // Note: this will also kill a system-wide ADB server not started by ALVR.
+        if let Some(path) = adb::get_adb_path(&crate::get_filesystem_layout()) {
             adb::kill_server(&path).ok();
         }
 

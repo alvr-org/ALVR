@@ -165,6 +165,7 @@ extern "C" void SetProximityState(bool headset_is_worn);
 
 extern "C" void InitOpenvrClient();
 extern "C" void ShutdownOpenvrClient();
+extern "C" void ResetChaperoneToStage();
 extern "C" void SetChaperoneArea(float areaWidth, float areaHeight);
 
 extern "C" void CaptureFrame();

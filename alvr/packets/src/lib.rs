@@ -5,7 +5,8 @@ use alvr_common::{
     semver::Version,
 };
 use alvr_session::{
-    ClientsidePostProcessingConfig, CodecType, PassthroughMode, PerformanceLevelConfig, SessionConfig, Settings
+    ClientsidePostProcessingConfig, CodecType, PassthroughMode, PerformanceLevelConfig,
+    SessionConfig, Settings,
 };
 use serde::{Deserialize, Serialize};
 use serde_json as json;

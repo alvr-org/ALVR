@@ -1292,14 +1292,6 @@ Tilted: the world gets tilted when long pressing the oculus button. This is usef
     #[schema(flag = "steamvr-restart")]
     pub emulation_mode: HeadsetEmulationMode,
 
-    // #[schema(flag = "real-time")]
-    // #[schema(strings(display_name = "CPU Performance Level"))]
-    // pub cpu_performance_level: PerformanceLevel,
-
-    // #[schema(flag = "real-time")]
-    // #[schema(strings(display_name = "GPU Performance Level"))]
-    // pub gpu_performance_level: PerformanceLevel,
-
     pub performance_level: Switch<PerformanceLevelConfig>,
 
     #[schema(flag = "steamvr-restart")]
@@ -1947,12 +1939,6 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
                 variant: HeadsetEmulationModeDefaultVariant::Quest2,
             },
-            // cpu_performance_level: PerformanceLevelDefault {
-            //     variant: PerformanceLevelDefaultVariant::SustainedLow,
-            // },
-            // gpu_performance_level: PerformanceLevelDefault {
-            //     variant: PerformanceLevelDefaultVariant::SustainedLow,
-            // },
             performance_level: SwitchDefault {
                 enabled: false,
                 content: PerformanceLevelConfigDefault {

@@ -117,8 +117,16 @@ fn set_performance_level(
         let xr_gpu_level = convert_performance_level(gpu_level);
 
         unsafe {
-            set_performance_level(xr_session.as_raw(), xr::PerfSettingsDomainEXT::CPU, xr_cpu_level);
-            set_performance_level(xr_session.as_raw(), xr::PerfSettingsDomainEXT::GPU, xr_gpu_level);
+            set_performance_level(
+                xr_session.as_raw(),
+                xr::PerfSettingsDomainEXT::CPU,
+                xr_cpu_level,
+            );
+            set_performance_level(
+                xr_session.as_raw(),
+                xr::PerfSettingsDomainEXT::GPU,
+                xr_gpu_level,
+            );
         }
     }
 }

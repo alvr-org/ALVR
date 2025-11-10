@@ -95,23 +95,30 @@ fn to_xr_time(timestamp: Duration) -> xr::Time {
     xr::Time::from_nanos(timestamp.as_nanos() as _)
 }
 
+fn convert_performance_level(level: PerformanceLevel) -> xr::PerfSettingsLevelEXT {
+    match level {
+        PerformanceLevel::PowerSavings => xr::PerfSettingsLevelEXT::POWER_SAVINGS,
+        PerformanceLevel::SustainedLow => xr::PerfSettingsLevelEXT::SUSTAINED_LOW,
+        PerformanceLevel::SustainedHigh => xr::PerfSettingsLevelEXT::SUSTAINED_HIGH,
+        PerformanceLevel::Boost => xr::PerfSettingsLevelEXT::BOOST,
+    }
+}
+
 fn set_performance_level(
+    xr_instance: &xr::Instance,
     xr_session: &xr::Session<xr::OpenGlEs>,
-    domain: xr::PerfSettingsDomainEXT,
-    level: PerformanceLevel,
+    cpu_level: PerformanceLevel,
+    gpu_level: PerformanceLevel,
 ) {
-    if let Some(performance_settings) = xr_session.exts().ext_performance_settings {
+    if let Some(performance_settings) = xr_instance.exts().ext_performance_settings {
         let set_performance_level = performance_settings.perf_settings_set_performance_level;
 
-        let xr_level = match level {
-            PerformanceLevel::PowerSavings => xr::PerfSettingsLevelEXT::POWER_SAVINGS,
-            PerformanceLevel::SustainedLow => xr::PerfSettingsLevelEXT::SUSTAINED_LOW,
-            PerformanceLevel::SustainedHigh => xr::PerfSettingsLevelEXT::SUSTAINED_HIGH,
-            PerformanceLevel::Boost => xr::PerfSettingsLevelEXT::BOOST,
-        };
+        let xr_cpu_level = convert_performance_level(cpu_level);
+        let xr_gpu_level = convert_performance_level(gpu_level);
 
         unsafe {
-            set_performance_level(xr_session.as_raw(), domain, xr_level);
+            set_performance_level(xr_session.as_raw(), xr::PerfSettingsDomainEXT::CPU, xr_cpu_level);
+            set_performance_level(xr_session.as_raw(), xr::PerfSettingsDomainEXT::GPU, xr_gpu_level);
         }
     }
 }
@@ -489,13 +496,9 @@ pub fn entry_point() {
 
                         if let Some(performance_level) = &config.perfromance_level {
                             set_performance_level(
+                                &xr_instance,
                                 &xr_session,
-                                xr::PerfSettingsDomainEXT::CPU,
                                 performance_level.cpu.clone(),
-                            );
-                            set_performance_level(
-                                &xr_session,
-                                xr::PerfSettingsDomainEXT::GPU,
                                 performance_level.gpu.clone(),
                             );
                         }

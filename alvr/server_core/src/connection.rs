@@ -542,33 +542,28 @@ fn connection_pipeline(
         Err(e) => return Err(e),
     };
 
-    let maybe_streaming_caps = if let ClientConnectionResult::ConnectionAccepted {
-        client_protocol_id,
-        display_name,
-        streaming_capabilities,
-        ..
-    } = connection_result
-    {
-        session_manager_lock.update_client_connections(
-            client_hostname.clone(),
-            ClientConnectionsAction::SetDisplayName(display_name),
-        );
-
-        if client_protocol_id != alvr_common::protocol_id_u64() {
-            warn!(
-                "Trusted client is incompatible! Expected protocol ID: {}, found: {}",
-                alvr_common::protocol_id_u64(),
-                client_protocol_id,
+    let maybe_streaming_caps =
+        if let ClientConnectionResult::ConnectionAccepted(info) = connection_result {
+            session_manager_lock.update_client_connections(
+                client_hostname.clone(),
+                ClientConnectionsAction::SetDisplayName(info.platform_string),
             );
 
-            return Ok(());
-        }
+            if info.client_protocol_id != alvr_common::protocol_id_u64() {
+                warn!(
+                    "Trusted client is incompatible! Expected protocol ID: {}, found: {}",
+                    alvr_common::protocol_id_u64(),
+                    info.client_protocol_id,
+                );
 
-        streaming_capabilities
-    } else {
-        debug!("Found client in standby. Retrying");
-        return Ok(());
-    };
+                return Ok(());
+            }
+
+            info.streaming_capabilities
+        } else {
+            debug!("Found client in standby. Retrying");
+            return Ok(());
+        };
 
     let Some(streaming_caps) = maybe_streaming_caps else {
         con_bail!("Only streaming clients are supported for now");
@@ -599,12 +594,42 @@ fn connection_pipeline(
         UVec2::new(align32(res.x), align32(res.y))
     }
 
-    let stream_view_resolution = get_view_res(
+    let mut transcoding_view_resolution = get_view_res(
         initial_settings.video.transcoding_view_resolution.clone(),
         streaming_caps.default_view_resolution,
     );
+    if transcoding_view_resolution.x > streaming_caps.max_view_resolution.x
+        || transcoding_view_resolution.y > streaming_caps.max_view_resolution.y
+    {
+        warn!(
+            "Chosen resolution {}x{} exceeds client maximum supported resolution of {}x{}. \
+            Using maximum supported resolution at same aspect ratio.",
+            transcoding_view_resolution.x,
+            transcoding_view_resolution.y,
+            streaming_caps.max_view_resolution.x,
+            streaming_caps.max_view_resolution.y,
+        );
 
-    let target_view_resolution = get_view_res(
+        let transcoding_ratio =
+            transcoding_view_resolution.x as f32 / transcoding_view_resolution.y as f32;
+
+        if transcoding_ratio
+            > streaming_caps.max_view_resolution.x as f32
+                / streaming_caps.max_view_resolution.y as f32
+        {
+            transcoding_view_resolution = UVec2::new(
+                align32(streaming_caps.max_view_resolution.x as f32),
+                align32(streaming_caps.max_view_resolution.x as f32 / transcoding_ratio),
+            );
+        } else {
+            transcoding_view_resolution = UVec2::new(
+                align32(streaming_caps.max_view_resolution.y as f32 * transcoding_ratio),
+                align32(streaming_caps.max_view_resolution.y as f32),
+            );
+        }
+    }
+
+    let emulated_headset_view_resolution = get_view_res(
         initial_settings
             .video
             .emulated_headset_view_resolution
@@ -740,7 +765,7 @@ fn connection_pipeline(
     let stream_config_packet = StreamConfigPacket::new(
         session_manager_lock.session(),
         NegotiatedStreamingConfig {
-            view_resolution: stream_view_resolution,
+            view_resolution: transcoding_view_resolution,
             refresh_rate_hint: fps,
             game_audio_sample_rate,
             enable_foveated_encoding,
@@ -758,10 +783,10 @@ fn connection_pipeline(
         proto_socket.split(STREAMING_RECV_TIMEOUT).to_con()?;
 
     let mut new_openvr_config = contruct_openvr_config(session_manager_lock.session());
-    new_openvr_config.eye_resolution_width = stream_view_resolution.x;
-    new_openvr_config.eye_resolution_height = stream_view_resolution.y;
-    new_openvr_config.target_eye_resolution_width = target_view_resolution.x;
-    new_openvr_config.target_eye_resolution_height = target_view_resolution.y;
+    new_openvr_config.eye_resolution_width = transcoding_view_resolution.x;
+    new_openvr_config.eye_resolution_height = transcoding_view_resolution.y;
+    new_openvr_config.target_eye_resolution_width = emulated_headset_view_resolution.x;
+    new_openvr_config.target_eye_resolution_height = emulated_headset_view_resolution.y;
     new_openvr_config.refresh_rate = fps as _;
     new_openvr_config.enable_foveated_encoding = enable_foveated_encoding;
     new_openvr_config.h264_profile = encoder_profile as _;
@@ -1279,6 +1304,11 @@ fn connection_pipeline(
                         info!("Client {client_hostname}: [{level:?}] {message}")
                     }
                     ClientControlPacket::KeepAlive | ClientControlPacket::StreamReady => (),
+                    ClientControlPacket::ProximityState(headset_is_worn) => {
+                        ctx.events_sender
+                            .send(ServerCoreEvent::ProximityState(headset_is_worn))
+                            .ok();
+                    }
                     ClientControlPacket::Reserved(_) | ClientControlPacket::ReservedBuffer(_) => (),
                 }
 

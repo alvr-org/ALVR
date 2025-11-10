@@ -71,6 +71,7 @@ pub enum AlvrEvent {
     CaptureFrame,
     RestartPending,
     ShutdownPending,
+    ProximityState(bool),
 }
 
 #[repr(C)]
@@ -293,6 +294,9 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
             },
             ServerCoreEvent::GameRenderLatencyFeedback(_)
             | ServerCoreEvent::SetOpenvrProperty { .. } => {} // implementation not needed
+            ServerCoreEvent::ProximityState(headset_is_worn) => unsafe {
+                *out_event = AlvrEvent::ProximityState(headset_is_worn);
+            },
         }
 
         true

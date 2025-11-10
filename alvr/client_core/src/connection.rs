@@ -14,9 +14,9 @@ use alvr_common::{
     wait_rwlock, warn,
 };
 use alvr_packets::{
-    AUDIO, ClientConnectionResult, ClientControlPacket, ClientStatistics, HAPTICS, Haptics,
-    STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData, VIDEO,
-    VideoPacketHeader, VideoStreamingCapabilities, VideoStreamingCapabilitiesExt,
+    AUDIO, ClientConnectionResult, ClientControlPacket, ClientStatistics, ConnectionAcceptedInfo,
+    HAPTICS, Haptics, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData,
+    VIDEO, VideoPacketHeader, VideoStreamingCapabilities, VideoStreamingCapabilitiesExt,
 };
 use alvr_session::{SocketProtocol, settings_schema::Switch};
 use alvr_sockets::{
@@ -162,27 +162,30 @@ fn connection_pipeline(
 
     dbg_connection!("connection_pipeline: Send stream capabilities");
     proto_control_socket
-        .send(&ClientConnectionResult::ConnectionAccepted {
-            client_protocol_id: alvr_common::protocol_id_u64(),
-            display_name: alvr_system_info::platform().to_string(),
-            server_ip,
-            streaming_capabilities: Some(
-                VideoStreamingCapabilities {
-                    default_view_resolution: capabilities.default_view_resolution,
-                    refresh_rates: capabilities.refresh_rates,
-                    microphone_sample_rate,
-                    foveated_encoding: capabilities.foveated_encoding,
-                    encoder_high_profile: capabilities.encoder_high_profile,
-                    encoder_10_bits: capabilities.encoder_10_bits,
-                    encoder_av1: capabilities.encoder_av1,
-                    prefer_10bit: capabilities.prefer_10bit,
-                    preferred_encoding_gamma: capabilities.preferred_encoding_gamma,
-                    prefer_hdr: capabilities.prefer_hdr,
-                    ext_str: String::new(),
-                }
-                .with_ext(VideoStreamingCapabilitiesExt {}),
-            ),
-        })
+        .send(&ClientConnectionResult::ConnectionAccepted(Box::new(
+            ConnectionAcceptedInfo {
+                client_protocol_id: alvr_common::protocol_id_u64(),
+                platform_string: capabilities.platform.to_string(),
+                server_ip,
+                streaming_capabilities: Some(
+                    VideoStreamingCapabilities {
+                        default_view_resolution: capabilities.default_view_resolution,
+                        max_view_resolution: capabilities.max_view_resolution,
+                        refresh_rates: capabilities.refresh_rates,
+                        microphone_sample_rate,
+                        foveated_encoding: capabilities.foveated_encoding,
+                        encoder_high_profile: capabilities.encoder_high_profile,
+                        encoder_10_bits: capabilities.encoder_10_bits,
+                        encoder_av1: capabilities.encoder_av1,
+                        prefer_10bit: capabilities.prefer_10bit,
+                        preferred_encoding_gamma: capabilities.preferred_encoding_gamma,
+                        prefer_hdr: capabilities.prefer_hdr,
+                        ext_str: String::new(),
+                    }
+                    .with_ext(VideoStreamingCapabilitiesExt {}),
+                ),
+            },
+        )))
         .to_con()?;
     let config_packet =
         proto_control_socket.recv::<StreamConfigPacket>(HANDSHAKE_ACTION_TIMEOUT)?;

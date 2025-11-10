@@ -30,6 +30,7 @@ pub struct VideoStreamingCapabilitiesExt {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct VideoStreamingCapabilities {
     pub default_view_resolution: UVec2,
+    pub max_view_resolution: UVec2,
     pub refresh_rates: Vec<f32>,
     pub microphone_sample_rate: u32,
     pub foveated_encoding: bool,
@@ -60,13 +61,16 @@ impl VideoStreamingCapabilities {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct ConnectionAcceptedInfo {
+    pub client_protocol_id: u64,
+    pub platform_string: String,
+    pub server_ip: IpAddr,
+    pub streaming_capabilities: Option<VideoStreamingCapabilities>,
+}
+
+#[derive(Serialize, Deserialize)]
 pub enum ClientConnectionResult {
-    ConnectionAccepted {
-        client_protocol_id: u64,
-        display_name: String,
-        server_ip: IpAddr,
-        streaming_capabilities: Option<VideoStreamingCapabilities>,
-    },
+    ConnectionAccepted(Box<ConnectionAcceptedInfo>),
     ClientStandby,
 }
 
@@ -193,6 +197,7 @@ pub enum ClientControlPacket {
         level: LogSeverity,
         message: String,
     },
+    ProximityState(bool),
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }

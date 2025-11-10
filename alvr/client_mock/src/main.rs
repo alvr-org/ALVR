@@ -190,14 +190,15 @@ fn client_thread(
     input_receiver: mpsc::Receiver<WindowInput>,
 ) {
     let capabilities = ClientCapabilities {
+        platform: alvr_system_info::platform(None, None),
         default_view_resolution: UVec2::new(1920, 1832),
+        max_view_resolution: UVec2::new(1920, 1832),
         refresh_rates: vec![60.0, 72.0, 80.0, 90.0, 120.0],
         foveated_encoding: false,
         encoder_high_profile: false,
         encoder_10_bits: false,
         encoder_av1: false,
         prefer_10bit: false,
-        prefer_full_range: true,
         preferred_encoding_gamma: 1.0,
         prefer_hdr: false,
     };

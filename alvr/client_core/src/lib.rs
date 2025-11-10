@@ -27,6 +27,7 @@ use alvr_packets::{
     BatteryInfo, ButtonEntry, ClientControlPacket, RealTimeConfig, StreamConfig, TrackingData,
 };
 use alvr_session::CodecType;
+use alvr_system_info::Platform;
 use connection::{ConnectionContext, DecoderCallback};
 use std::{
     collections::{HashSet, VecDeque},
@@ -59,19 +60,21 @@ pub enum ClientCoreEvent {
 // Note: this struct may change without breaking network protocol changes
 #[derive(Clone)]
 pub struct ClientCapabilities {
+    pub platform: Platform,
     pub default_view_resolution: UVec2,
+    pub max_view_resolution: UVec2,
     pub refresh_rates: Vec<f32>,
     pub foveated_encoding: bool,
     pub encoder_high_profile: bool,
     pub encoder_10_bits: bool,
     pub encoder_av1: bool,
     pub prefer_10bit: bool,
-    pub prefer_full_range: bool,
     pub preferred_encoding_gamma: f32,
     pub prefer_hdr: bool,
 }
 
 pub struct ClientCoreContext {
+    platform: Platform,
     lifecycle_state: Arc<RwLock<LifecycleState>>,
     event_queue: Arc<Mutex<VecDeque<ClientCoreEvent>>>,
     connection_context: Arc<ConnectionContext>,
@@ -96,6 +99,8 @@ impl ClientCoreContext {
             alvr_system_info::set_wifi_lock(true);
         }
 
+        let platform = capabilities.platform;
+
         let lifecycle_state = Arc::new(RwLock::new(LifecycleState::Idle));
         let event_queue = Arc::new(Mutex::new(VecDeque::new()));
         let connection_context = Arc::new(ConnectionContext::default());
@@ -114,6 +119,7 @@ impl ClientCoreContext {
         });
 
         Self {
+            platform,
             lifecycle_state,
             event_queue,
             connection_context,
@@ -222,6 +228,14 @@ impl ClientCoreContext {
         }
     }
 
+    pub fn send_proximity_state(&self, headset_is_worn: bool) {
+        if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
+            sender
+                .send(&ClientControlPacket::ProximityState(headset_is_worn))
+                .ok();
+        }
+    }
+
     pub fn get_total_prediction_offset(&self) -> Duration {
         dbg_client_core!("get_total_prediction_offset");
 
@@ -293,6 +307,10 @@ impl ClientCoreContext {
                 }
             }
         }
+    }
+
+    pub fn platform(&self) -> Platform {
+        self.platform
     }
 }
 

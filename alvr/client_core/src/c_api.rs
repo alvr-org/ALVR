@@ -42,6 +42,8 @@ static DECODER_CONFIG_BUFFER: Mutex<Vec<u8>> = Mutex::new(vec![]);
 pub struct AlvrClientCapabilities {
     default_view_width: u32,
     default_view_height: u32,
+    max_view_width: u32,
+    max_view_height: u32,
     refresh_rates: *const f32,
     refresh_rates_count: u64,
     foveated_encoding: bool,
@@ -49,7 +51,6 @@ pub struct AlvrClientCapabilities {
     encoder_10_bits: bool,
     encoder_av1: bool,
     prefer_10bit: bool,
-    prefer_full_range: bool,
     preferred_encoding_gamma: f32,
     prefer_hdr: bool,
 }
@@ -201,6 +202,8 @@ pub extern "C" fn alvr_initialize(capabilities: AlvrClientCapabilities) {
         capabilities.default_view_height,
     );
 
+    let max_view_resolution = UVec2::new(capabilities.max_view_width, capabilities.max_view_height);
+
     let refresh_rates = unsafe {
         slice::from_raw_parts(
             capabilities.refresh_rates,
@@ -210,14 +213,15 @@ pub extern "C" fn alvr_initialize(capabilities: AlvrClientCapabilities) {
     .to_vec();
 
     let capabilities = ClientCapabilities {
+        platform: alvr_system_info::platform(None, None),
         default_view_resolution,
+        max_view_resolution,
         refresh_rates,
         foveated_encoding: capabilities.foveated_encoding,
         encoder_high_profile: capabilities.encoder_high_profile,
         encoder_10_bits: capabilities.encoder_10_bits,
         encoder_av1: capabilities.encoder_av1,
         prefer_10bit: capabilities.prefer_10bit,
-        prefer_full_range: capabilities.prefer_full_range,
         preferred_encoding_gamma: capabilities.preferred_encoding_gamma,
         prefer_hdr: capabilities.prefer_hdr,
     };

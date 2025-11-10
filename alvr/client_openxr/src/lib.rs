@@ -15,7 +15,7 @@ use alvr_common::{
     parking_lot::RwLock,
 };
 use alvr_graphics::GraphicsContext;
-use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig};
+use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, PerformanceLevel};
 use alvr_system_info::Platform;
 use extra_extensions::{
     BD_BODY_TRACKING_EXTENSION_NAME, BD_MOTION_TRACKING_EXTENSION_NAME,
@@ -95,6 +95,42 @@ fn to_xr_time(timestamp: Duration) -> xr::Time {
     xr::Time::from_nanos(timestamp.as_nanos() as _)
 }
 
+fn convert_performance_level(level: PerformanceLevel) -> xr::PerfSettingsLevelEXT {
+    match level {
+        PerformanceLevel::PowerSavings => xr::PerfSettingsLevelEXT::POWER_SAVINGS,
+        PerformanceLevel::SustainedLow => xr::PerfSettingsLevelEXT::SUSTAINED_LOW,
+        PerformanceLevel::SustainedHigh => xr::PerfSettingsLevelEXT::SUSTAINED_HIGH,
+        PerformanceLevel::Boost => xr::PerfSettingsLevelEXT::BOOST,
+    }
+}
+
+fn set_performance_level(
+    xr_instance: &xr::Instance,
+    xr_session: &xr::Session<xr::OpenGlEs>,
+    cpu_level: PerformanceLevel,
+    gpu_level: PerformanceLevel,
+) {
+    if let Some(performance_settings) = xr_instance.exts().ext_performance_settings {
+        let set_performance_level = performance_settings.perf_settings_set_performance_level;
+
+        let xr_cpu_level = convert_performance_level(cpu_level);
+        let xr_gpu_level = convert_performance_level(gpu_level);
+
+        unsafe {
+            set_performance_level(
+                xr_session.as_raw(),
+                xr::PerfSettingsDomainEXT::CPU,
+                xr_cpu_level,
+            );
+            set_performance_level(
+                xr_session.as_raw(),
+                xr::PerfSettingsDomainEXT::GPU,
+                xr_gpu_level,
+            );
+        }
+    }
+}
+
 fn default_view() -> xr::View {
     xr::View {
         pose: xr::Posef {
@@ -165,6 +201,7 @@ pub fn entry_point() {
     exts.ext_eye_gaze_interaction = available_extensions.ext_eye_gaze_interaction;
     exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
     exts.ext_local_floor = available_extensions.ext_local_floor;
+    exts.ext_performance_settings = available_extensions.ext_performance_settings;
     exts.ext_user_presence = available_extensions.ext_user_presence;
     exts.fb_body_tracking = available_extensions.fb_body_tracking;
     exts.fb_color_space = available_extensions.fb_color_space;
@@ -332,6 +369,16 @@ pub fn entry_point() {
             .write()
             .select_sources(&lobby_interaction_sources);
 
+        if let Some(performance_settings) = xr_instance.exts().ext_performance_settings {
+            let level = xr::PerfSettingsLevelEXT::POWER_SAVINGS;
+
+            let set_performance_level = performance_settings.perf_settings_set_performance_level;
+            unsafe {
+                set_performance_level(xr_session.as_raw(), xr::PerfSettingsDomainEXT::CPU, level);
+                set_performance_level(xr_session.as_raw(), xr::PerfSettingsDomainEXT::GPU, level);
+            }
+        }
+
         let mut session_running = false;
         let mut stream_context = None::<StreamContext>;
         let mut passthrough_layer = None;
@@ -478,6 +525,15 @@ pub fn entry_point() {
                             passthrough_layer = PassthroughLayer::new(&xr_session, platform).ok();
                         } else if config.passthrough.is_none() && passthrough_layer.is_some() {
                             passthrough_layer = None;
+                        }
+
+                        if let Some(performance_level) = &config.perfromance_level {
+                            set_performance_level(
+                                &xr_instance,
+                                &xr_session,
+                                performance_level.cpu.clone(),
+                                performance_level.gpu.clone(),
+                            );
                         }
 
                         if let Some(stream) = &mut stream_context {

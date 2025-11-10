@@ -878,6 +878,24 @@ pub enum HeadsetEmulationMode {
     },
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Clone)]
+pub enum PerformanceLevel {
+    PowerSavings,
+    SustainedLow,
+    SustainedHigh,
+    Boost,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Clone)]
+pub struct PerformanceLevelConfig {
+    #[schema(flag = "real-time")]
+    #[schema(strings(display_name = "CPU"))]
+    pub cpu: PerformanceLevel,
+    #[schema(flag = "real-time")]
+    #[schema(strings(display_name = "GPU"))]
+    pub gpu: PerformanceLevel,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub enum FaceTrackingSourcesConfig {
     PreferEyeTrackingOnly,
@@ -1273,6 +1291,8 @@ Tilted: the world gets tilted when long pressing the oculus button. This is usef
 
     #[schema(flag = "steamvr-restart")]
     pub emulation_mode: HeadsetEmulationMode,
+
+    pub performance_level: Switch<PerformanceLevelConfig>,
 
     #[schema(flag = "steamvr-restart")]
     #[schema(strings(display_name = "Extra OpenVR properties"))]
@@ -1918,6 +1938,17 @@ pub fn session_settings_default() -> SettingsDefault {
                     serial_number: "Unknown".into(),
                 },
                 variant: HeadsetEmulationModeDefaultVariant::Quest2,
+            },
+            performance_level: SwitchDefault {
+                enabled: false,
+                content: PerformanceLevelConfigDefault {
+                    cpu: PerformanceLevelDefault {
+                        variant: PerformanceLevelDefaultVariant::SustainedLow,
+                    },
+                    gpu: PerformanceLevelDefault {
+                        variant: PerformanceLevelDefaultVariant::SustainedLow,
+                    },
+                },
             },
             extra_openvr_props: default_custom_openvr_props.clone(),
             tracking_ref_only: false,

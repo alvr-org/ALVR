@@ -15,7 +15,7 @@ use alvr_common::{
     parking_lot::RwLock,
 };
 use alvr_graphics::GraphicsContext;
-use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig};
+use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, PerformanceLevel};
 use alvr_system_info::Platform;
 use extra_extensions::{
     BD_BODY_TRACKING_EXTENSION_NAME, BD_MOTION_TRACKING_EXTENSION_NAME,
@@ -93,6 +93,27 @@ fn from_xr_time(timestamp: xr::Time) -> Duration {
 
 fn to_xr_time(timestamp: Duration) -> xr::Time {
     xr::Time::from_nanos(timestamp.as_nanos() as _)
+}
+
+fn set_performance_level(
+    xr_session: &xr::Session<xr::OpenGlEs>,
+    domain: xr::PerfSettingsDomainEXT,
+    level: PerformanceLevel,
+) {
+    if let Some(performance_settings) = xr_session.exts().ext_performance_settings {
+        let set_performance_level = performance_settings.perf_settings_set_performance_level;
+
+        let xr_level = match level {
+            PerformanceLevel::PowerSavings => xr::PerfSettingsLevelEXT::POWER_SAVINGS,
+            PerformanceLevel::SustainedLow => xr::PerfSettingsLevelEXT::SUSTAINED_LOW,
+            PerformanceLevel::SustainedHigh => xr::PerfSettingsLevelEXT::SUSTAINED_HIGH,
+            PerformanceLevel::Boost => xr::PerfSettingsLevelEXT::BOOST,
+        };
+
+        unsafe {
+            set_performance_level(xr_session.as_raw(), domain, xr_level);
+        }
+    }
 }
 
 fn default_view() -> xr::View {
@@ -464,6 +485,19 @@ pub fn entry_point() {
                             passthrough_layer = PassthroughLayer::new(&xr_session, platform).ok();
                         } else if config.passthrough.is_none() && passthrough_layer.is_some() {
                             passthrough_layer = None;
+                        }
+
+                        if let Some(performance_level) = &config.perfromance_level {
+                            set_performance_level(
+                                &xr_session,
+                                xr::PerfSettingsDomainEXT::CPU,
+                                performance_level.cpu.clone(),
+                            );
+                            set_performance_level(
+                                &xr_session,
+                                xr::PerfSettingsDomainEXT::GPU,
+                                performance_level.gpu.clone(),
+                            );
                         }
 
                         if let Some(stream) = &mut stream_context {

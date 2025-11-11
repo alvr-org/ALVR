@@ -18,7 +18,9 @@ alvr_gui_common.workspace = true
 alvr_audio.workspace = true
 
 chrono = "0.4"
-eframe = "0.32"
+eframe = { version = "0.32", features = ["wgpu"] }
+egui-wgpu = "0.32"
+wgpu = "25.0.0"
 env_logger = "0.11"
 ico = "0.4"
 rand = "0.9"

@@ -145,8 +145,7 @@ fn main() {
                     device_descriptor: Arc::new(|_adapter: &wgpu::Adapter| wgpu::DeviceDescriptor {
                         memory_hints: wgpu::MemoryHints::MemoryUsage,
                         ..Default::default()
-                    }),
-                    ..Default::default()
+                    })
                 }),
                 ..Default::default()
             },

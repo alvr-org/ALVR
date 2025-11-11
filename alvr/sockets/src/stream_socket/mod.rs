@@ -128,9 +128,14 @@ impl<H: Serialize> StreamSender<H> {
         })
     }
 
-    pub fn send_header(&mut self, header: &H) -> Result<()> {
-        let buffer = self.get_buffer(header, 0)?;
+    pub fn send_header_with_payload(&mut self, header: &H, raw_payload: &[u8]) -> Result<()> {
+        let mut buffer = self.get_buffer(header, raw_payload.len())?;
+        buffer.copy_from_slice(raw_payload);
         self.send(buffer)
+    }
+
+    pub fn send_header(&mut self, header: &H) -> Result<()> {
+        self.send_header_with_payload(header, &[])
     }
 }
 

@@ -883,11 +883,9 @@ fn connection_pipeline(
                     .read()
                     .unrecenter_view_params(&mut header.global_view_params);
 
-                let mut buffer = video_sender.get_buffer(&header).unwrap();
+                let mut buffer = video_sender.get_buffer(&header, payload.len()).unwrap();
                 // todo: make encoder write to socket buffers directly to avoid copy
-                buffer
-                    .get_range_mut(0..payload.len())
-                    .copy_from_slice(&payload);
+                buffer.copy_from_slice(&payload);
                 video_sender.send(buffer).ok();
             }
         }

@@ -31,7 +31,7 @@ use std::{
     marker::PhantomData,
     mem,
     net::{IpAddr, TcpListener, UdpSocket},
-    ops::Range,
+    ops::{Deref, DerefMut},
     sync::{Arc, mpsc},
     time::Duration,
 };
@@ -68,39 +68,17 @@ pub struct Buffer<H = ()> {
     _phantom: PhantomData<H>,
 }
 
-impl<H> Buffer<H> {
-    /// Length of payload (without prefix)
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.inner.len() - self.raw_payload_offset
-    }
+impl<H> Deref for Buffer<H> {
+    type Target = [u8];
 
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Get the whole payload of the buffer
-    #[must_use]
-    pub fn get(&self) -> &[u8] {
+    fn deref(&self) -> &[u8] {
         &self.inner[self.raw_payload_offset..]
     }
+}
 
-    /// Newly acquired buffers will have no payload. If the provided range is outside the current
-    /// payload size, the payload will be zero-extended to exactly fit the provided range
-    #[must_use]
-    pub fn get_range_mut(&mut self, range: Range<usize>) -> &mut [u8] {
-        let required_size = self.raw_payload_offset + range.end;
-        if required_size > self.inner.len() {
-            self.inner.resize(required_size, 0);
-        }
-
-        &mut self.inner[self.raw_payload_offset..][range]
-    }
-
-    /// If length > current length, allocate more space
-    pub fn set_len(&mut self, length: usize) {
-        self.inner.resize(self.raw_payload_offset + length, 0);
+impl<H> DerefMut for Buffer<H> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner[self.raw_payload_offset..]
     }
 }
 
@@ -131,22 +109,27 @@ impl<H> StreamSender<H> {
 }
 
 impl<H: Serialize> StreamSender<H> {
-    pub fn get_buffer(&mut self, header: &H) -> Result<Buffer<H>> {
+    pub fn get_buffer(&mut self, header: &H, raw_payload_len: usize) -> Result<Buffer<H>> {
         let mut buffer = self.used_buffers.pop().unwrap_or_default();
+
         buffer.resize(self.payload_offset, 0);
 
         let encoded_payload_size =
             bincode::serde::encode_into_std_write(header, &mut buffer, config::standard())?;
 
+        let raw_payload_offset = self.payload_offset + encoded_payload_size;
+
+        buffer.resize(raw_payload_offset + raw_payload_len, 0);
+
         Ok(Buffer {
             inner: buffer,
-            raw_payload_offset: self.payload_offset + encoded_payload_size,
+            raw_payload_offset,
             _phantom: PhantomData,
         })
     }
 
     pub fn send_header(&mut self, header: &H) -> Result<()> {
-        let buffer = self.get_buffer(header)?;
+        let buffer = self.get_buffer(header, 0)?;
         self.send(buffer)
     }
 }
@@ -196,7 +179,13 @@ pub struct StreamReceiver<H> {
     _phantom: PhantomData<H>,
 }
 
+// Wrapping comparison for packet indices.
+// Problem: packet indices have a finite bit-width and we have to wrap around upon reaching the
+// maximum value. This function provides proper ordering capability when wrapping around. The
+// maximum index distance that two packets can have is u32::MAX / 2 (which is plenty for any
+// reasonable circumstance).
 fn wrapping_cmp(lhs: u32, rhs: u32) -> Ordering {
+    // Note: since we are using u32, if lhs < rhs then the difference will be closer to u32::MAX
     let diff = lhs.wrapping_sub(rhs);
     if diff == 0 {
         Ordering::Equal

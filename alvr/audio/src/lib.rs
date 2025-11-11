@@ -301,8 +301,8 @@ pub fn record_audio_blocking(
                 let data = downmix_audio(data, config.channels(), channels_count);
 
                 if is_running() {
-                    let mut buffer = sender.get_buffer(&()).unwrap();
-                    buffer.get_range_mut(0..data.len()).copy_from_slice(&data);
+                    let mut buffer = sender.get_buffer(&(), data.len()).unwrap();
+                    buffer.copy_from_slice(&data);
                     sender.send(buffer).ok();
                 } else {
                     *state.lock() = AudioRecordState::ShouldStop;

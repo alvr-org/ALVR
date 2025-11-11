@@ -39,7 +39,7 @@ fn main() {
     use egui_wgpu::{WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew};
     use ico::IconDir;
     use std::{env, ffi::OsStr, fs};
-    use std::{io::Cursor, sync::mpsc, sync::Arc};
+    use std::{io::Cursor, sync::Arc, sync::mpsc};
     use wgpu::{DeviceType, InstanceDescriptor, PowerPreference};
 
     let (server_events_sender, server_events_receiver) = mpsc::channel();
@@ -143,9 +143,6 @@ fn main() {
                         },
                     )),
                     device_descriptor: Arc::new(|_adapter: &wgpu::Adapter| wgpu::DeviceDescriptor {
-                        label: None,
-                        required_features: wgpu::Features::empty(),
-                        required_limits: wgpu::Limits::default(),
                         memory_hints: wgpu::MemoryHints::MemoryUsage,
                         ..Default::default()
                     }),

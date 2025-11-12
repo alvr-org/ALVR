@@ -8,9 +8,9 @@ use openxr::{
 };
 use std::{ffi::c_void, ptr, sync::LazyLock};
 
-pub const META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME: &str =
-    "XR_META_simultaneous_hands_and_controllers";
-pub const META_DETACHED_CONTROLLERS_EXTENSION_NAME: &str = "XR_META_detached_controllers";
+pub const META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME: &[u8] =
+    b"XR_META_simultaneous_hands_and_controllers";
+pub const META_DETACHED_CONTROLLERS_EXTENSION_NAME: &[u8] = b"XR_META_detached_controllers";
 
 static TYPE_SYSTEM_SIMULTANEOUS_HANDS_AND_CONTROLLERS_PROPERTIES_META: LazyLock<xr::StructureType> =
     LazyLock::new(|| xr::StructureType::from_raw(1000532001));
@@ -59,7 +59,7 @@ pub struct MultimodalMeta {
 impl MultimodalMeta {
     pub fn new<G>(
         session: xr::Session<G>,
-        extra_extensions: &[String],
+        extra_extensions: &[Vec<u8>],
         system: xr::SystemId,
     ) -> xr::Result<Self> {
         if !extra_extensions

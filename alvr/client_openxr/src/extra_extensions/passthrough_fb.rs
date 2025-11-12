@@ -1,5 +1,8 @@
 use alvr_system_info::Platform;
-use openxr::{self as xr, raw, sys};
+use openxr::{
+    self as xr, raw,
+    sys::{self, Handle},
+};
 use std::ptr;
 
 pub struct PassthroughFB {

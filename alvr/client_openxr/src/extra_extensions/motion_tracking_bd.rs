@@ -2,8 +2,8 @@ use crate::extra_extensions::get_instance_proc;
 use openxr::{self as xr, AnyGraphics, sys};
 use std::ffi::{CString, c_char};
 
-pub const BD_MOTION_TRACKING_EXTENSION_NAME: &str = "XR_BD_motion_tracking";
-pub const PICO_CONFIGURATION_EXTENSION_NAME: &str = "XR_PICO_configuration";
+pub const BD_MOTION_TRACKING_EXTENSION_NAME: &[u8] = b"XR_BD_motion_tracking";
+pub const PICO_CONFIGURATION_EXTENSION_NAME: &[u8] = b"XR_PICO_configuration";
 
 #[repr(C)]
 #[derive(Default)]
@@ -58,7 +58,7 @@ pub struct MotionTrackerBD {
 }
 
 impl MotionTrackerBD {
-    pub fn new<G>(session: xr::Session<G>, extra_extensions: &[String]) -> xr::Result<Self> {
+    pub fn new<G>(session: xr::Session<G>, extra_extensions: &[Vec<u8>]) -> xr::Result<Self> {
         if !extra_extensions.contains(&BD_MOTION_TRACKING_EXTENSION_NAME.to_owned())
             || !extra_extensions.contains(&PICO_CONFIGURATION_EXTENSION_NAME.to_owned())
         {

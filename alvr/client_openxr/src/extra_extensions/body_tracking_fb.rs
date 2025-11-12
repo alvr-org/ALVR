@@ -1,13 +1,16 @@
 #![allow(dead_code)]
 
 use crate::extra_extensions::get_instance_proc;
-use openxr::{self as xr, raw, sys};
+use openxr::{
+    self as xr, raw,
+    sys::{self, Handle},
+};
 use std::{ptr, sync::LazyLock};
 
-pub const META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME: &str = "XR_META_body_tracking_full_body";
+pub const META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME: &[u8] = b"XR_META_body_tracking_full_body";
 pub static BODY_JOINT_SET_FULL_BODY_META: LazyLock<xr::BodyJointSetFB> =
     LazyLock::new(|| xr::BodyJointSetFB::from_raw(1000274000));
-pub const META_BODY_TRACKING_FIDELITY_EXTENSION_NAME: &str = "XR_META_body_tracking_fidelity";
+pub const META_BODY_TRACKING_FIDELITY_EXTENSION_NAME: &[u8] = b"XR_META_body_tracking_fidelity";
 pub static SYSTEM_PROPERTIES_BODY_TRACKING_FIDELITY_META: LazyLock<xr::StructureType> =
     LazyLock::new(|| xr::StructureType::from_raw(1000284001));
 pub const FULL_BODY_JOINT_LEFT_UPPER_LEG_META: usize = 70;

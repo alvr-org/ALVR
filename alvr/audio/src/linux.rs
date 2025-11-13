@@ -243,11 +243,7 @@ fn create_speaker_stream(
                 if let Some(data) = pw_buf.data() {
                     // Data is given as s16le in the correct layout by pipewire already,
                     // no need to do conversions
-                    let mut buffer = sender.get_buffer(&()).unwrap();
-                    buffer
-                        .get_range_mut(0, size)
-                        .copy_from_slice(&data[0..size]);
-                    sender.send(buffer).ok();
+                    sender.send_header_with_payload(&(), &data[0..size]).ok();
                 }
             }
         })

@@ -878,12 +878,10 @@ fn connection_pipeline(
                     .read()
                     .unrecenter_view_params(&mut header.global_view_params);
 
-                let mut buffer = video_sender.get_buffer(&header).unwrap();
-                // todo: make encoder write to socket buffers directly to avoid copy
-                buffer
-                    .get_range_mut(0, payload.len())
-                    .copy_from_slice(&payload);
-                video_sender.send(buffer).ok();
+                // todo: use get_buffer and make encoder write to socket buffers directly to avoid copy
+                video_sender
+                    .send_header_with_payload(&header, &payload)
+                    .ok();
             }
         }
     });

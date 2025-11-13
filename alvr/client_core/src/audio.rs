@@ -76,11 +76,7 @@ pub fn record_audio_blocking(
 
     while is_running() && error.lock().is_none() {
         while let Ok(sample_buffer) = samples_receiver.recv_timeout(INPUT_RECV_TIMEOUT) {
-            let mut buffer = sender.get_buffer(&()).unwrap();
-            buffer
-                .get_range_mut(0, sample_buffer.len())
-                .copy_from_slice(&sample_buffer);
-            sender.send(buffer).ok();
+            sender.send_header_with_payload(&(), &sample_buffer).ok();
         }
     }
 

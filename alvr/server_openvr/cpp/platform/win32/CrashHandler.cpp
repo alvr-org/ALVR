@@ -2,8 +2,8 @@
 
 #include "../../alvr_server/Logger.h"
 #include "../../shared/backward.hpp"
-#include <Windows.h>
 #include <ostream>
+#include <windows.h>
 
 static LONG WINAPI handler(PEXCEPTION_POINTERS ptrs) {
     backward::StackTrace stacktrace;

@@ -36,9 +36,11 @@ fn main() {
         NativeOptions,
         egui::{IconData, ViewportBuilder},
     };
+    use egui_wgpu::{WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew};
     use ico::IconDir;
     use std::{env, ffi::OsStr, fs};
-    use std::{io::Cursor, sync::mpsc};
+    use std::{io::Cursor, sync::Arc, sync::mpsc};
+    use wgpu::{DeviceType, InstanceDescriptor, PowerPreference};
 
     let (server_events_sender, server_events_receiver) = mpsc::channel();
     logging_backend::init_logging(server_events_sender.clone());
@@ -96,6 +98,57 @@ fn main() {
                     height: image.height(),
                 }),
             centered: true,
+            renderer: eframe::Renderer::Wgpu,
+            wgpu_options: WgpuConfiguration {
+                wgpu_setup: WgpuSetup::CreateNew(WgpuSetupCreateNew {
+                    instance_descriptor: InstanceDescriptor {
+                        #[cfg(windows)]
+                        backends: wgpu::Backends::DX12,
+                        ..Default::default()
+                    },
+
+                    // The UI actually does start to lag if you don't select this unfortunately
+                    power_preference: PowerPreference::HighPerformance,
+
+                    // Select adapter: prefer software/WARP, otherwise first adapter
+                    native_adapter_selector: Some(Arc::new(
+                        move |adapters: &[wgpu::Adapter], surface: Option<&wgpu::Surface<'_>>| {
+                            // Find the WARP adapter
+                            for adapter in adapters {
+                                let info = adapter.get_info();
+                                if info.device_type == DeviceType::Cpu
+                                {
+                                    info!("Selected software adapter for dashboard: {:?}", info);
+                                    return Ok(adapter.clone());
+                                }
+                            }
+
+                            // If none found, prefer a compatible adapter for the surface (if given)
+                            if let Some(surf) = surface {
+                                for adapter in adapters {
+                                    if adapter.is_surface_supported(surf) {
+                                        info!("Selected first compatible hardware adapter for dashboard: {:?}", adapter.get_info());
+                                        return Ok(adapter.clone());
+                                    }
+                                }
+                            }
+
+                            // Otherwise just return the first adapter
+                            if let Some(first) = adapters.first() {
+                                info!("Selected fallback adapter for dashboard: {:?}", first.get_info());
+                                return Ok(first.clone());
+                            }
+
+                            Err("No adapters available for dashboard renderer".to_owned())
+                        },
+                    )),
+                    device_descriptor: Arc::new(|_adapter: &wgpu::Adapter| wgpu::DeviceDescriptor {
+                        memory_hints: wgpu::MemoryHints::MemoryUsage,
+                        ..Default::default()
+                    })
+                }),
+                ..Default::default()
+            },
             ..Default::default()
         },
         {

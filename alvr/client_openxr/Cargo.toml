@@ -79,6 +79,10 @@ actions = ["org.khronos.openxr.OpenXRRuntimeService"]
 [[package.metadata.android.queries.provider]]
 name = "org.khronos.openxr"
 authorities = "org.khronos.openxr.runtime_broker;org.khronos.openxr.system_runtime_broker"
+[[package.metadata.android.queries.intent]]
+actions = ["org.khronos.openxr.OpenXRRuntimeService"]
+[[package.metadata.android.queries.intent]]
+actions = ["org.khronos.openxr.OpenXRApiLayerService"]
 
 [package.metadata.android.application]
 debuggable = false

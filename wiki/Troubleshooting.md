@@ -49,7 +49,7 @@ The version of ALVR available on the SideQuest store is compatible with the late
 Failed to initialize CEncoder
 ---
 
-ALVR currently needs a recent AMD or Nvidia GPU to run, since it utilizes hardware video encoding (see [requirements](https://github.com/alvr-org/ALVR#requirements)). If you get an error saying something like
+ALVR currently needs a recent AMD, Nvidia or Intel GPU to run, since it utilizes hardware video encoding (see [requirements](https://github.com/alvr-org/ALVR#requirements)). If you get an error saying something like
 
 ```
 Failed to initialize CEncoder. All VideoEncoder are not available. VCE: AMF Error 1. g_AMFFactory.Init(), NVENC: NvEnc NvEncoderD3D11 failed. Code=1 NvEncoder::LoadNvEncApi : NVENC library file is not found. Please ensure NV driver is installed at c:\src\alvr\alvr_server\nvencoder.cpp:70
@@ -57,7 +57,7 @@ Failed to initialize CEncoder. All VideoEncoder are not available. VCE: AMF Erro
 
 and you have up-to-date GPU drivers, then your graphics card isn't supported. If you're using a laptop with a powerful enough discrete GPU, you _might_ be able to get ALVR to work by forcing SteamVR to use it in either Windows settings, or the Nvidia control panel.
 
-If you have a compatible GPU, you're most likely seeing a different error after either `VCE:` or `NVENC:` than above. In that case, try using a different video codec in ALVR settings. You can also try lowering your video resolution setting.
+If you have a compatible GPU, you're most likely seeing a different error after either `VCE:`, `VPL:` or `NVENC:` than above. In that case, try using a different video codec in ALVR settings. You can also try lowering your video resolution setting.
 
 Failed to start audio capture
 ---

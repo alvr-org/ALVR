@@ -6,7 +6,7 @@ use std::{
     sync::LazyLock,
 };
 
-pub const BD_BODY_TRACKING_EXTENSION_NAME: &str = "XR_BD_body_tracking";
+pub const BD_BODY_TRACKING_EXTENSION_NAME: &[u8] = b"XR_BD_body_tracking";
 
 static TYPE_BODY_TRACKER_CREATE_INFO_BD: LazyLock<xr::StructureType> =
     LazyLock::new(|| xr::StructureType::from_raw(1000385001));
@@ -126,7 +126,7 @@ impl BodyTrackerBD {
     pub fn new<G>(
         session: xr::Session<G>,
         joint_set: BodyJointSetBD,
-        extra_extensions: &[String],
+        extra_extensions: &[Vec<u8>],
         system: xr::SystemId,
         prompt_calibration: bool,
     ) -> xr::Result<Self> {

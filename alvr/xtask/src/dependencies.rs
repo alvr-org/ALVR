@@ -318,11 +318,12 @@ fn get_android_openxr_loaders(selection: OpenXRLoadersSelection) {
         fs::remove_dir_all(&temp_dir).ok();
     }
 
+    const OPENXR_VERSION: &str = "1.1.36";
     get_openxr_loader(
         "",
         &format!(
-            "https://github.com/KhronosGroup/OpenXR-SDK-Source/releases/download/{}",
-            "release-1.0.34/openxr_loader_for_android-1.0.34.aar",
+            "https://github.com/KhronosGroup/OpenXR-SDK-Source/releases/download/\
+            release-{OPENXR_VERSION}/openxr_loader_for_android-{OPENXR_VERSION}.aar",
         ),
         "prefab/modules/openxr_loader/libs/android.arm64-v8a",
     );

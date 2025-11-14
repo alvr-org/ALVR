@@ -709,7 +709,8 @@ void VideoEncoderAMF::Transmit(
 
     auto params = GetDynamicEncoderParams();
     if (params.updated) {
-        amf_int64 bitRateIn = params.bitrate_bps / params.framerate * m_refreshRate; // in bits
+        amf_int64 bitRateIn = params.bitrate_bps * m_refreshRate
+            / static_cast<amf_int64>(std::round(params.framerate)); // in bits
         if (m_codec == ALVR_CODEC_H264) {
             m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
             m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_PEAK_BITRATE, bitRateIn);

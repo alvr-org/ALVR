@@ -359,27 +359,27 @@ impl InteractionContext {
             .unwrap();
 
         let left_grip_space = left_grip_action
-            .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+            .create_space(&xr_session, xr::Path::NULL, xr::Posef::IDENTITY)
             .unwrap();
         let right_grip_space = right_grip_action
-            .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+            .create_space(&xr_session, xr::Path::NULL, xr::Posef::IDENTITY)
             .unwrap();
 
         let left_aim_space = left_aim_action
-            .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+            .create_space(&xr_session, xr::Path::NULL, xr::Posef::IDENTITY)
             .unwrap();
         let right_aim_space = right_aim_action
-            .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+            .create_space(&xr_session, xr::Path::NULL, xr::Posef::IDENTITY)
             .unwrap();
 
         let left_detached_grip_space = left_detached_grip_action.as_ref().map(|action| {
             action
-                .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+                .create_space(&xr_session, xr::Path::NULL, xr::Posef::IDENTITY)
                 .unwrap()
         });
         let right_detached_grip_space = right_detached_grip_action.as_ref().map(|action| {
             action
-                .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+                .create_space(&xr_session, xr::Path::NULL, xr::Posef::IDENTITY)
                 .unwrap()
         });
 
@@ -420,7 +420,7 @@ impl InteractionContext {
                 }
 
                 let space = action
-                    .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+                    .create_space(&xr_session, xr::Path::NULL, xr::Posef::IDENTITY)
                     .unwrap();
 
                 Some((action, space))

@@ -27,7 +27,7 @@ use interaction::{InteractionContext, InteractionSourcesConfig};
 use lobby::Lobby;
 use openxr as xr;
 use passthrough::PassthroughLayer;
-use std::{path::Path, rc::Rc, sync::Arc, thread, time::Duration};
+use std::{ffi::CStr, path::Path, rc::Rc, sync::Arc, thread, time::Duration};
 use stream::StreamContext;
 
 fn from_xr_vec3(v: xr::Vector3f) -> Vec3 {
@@ -135,17 +135,21 @@ fn create_session(
 pub fn entry_point() {
     alvr_client_core::init_logging();
 
+    const LEGACY_OPENXR_VERSION: xr::Version = xr::Version::new(1, 0, 34);
+    const CURRENT_OPENXR_VERSION: xr::Version = xr::Version::new(1, 1, 36);
+
     // Using a provisional platform, before we can get the runtime info
-    let loader_suffix = match alvr_system_info::platform(None, None) {
-        Platform::Quest1 => "_quest1",
+    let (loader_suffix, openxr_version) = match alvr_system_info::platform(None, None) {
+        Platform::Quest1 => ("_quest1", LEGACY_OPENXR_VERSION),
         Platform::PicoNeo3
         | Platform::PicoG3
         | Platform::Pico4
         | Platform::Pico4Pro
-        | Platform::Pico4Enterprise => "_pico_old",
-        p if p.is_yvr() => "_yvr",
-        Platform::Lynx => "_lynx",
-        _ => "",
+        | Platform::Pico4Enterprise => ("_pico_old", LEGACY_OPENXR_VERSION),
+        p if p.is_vive() => ("", LEGACY_OPENXR_VERSION),
+        p if p.is_yvr() => ("_yvr", LEGACY_OPENXR_VERSION),
+        Platform::Lynx => ("_lynx", LEGACY_OPENXR_VERSION),
+        _ => ("", CURRENT_OPENXR_VERSION),
     };
     let xr_entry = unsafe {
         xr::Entry::load_from(Path::new(&format!("libopenxr_loader{loader_suffix}.so"))).unwrap()
@@ -156,6 +160,18 @@ pub fn entry_point() {
 
     let available_extensions = xr_entry.enumerate_extensions().unwrap();
     info!("OpenXR available extensions: {available_extensions:#?}");
+    info!(
+        "Extra available extensions: {:#?}",
+        available_extensions
+            .other
+            .iter()
+            .map(|vec| CStr::from_bytes_with_nul(vec)
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_owned())
+            .collect::<Vec<_>>()
+    );
 
     // todo: switch to vulkan
     assert!(available_extensions.khr_opengl_es_enable);
@@ -199,12 +215,24 @@ pub fn entry_point() {
                 BD_MOTION_TRACKING_EXTENSION_NAME,
                 PICO_CONFIGURATION_EXTENSION_NAME,
             ]
-            .contains(&ext.as_str())
+            .contains(&CStr::from_bytes_with_nul(ext).unwrap().to_str().unwrap())
         })
         .collect();
 
     let available_layers = xr_entry.enumerate_layers().unwrap();
-    alvr_common::info!("OpenXR available layers: {available_layers:#?}");
+    info!("OpenXR available layers: {available_layers:#?}");
+
+    let other_exts = exts
+        .other
+        .iter()
+        .map(|vec| {
+            CStr::from_bytes_with_nul(vec)
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_owned()
+        })
+        .collect::<Vec<_>>();
 
     let xr_instance = xr_entry
         .create_instance(
@@ -213,6 +241,7 @@ pub fn entry_point() {
                 application_version: 0,
                 engine_name: "ALVR",
                 engine_version: 0,
+                api_version: openxr_version,
             },
             &exts,
             &[],
@@ -297,7 +326,7 @@ pub fn entry_point() {
 
         let interaction_context = Arc::new(RwLock::new(InteractionContext::new(
             xr_session.clone(),
-            exts.other.clone(),
+            other_exts.clone(),
             xr_system,
             platform,
         )));

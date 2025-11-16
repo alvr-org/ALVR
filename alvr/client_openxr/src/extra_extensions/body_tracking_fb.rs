@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 
 use crate::extra_extensions::get_instance_proc;
-use openxr::{self as xr, raw, sys};
+use openxr::{
+    self as xr, raw,
+    sys::{self, Handle},
+};
 use std::{ptr, sync::LazyLock};
 
 pub const META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME: &str = "XR_META_body_tracking_full_body";
@@ -10,20 +13,6 @@ pub static BODY_JOINT_SET_FULL_BODY_META: LazyLock<xr::BodyJointSetFB> =
 pub const META_BODY_TRACKING_FIDELITY_EXTENSION_NAME: &str = "XR_META_body_tracking_fidelity";
 pub static SYSTEM_PROPERTIES_BODY_TRACKING_FIDELITY_META: LazyLock<xr::StructureType> =
     LazyLock::new(|| xr::StructureType::from_raw(1000284001));
-pub const FULL_BODY_JOINT_LEFT_UPPER_LEG_META: usize = 70;
-pub const FULL_BODY_JOINT_LEFT_LOWER_LEG_META: usize = 71;
-pub const FULL_BODY_JOINT_LEFT_FOOT_ANKLE_TWIST_META: usize = 72;
-pub const FULL_BODY_JOINT_LEFT_FOOT_ANKLE_META: usize = 73;
-pub const FULL_BODY_JOINT_LEFT_FOOT_SUBTALAR_META: usize = 74;
-pub const FULL_BODY_JOINT_LEFT_FOOT_TRANSVERSE_META: usize = 75;
-pub const FULL_BODY_JOINT_LEFT_FOOT_BALL_META: usize = 76;
-pub const FULL_BODY_JOINT_RIGHT_UPPER_LEG_META: usize = 77;
-pub const FULL_BODY_JOINT_RIGHT_LOWER_LEG_META: usize = 78;
-pub const FULL_BODY_JOINT_RIGHT_FOOT_ANKLE_TWIST_META: usize = 79;
-pub const FULL_BODY_JOINT_RIGHT_FOOT_ANKLE_META: usize = 80;
-pub const FULL_BODY_JOINT_RIGHT_FOOT_SUBTALAR_META: usize = 81;
-pub const FULL_BODY_JOINT_RIGHT_FOOT_TRANSVERSE_META: usize = 82;
-pub const FULL_BODY_JOINT_RIGHT_FOOT_BALL_META: usize = 83;
 pub const FULL_BODY_JOINT_COUNT_META: usize = 84;
 
 #[repr(C)]

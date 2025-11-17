@@ -431,6 +431,10 @@ pub fn entry_point() {
 
                         core_context.send_proximity_state(event.is_user_present());
                     }
+                    xr::Event::Unknown => {
+                        // use event_storage.as_raw(), reinterpret as sys::BaseInStructure, get type
+                        // and then reinterpret as the event struct
+                    }
                     _ => (),
                 }
             }

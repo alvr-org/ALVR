@@ -17,7 +17,7 @@ alvr_packets.workspace = true
 alvr_session.workspace = true
 alvr_system_info.workspace = true
 
-openxr = { git = "https://github.com/Ralith/openxrs", rev = "e9a0135872e6d7a2a44d39baa4af7ad011a82ec6" }
+openxr = { git = "https://github.com/zmerp/openxrs", rev = "e7c1b155e79ff8b58c2f6558d28e1398ebe08d2d" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android-activity = { version = "0.6", features = ["native-activity"] }

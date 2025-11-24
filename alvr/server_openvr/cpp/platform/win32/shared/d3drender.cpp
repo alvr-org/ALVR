@@ -90,7 +90,7 @@ namespace
 	public:
 		CEventHelper()
 		{
-			UuidFromString( ( RPC_CSTR ) "8c8f13b1-60eb-4b6a-a433-de86104115ac", &guid );
+			UuidFromStringA( ( RPC_CSTR ) "8c8f13b1-60eb-4b6a-a433-de86104115ac", &guid );
 			EventRegister( &guid, nullptr, nullptr, &handle );
 		}
 

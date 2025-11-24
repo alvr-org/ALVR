@@ -5,7 +5,7 @@
 
 #pragma comment( lib, "dxgi.lib" )
 #pragma comment( lib, "d3d11.lib" )
-#pragma comment( lib, "Rpcrt4.lib" )
+#pragma comment( lib, "rpcrt4.lib" )
 
 #define Log( ... )
 

@@ -666,7 +666,7 @@ bool FrameRender::RenderFrame(
             m_pD3DRender->GetContext()->OMSetBlendState(m_pBlendState.Get(), NULL, 0xffffffff);
         }
 
-        int inputColorAdjust = 0;
+        uint32_t inputColorAdjust = 0;
         if (Settings::Instance().m_enableHdr) {
             if (SRVDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
                 || SRVDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB

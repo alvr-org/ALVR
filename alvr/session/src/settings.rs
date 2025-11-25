@@ -893,14 +893,14 @@ pub enum PerformanceLevel {
 #[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Clone)]
 pub struct PerformanceLevelConfig {
     #[schema(flag = "real-time")]
-    #[schema(strings(display_name = "CPU"))]
     #[schema(strings(
+        display_name = "CPU",
         help = "When disabling this, the client needs to be restarted for the change to be applied."
     ))]
     pub cpu: Switch<PerformanceLevel>,
     #[schema(flag = "real-time")]
-    #[schema(strings(display_name = "GPU"))]
     #[schema(strings(
+        display_name = "GPU",
         help = "When disabling this, the client needs to be restarted for the change to be applied."
     ))]
     pub gpu: Switch<PerformanceLevel>,

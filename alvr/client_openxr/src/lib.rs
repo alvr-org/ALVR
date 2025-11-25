@@ -359,19 +359,6 @@ pub fn entry_point() {
             .write()
             .select_sources(&lobby_interaction_sources);
 
-        set_performance_level(
-            &xr_instance,
-            &xr_session,
-            xr::PerfSettingsDomainEXT::CPU,
-            PerformanceLevel::PowerSavings,
-        );
-        set_performance_level(
-            &xr_instance,
-            &xr_session,
-            xr::PerfSettingsDomainEXT::GPU,
-            PerformanceLevel::PowerSavings,
-        );
-
         let mut session_running = false;
         let mut stream_context = None::<StreamContext>;
         let mut passthrough_layer = None;

@@ -880,9 +880,13 @@ pub enum HeadsetEmulationMode {
 
 #[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Clone)]
 pub enum PerformanceLevel {
+    #[schema(strings(display_name = "Power Saving"))]
     PowerSavings,
+    #[schema(strings(display_name = "Sustained Low"))]
     SustainedLow,
+    #[schema(strings(display_name = "Sustained High"))]
     SustainedHigh,
+    #[schema(flag = "hidden")]
     Boost,
 }
 
@@ -890,9 +894,15 @@ pub enum PerformanceLevel {
 pub struct PerformanceLevelConfig {
     #[schema(flag = "real-time")]
     #[schema(strings(display_name = "CPU"))]
+    #[schema(strings(
+        help = "When disabling this, the client needs to be restarted for the change to be applied."
+    ))]
     pub cpu: Switch<PerformanceLevel>,
     #[schema(flag = "real-time")]
     #[schema(strings(display_name = "GPU"))]
+    #[schema(strings(
+        help = "When disabling this, the client needs to be restarted for the change to be applied."
+    ))]
     pub gpu: Switch<PerformanceLevel>,
 }
 
@@ -1292,10 +1302,11 @@ Tilted: the world gets tilted when long pressing the oculus button. This is usef
     #[schema(flag = "steamvr-restart")]
     pub emulation_mode: HeadsetEmulationMode,
 
-    #[schema(strings(help = r#"Power Savings: Level 0 to 4.
-        Sustained Low: Level 2 to 4.
-        Sustained High: Level 4 to 6 (varies depending on model).
-        Boost: 4 to 8 (varies depending on model)."#))]
+    #[schema(strings(
+        help = r#"Power Savings might increase latency or reduce framerate consistency but decreases temperatures and improves battery life.
+        Sustained Low provides consistent framerates but might increase latency if necessary.
+        Sustained High provides consistent framerates but increases temperature."#
+    ))]
     pub performance_level: PerformanceLevelConfig,
 
     #[schema(flag = "steamvr-restart")]

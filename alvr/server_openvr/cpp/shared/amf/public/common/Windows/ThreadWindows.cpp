@@ -345,7 +345,7 @@ amf_pts AMF_CDECL_CALL amf_high_precision_clock()
 #endif
 }
 //-------------------------------------------------------------------------------------------------
-#pragma comment (lib, "Winmm.lib")
+#pragma comment (lib, "winmm.lib")
 static amf_uint32 timerPrecision = 1;
 
 void AMF_CDECL_CALL amf_increase_timer_precision()

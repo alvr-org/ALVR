@@ -1264,6 +1264,20 @@ pub enum RecenteringMode {
     },
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct MarkerColocationConfig {
+    #[schema(strings(display_string = "QR Code string"))]
+    pub qr_code_string: String,
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = r"Offset coordinate on the floor between the marker and the playspace origin.
+The height of the marker doesn't need to be measured"
+    ))]
+    #[schema(suffix = "m")]
+    pub floor_offset: [f32; 2],
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
 pub struct MultimodalTracking {
     pub enabled: bool,
@@ -1280,13 +1294,20 @@ This will be configurable in the future."
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct HeadsetConfig {
     #[schema(strings(
-        help = r"Stage: the playspace origin is determined by the room-scale guardian setup.
+        help = r"Stage: the playspace origin is determined by the room-scale guardian setup. Can be synchnonized using a marker.
 Local floor: the origin is on the floor and resets when long pressing the recentering button.
 Local: the origin resets when long pressing the recentering button, and is calculated as an offset from the current head position.
 Tilted: the world gets tilted when long pressing the recentering button. This is useful for using VR while laying down."
     ))]
     #[schema(flag = "real-time")]
     pub recentering_mode: RecenteringMode,
+
+    #[schema(strings(
+        string = "Marker-based co-location",
+        help = "Use a QR code to synchronize the playspace origin between players.",
+        notice = "Print at https://www.qr-code-generator.com"
+    ))]
+    pub marker_colocation: Switch<MarkerColocationConfig>,
 
     #[schema(flag = "steamvr-restart")]
     pub controllers: Switch<ControllersConfig>,
@@ -2141,6 +2162,16 @@ pub fn session_settings_default() -> SettingsDefault {
                 Local: RecenteringModeLocalDefault { view_height: 1.5 },
                 Tilted: RecenteringModeTiltedDefault { view_height: 1.5 },
                 variant: RecenteringModeDefaultVariant::LocalFloor,
+            },
+            marker_colocation: SwitchDefault {
+                enabled: false,
+                content: MarkerColocationConfigDefault {
+                    qr_code_string: String::new(),
+                    floor_offset: ArrayDefault {
+                        gui_collapsed: false,
+                        content: [0.0, 0.0],
+                    },
+                },
             },
             max_prediction_ms: 100,
         },

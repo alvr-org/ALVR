@@ -13,22 +13,23 @@ use crate::{
     input_mapping::ButtonMappingManager,
 };
 use alvr_common::{
-    ConnectionError, DEVICE_ID_TO_PATH, DeviceMotion, Pose, ViewParams,
-    glam::{Quat, Vec3},
+    AngleSlidingWindowAverage, ConnectionError, DEVICE_ID_TO_PATH, DeviceMotion, Pose,
+    SlidingWindowAverage, ViewParams,
+    glam::{Quat, Vec2, Vec3},
     inputs as inp,
     parking_lot::Mutex,
 };
 use alvr_events::{EventType, TrackingEvent};
 use alvr_packets::TrackingData;
 use alvr_session::{
-    BodyTrackingConfig, HeadsetConfig, RecenteringMode, Settings, VMCConfig,
-    settings_schema::Switch,
+    BodyTrackingConfig, HeadsetConfig, MarkerColocationConfig, RecenteringMode, Settings,
+    VMCConfig, settings_schema::Switch,
 };
 use alvr_sockets::StreamReceiver;
 use std::{
     cmp::Ordering,
     collections::{HashMap, VecDeque},
-    f32::consts::PI,
+    f32::consts::{FRAC_PI_2, FRAC_PI_4, PI},
     sync::Arc,
     time::Duration,
 };
@@ -39,6 +40,12 @@ const DEG_TO_RAD: f32 = PI / 180.0;
 pub enum HandType {
     Left = 0,
     Right = 1,
+}
+
+struct RecenteringMarker {
+    string: String,
+    average_angle: AngleSlidingWindowAverage,
+    average_position: SlidingWindowAverage<Vec2>,
 }
 
 // todo: Move this struct to Settings and use it for every tracked device
@@ -54,6 +61,8 @@ pub struct TrackingManager {
     last_head_pose: Pose,             // client's reference space
     inverse_recentering_origin: Pose, // client's reference space
     device_motions_history: HashMap<u64, VecDeque<(Duration, DeviceMotion)>>,
+    recentering_marker: Option<RecenteringMarker>,
+    markers: HashMap<String, Pose>,
     hand_skeletons_history: [VecDeque<(Duration, [Pose; 26])>; 2],
     max_history_size: usize,
 }
@@ -64,6 +73,8 @@ impl TrackingManager {
             last_head_pose: Pose::IDENTITY,
             inverse_recentering_origin: Pose::IDENTITY,
             device_motions_history: HashMap::new(),
+            recentering_marker: None,
+            markers: HashMap::new(),
             hand_skeletons_history: [VecDeque::new(), VecDeque::new()],
             max_history_size,
         }
@@ -102,6 +113,71 @@ impl TrackingManager {
             orientation,
         }
         .inverse();
+    }
+
+    pub fn recenter_from_marker(&mut self, config: &MarkerColocationConfig) {
+        if let Some(marker_pose) = self.markers.get(&config.qr_code_string) {
+            // Detect if the marker is vertical or horizontal, and use two different
+            // robust methods to extract the recentering orientation.
+            let marker_z_axis = marker_pose.orientation * Vec3::Z;
+            let angle_from_y = Vec3::angle_between(marker_z_axis, Vec3::Y);
+
+            let marker_y_angle = if (angle_from_y - FRAC_PI_2).abs() < FRAC_PI_4 {
+                // The marker is vertical
+                Vec2::new(marker_z_axis.x, marker_z_axis.z)
+                    .normalize()
+                    .angle_to(Vec2::Y) // (this Y is on the XZ plane -> Z)
+            } else {
+                let marker_x_axis = marker_pose.orientation * Vec3::X;
+                Vec2::new(marker_x_axis.x, marker_x_axis.z)
+                    .normalize()
+                    .angle_to(Vec2::X)
+            };
+            let marker_floor_position = Vec2::new(marker_pose.position.x, marker_pose.position.z);
+
+            self.recentering_marker
+                .take_if(|rm| rm.string != config.qr_code_string);
+            let recentering_marker = if let Some(rm) = &mut self.recentering_marker {
+                rm.average_angle.submit_sample(marker_y_angle);
+                rm.average_position.submit_sample(marker_floor_position);
+                rm
+            } else {
+                self.recentering_marker.insert(RecenteringMarker {
+                    string: config.qr_code_string.clone(),
+                    average_angle: AngleSlidingWindowAverage::new(
+                        marker_y_angle,
+                        self.max_history_size,
+                    ),
+                    average_position: SlidingWindowAverage::new(
+                        marker_floor_position,
+                        self.max_history_size,
+                    ),
+                })
+            };
+
+            let average_angle =
+                Quat::from_rotation_y(recentering_marker.average_angle.get_average());
+            let position = {
+                let marker_offset_2d = Vec2::from_array(config.floor_offset);
+
+                let offset_2d =
+                    recentering_marker.average_position.get_average() - marker_offset_2d;
+                Vec3::new(offset_2d.x, 0.0, offset_2d.y)
+            };
+            alvr_common::debug!(
+                "Recentering from marker. Angle: {average_angle}, Position: {position}"
+            );
+
+            let recentering_origin = Pose {
+                position,
+                orientation: Quat::from_rotation_y(recentering_marker.average_angle.get_average()),
+            };
+
+            self.inverse_recentering_origin = recentering_origin.inverse();
+        }
+
+        // In case the marker is not found, abort recentering, we still want to use
+        // the last marker recentering origin.
     }
 
     pub fn recenter_pose(&self, pose: Pose) -> Pose {
@@ -261,6 +337,10 @@ impl TrackingManager {
             params.pose = self.inverse_recentering_origin.inverse() * params.pose;
         }
     }
+
+    fn report_markers(&mut self, markers: Vec<(String, Pose)>) {
+        self.markers = markers.into_iter().collect();
+    }
 }
 
 pub fn tracking_loop(
@@ -368,6 +448,14 @@ pub fn tracking_loop(
                 timestamp,
                 &tracking.device_motions,
             );
+
+            if !tracking.markers.is_empty() {
+                tracking_manager_lock.report_markers(tracking.markers);
+
+                if let Some(config) = headset_config.marker_colocation.as_option() {
+                    tracking_manager_lock.recenter_from_marker(config);
+                };
+            }
 
             if let Some(skeleton) = tracking.hand_skeletons[0] {
                 tracking_manager_lock.report_hand_skeleton(HandType::Left, timestamp, skeleton);

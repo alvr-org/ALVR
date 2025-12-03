@@ -189,7 +189,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_adb"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -202,7 +202,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_audio"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -218,7 +218,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client_core"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -240,7 +240,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client_mock"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_client_core",
  "alvr_common",
@@ -254,7 +254,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client_openxr"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_client_core",
  "alvr_common",
@@ -271,7 +271,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "anyhow",
  "backtrace",
@@ -286,7 +286,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_dashboard"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_adb",
  "alvr_audio",
@@ -318,7 +318,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_events"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_common",
  "alvr_packets",
@@ -329,14 +329,14 @@ dependencies = [
 
 [[package]]
 name = "alvr_filesystem"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "dirs",
 ]
 
 [[package]]
 name = "alvr_graphics"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -349,7 +349,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_gui_common"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_common",
  "egui",
@@ -357,7 +357,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_adb",
  "alvr_common",
@@ -380,7 +380,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_packets"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -390,7 +390,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server_core"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_adb",
  "alvr_audio",
@@ -419,7 +419,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server_io"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_common",
  "alvr_events",
@@ -434,7 +434,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server_openvr"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -452,7 +452,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_session"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -466,7 +466,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_sockets"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -479,7 +479,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_system_info"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_common",
  "jni 0.22.4",
@@ -493,7 +493,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_vrcompositor_wrapper"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -503,7 +503,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_vulkan_layer"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -515,7 +515,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_xtask"
-version = "21.0.0-dev12"
+version = "21.0.0-dev13"
 dependencies = [
  "alvr_filesystem",
  "pico-args",
@@ -3273,9 +3273,9 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
 name = "libbz2-rs-sys"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c4a545a15244c7d945065b5d392b2d2d7f21526fba56ce51467b06ed445e8f7"
+checksum = "b3a6a8c165077efc8f3a971534c50ea6a1a18b329ef4a66e897a7e3a1494565f"
 
 [[package]]
 name = "libc"
@@ -3478,9 +3478,9 @@ dependencies = [
 
 [[package]]
 name = "mdns-sd"
-version = "0.19.0"
+version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "451927183d65d600e52b4e877a1251e051576f84fa01e5b4a50b450dfaaa537c"
+checksum = "c2bb8ce26633738d98ffcef71ec58bff967c6675be50229823c2835f6316e67e"
 dependencies = [
  "fastrand",
  "flume",
@@ -3636,7 +3636,7 @@ dependencies = [
  "num-complex",
  "num-rational",
  "num-traits",
- "rand 0.8.5",
+ "rand 0.8.6",
  "rand_distr",
  "simba",
  "typenum",
@@ -4274,9 +4274,9 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "open"
-version = "5.3.3"
+version = "5.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43bb73a7fa3799b198970490a51174027ba0d4ec504b03cd08caf513d40024bc"
+checksum = "9f3bab717c29a857abf75fcef718d441ec7cb2725f937343c734740a985d37fd"
 dependencies = [
  "is-wsl",
  "libc",
@@ -4318,9 +4318,9 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "orbclient"
-version = "0.3.51"
+version = "0.3.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59aed3b33578edcfa1bc96a321d590d31832b6ad55a26f0313362ce687e9abd6"
+checksum = "12c6933ddbbd16539a7672e697bb8d41ac3a4e99ac43eeb40c07236bd7fcb2dd"
 dependencies = [
  "libc",
  "libredox",
@@ -4619,9 +4619,9 @@ checksum = "c33a9471896f1c69cecef8d20cbe2f7accd12527ce60845ff44c153bb2a21b49"
 
 [[package]]
 name = "portable-atomic-util"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "091397be61a01d4be58e7841595bd4bfedb15f1cd54977d79b8271e94ed799a3"
+checksum = "c2a106d1259c23fac8e543272398ae0e3c0b8d33c88ed73d0cc71b0f1d902618"
 dependencies = [
  "portable-atomic",
 ]
@@ -4734,9 +4734,9 @@ dependencies = [
 
 [[package]]
 name = "pxfm"
-version = "0.1.28"
+version = "0.1.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5a041e753da8b807c9255f28de81879c78c876392ff2469cde94799b2896b9d"
+checksum = "e0c5ccf5294c6ccd63a74f1565028353830a9c2f5eb0c682c355c471726a6e3f"
 
 [[package]]
 name = "quick-error"
@@ -4842,9 +4842,9 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "rand"
-version = "0.8.5"
+version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
+checksum = "5ca0ecfa931c29007047d1bc58e623ab12e5590e8c7cc53200d5202b69266d8a"
 dependencies = [
  "libc",
  "rand_chacha 0.3.1",
@@ -4923,7 +4923,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32cb0b9bc82b0a0876c2dd994a7e7a2683d3e7390ca40e6886785ef0c7e3ee31"
 dependencies = [
  "num-traits",
- "rand 0.8.5",
+ "rand 0.8.6",
 ]
 
 [[package]]
@@ -5756,7 +5756,7 @@ dependencies = [
  "approx",
  "nalgebra",
  "num-traits",
- "rand 0.8.5",
+ "rand 0.8.6",
 ]
 
 [[package]]
@@ -6190,9 +6190,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.52.0"
+version = "1.52.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a91135f59b1cbf38c91e73cf3386fca9bb77915c45ce2771460c9d92f0f3d776"
+checksum = "b67dee974fe86fd92cc45b7a95fdd2f99a36a6d7b0d431a231178d3d670bbcc6"
 dependencies = [
  "bytes",
  "libc",
@@ -6484,9 +6484,9 @@ checksum = "8e28f89b80c87b8fb0cf04ab448d5dd0dd0ade2f8891bae878de66a75a28600e"
 
 [[package]]
 name = "typenum"
-version = "1.19.0"
+version = "1.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
+checksum = "40ce102ab67701b8526c123c1bab5cbe42d7040ccfd0f64af1a385808d2f43de"
 
 [[package]]
 name = "uds_windows"
@@ -6599,9 +6599,9 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "uuid"
-version = "1.23.0"
+version = "1.23.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ac8b6f42ead25368cf5b098aeb3dc8a1a2c05a3eee8a9a1a68c640edbfc79d9"
+checksum = "ddd74a9687298c6858e9b88ec8935ec45d22e8fd5e6394fa1bd4e99a87789c76"
 dependencies = [
  "js-sys",
  "serde_core",
@@ -6685,11 +6685,11 @@ checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 
 [[package]]
 name = "wasip2"
-version = "1.0.2+wasi-0.2.9"
+version = "1.0.3+wasi-0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9517f9239f02c069db75e65f174b3da828fe5f5b945c4dd26bd25d89c03ebcf5"
+checksum = "20064672db26d7cdc89c7798c48a0fdfac8213434a1186e5ef29fd560ae223d6"
 dependencies = [
- "wit-bindgen",
+ "wit-bindgen 0.57.1",
 ]
 
 [[package]]
@@ -6698,7 +6698,7 @@ version = "0.4.0+wasi-0.3.0-rc-2026-01-06"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5428f8bf88ea5ddc08faddef2ac4a67e390b88186c703ce6dbd955e1c145aca5"
 dependencies = [
- "wit-bindgen",
+ "wit-bindgen 0.51.0",
 ]
 
 [[package]]
@@ -6960,9 +6960,9 @@ dependencies = [
 
 [[package]]
 name = "webbrowser"
-version = "1.2.0"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe985f41e291eecef5e5c0770a18d28390addb03331c043964d9e916453d6f16"
+checksum = "0fc95580916af1e68ff6a7be07446fc5db73ebf71cf092de939bbf5f7e189f72"
 dependencies = [
  "core-foundation 0.10.1",
  "jni 0.22.4",
@@ -6976,18 +6976,18 @@ dependencies = [
 
 [[package]]
 name = "webpki-root-certs"
-version = "1.0.6"
+version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "804f18a4ac2676ffb4e8b5b5fa9ae38af06df08162314f96a68d2a363e21a8ca"
+checksum = "f31141ce3fc3e300ae89b78c0dd67f9708061d1d2eda54b8209346fd6be9a92c"
 dependencies = [
  "rustls-pki-types",
 ]
 
 [[package]]
 name = "webpki-roots"
-version = "1.0.6"
+version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22cfaf3c063993ff62e73cb4311efde4db1efb31ab78a3e5c457939ad5cc0bed"
+checksum = "52f5ee44c96cf55f1b349600768e3ece3a8f26010c05265ab73f945bb1a2eb9d"
 dependencies = [
  "rustls-pki-types",
 ]
@@ -7968,6 +7968,12 @@ checksum = "d7249219f66ced02969388cf2bb044a09756a083d0fab1e566056b04d9fbcaa5"
 dependencies = [
  "wit-bindgen-rust-macro",
 ]
+
+[[package]]
+name = "wit-bindgen"
+version = "0.57.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 
 [[package]]
 name = "wit-bindgen-core"

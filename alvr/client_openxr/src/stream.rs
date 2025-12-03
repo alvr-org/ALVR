@@ -630,6 +630,13 @@ fn stream_input_loop(
 
         drop(int_ctx_lock);
 
+        let markers = interaction_ctx
+            .write()
+            .marker_spatial_context
+            .as_mut()
+            .and_then(|ctx| interaction::get_marker_poses(ctx, stage_reference_space, now))
+            .unwrap_or_default();
+
         // Even though the server is already adding the motion-to-photon latency, here we use
         // target_time as the poll_timestamp to compensate for the fact that video frames are sent
         // with the poll timestamp instead of the vsync time. This is to ensure correctness when
@@ -644,6 +651,7 @@ fn stream_input_loop(
             ],
             face,
             body,
+            markers,
         });
 
         let button_entries =

@@ -498,6 +498,7 @@ pub extern "C" fn alvr_send_tracking(
                 ..Default::default()
             },
             body: None,
+            markers: Vec::new(),
         });
     }
 }

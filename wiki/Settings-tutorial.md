@@ -18,7 +18,7 @@ Next, choose a refresh rate. Obviously higher is better, but on weaker/older har
 A few notes on codec choices:
 
 * AV1 works only on latest gen gpus (Nvidia RTX 4xxx and AMD Radeon RX 7xxx) and on Quest 3 only.
-* HEVC/H.265 is usually best for bitrate cosntained scenarious.
+* HEVC/H.265 is usually best for bitrate constrained scenarious.
 * AVC/H.264 (with CAVLC) may save a few milliseconds of decode latency, but needs a much higher bitrate to reach similar image quality.
 * Software encoding (x264) can give good results on a beefy high core-count CPU and a very high bitrate. Will require playing with a USB3 cable. The only choice if you don't have a hardware encoder (eg, RX6500).
 

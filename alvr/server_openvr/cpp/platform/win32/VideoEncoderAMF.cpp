@@ -709,7 +709,18 @@ void VideoEncoderAMF::Transmit(
 
     auto params = GetDynamicEncoderParams();
     if (params.updated) {
-        amf_int64 bitRateIn = params.bitrate_bps / params.framerate * m_refreshRate; // in bits
+        amf_int64 bitRateIn = params.bitrate_bps / params.framerate * m_refreshRate; // in bps
+
+        const amf_int64 maxRate = 1'000'000'000;
+        if (bitRateIn > maxRate) {
+            // Don't warn if we're within 1% (10 mbps) of the max bitrate because that case gets
+            // triggered by rounding errors with the max supported rate
+            if (bitRateIn > maxRate + maxRate / 100) {
+                Warn("Set bitrate over max supported by AMF, clamping to 1000mbps");
+            }
+            bitRateIn = maxRate;
+        }
+
         if (m_codec == ALVR_CODEC_H264) {
             m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
             m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_PEAK_BITRATE, bitRateIn);

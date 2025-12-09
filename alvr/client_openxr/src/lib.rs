@@ -19,15 +19,14 @@ use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig};
 use alvr_system_info::Platform;
 use extra_extensions::{
     BD_BODY_TRACKING_EXTENSION_NAME, BD_MOTION_TRACKING_EXTENSION_NAME,
-    META_BODY_TRACKING_FIDELITY_EXTENSION_NAME, META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
-    META_DETACHED_CONTROLLERS_EXTENSION_NAME,
+    META_BODY_TRACKING_FIDELITY_EXTENSION_NAME, META_DETACHED_CONTROLLERS_EXTENSION_NAME,
     META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME, PICO_CONFIGURATION_EXTENSION_NAME,
 };
 use interaction::{InteractionContext, InteractionSourcesConfig};
 use lobby::Lobby;
 use openxr as xr;
 use passthrough::PassthroughLayer;
-use std::{ffi::CStr, path::Path, rc::Rc, sync::Arc, thread, time::Duration};
+use std::{collections::HashSet, ffi::CStr, path::Path, rc::Rc, sync::Arc, thread, time::Duration};
 use stream::StreamContext;
 
 fn from_xr_vec3(v: xr::Vector3f) -> Vec3 {
@@ -159,11 +158,10 @@ pub fn entry_point() {
     xr_entry.initialize_android_loader().unwrap();
 
     let available_extensions = xr_entry.enumerate_extensions().unwrap();
-    info!("OpenXR available extensions: {available_extensions:#?}");
     info!(
-        "Extra available extensions: {:#?}",
+        "OpenXR available extensions: {:#?}",
         available_extensions
-            .other
+            .names()
             .iter()
             .map(|vec| CStr::from_bytes_with_nul(vec)
                 .unwrap()
@@ -179,8 +177,11 @@ pub fn entry_point() {
     let mut exts = xr::ExtensionSet::default();
     exts.bd_controller_interaction = available_extensions.bd_controller_interaction;
     exts.ext_eye_gaze_interaction = available_extensions.ext_eye_gaze_interaction;
+    exts.ext_future = available_extensions.ext_future;
     exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
     exts.ext_local_floor = available_extensions.ext_local_floor;
+    exts.ext_spatial_entity = available_extensions.ext_spatial_entity;
+    exts.ext_spatial_marker_tracking = available_extensions.ext_spatial_marker_tracking;
     exts.ext_user_presence = available_extensions.ext_user_presence;
     exts.fb_body_tracking = available_extensions.fb_body_tracking;
     exts.fb_color_space = available_extensions.fb_color_space;
@@ -202,12 +203,12 @@ pub fn entry_point() {
     }
     exts.khr_convert_timespec_time = true;
     exts.khr_opengl_es_enable = true;
+    exts.meta_body_tracking_full_body = available_extensions.meta_body_tracking_full_body;
     exts.other = available_extensions
         .other
         .into_iter()
         .filter(|ext| {
             [
-                META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
                 META_BODY_TRACKING_FIDELITY_EXTENSION_NAME,
                 META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,
                 META_DETACHED_CONTROLLERS_EXTENSION_NAME,
@@ -356,6 +357,7 @@ pub fn entry_point() {
             face_tracking: None,
             body_tracking: lobby_body_tracking_config,
             prefers_multimodal_input: true,
+            markers_to_track: Some(HashSet::new()),
         };
         interaction_context
             .write()
@@ -393,7 +395,7 @@ pub fn entry_point() {
 
                             core_context.pause();
 
-                            xr_session.end().unwrap();
+                            xr_session.end().ok();
                         }
                         xr::SessionState::EXITING | xr::SessionState::LOSS_PENDING => {
                             break 'render_loop;
@@ -430,10 +432,6 @@ pub fn entry_point() {
                         headset_is_worn = event.is_user_present();
 
                         core_context.send_proximity_state(event.is_user_present());
-                    }
-                    xr::Event::Unknown => {
-                        // use event_storage.as_raw(), reinterpret as sys::BaseInStructure, get type
-                        // and then reinterpret as the event struct
                     }
                     _ => (),
                 }

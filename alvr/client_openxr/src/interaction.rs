@@ -3,7 +3,7 @@ use crate::{
     extra_extensions::{
         self, BODY_JOINT_SET_FULL_BODY_META, BodyJointSetBD, BodyTrackerBD, BodyTrackerFB,
         EyeTrackerSocial, FULL_BODY_JOINT_COUNT_META, FaceTracker2FB, FaceTrackerPico,
-        FacialTrackerHTC, MotionTrackerBD, MultimodalMeta,
+        FacialTrackerHTC, MotionTrackerBD, MultimodalMeta, QRCodesSpatialContext,
     },
 };
 use alvr_common::{
@@ -145,6 +145,7 @@ pub struct InteractionSourcesConfig {
     pub face_tracking: Option<FaceTrackingSourcesConfig>,
     pub body_tracking: Option<BodyTrackingSourcesConfig>,
     pub prefers_multimodal_input: bool,
+    pub markers_to_track: Option<HashSet<String>>,
 }
 
 impl InteractionSourcesConfig {
@@ -168,6 +169,12 @@ impl InteractionSourcesConfig {
                 .multimodal_tracking
                 .as_option()
                 .is_some_and(|c| c.enabled),
+            markers_to_track: config
+                .settings
+                .headset
+                .marker_colocation
+                .as_option()
+                .map(|c| HashSet::from_iter([c.qr_code_string.clone()])),
         }
     }
 }
@@ -184,6 +191,7 @@ pub struct InteractionContext {
     pub multimodal_hands_enabled: bool,
     pub face_sources: FaceSources,
     pub body_source: Option<BodyTracker>,
+    pub marker_spatial_context: Option<QRCodesSpatialContext>,
 }
 
 impl InteractionContext {
@@ -497,6 +505,7 @@ impl InteractionContext {
                 face_expressions_tracker,
             },
             body_source: None,
+            marker_spatial_context: None,
         }
     }
 
@@ -524,6 +533,7 @@ impl InteractionContext {
         }
 
         self.body_source = None;
+        self.marker_spatial_context = None;
 
         if let Some(config) = &config.face_tracking {
             if matches!(self.platform, Platform::QuestPro)
@@ -547,6 +557,21 @@ impl InteractionContext {
                     alvr_system_info::try_get_permission("android.permission.RECORD_AUDIO");
                     alvr_system_info::try_get_permission("com.picovr.permission.FACE_TRACKING")
                 }
+            }
+        }
+        if self.platform.is_quest() {
+            #[cfg(target_os = "android")]
+            {
+                alvr_system_info::try_get_permission("com.oculus.permission.USE_ANCHOR_API");
+                alvr_system_info::try_get_permission("com.oculus.permission.USE_SCENE")
+            }
+        } else if matches!(self.platform, Platform::SamsungGalaxyXR) {
+            #[cfg(target_os = "android")]
+            {
+                alvr_system_info::try_get_permission("android.permission.SCENE_UNDERSTANDING");
+                alvr_system_info::try_get_permission(
+                    "android.permission.SCENE_UNDERSTANDING_COARSE",
+                );
             }
         }
 
@@ -668,6 +693,13 @@ impl InteractionContext {
                 }
             }
         }
+
+        self.marker_spatial_context = config.markers_to_track.as_ref().and_then(|strings| {
+            check_ext_object(
+                "QRCodesSpatialContext",
+                QRCodesSpatialContext::new(&self.xr_session, strings.clone()),
+            )
+        });
     }
 }
 
@@ -1135,4 +1167,23 @@ pub fn get_bd_motion_trackers(source: &BodyTracker, time: Duration) -> Vec<(u64,
     }
 
     Vec::new()
+}
+
+pub fn get_marker_poses(
+    context: &mut QRCodesSpatialContext,
+    reference_space: &xr::Space,
+    time: Duration,
+) -> Option<Vec<(String, Pose)>> {
+    let xr_time = crate::to_xr_time(time);
+
+    context
+        .poll(reference_space, xr_time)
+        .ok()
+        .flatten()
+        .map(|markers| {
+            markers
+                .into_iter()
+                .map(|(id, pose)| (id, crate::from_xr_pose(pose)))
+                .collect()
+        })
 }

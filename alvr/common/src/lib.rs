@@ -1,7 +1,7 @@
 mod average;
 mod c_api;
 mod connection_result;
-mod inputs;
+pub mod inputs;
 mod logging;
 mod primitives;
 mod version;

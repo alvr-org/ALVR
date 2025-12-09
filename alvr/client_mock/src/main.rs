@@ -176,6 +176,7 @@ fn tracking_thread(
             hand_skeletons: [None, None],
             face: FaceData::default(),
             body: None,
+            markers: vec![],
         });
 
         drop(input_lock);

@@ -17,7 +17,7 @@ alvr_packets.workspace = true
 alvr_session.workspace = true
 alvr_system_info.workspace = true
 
-openxr = { git = "https://github.com/zmerp/openxrs", rev = "e7c1b155e79ff8b58c2f6558d28e1398ebe08d2d" }
+openxr = { git = "https://github.com/zmerp/openxrs", rev = "1da16a72829a2caba68aebdca44fa8605d51554d" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android-activity = { version = "0.6", features = ["native-activity"] }
@@ -125,6 +125,10 @@ name = "com.oculus.permission.FACE_TRACKING"
 [[package.metadata.android.uses_permission]]
 name = "com.oculus.permission.HAND_TRACKING"
 [[package.metadata.android.uses_permission]]
+name = "com.oculus.permission.USE_ANCHOR_API"
+[[package.metadata.android.uses_permission]]
+name = "com.oculus.permission.USE_SCENE"
+[[package.metadata.android.uses_permission]]
 name = "com.oculus.permission.WIFI_LOCK"
 [[package.metadata.android.application.meta_data]]
 name = "com.oculus.intent.category.VR"
@@ -212,22 +216,23 @@ name = "com.ultraleap.openxr.api_layer"
 [[package.metadata.android.uses_feature]]
 name = "android.software.xr.api.spatial"
 required = true
-
 [[package.metadata.android.uses_feature]]
 name = "android.software.xr.api.openxr"
 required = true
-
 [[package.metadata.android.uses_feature]]
 name = "android.software.xr.input.controller"
 required = false
-
 [[package.metadata.android.uses_feature]]
 name = "android.software.xr.input.hand_tracking"
 required = false
-
 [[package.metadata.android.uses_feature]]
 name = "android.software.xr.input.eye_tracking"
 required = false
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.SCENE_UNDERSTANDING"
+[[package.metadata.android.uses_permission]]
+name = "android.permission.SCENE_UNDERSTANDING_COARSE"
 
 [[package.metadata.android.application.uses_native_library]]
 name = "libopenxr.google.so"

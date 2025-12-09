@@ -229,6 +229,7 @@ pub struct TrackingData {
     pub hand_skeletons: [Option<[Pose; 26]>; 2],
     pub face: FaceData,
     pub body: Option<BodySkeleton>,
+    pub markers: Vec<(String, Pose)>,
 }
 
 #[derive(Serialize, Deserialize)]

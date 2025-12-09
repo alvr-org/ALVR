@@ -2,7 +2,7 @@ use crate::{
     graphics::{self, ProjectionLayerAlphaConfig, ProjectionLayerBuilder},
     interaction::{self, InteractionContext},
 };
-use alvr_common::{Pose, ViewParams, glam::UVec2, parking_lot::RwLock};
+use alvr_common::{DeviceMotion, Pose, ViewParams, glam::UVec2, parking_lot::RwLock};
 use alvr_graphics::{GraphicsContext, LobbyRenderer, LobbyViewParams, SDR_FORMAT_GL};
 use alvr_system_info::Platform;
 use openxr as xr;
@@ -130,17 +130,23 @@ impl Lobby {
             &mut Pose::default(),
         );
 
-        let additional_motions = self
-            .interaction_ctx
-            .read()
-            .body_source
-            .as_ref()
-            .map(|source| {
+        let mut additional_motions = vec![];
+        if let Some(source) = &self.interaction_ctx.read().body_source {
+            additional_motions.extend(
                 interaction::get_bd_motion_trackers(source, vsync_time)
                     .iter()
-                    .map(|(_, motion)| *motion)
-                    .collect()
-            });
+                    .map(|(_, motion)| *motion),
+            )
+        }
+        if let Some(context) = &mut self.interaction_ctx.write().marker_spatial_context
+            && let Some(marker_poses) =
+                interaction::get_marker_poses(context, &self.reference_space, vsync_time)
+        {
+            additional_motions.extend(marker_poses.into_iter().map(|(_, pose)| DeviceMotion {
+                pose,
+                ..Default::default()
+            }));
+        }
 
         let body_skeleton = self
             .interaction_ctx

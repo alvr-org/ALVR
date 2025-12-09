@@ -530,7 +530,8 @@ fn stream_input_loop(
     let mut deadline = Instant::now();
     let frame_interval = Duration::from_secs_f32(1.0 / refresh_rate);
     while running.value() {
-        let int_ctx = &*interaction_ctx.read();
+        let int_ctx_lock = interaction_ctx.read();
+        let int_ctx = &*int_ctx_lock;
         // Streaming related inputs are updated here. Make sure every input poll is done in this
         // thread
         if let Err(e) = xr_session.sync_actions(&[(&int_ctx.action_set).into()]) {
@@ -628,6 +629,15 @@ fn stream_input_loop(
             device_motions.append(&mut interaction::get_bd_motion_trackers(source, now));
         }
 
+        drop(int_ctx_lock);
+
+        let markers = interaction_ctx
+            .write()
+            .marker_spatial_context
+            .as_mut()
+            .and_then(|ctx| interaction::get_marker_poses(ctx, stage_reference_space, now))
+            .unwrap_or_default();
+
         // Even though the server is already adding the motion-to-photon latency, here we use
         // target_time as the poll_timestamp to compensate for the fact that video frames are sent
         // with the poll timestamp instead of the vsync time. This is to ensure correctness when
@@ -642,9 +652,11 @@ fn stream_input_loop(
             ],
             face,
             body,
+            markers,
         });
 
-        let button_entries = interaction::update_buttons(&xr_session, &int_ctx.button_actions);
+        let button_entries =
+            interaction::update_buttons(&xr_session, &interaction_ctx.read().button_actions);
         if !button_entries.is_empty() {
             core_ctx.send_buttons(button_entries);
         }

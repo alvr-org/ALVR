@@ -405,7 +405,7 @@ impl LobbyRenderer {
         view_params: [LobbyViewParams; 2],
         hand_data: [HandData; 2],
         body_skeleton: Option<BodySkeleton>,
-        additional_motions: Option<Vec<DeviceMotion>>,
+        additional_motions: Vec<DeviceMotion>,
         render_background: bool,
         show_velocities: bool,
     ) {
@@ -600,16 +600,14 @@ impl LobbyRenderer {
                 }
             }
 
-            if let Some(motions) = &additional_motions {
-                for motion in motions {
-                    draw_crosshair(
-                        &mut pass,
-                        motion,
-                        view_proj,
-                        show_velocities,
-                        &[255, 255, 255, 255],
-                    );
-                }
+            for motion in &additional_motions {
+                draw_crosshair(
+                    &mut pass,
+                    motion,
+                    view_proj,
+                    show_velocities,
+                    &[255, 255, 255, 255],
+                );
             }
 
             if let Some(skeleton) = &body_skeleton {

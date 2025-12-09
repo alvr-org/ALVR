@@ -9,6 +9,7 @@ mod motion_tracking_bd;
 mod multimodal_input;
 mod passthrough_fb;
 mod passthrough_htc;
+mod spatial_marker_tracking;
 
 pub use body_tracking_bd::*;
 pub use body_tracking_fb::*;
@@ -21,10 +22,11 @@ pub use motion_tracking_bd::*;
 pub use multimodal_input::*;
 pub use passthrough_fb::*;
 pub use passthrough_htc::*;
-use std::ffi::CString;
-use std::mem;
+pub use spatial_marker_tracking::*;
 
-use openxr::{self as xr, sys};
+use openxr::{self as xr, AsHandle, sys};
+use std::ffi::CString;
+use std::{mem, ptr};
 
 fn xr_res(result: sys::Result) -> xr::Result<()> {
     if result.into_raw() >= 0 {
@@ -68,5 +70,28 @@ fn get_instance_proc<G, FnTy>(session: &xr::Session<G>, method_name: &str) -> xr
         function_handle
             .map(|pfn| mem::transmute_copy(&pfn))
             .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)
+    }
+}
+
+fn check_future(instance: &xr::Instance, future: sys::FutureEXT) -> xr::Result<bool> {
+    let future_ext = instance
+        .exts()
+        .ext_future
+        .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
+
+    let future_poll_info = sys::FuturePollInfoEXT {
+        ty: xr::StructureType::FUTURE_POLL_INFO_EXT,
+        next: ptr::null(),
+        future,
+    };
+    let mut future_poll_result = sys::FuturePollResultEXT::out(ptr::null_mut());
+    unsafe {
+        xr_res((future_ext.poll_future)(
+            instance.as_handle(),
+            &future_poll_info,
+            future_poll_result.as_mut_ptr(),
+        ))?;
+
+        Ok(future_poll_result.assume_init().state == xr::FutureStateEXT::READY)
     }
 }

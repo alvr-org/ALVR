@@ -1304,8 +1304,9 @@ Tilted: the world gets tilted when long pressing the oculus button. This is usef
 
     #[schema(strings(
         help = r#"Power Savings might increase latency or reduce framerate consistency but decreases temperatures and improves battery life.
-        Sustained Low provides consistent framerates but might increase latency if necessary.
-        Sustained High provides consistent framerates but increases temperature."#
+Sustained Low provides consistent framerates but might increase latency if necessary.
+Sustained High provides consistent framerates but increases temperature.
+This is mainly for Quest headsets, mileage may vary on other devices."#
     ))]
     pub performance_level: PerformanceLevelConfig,
 

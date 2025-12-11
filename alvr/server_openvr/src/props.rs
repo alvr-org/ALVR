@@ -293,8 +293,8 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
                 set_oculus_common_headset_props();
             }
             HeadsetEmulationMode::Pico4 => {
-                set_prop(TrackingSystemNameString, "pico");
-                set_prop(ModelNumberString, "Pico 4");
+                set_prop(TrackingSystemNameString, "vrlink");
+                set_prop(ModelNumberString, "PICO 4");
                 set_prop(ManufacturerNameString, "ByteDance");
                 set_prop(RenderModelNameString, "generic_hmd");
                 set_prop(RegisteredDeviceTypeString, "pico");

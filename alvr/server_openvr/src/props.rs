@@ -124,6 +124,7 @@ fn serial_number(device_id: u64) -> String {
             HeadsetEmulationMode::Quest1 => "1PASH0X0X00000".into(),
             HeadsetEmulationMode::Quest2 => "1WMHH000X00000".into(),
             HeadsetEmulationMode::QuestPro => "230YC0XXXX00XX".into(),
+            HeadsetEmulationMode::Pico4 => "VRLINKHMDPICO4".into(),
             HeadsetEmulationMode::Vive => "HTCVive-001".into(),
             HeadsetEmulationMode::Custom { serial_number, .. } => serial_number.clone(),
         }
@@ -290,6 +291,15 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
                 set_prop(RenderModelNameString, "generic_hmd");
                 set_prop(DriverVersionString, "1.55.0");
                 set_oculus_common_headset_props();
+            }
+            HeadsetEmulationMode::Pico4 => {
+                set_prop(TrackingSystemNameString, "pico");
+                set_prop(ModelNumberString, "Pico 4");
+                set_prop(ManufacturerNameString, "ByteDance");
+                set_prop(RenderModelNameString, "generic_hmd");
+                set_prop(RegisteredDeviceTypeString, "pico");
+                set_prop(DriverVersionString, "");
+                set_icons("{vrlink}/icons/headset_pico4");
             }
             HeadsetEmulationMode::Vive => {
                 set_prop(TrackingSystemNameString, "Vive Tracker");

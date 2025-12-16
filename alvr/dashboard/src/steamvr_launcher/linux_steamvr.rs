@@ -6,7 +6,7 @@ use alvr_common::anyhow::bail;
 use alvr_common::{debug, error, info, warn};
 use sysinfo::Process;
 
-pub fn start_steamvr() {
+pub fn launch_steamvr_with_steam() {
     Command::new("sh")
         .args(["-c", "cd $(dirname $0) && ./steamvr_linux.sh"])
         .spawn()

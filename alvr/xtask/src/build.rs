@@ -199,6 +199,13 @@ pub fn build_streamer(
                 sh.copy_file(lib_path.clone(), bin_dir).unwrap();
             }
         }
+
+        // copy libvpl.dll
+        sh.copy_file(
+            afs::deps_dir().join("windows/libvpl/alvr_build/bin/libvpl.dll"),
+            build_layout.openvr_driver_lib_dir(),
+        )
+        .unwrap();
     } else if cfg!(target_os = "linux") {
         // build compositor wrapper
         let _push_guard = sh.push_dir(afs::crate_dir("vrcompositor_wrapper"));

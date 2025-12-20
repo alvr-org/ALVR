@@ -114,7 +114,7 @@ fn main() {
 
         build.define("ONEVPL_EXPERIMENTAL", None);
         build.include(vpl_include_path);
-        println!("cargo:rustc-link-lib=static=vpl");
+        println!("cargo:rustc-link-lib=vpl");
     }
 
     build.compile("bindings");

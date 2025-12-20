@@ -92,9 +92,12 @@ fn prepare_libvpl_windows(deps_path: &Path) {
     let install_prefix = final_path.join("alvr_build");
     let _push_guard = sh.push_dir(final_path);
 
-    cmd!(sh, "cmake -B build -DCMAKE_INSTALL_PREFIX={install_prefix}")
-        .run()
-        .unwrap();
+    cmd!(
+        sh,
+        "cmake -B build -DUSE_MSVC_STATIC_RUNTIME=ON -DCMAKE_INSTALL_PREFIX={install_prefix}"
+    )
+    .run()
+    .unwrap();
     cmd!(sh, "cmake --build build --config Release")
         .run()
         .unwrap();

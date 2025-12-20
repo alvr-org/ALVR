@@ -51,6 +51,13 @@ pub fn include_licenses(root_path: &Path, gpl: bool) {
         )
         .ok();
     }
+    if cfg!(windows) {
+        sh.copy_file(
+            afs::deps_dir().join("windows/libvpl/alvr_build/share/vpl/licensing/license.txt"),
+            licenses_dir.join("libvpl.txt"),
+        )
+        .unwrap();
+    }
 
     let licenses_content = generate_licenses();
     sh.write_file(licenses_dir.join("dependencies.html"), licenses_content)

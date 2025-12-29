@@ -281,8 +281,9 @@ async fn install_server(
     }
 
     if let Some(session_version) = session_version {
-        // This code is tailored for Windows and is only hit on Windows
-        assert!(cfg!(windows));
+        if !cfg!(windows) {
+            unreachable!("The session copying code should only be hit on Windows!")
+        }
 
         for inst in get_installations() {
             if inst.version == session_version {

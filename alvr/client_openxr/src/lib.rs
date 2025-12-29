@@ -125,6 +125,7 @@ fn create_session(
     xr::FrameWaiter,
     xr::FrameStream<xr::OpenGlEs>,
 ) {
+    #[allow(unreachable_code)]
     unsafe {
         xr_instance
             .create_session(xr_system, &graphics::session_create_info(graphics_context))

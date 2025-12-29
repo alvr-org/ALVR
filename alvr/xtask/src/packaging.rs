@@ -17,7 +17,7 @@ pub enum ReleaseFlavor {
 pub fn generate_licenses() -> String {
     let sh = Shell::new().unwrap();
 
-    cmd!(sh, "cargo install cargo-about --version 0.6.4")
+    cmd!(sh, "cargo install cargo-about --version 0.8.4 --locked")
         .run()
         .unwrap();
 

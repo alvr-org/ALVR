@@ -56,7 +56,7 @@ pub fn include_licenses(root_path: &Path, gpl: bool) {
             afs::deps_dir().join("windows/libvpl/alvr_build/share/vpl/licensing/license.txt"),
             licenses_dir.join("libvpl.txt"),
         )
-        .unwrap();
+        .ok();
     }
 
     let licenses_content = generate_licenses();

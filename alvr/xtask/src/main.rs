@@ -271,7 +271,7 @@ fn main() {
                 }
                 "check-msrv" => version::check_msrv(),
                 "check-licenses" => {
-                    packaging::generate_licenses();
+                    packaging::generate_licenses(&afs::build_dir().join("dependencies.html"));
                 }
                 "kill-oculus" => kill_oculus_processes(),
                 _ => print_help_and_exit("Unrecognized subcommand."),

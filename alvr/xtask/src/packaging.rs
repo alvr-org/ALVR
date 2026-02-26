@@ -24,11 +24,16 @@ pub fn generate_licenses() -> String {
     let licenses_template = afs::crate_dir("xtask").join("licenses_template.hbs");
     let output_file = afs::workspace_dir().join("licenses.html");
 
-    cmd!(sh, "cargo about generate {licenses_template} -o {output_file}")
-        .run()
-        .unwrap();
-    
-    sh.read_file(&output_file).unwrap()
+    cmd!(
+        sh,
+        "cargo about generate {licenses_template} -o {output_file}"
+    )
+    .run()
+    .unwrap();
+
+    let content = sh.read_file(&output_file).unwrap();
+    sh.remove_path(&output_file).ok();
+    content
 }
 
 pub fn include_licenses(root_path: &Path, gpl: bool) {

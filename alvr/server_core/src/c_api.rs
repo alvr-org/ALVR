@@ -39,8 +39,8 @@ pub enum AlvrHandType {
 
 #[repr(C)]
 pub union AlvrButtonValue {
-    pub scalar: bool,
-    pub float: f32,
+    pub binary: bool,
+    pub scalar: f32,
 }
 
 // the profile is implied

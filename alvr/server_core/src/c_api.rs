@@ -372,8 +372,8 @@ pub unsafe extern "C" fn alvr_get_buttons(out_entries: *mut AlvrButtonEntry) -> 
             let out_entry = unsafe { &mut *out_entries.add(i) };
             out_entry.id = entry.path_id;
             match entry.value {
-                ButtonValue::Binary(value) => out_entry.value.scalar = value,
-                ButtonValue::Scalar(value) => out_entry.value.float = value,
+                ButtonValue::Binary(value) => out_entry.value.binary = value,
+                ButtonValue::Scalar(value) => out_entry.value.scalar = value,
             }
         }
 

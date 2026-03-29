@@ -27,5 +27,5 @@ windows = { version = "0.62", features = [
 ] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-pipewire = { version = "0.8.0", features = ["v0_3_49"] }
-libspa-sys = "0.8.0"
+pipewire = { version = "0.9.0", features = ["v0_3_49"] }
+libspa-sys = "0.9.0"

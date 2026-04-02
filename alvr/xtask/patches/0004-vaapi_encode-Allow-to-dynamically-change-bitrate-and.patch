@@ -1,7 +1,7 @@
-From 34c0d23c4e16775811f229cb190e72ba7d1e45ae Mon Sep 17 00:00:00 2001
+From ac13ead77b8e8d7f516908e28be97001ecf38d8c Mon Sep 17 00:00:00 2001
 From: David Rosca <nowrep@gmail.com>
 Date: Fri, 17 Feb 2023 12:40:10 +0100
-Subject: [PATCH] vaapi_encode: Allow to dynamically change bitrate and
+Subject: [PATCH 4/6] vaapi_encode: Allow to dynamically change bitrate and
  framerate
 
 ---
@@ -10,10 +10,10 @@ Subject: [PATCH] vaapi_encode: Allow to dynamically change bitrate and
  2 files changed, 148 insertions(+)
 
 diff --git a/libavcodec/vaapi_encode.c b/libavcodec/vaapi_encode.c
-index 9a58661b51..4add6458fd 100644
+index b934f24921..a266072d27 100644
 --- a/libavcodec/vaapi_encode.c
 +++ b/libavcodec/vaapi_encode.c
-@@ -262,6 +262,130 @@ static int vaapi_encode_make_tile_slice(AVCodecContext *avctx,
+@@ -265,6 +265,130 @@ static int vaapi_encode_make_tile_slice(AVCodecContext *avctx,
      return 0;
  }
  
@@ -142,17 +142,17 @@ index 9a58661b51..4add6458fd 100644
 +}
 +
  static int vaapi_encode_issue(AVCodecContext *avctx,
-                               VAAPIEncodePicture *pic)
+                               FFHWBaseEncodePicture *base_pic)
  {
-@@ -340,6 +464,7 @@ static int vaapi_encode_issue(AVCodecContext *avctx,
+@@ -347,6 +471,7 @@ static int vaapi_encode_issue(AVCodecContext *avctx,
      }
  
-     if (pic->type == PICTURE_TYPE_IDR) {
+     if (base_pic->type == FF_HW_PICTURE_TYPE_IDR) {
 +        vaapi_encode_update_rate_control(avctx);
          for (i = 0; i < ctx->nb_global_params; i++) {
              err = vaapi_encode_make_misc_param_buffer(avctx, pic,
                                                        ctx->global_params_type[i],
-@@ -348,6 +473,27 @@ static int vaapi_encode_issue(AVCodecContext *avctx,
+@@ -355,6 +480,27 @@ static int vaapi_encode_issue(AVCodecContext *avctx,
              if (err < 0)
                  goto fail;
          }
@@ -180,7 +180,7 @@ index 9a58661b51..4add6458fd 100644
      }
  
      if (ctx->codec->init_picture_params) {
-@@ -1875,6 +2021,7 @@ rc_mode_found:
+@@ -1568,6 +1714,7 @@ rc_mode_found:
      ctx->fr_params = (VAEncMiscParameterFrameRate) {
          .framerate = (unsigned int)fr_den << 16 | fr_num,
      };
@@ -189,10 +189,10 @@ index 9a58661b51..4add6458fd 100644
      vaapi_encode_add_global_param(avctx,
                                    VAEncMiscParameterTypeFrameRate,
 diff --git a/libavcodec/vaapi_encode.h b/libavcodec/vaapi_encode.h
-index 359f954fff..e7b6482c39 100644
+index 1fa1e99a31..cfb9b700b8 100644
 --- a/libavcodec/vaapi_encode.h
 +++ b/libavcodec/vaapi_encode.h
-@@ -235,6 +235,7 @@ typedef struct VAAPIEncodeContext {
+@@ -189,6 +189,7 @@ typedef struct VAAPIEncodeContext {
      unsigned int    va_rc_mode;
      // Bitrate for codec-specific encoder parameters.
      unsigned int    va_bit_rate;
@@ -201,5 +201,5 @@ index 359f954fff..e7b6482c39 100644
      unsigned int    va_packed_headers;
  
 -- 
-2.39.2
+2.53.0
 

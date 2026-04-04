@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_ref: ${{ steps.output_ref.outputs.release_ref }}
-      release_id: ${{ steps.create_release.outputs.release_id }}
+      release_id: ${{ steps.create_release.outputs.id }}
     steps:
       - uses: actions/checkout@v6
 
@@ -45,12 +45,12 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: svenstaro/upload-release-action@v2
+        uses: softprops/action-gh-release@v2
         with:
-          tag: ${{ steps.bump_version.outputs.version_tag }}
+          tag_name: ${{ steps.bump_version.outputs.version_tag }}
           draft: true
           prerelease: false
-          target_commit: ${{ steps.output_ref.outputs.release_ref }}
+          target_commitish: ${{ steps.output_ref.outputs.release_ref }}
 
   build_windows_streamer:
     runs-on: windows-2025

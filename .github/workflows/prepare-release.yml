@@ -45,7 +45,7 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: svenstaro/upload-release-action@2
+        uses: svenstaro/upload-release-action@v2
         with:
           tag: ${{ steps.bump_version.outputs.version_tag }}
           draft: true
@@ -75,7 +75,7 @@ jobs:
           cargo xtask package-launcher --ci
 
       - name: Upload assets
-        uses: svenstaro/upload-release-action@2
+        uses: svenstaro/upload-release-action@v2
         with:
           release_id: ${{ needs.prepare_release.outputs.release_id }}
           file: ./build/alvr_*.zip
@@ -97,7 +97,7 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           sudo apt-get update
-          sudo apt-get install libfuse2 build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
+          sudo apt-get install libfuse2t64 build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
 
       - name: Build and package ALVR (.tar.gz)
         env:
@@ -107,7 +107,7 @@ jobs:
           cargo xtask package-launcher --ci
 
       - name: Upload assets
-        uses: svenstaro/upload-release-action@2
+        uses: svenstaro/upload-release-action@v2
         with:
           release_id: ${{ needs.prepare_release.outputs.release_id }}
           file: ./build/alvr_*_linux.tar.gz
@@ -136,7 +136,7 @@ jobs:
           flatpak build-bundle .flatpak-repo com.valvesoftware.Steam.Utility.alvr.flatpak com.valvesoftware.Steam.Utility.alvr stable --runtime
 
       - name: Upload assets
-        uses: svenstaro/upload-release-action@2
+        uses: svenstaro/upload-release-action@v2
         with:
           release_id: ${{ needs.prepare_release.outputs.release_id }}
           file: com.valvesoftware.Steam.Utility.alvr.flatpak
@@ -184,7 +184,7 @@ jobs:
           buildToolsVersion: 34.0.0
 
       - name: Upload APK
-        uses: svenstaro/upload-release-action@2
+        uses: svenstaro/upload-release-action@v2
         with:
           release_id: ${{ needs.prepare_release.outputs.release_id }}
           asset_name: alvr_client_android.apk

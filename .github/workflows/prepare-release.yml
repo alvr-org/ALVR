@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_ref: ${{ steps.output_ref.outputs.release_ref }}
-      release_id: ${{ steps.create_release.outputs.id }}
+      version_tag: ${{ steps.bump_version.outputs.version_tag }}
     steps:
       - uses: actions/checkout@v6
 
@@ -43,15 +43,6 @@ jobs:
         id: output_ref
         run: echo "release_ref=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.bump_version.outputs.version_tag }}
-          draft: true
-          prerelease: false
-          target_commitish: ${{ steps.output_ref.outputs.release_ref }}
-
   build_windows_streamer:
     runs-on: windows-2025
     needs: [prepare_release]
@@ -74,13 +65,11 @@ jobs:
           cargo xtask package-streamer --gpl --ci
           cargo xtask package-launcher --ci
 
-      - name: Upload assets
-        uses: svenstaro/upload-release-action@v2
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
         with:
-          draft: true
-          release_id: ${{ needs.prepare_release.outputs.release_id }}
-          file: ./build/alvr_*.zip
-          file_glob: true
+          name: windows-streamer
+          path: ./build/alvr_*.zip
 
   build_linux_streamer:
     runs-on: ubuntu-latest
@@ -107,13 +96,11 @@ jobs:
           cargo xtask package-streamer --gpl --ci
           cargo xtask package-launcher --ci
 
-      - name: Upload assets
-        uses: svenstaro/upload-release-action@v2
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
         with:
-          draft: true
-          release_id: ${{ needs.prepare_release.outputs.release_id }}
-          file: ./build/alvr_*_linux.tar.gz
-          file_glob: true
+          name: linux-streamer
+          path: ./build/alvr_*_linux.tar.gz
 
   build_flatpak_bundle:
     runs-on: ubuntu-latest
@@ -137,12 +124,11 @@ jobs:
           sudo flatpak-builder --repo=.flatpak-repo --install-deps-from=flathub --force-clean --default-branch=stable --arch=x86_64 .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
           flatpak build-bundle .flatpak-repo com.valvesoftware.Steam.Utility.alvr.flatpak com.valvesoftware.Steam.Utility.alvr stable --runtime
 
-      - name: Upload assets
-        uses: svenstaro/upload-release-action@v2
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
         with:
-          draft: true
-          release_id: ${{ needs.prepare_release.outputs.release_id }}
-          file: com.valvesoftware.Steam.Utility.alvr.flatpak
+          name: flatpak-bundle
+          path: com.valvesoftware.Steam.Utility.alvr.flatpak
 
   build_android_client:
     runs-on: ubuntu-latest
@@ -186,10 +172,34 @@ jobs:
           keyPassword: ${{ secrets.KEY_PASSWORD }}
           buildToolsVersion: 34.0.0
 
-      - name: Upload APK
-        uses: svenstaro/upload-release-action@v2
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
         with:
+          name: android-client
+          path: ${{ steps.sign_apk.outputs.signedFile }}
+
+  publish_release:
+    runs-on: ubuntu-latest
+    needs:
+      [
+        prepare_release,
+        build_windows_streamer,
+        build_linux_streamer,
+        build_flatpak_bundle,
+        build_android_client,
+      ]
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          merge-multiple: true
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare_release.outputs.version_tag }}
           draft: true
-          release_id: ${{ needs.prepare_release.outputs.release_id }}
-          asset_name: alvr_client_android.apk
-          file: ${{ steps.sign_apk.outputs.signedFile }}
+          prerelease: false
+          target_commitish: ${{ needs.prepare_release.outputs.release_ref }}
+          files: artifacts/**

@@ -13,7 +13,7 @@ on:
 
 jobs:
   prepare_release:
-    runs-on: windows-2022
+    runs-on: ubuntu-latest
     outputs:
       release_ref: ${{ steps.output_ref.outputs.release_ref }}
       upload_url: ${{ steps.create_release.outputs.upload_url }}
@@ -33,13 +33,12 @@ jobs:
         env:
           RUST_BACKTRACE: 1
         run: |
-          $versionarg = "${{ github.event.inputs.version }}"
-          $versionarg = If ($versionarg.Length -gt 0) { "--version $versionarg" } else { "" }
-          $out = cargo xtask bump $versionarg.split()
-          echo $out
+          versionarg="${{ github.event.inputs.version }}"
+          [ -n "$versionarg" ] && versionarg="--version $versionarg" || versionarg=""
+          out=$(cargo xtask bump $versionarg)
+          echo "$out"
           cargo update -p alvr_common
-          echo "::set-output name=version_tag::$(echo $out | sls -CaseSensitive -Pattern '^v.*$')"
-
+          echo "version_tag=$(echo "$out" | grep -P '^v.*$')" >> $GITHUB_OUTPUT
       - name: Push changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
@@ -47,8 +46,7 @@ jobs:
 
       - name: Output ref for later checkouts
         id: output_ref
-        run: echo "::set-output name=release_ref::$(git rev-parse HEAD)"
-
+        run: echo "release_ref=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1

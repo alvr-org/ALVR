@@ -13,12 +13,14 @@ jobs:
     if: github.event_name == 'merge_group'
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+
       - uses: Swatinem/rust-cache@v2
 
       - name: Install dependencies
@@ -32,7 +34,7 @@ jobs:
       - name: Prepare deps
         env:
           RUST_BACKTRACE: 1
-        run:  cargo xtask prepare-deps --platform linux --no-nvidia
+        run: cargo xtask prepare-deps --platform linux --no-nvidia
 
       - run: cargo clippy
 
@@ -43,11 +45,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
 
-      # Fix actions rust install and msrv both being stupid
-      - run: rustup update
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
 
       - name: Prepare deps
         env:
@@ -60,10 +61,12 @@ jobs:
     if: github.event_name == 'merge_group'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
+
       - uses: dtolnay/rust-toolchain@stable
+
       - uses: Swatinem/rust-cache@v2
 
       - name: Install dependencies
@@ -74,7 +77,7 @@ jobs:
       - name: Prepare deps
         env:
           RUST_BACKTRACE: 1
-        run:  cargo xtask prepare-deps --platform linux --no-nvidia
+        run: cargo xtask prepare-deps --platform linux --no-nvidia
 
       - run: cargo xtask check-msrv
 
@@ -82,10 +85,12 @@ jobs:
     if: github.event_name == 'merge_group'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
+
       - uses: dtolnay/rust-toolchain@stable
+
       - uses: Swatinem/rust-cache@v2
 
       - run: cargo xtask check-licenses

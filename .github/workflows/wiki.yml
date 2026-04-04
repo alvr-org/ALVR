@@ -9,7 +9,8 @@ jobs:
   wiki:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
+
       - name: Publish to wiki
         uses: cmbrose/github-docs-to-wiki@v0.24
         with:

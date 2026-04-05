@@ -114,21 +114,11 @@ pub fn prepare_windows_deps(skip_admin_priv: bool) {
     sh.create_dir(&deps_path).unwrap();
 
     if !skip_admin_priv {
-        choco_install(
-            &sh,
-            &[
-                "zip",
-                "unzip",
-                "llvm",
-                "vulkan-sdk",
-                "pkgconfiglite",
-                "cmake",
-            ],
-        )
-        .unwrap();
+        choco_install(&sh, &["zip", "unzip", "llvm", "pkgconfiglite", "cmake"]).unwrap();
     }
 
     prepare_x264_windows(&deps_path);
+    prepare_vulkan_headers(&deps_path);
     prepare_ffmpeg_windows(&deps_path);
     prepare_libvpl_windows(&deps_path);
 }

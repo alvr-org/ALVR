@@ -1,5 +1,15 @@
 use std::{env, path::PathBuf};
 
+// fn get_vulkan_headers_path() -> PathBuf {
+//     alvr_filesystem::deps_dir()
+//         .join(if cfg!(target_os = "linux") {
+//             "linux"
+//         } else {
+//             "windows"
+//         })
+//         .join("vulkan-headers/include")
+// }
+
 fn get_ffmpeg_path() -> PathBuf {
     let ffmpeg_path = alvr_filesystem::deps_dir()
         .join(if cfg!(target_os = "linux") {
@@ -87,6 +97,14 @@ fn main() {
         let ffmpeg_path = get_ffmpeg_path();
 
         assert!(ffmpeg_path.join("include").exists());
+
+        // When using downloaded Vulkan headers instead of CI-installed vulkan-sdk,
+        // uncomment to include them before FFmpeg so VkVideoCodecOperationFlagBitsKHR
+        // (required by FFmpeg 8.1+) is visible to the compiler.
+        // let vulkan_headers = get_vulkan_headers_path();
+        // assert!(vulkan_headers.exists());
+        // build.include(vulkan_headers);
+
         build.include(ffmpeg_path.join("include"));
     }
 

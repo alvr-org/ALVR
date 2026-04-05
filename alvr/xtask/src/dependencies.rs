@@ -129,6 +129,7 @@ pub fn prepare_windows_deps(skip_admin_priv: bool) {
     }
 
     prepare_x264_windows(&deps_path);
+    // prepare_vulkan_headers(&deps_path);
     prepare_ffmpeg_windows(&deps_path);
     prepare_libvpl_windows(&deps_path);
 }
@@ -141,7 +142,7 @@ pub fn prepare_linux_deps(enable_nvenc: bool) {
     sh.create_dir(&deps_path).unwrap();
 
     build_x264_linux(&deps_path);
-    prepare_vulkan_headers(&deps_path);
+    // prepare_vulkan_headers(&deps_path);
     build_ffmpeg_linux(enable_nvenc, &deps_path);
 }
 
@@ -178,7 +179,7 @@ pub fn build_x264_linux(deps_path: &Path) {
     cmd!(sh, "make install").run().unwrap();
 }
 
-pub fn prepare_vulkan_headers(deps_path: &Path) {
+/*pub fn prepare_vulkan_headers(deps_path: &Path) {
     const VERSION: &str = "1.4.338";
 
     let dest = deps_path.join("vulkan-headers");
@@ -217,10 +218,10 @@ Cflags: -I${{includedir}}
         ),
     )
     .unwrap();
-}
+}*/
 
 pub fn build_ffmpeg_linux(enable_nvenc: bool, deps_path: &Path) {
-    let vulkan_pc_path = deps_path.join("vulkan-headers/lib/pkgconfig");
+    // let vulkan_pc_path = deps_path.join("vulkan-headers/lib/pkgconfig");
 
     let sh = Shell::new().unwrap();
 
@@ -305,8 +306,8 @@ pub fn build_ffmpeg_linux(enable_nvenc: bool, deps_path: &Path) {
             ];
 
             let env_vars = format!(
-                "PKG_CONFIG_PATH='{}:{}' ",
-                vulkan_pc_path.display(),
+                "PKG_CONFIG_PATH='{}' ",
+                // vulkan_pc_path included here when using downloaded vulkan headers
                 header_build_dir.join("lib/pkgconfig").display()
             );
             let flags_combined = flags.join(" ");
@@ -319,10 +320,10 @@ pub fn build_ffmpeg_linux(enable_nvenc: bool, deps_path: &Path) {
             cmd!(sh, "bash -c {command}").run().unwrap();
         }
     } else {
-        let _vulkan_env = sh.push_env(
-            "PKG_CONFIG_PATH",
-            format!("{}:$PKG_CONFIG_PATH", vulkan_pc_path.display()),
-        );
+        // let _vulkan_env = sh.push_env(
+        //     "PKG_CONFIG_PATH",
+        //     format!("{}:$PKG_CONFIG_PATH", vulkan_pc_path.display()),
+        // );
         cmd!(sh, "./configure {install_prefix} {flags...}")
             .run()
             .unwrap();

@@ -4,21 +4,24 @@ name: Merge queue only checks
 on:
   pull_request:
   merge_group:
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   check-linux-old:
-    if: github.event_name == 'merge_group'
+    if: github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+
       - uses: Swatinem/rust-cache@v2
 
       - name: Install dependencies
@@ -32,18 +35,20 @@ jobs:
       - name: Prepare deps
         env:
           RUST_BACKTRACE: 1
-        run:  cargo xtask prepare-deps --platform linux --no-nvidia
+        run: cargo xtask prepare-deps --platform linux --no-nvidia
 
       - run: cargo clippy
 
   check-msrv-windows:
-    if: github.event_name == 'merge_group'
+    if: github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: true
+
       - uses: dtolnay/rust-toolchain@stable
+
       - uses: Swatinem/rust-cache@v2
 
       # Fix actions rust install and msrv both being stupid
@@ -57,13 +62,15 @@ jobs:
       - run: cargo xtask check-msrv
 
   check-msrv-linux:
-    if: github.event_name == 'merge_group'
+    if: github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
+
       - uses: dtolnay/rust-toolchain@stable
+
       - uses: Swatinem/rust-cache@v2
 
       - name: Install dependencies
@@ -74,18 +81,20 @@ jobs:
       - name: Prepare deps
         env:
           RUST_BACKTRACE: 1
-        run:  cargo xtask prepare-deps --platform linux --no-nvidia
+        run: cargo xtask prepare-deps --platform linux --no-nvidia
 
       - run: cargo xtask check-msrv
 
   check-licenses:
-    if: github.event_name == 'merge_group'
+    if: github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
+
       - uses: dtolnay/rust-toolchain@stable
+
       - uses: Swatinem/rust-cache@v2
 
       - run: cargo xtask check-licenses

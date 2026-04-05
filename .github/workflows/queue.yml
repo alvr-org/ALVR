@@ -51,9 +51,6 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      # Fix actions rust install and msrv both being stupid
-      - run: rustup update
-
       - name: Prepare deps
         env:
           RUST_BACKTRACE: 1

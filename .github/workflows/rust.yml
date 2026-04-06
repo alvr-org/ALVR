@@ -29,6 +29,44 @@ jobs:
 
       - run: cargo xtask clippy --ci
 
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: crazy-max/ghaction-chocolatey@v4
+        with:
+          args: install zip unzip pkgconfiglite wixtoolset
+
+      - name: Prepare deps
+        env:
+          RUST_BACKTRACE: 1
+        run: cargo xtask prepare-deps --platform windows
+
+      - name: Build and package ALVR (.zip)
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          mkdir artifacts/
+          cargo xtask build-streamer --platform windows --ci
+          zip -r9X artifacts/alvr_streamer_windows.zip ./build/alvr_streamer*
+          cargo xtask build-launcher --platform windows --ci
+          zip -r9X artifacts/alvr_launcher_windows.zip ./build/alvr_launcher*
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: check-windows
+          path: ./artifacts/*
+
   check-linux:
     runs-on: ubuntu-latest
     steps:
@@ -44,7 +82,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libasound2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
+          sudo apt-get install libfuse2t64 build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
 
       - name: Prepare deps
         env:
@@ -52,6 +90,45 @@ jobs:
         run: cargo xtask prepare-deps --platform linux --no-nvidia
 
       - run: cargo xtask clippy --ci
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt-get install libfuse2t64 build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
+
+      - name: Prepare deps
+        env:
+          RUST_BACKTRACE: 1
+        run: cargo xtask prepare-deps --platform linux
+
+      - name: Build and package ALVR (.tar.gz)
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          set -e
+          mkdir artifacts/
+          cargo xtask build-streamer --platform linux --ci
+          tar -cJf artifacts/alvr_streamer_linux.tar.xz ./build/alvr_streamer*
+          cargo xtask build-launcher --platform linux --ci
+          tar -cJf artifacts/alvr_launcher_linux.tar.xz ./build/alvr_launcher*
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: check-linux
+          path: ./artifacts/*
 
   check-macos:
     runs-on: macos-latest

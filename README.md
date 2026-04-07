@@ -19,22 +19,23 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 |     Pico Neo 3/4/4 Ultra     |                                   :heavy_check_mark:                                   |
 |    Play For Dream YVR 1/2/MR |                                   :heavy_check_mark:                                   |
 | Vive Focus 3/Vision/XR Elite |                                   :heavy_check_mark:                                   |
-|           Lynx R1            |                                   :heavy_check_mark:                                   |
 |     PhoneVR (smartphone)     |     :heavy_check_mark: ** ([repo](https://github.com/PhoneVR-Developers/PhoneVR))      |
-|        Android/Monado        |                                      :warning: **                                      |
+|        Android/Monado        |                                   :warning: **                                         |
+|           Lynx R1            |                                   :warning: ***                                        |
 |          Oculus Go           |                 :x: ([old repo](https://github.com/polygraphene/ALVR))                 |
 
 \* ALVR for Quest 1 is not available through the Meta store.  
-\** Works on some smartphones, but has not been extensively tested.  
+\** Works on some smartphones, but has not been extensively tested.
+\*** Temporarily removed, last supported on version [20.14.1](https://github.com/alvr-org/ALVR/releases/tag/v20.14.1).
 
 |     PC OS      |                                    Support                                    |
 | :------------: | :---------------------------------------------------------------------------: |
 | Windows 10/11  | :heavy_check_mark: ([store link](https://store.steampowered.com/app/3312710)) |
 | Windows XP/7/8 |                                      :x:                                      |
-|     Linux      |                             :heavy_check_mark:***                             |
+|     Linux      |                             :heavy_check_mark:****                            |
 |     macOS      |                                      :x:                                      |
 
-\*** Please check the wiki for detailed compatibility information.
+\**** Please check the wiki for detailed compatibility information.
 
 ### Requirements
 

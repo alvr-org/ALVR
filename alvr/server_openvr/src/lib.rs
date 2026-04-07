@@ -484,19 +484,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
         return ptr::null_mut();
     };
 
-    let dashboard_process_paths = sysinfo::System::new_all()
+    let system = sysinfo::System::new_all();
+    let dashboard_processes = system
         .processes_by_name(OsStr::new(&afs::dashboard_fname()))
-        .filter_map(|proc| Some(proc.exe()?.to_owned()))
         .collect::<Vec<_>>();
-
-    // Check that there is no active dashboard instance not part of this driver installation
-    // Note: if the iterator is empty, `all()` returns true
-    if !dashboard_process_paths
-        .iter()
-        .all(|path| *path == filesystem_layout.dashboard_exe())
-    {
-        return ptr::null_mut();
-    }
 
     static ONCE: Once = Once::new();
     ONCE.call_once(move || {
@@ -549,7 +540,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
             // When there is already a ALVR dashboard running, initialize the HMD device early to
             // avoid buggy SteamVR behavior
             // NB: we already bail out before if the dashboards don't belong to this streamer
-            let early_hmd_initialization = !dashboard_process_paths.is_empty();
+            let early_hmd_initialization = !dashboard_processes.is_empty();
 
             CppInit(early_hmd_initialization);
         }

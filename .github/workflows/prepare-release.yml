@@ -56,7 +56,7 @@ jobs:
 
       - uses: crazy-max/ghaction-chocolatey@v4
         with:
-          args: install zip unzip pkgconfiglite wixtoolset
+          args: install zip unzip pkgconfiglite
 
       - name: Build and package ALVR
         env:
@@ -72,7 +72,7 @@ jobs:
           path: ./build/alvr_*.zip
 
   build_linux_streamer:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [prepare_release]
     steps:
       - uses: actions/checkout@v6

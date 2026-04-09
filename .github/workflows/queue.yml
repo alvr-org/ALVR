@@ -21,8 +21,6 @@ jobs:
         with:
           components: clippy
 
-      - uses: Swatinem/rust-cache@v2
-
       - name: Install dependencies
         run: |
           sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 25088A0359807596
@@ -48,8 +46,6 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: Swatinem/rust-cache@v2
-
       - name: Prepare deps
         env:
           RUST_BACKTRACE: 1
@@ -66,8 +62,6 @@ jobs:
           submodules: true
 
       - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
 
       - name: Install dependencies
         run: |
@@ -90,7 +84,5 @@ jobs:
           submodules: true
 
       - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
 
       - run: cargo xtask check-licenses

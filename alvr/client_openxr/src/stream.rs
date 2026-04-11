@@ -193,10 +193,9 @@ impl StreamContext {
             ],
             format,
             config.foveated_encoding_config.clone(),
-            core_ctx.platform() != Platform::Lynx
-                && !((core_ctx.platform().is_pico()
-                    || (core_ctx.platform() == Platform::SamsungGalaxyXR))
-                    && config.enable_hdr),
+            !((core_ctx.platform().is_pico()
+                || (core_ctx.platform() == Platform::SamsungGalaxyXR))
+                && config.enable_hdr),
             // TODO: Find a driver heuristic for the limited range bug instead?
             core_ctx.platform() != Platform::SamsungGalaxyXR && !config.enable_hdr,
             config.encoding_gamma,

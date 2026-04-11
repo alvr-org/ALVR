@@ -202,12 +202,6 @@ value = "5900"
 name = "com.yvr.intent.category.VR"
 value = "vr_only"
 
-# Lynx entries
-[[package.metadata.android.queries.package]]
-name = "com.ultraleap.tracking.service"
-[[package.metadata.android.queries.package]]
-name = "com.ultraleap.openxr.api_layer"
-
 # Android XR
 [[package.metadata.android.uses_feature]]
 name = "android.software.xr.api.spatial"

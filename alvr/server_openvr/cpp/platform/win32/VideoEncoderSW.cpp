@@ -61,14 +61,14 @@ void VideoEncoderSW::Initialize() {
 
     switch (settings.m_h264Profile) {
     case ALVR_H264_PROFILE_BASELINE:
-        m_codecContext->profile = FF_PROFILE_H264_BASELINE;
+        m_codecContext->profile = AV_PROFILE_H264_BASELINE;
         break;
     case ALVR_H264_PROFILE_MAIN:
-        m_codecContext->profile = FF_PROFILE_H264_MAIN;
+        m_codecContext->profile = AV_PROFILE_H264_MAIN;
         break;
     default:
     case ALVR_H264_PROFILE_HIGH:
-        m_codecContext->profile = FF_PROFILE_H264_HIGH;
+        m_codecContext->profile = AV_PROFILE_H264_HIGH;
         break;
     }
     switch (settings.m_entropyCoding) {

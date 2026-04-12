@@ -61,14 +61,14 @@ pub fn prepare_ffmpeg_windows(deps_path: &Path) {
     command::download_and_extract_zip(
         &format!(
             "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/{}",
-            "ffmpeg-n7.1-latest-win64-gpl-shared-7.1.zip"
+            "ffmpeg-n8.1-latest-win64-gpl-shared-8.1.zip"
         ),
         deps_path,
     )
     .unwrap();
 
     fs::rename(
-        deps_path.join("ffmpeg-n7.1-latest-win64-gpl-shared-7.1"),
+        deps_path.join("ffmpeg-n8.1-latest-win64-gpl-shared-8.1"),
         deps_path.join("ffmpeg"),
     )
     .unwrap();
@@ -114,21 +114,11 @@ pub fn prepare_windows_deps(skip_admin_priv: bool) {
     sh.create_dir(&deps_path).unwrap();
 
     if !skip_admin_priv {
-        choco_install(
-            &sh,
-            &[
-                "zip",
-                "unzip",
-                "llvm",
-                "vulkan-sdk",
-                "pkgconfiglite",
-                "cmake",
-            ],
-        )
-        .unwrap();
+        choco_install(&sh, &["zip", "unzip", "llvm", "pkgconfiglite", "cmake"]).unwrap();
     }
 
     prepare_x264_windows(&deps_path);
+    prepare_vulkan_headers(&deps_path);
     prepare_ffmpeg_windows(&deps_path);
     prepare_libvpl_windows(&deps_path);
 }
@@ -141,6 +131,7 @@ pub fn prepare_linux_deps(enable_nvenc: bool) {
     sh.create_dir(&deps_path).unwrap();
 
     build_x264_linux(&deps_path);
+    prepare_vulkan_headers(&deps_path);
     build_ffmpeg_linux(enable_nvenc, &deps_path);
 }
 
@@ -177,18 +168,61 @@ pub fn build_x264_linux(deps_path: &Path) {
     cmd!(sh, "make install").run().unwrap();
 }
 
+pub fn prepare_vulkan_headers(deps_path: &Path) {
+    const VERSION: &str = "1.4.338";
+
+    let dest = deps_path.join("vulkan-headers");
+    let include_dir = dest.join("include");
+
+    command::download_and_extract_zip(
+        &format!("https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v{VERSION}.zip"),
+        &dest,
+    )
+    .unwrap();
+
+    fs::rename(
+        dest.join(format!("Vulkan-Headers-{VERSION}")),
+        dest.join("src"),
+    )
+    .unwrap();
+
+    // Move the include dir up so it's at vulkan-headers/include/vulkan/vulkan.h
+    fs::rename(dest.join("src/include"), &include_dir).unwrap();
+
+    // Write a vulkan.pc so pkg-config finds it at the right version
+    let pc_dir = dest.join("lib/pkgconfig");
+    fs::create_dir_all(&pc_dir).unwrap();
+    fs::write(
+        pc_dir.join("vulkan.pc"),
+        format!(
+            r#"prefix={dest}
+includedir=${{prefix}}/include
+
+Name: Vulkan-Headers
+Description: Vulkan Header files
+Version: {VERSION}
+Cflags: -I${{includedir}}
+"#,
+            dest = dest.to_string_lossy()
+        ),
+    )
+    .unwrap();
+}
+
 pub fn build_ffmpeg_linux(enable_nvenc: bool, deps_path: &Path) {
+    let vulkan_pc_path = deps_path.join("vulkan-headers/lib/pkgconfig");
+
     let sh = Shell::new().unwrap();
 
     command::download_and_extract_zip(
-        "https://codeload.github.com/FFmpeg/FFmpeg/zip/n6.0",
+        "https://codeload.github.com/FFmpeg/FFmpeg/zip/n8.1",
         deps_path,
     )
     .unwrap();
 
     let final_path = deps_path.join("ffmpeg");
 
-    fs::rename(deps_path.join("FFmpeg-n6.0"), &final_path).unwrap();
+    fs::rename(deps_path.join("FFmpeg-n8.1"), &final_path).unwrap();
 
     let flags = [
         "--enable-gpl",
@@ -200,7 +234,6 @@ pub fn build_ffmpeg_linux(enable_nvenc: bool, deps_path: &Path) {
         "--disable-avformat",
         "--disable-swresample",
         "--disable-swscale",
-        "--disable-postproc",
         "--disable-network",
         "--disable-everything",
         "--enable-encoder=h264_vaapi",
@@ -262,7 +295,8 @@ pub fn build_ffmpeg_linux(enable_nvenc: bool, deps_path: &Path) {
             ];
 
             let env_vars = format!(
-                "PKG_CONFIG_PATH='{}'",
+                "PKG_CONFIG_PATH='{}:{}' ",
+                vulkan_pc_path.display(),
                 header_build_dir.join("lib/pkgconfig").display()
             );
             let flags_combined = flags.join(" ");
@@ -275,6 +309,10 @@ pub fn build_ffmpeg_linux(enable_nvenc: bool, deps_path: &Path) {
             cmd!(sh, "bash -c {command}").run().unwrap();
         }
     } else {
+        let _vulkan_env = sh.push_env(
+            "PKG_CONFIG_PATH",
+            format!("{}:$PKG_CONFIG_PATH", vulkan_pc_path.display()),
+        );
         cmd!(sh, "./configure {install_prefix} {flags...}")
             .run()
             .unwrap();

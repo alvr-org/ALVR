@@ -107,7 +107,7 @@ jobs:
           asset_content_type: application/zip
 
   build_linux_streamer:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: [prepare_release]
     steps:
       - uses: actions/checkout@v2
@@ -124,8 +124,6 @@ jobs:
         env:
           RUST_BACKTRACE: 1
         run: |
-          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 25088A0359807596
-          echo "deb http://ppa.launchpad.net/pipewire-debian/pipewire-upstream/ubuntu $(lsb_release -cs) main" | sudo tee -a /etc/apt/sources.list.d/pipewire-upstream.list
           sudo apt-get update
           sudo apt-get install libfuse2 build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
 
@@ -197,7 +195,7 @@ jobs:
         with:
           ref: ${{ needs.prepare_release.outputs.release_ref }}
           submodules: true
-        
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable

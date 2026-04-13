@@ -279,7 +279,7 @@ impl Launcher {
 }
 
 impl eframe::App for Launcher {
-    fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut Ui, _: &mut eframe::Frame) {
         while let Ok(msg) = self.worker_message_receiver.try_recv() {
             match msg {
                 WorkerMessage::ReleaseChannelsInfo(data) => self.release_channels_info = Some(data),
@@ -295,7 +295,7 @@ impl eframe::App for Launcher {
             }
         }
 
-        CentralPanel::default().show(ctx, |ui| match &self.state {
+        CentralPanel::default().show_inside(ui, |ui| match &self.state {
             State::Default => {
                 ui.with_layout(Layout::top_down(Align::Center), |ui| {
                     ui.label(RichText::new("ALVR Launcher").size(25.0).strong());
@@ -364,7 +364,7 @@ impl eframe::App for Launcher {
                                                         self.ui_message_sender
                                                             .send(UiMessage::Quit)
                                                             .ok();
-                                                        ctx.send_viewport_cmd(
+                                                        ui.send_viewport_cmd(
                                                             ViewportCommand::Close,
                                                         );
                                                     }
@@ -400,9 +400,9 @@ impl eframe::App for Launcher {
                         PopupType::AddVersion {
                             version_selection,
                             session_version_selection,
-                        } => self.version_popup(ctx, version_selection, session_version_selection),
-                        PopupType::EditVersion(version) => self.edit_popup(ctx, version),
-                        PopupType::DeleteInstallation(version) => self.delete_popup(ctx, version),
+                        } => self.version_popup(ui, version_selection, session_version_selection),
+                        PopupType::EditVersion(version) => self.edit_popup(ui, version),
+                        PopupType::DeleteInstallation(version) => self.delete_popup(ui, version),
                         PopupType::None => PopupType::None,
                     };
                     self.popup = popup;
@@ -427,7 +427,7 @@ impl eframe::App for Launcher {
             }
         });
 
-        if ctx.input(|i| i.viewport().close_requested()) {
+        if ui.input(|i| i.viewport().close_requested()) {
             self.ui_message_sender.send(UiMessage::Quit).ok();
         }
     }

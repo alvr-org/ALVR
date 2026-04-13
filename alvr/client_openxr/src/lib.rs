@@ -649,10 +649,13 @@ fn android_main(app: android_activity::AndroidApp) {
     let rendering_thread = thread::spawn(|| {
         // workaround for the Pico runtime
         let context = ndk_context::android_context();
-        let vm = unsafe { jni::JavaVM::from_raw(context.vm().cast()) }.unwrap();
-        let _env = vm.attach_current_thread().unwrap();
+        let vm = unsafe { jni::JavaVM::from_raw(context.vm().cast()) };
+        vm.attach_current_thread(|_env| {
+            entry_point();
 
-        entry_point();
+            jni::errors::Result::Ok(())
+        })
+        .unwrap();
     });
 
     let mut should_quit = false;

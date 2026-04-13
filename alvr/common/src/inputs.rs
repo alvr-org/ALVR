@@ -6,7 +6,7 @@ use std::{
 
 macro_rules! interaction_profile {
     ($ty:ident, $path:expr) => {
-        paste::paste! {
+        pastey::paste! {
             pub const [<$ty _CONTROLLER_PROFILE_PATH>]: &str =
                 concat!("/interaction_profiles/", $path, "_controller");
             pub static [<$ty _CONTROLLER_PROFILE_ID>]: LazyLock<u64> =
@@ -28,7 +28,7 @@ interaction_profile!(YVR, "yvr/touch");
 
 macro_rules! devices {
     ($(($name:ident, $path:expr),)*) => {
-        paste::paste! {
+        pastey::paste! {
             $(
                 pub const [<$name _PATH>]: &str = $path;
                 pub static [<$name _ID>]: LazyLock<u64> = LazyLock::new(|| hash_string([<$name _PATH>]));
@@ -79,7 +79,7 @@ pub struct ButtonInfo {
 
 macro_rules! controller_inputs {
     ($(($inputs:ident, $paths:literal, $ty:ident),)*) => {
-        paste::paste! {
+        pastey::paste! {
             $(
                 pub const [<LEFT_ $inputs _PATH>]: &str =
                     concat!("/user/hand/left/input/", $paths);

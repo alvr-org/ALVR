@@ -16,7 +16,7 @@ use alvr_gui_common::theme;
 use alvr_packets::{ClientConnectionsAction, PathValuePair};
 use alvr_session::SessionConfig;
 use eframe::egui::{
-    self, Align, CentralPanel, Direction, Frame, Layout, Margin, RichText, SidePanel,
+    self, Align, CentralPanel, Direction, Frame, Layout, Margin, Panel, RichText, Ui,
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
@@ -142,7 +142,7 @@ impl Dashboard {
 }
 
 impl eframe::App for Dashboard {
-    fn update(&mut self, context: &egui::Context, _: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut Ui, _: &mut eframe::Frame) {
         let mut requests = vec![];
 
         let connected_to_server = self.data_sources.server_connected();
@@ -195,7 +195,7 @@ impl eframe::App for Dashboard {
         }
 
         if *self.server_restarting.lock() {
-            CentralPanel::default().show(context, |ui| {
+            CentralPanel::default().show_inside(ui, |ui| {
                 // todo: find a way to center both vertically and horizontally
                 ui.vertical_centered(|ui| {
                     ui.add_space(100.0);
@@ -206,10 +206,10 @@ impl eframe::App for Dashboard {
             return;
         }
 
-        self.notification_bar.ui(context);
+        self.notification_bar.ui(ui);
 
         if self.setup_wizard_open {
-            CentralPanel::default().show(context, |ui| {
+            CentralPanel::default().show_inside(ui, |ui| {
                 if let Some(request) = self.setup_wizard.ui(ui) {
                     match request {
                         SetupWizardRequest::ServerRequest(request) => {
@@ -233,15 +233,15 @@ impl eframe::App for Dashboard {
                 }
             });
         } else {
-            SidePanel::left("side_panel")
+            Panel::left("side_panel")
                 .resizable(false)
                 .frame(
                     Frame::new()
                         .fill(theme::LIGHTER_BG)
                         .inner_margin(Margin::same(7)),
                 )
-                .exact_width(160.0)
-                .show(context, |ui| {
+                .exact_size(160.0)
+                .show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
                         ui.add_space(13.0);
                         ui.heading(RichText::new("ALVR").size(25.0).strong());
@@ -292,7 +292,7 @@ impl eframe::App for Dashboard {
 
             CentralPanel::default()
                 .frame(Frame::new().inner_margin(Margin::same(20)).fill(theme::BG))
-                .show(context, |ui| {
+                .show_inside(ui, |ui| {
                     ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
                         ui.heading(RichText::new(self.tab_labels[&self.selected_tab]).size(25.0));
                         match self.selected_tab {
@@ -343,7 +343,7 @@ impl eframe::App for Dashboard {
         };
 
         if let Some(popup) = &self.new_version_popup
-            && let Some(action) = popup.ui(context, shutdown_alvr)
+            && let Some(action) = popup.ui(ui, shutdown_alvr)
         {
             if let CloseAction::CloseWithRequest(request) = action {
                 requests.push(request);
@@ -356,7 +356,7 @@ impl eframe::App for Dashboard {
             self.data_sources.request(request);
         }
 
-        if context.input(|state| state.viewport().close_requested())
+        if ui.input(|state| state.viewport().close_requested())
             && self.session.as_ref().is_some_and(|s| {
                 s.to_settings()
                     .extra

@@ -1,6 +1,6 @@
 use alvr_common::{error, info};
 use app_dirs2::{AppDataType, AppInfo};
-use rand::Rng;
+use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 

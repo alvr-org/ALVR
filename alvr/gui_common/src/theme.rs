@@ -53,7 +53,7 @@ pub mod graph_colors {
 pub fn set_theme(ctx: &Context) {
     ctx.set_theme(ThemePreference::Dark);
 
-    let mut style = (*ctx.style()).clone();
+    let mut style = (*ctx.global_style()).clone();
     style.spacing.slider_width = 200_f32; // slider width can only be set globally
     style.spacing.interact_size.x = 35.0;
     style.spacing.interact_size.y = 35.0;
@@ -65,7 +65,7 @@ pub fn set_theme(ctx: &Context) {
     style.text_styles.get_mut(&TextStyle::Body).unwrap().size = 14.0;
     style.interaction.tooltip_delay = 0.0;
 
-    ctx.set_style(style);
+    ctx.set_global_style(style);
 
     let mut visuals = Visuals::dark();
 

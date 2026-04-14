@@ -17,11 +17,13 @@ alvr_packets.workspace = true
 alvr_session.workspace = true
 alvr_system_info.workspace = true
 
+jni = "0.22"
 openxr = { git = "https://github.com/zmerp/openxrs", rev = "e7c1b155e79ff8b58c2f6558d28e1398ebe08d2d" }
 
 [target.'cfg(target_os = "android")'.dependencies]
-android-activity = { version = "0.6", features = ["native-activity"] }
-jni = "0.21"
+# Pinning android-activity to 0.6.0. v0.6.1 changed ndk-context initialization from Activity to
+# Application Context. Some unidentified dependency still assumes Activity context, causing freezes.
+android-activity = { version = "=0.6.0", features = ["native-activity"] }
 libc = "0.2"
 ndk-context = "0.1"
 

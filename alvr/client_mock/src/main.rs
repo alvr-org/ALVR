@@ -8,7 +8,7 @@ use alvr_packets::{FaceData, TrackingData};
 use alvr_session::CodecType;
 use eframe::{
     Frame, NativeOptions,
-    egui::{CentralPanel, Context, RichText, Slider, ViewportBuilder},
+    egui::{CentralPanel, RichText, Slider, Ui, ViewportBuilder},
 };
 use std::{
     f32::consts::{FRAC_PI_2, PI},
@@ -90,14 +90,14 @@ impl Window {
 }
 
 impl eframe::App for Window {
-    fn update(&mut self, context: &Context, _: &mut Frame) {
+    fn ui(&mut self, ui: &mut Ui, _: &mut Frame) {
         while let Ok(output) = self.output_receiver.try_recv() {
             self.output = output;
         }
 
         let mut input = self.input.clone();
 
-        CentralPanel::default().show(context, |ui| {
+        CentralPanel::default().show_inside(ui, |ui| {
             ui.vertical_centered(|ui| {
                 ui.heading(RichText::new(&self.output.hud_message));
             });
@@ -134,7 +134,7 @@ impl eframe::App for Window {
             self.input_sender.send(self.input.clone()).ok();
         }
 
-        context.request_repaint();
+        ui.request_repaint();
     }
 }
 

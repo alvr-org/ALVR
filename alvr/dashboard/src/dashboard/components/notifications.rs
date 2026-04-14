@@ -2,7 +2,7 @@ use alvr_common::{LogEntry, LogSeverity};
 use alvr_gui_common::theme::{self, log_colors};
 use alvr_session::Settings;
 use eframe::{
-    egui::{self, Frame, Label, Layout, RichText, TextWrapMode, TopBottomPanel},
+    egui::{self, Frame, Label, Layout, Panel, RichText, TextWrapMode, Ui},
     emath::Align,
     epaint::Color32,
 };
@@ -103,7 +103,7 @@ impl NotificationBar {
         }
     }
 
-    pub fn ui(&mut self, context: &egui::Context) {
+    pub fn ui(&mut self, ui: &mut Ui) {
         let now = Instant::now();
         if now > self.receive_instant + TIMEOUT {
             self.message = self
@@ -120,13 +120,13 @@ impl NotificationBar {
             LogSeverity::Debug => (theme::FG, theme::LIGHTER_BG),
         };
 
-        let mut bottom_bar = TopBottomPanel::bottom("bottom_panel").frame(
+        let mut bottom_bar = Panel::bottom("bottom_panel").frame(
             Frame::default()
                 .inner_margin(egui::vec2(10.0, 5.0))
                 .fill(bg),
         );
         let alignment = if !self.expanded {
-            bottom_bar = bottom_bar.max_height(26.0);
+            bottom_bar = bottom_bar.max_size(26.0);
 
             Align::TOP
         } else {
@@ -138,7 +138,7 @@ impl NotificationBar {
             TextWrapMode::Wrap
         };
 
-        bottom_bar.show(context, |ui| {
+        bottom_bar.show_inside(ui, |ui| {
             ui.with_layout(Layout::right_to_left(alignment), |ui| {
                 if !self.expanded {
                     if ui.small_button("Expand").clicked() {

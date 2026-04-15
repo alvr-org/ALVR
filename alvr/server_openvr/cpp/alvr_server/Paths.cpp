@@ -131,6 +131,10 @@ void init_paths() {
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/squeeze/value"),
                                             { { "/input/grip/value", "/input/l1/value" },
                                               ButtonType::ScalarOneSided } });
+    LEFT_CONTROLLER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/left/input/squeeze/sensor/value"),
+          { { "/input/grip/sensor/value", "/input/l1_sensor/value" }, ButtonType::ScalarOneSided } }
+    );
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/squeeze/force"),
                                             { { "/input/grip/force" },
                                               ButtonType::ScalarOneSided } });
@@ -140,6 +144,11 @@ void init_paths() {
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/trigger/value"),
                                             { { "/input/trigger/value", "/input/l2/value" },
                                               ButtonType::ScalarOneSided } });
+    LEFT_CONTROLLER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/left/input/trigger/sensor/value"),
+          { { "/input/trigger/sensor/value", "/input/l2_sensor/value" },
+            ButtonType::ScalarOneSided } }
+    );
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/trigger/touch"),
                                             { { "/input/trigger/touch", "/input/l2/touch" },
                                               ButtonType::Binary } });
@@ -226,6 +235,10 @@ void init_paths() {
           { { "/input/grip/value", "/input/r1/value" }, ButtonType::ScalarOneSided } }
     );
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/right/input/squeeze/sensor/value"),
+          { { "/input/grip/sensor/value", "/input/r1_sensor/value" }, ButtonType::ScalarOneSided } }
+    );
+    RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
         { PathStringToHash("/user/hand/right/input/squeeze/force"),
           { { "/input/grip/force" }, ButtonType::ScalarOneSided } }
     );
@@ -236,6 +249,11 @@ void init_paths() {
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
         { PathStringToHash("/user/hand/right/input/trigger/value"),
           { { "/input/trigger/value", "/input/r2/value" }, ButtonType::ScalarOneSided } }
+    );
+    RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/right/input/trigger/sensor/value"),
+          { { "/input/trigger/sensor/value", "/input/r2_sensor/value" },
+            ButtonType::ScalarOneSided } }
     );
     RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
         { PathStringToHash("/user/hand/right/input/trigger/touch"),
@@ -271,7 +289,7 @@ void init_paths() {
         { PathStringToHash("/user/hand/right/input/trackpad/click"),
           { { "/input/trackpad/click" }, ButtonType::Binary } }
     );
-    LEFT_CONTROLLER_BUTTON_MAPPING.insert(
+    RIGHT_CONTROLLER_BUTTON_MAPPING.insert(
         { PathStringToHash("/user/hand/right/input/trackpad/force"),
           { { "/input/trackpad/force" }, ButtonType::ScalarOneSided } }
     );

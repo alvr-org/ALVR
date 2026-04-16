@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 
 [features]
 gpl = [] # Enable for FFmpeg support on Windows. Always enabled on Linux
+nix = []
 
 [dependencies]
 alvr_common.workspace = true

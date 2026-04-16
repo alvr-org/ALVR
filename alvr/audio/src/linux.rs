@@ -17,17 +17,17 @@ use std::{
 
 use pipewire::{
     channel::Receiver,
-    context::Context,
-    core::Core,
+    context::ContextRc,
+    core::CoreRc,
     keys,
-    main_loop::MainLoop,
+    main_loop::MainLoopRc,
     properties,
     spa::{
         param::audio::{AudioFormat, AudioInfoRaw},
         pod::{self, Pod, Value, serialize::PodSerializer},
         utils::Direction,
     },
-    stream::{Stream, StreamFlags, StreamListener, StreamState},
+    stream::{StreamFlags, StreamListener, StreamRc, StreamState},
 };
 
 pub fn try_load_pipewire() -> Result<()> {
@@ -59,8 +59,8 @@ pub fn try_load_pipewire() -> Result<()> {
 }
 
 fn probe_pipewire() -> Result<(), pipewire::Error> {
-    let mainloop = MainLoop::new(None)?;
-    let context = Context::new(&mainloop)?;
+    let mainloop = MainLoopRc::new(None)?;
+    let context = ContextRc::new(&mainloop, None)?;
     context.connect(None)?;
     Ok(())
 }
@@ -159,15 +159,15 @@ fn pw_main_loop(
     mic_info: Option<AudioInfo>,
 ) -> Result<(), pipewire::Error> {
     debug!("Starting pipewire thread");
-    let mainloop = MainLoop::new(None)?;
+    let mainloop = MainLoopRc::new(None)?;
 
     let _receiver = pw_receiver.attach(mainloop.as_ref(), {
         let mainloop = mainloop.clone();
         move |_| mainloop.quit()
     });
 
-    let context = Context::new(&mainloop)?;
-    let pw_core = context.connect(None)?;
+    let context = ContextRc::new(&mainloop, None)?;
+    let pw_core = context.connect_rc(None)?;
 
     let _speaker = if let Some(info) = speaker_info {
         debug!("Creating pw output audio stream");
@@ -214,13 +214,13 @@ fn audio_info_to_vec(audio_info: AudioInfoRaw) -> Vec<u8> {
 }
 
 fn create_speaker_stream(
-    pw_core: &Core,
+    pw_core: &CoreRc,
     mut sender: StreamSender<()>,
     sample_rate: u32,
     channel_count: u32,
-) -> Result<(Stream, StreamListener<i16>), pipewire::Error> {
-    let stream = Stream::new(
-        pw_core,
+) -> Result<(StreamRc, StreamListener<i16>), pipewire::Error> {
+    let stream = StreamRc::new(
+        pw_core.clone(),
         "alvr-audio",
         properties::properties! {
             *keys::NODE_NAME => "ALVR Audio",
@@ -265,13 +265,13 @@ fn create_speaker_stream(
 }
 
 fn create_mic_stream(
-    pw_core: &Core,
+    pw_core: &CoreRc,
     sample_queue: Arc<Mutex<VecDeque<f32>>>,
     sample_rate: u32,
     channel_count: u32,
-) -> Result<(Stream, StreamListener<f32>), pipewire::Error> {
-    let stream = Stream::new(
-        pw_core,
+) -> Result<(StreamRc, StreamListener<f32>), pipewire::Error> {
+    let stream = StreamRc::new(
+        pw_core.clone(),
         "alvr-mic",
         properties::properties! {
             *keys::NODE_NAME => "ALVR Microphone",
@@ -318,7 +318,7 @@ fn fill_pw_buf(
     sample_queue: Arc<Mutex<VecDeque<f32>>>,
     chan_size: usize,
     chan_count: usize,
-    stream: &pipewire::stream::StreamRef,
+    stream: &pipewire::stream::Stream,
 ) {
     if let Some(mut pw_buf) = stream.dequeue_buffer() {
         let requested = pw_buf.requested() as usize;

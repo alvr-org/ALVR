@@ -18,7 +18,7 @@ alvr_session.workspace = true
 alvr_system_info.workspace = true
 
 jni = "0.22"
-openxr = { git = "https://github.com/zmerp/openxrs", rev = "e7c1b155e79ff8b58c2f6558d28e1398ebe08d2d" }
+openxr = "0.21"
 
 [target.'cfg(target_os = "android")'.dependencies]
 # Pinning android-activity to 0.6.0. v0.6.1 changed ndk-context initialization from Activity to

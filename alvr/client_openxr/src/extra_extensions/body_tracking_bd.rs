@@ -1,35 +1,12 @@
 use crate::extra_extensions::get_instance_proc;
-use openxr::{self as xr, AnyGraphics, sys};
-use std::{
-    ffi::{CString, c_char, c_void},
-    ptr,
-    sync::LazyLock,
+use openxr::{
+    self as xr, AnyGraphics, raw,
+    sys::{self, Handle},
 };
-
-pub const BD_BODY_TRACKING_EXTENSION_NAME: &str = "XR_BD_body_tracking";
-
-static TYPE_BODY_TRACKER_CREATE_INFO_BD: LazyLock<xr::StructureType> =
-    LazyLock::new(|| xr::StructureType::from_raw(1000385001));
-static TYPE_BODY_JOINTS_LOCATE_INFO_BD: LazyLock<xr::StructureType> =
-    LazyLock::new(|| xr::StructureType::from_raw(1000385002));
-static TYPE_BODY_JOINT_LOCATIONS_BD: LazyLock<xr::StructureType> =
-    LazyLock::new(|| xr::StructureType::from_raw(1000385003));
-static TYPE_SYSTEM_BODY_TRACKING_PROPERTIES_BD: LazyLock<xr::StructureType> =
-    LazyLock::new(|| xr::StructureType::from_raw(1000385004));
-
-pub const BODY_JOINT_COUNT_BD: usize = 24;
-
-#[repr(transparent)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub struct XrBodyTrackerBD(u64);
-
-#[repr(transparent)]
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub struct BodyJointSetBD(i32);
-impl BodyJointSetBD {
-    pub const BODY_WITHOUT_ARM: BodyJointSetBD = Self(1i32);
-    pub const FULL_BODY_JOINTS: BodyJointSetBD = Self(2i32);
-}
+use std::{
+    ffi::{CString, c_char},
+    ptr,
+};
 
 #[repr(transparent)]
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -53,58 +30,6 @@ impl CalibAppFlagBD {
     pub const MOTION_TRACKER_2: CalibAppFlagBD = Self(1i32);
 }
 
-#[repr(C)]
-struct BodyTrackerCreateInfoBD {
-    ty: xr::StructureType,
-    next: *const c_void,
-    joint_set: BodyJointSetBD,
-}
-
-#[repr(C)]
-struct BodyJointsLocateInfoBD {
-    ty: xr::StructureType,
-    next: *const c_void,
-    base_space: sys::Space,
-    time: sys::Time,
-}
-
-#[repr(C)]
-pub struct BodyJointLocationBD {
-    pub location_flags: sys::SpaceLocationFlags,
-    pub pose: sys::Posef,
-    pub radius: f32,
-}
-
-#[repr(C)]
-struct BodyJointLocationsBD {
-    ty: xr::StructureType,
-    next: *const c_void,
-    all_joint_poses_tracked: sys::Bool32,
-    joint_count: u32,
-    joint_locations: *mut BodyJointLocationBD,
-}
-
-#[repr(C)]
-struct SystemBodyTrackingPropertiesBD {
-    ty: xr::StructureType,
-    next: *const c_void,
-    supports_body_tracking: sys::Bool32,
-}
-
-type CreateBodyTrackerBD = unsafe extern "system" fn(
-    sys::Session,
-    *const BodyTrackerCreateInfoBD,
-    *mut XrBodyTrackerBD,
-) -> sys::Result;
-
-type DestroyBodyTrackerBD = unsafe extern "system" fn(XrBodyTrackerBD) -> sys::Result;
-
-type LocateBodyJointsBD = unsafe extern "system" fn(
-    XrBodyTrackerBD,
-    *const BodyJointsLocateInfoBD,
-    *mut BodyJointLocationsBD,
-) -> sys::Result;
-
 type StartBodyTrackingCalibAppBD =
     unsafe extern "system" fn(sys::Instance, *const c_char, CalibAppFlagBD) -> sys::Result;
 
@@ -115,40 +40,36 @@ type GetBodyTrackingStateBD = unsafe extern "system" fn(
 ) -> sys::Result;
 
 pub struct BodyTrackerBD {
-    handle: XrBodyTrackerBD,
+    handle: sys::BodyTrackerBD,
     session: xr::Session<AnyGraphics>,
-    destroy_body_tracker: DestroyBodyTrackerBD,
-    locate_body_joints: LocateBodyJointsBD,
+    ext_fns: raw::BodyTrackingBD,
     get_body_tracking_state: GetBodyTrackingStateBD,
 }
 
 impl BodyTrackerBD {
     pub fn new<G>(
         session: xr::Session<G>,
-        joint_set: BodyJointSetBD,
-        extra_extensions: &[String],
+        joint_set: xr::BodyJointSetBD,
         system: xr::SystemId,
         prompt_calibration: bool,
     ) -> xr::Result<Self> {
-        if !extra_extensions.contains(&BD_BODY_TRACKING_EXTENSION_NAME.to_owned()) {
-            return Err(sys::Result::ERROR_EXTENSION_NOT_PRESENT);
-        }
+        let ext_fns = session
+            .instance()
+            .exts()
+            .bd_body_tracking
+            .ok_or(sys::Result::ERROR_EXTENSION_NOT_PRESENT)?;
 
-        let create_body_tracker: CreateBodyTrackerBD =
-            get_instance_proc(&session, "xrCreateBodyTrackerBD")?;
         let start_body_tracking_calib_app: StartBodyTrackingCalibAppBD =
             get_instance_proc(&session, "xrStartBodyTrackingCalibAppBD")?;
         let get_body_tracking_state: GetBodyTrackingStateBD =
             get_instance_proc(&session, "xrGetBodyTrackingStateBD")?;
-        let destroy_body_tracker = get_instance_proc(&session, "xrDestroyBodyTrackerBD")?;
-        let locate_body_joints = get_instance_proc(&session, "xrLocateBodyJointsBD")?;
 
         let props = super::get_props(
             &session,
             system,
-            SystemBodyTrackingPropertiesBD {
-                ty: *TYPE_SYSTEM_BODY_TRACKING_PROPERTIES_BD,
-                next: ptr::null(),
+            sys::SystemBodyTrackingPropertiesBD {
+                ty: sys::SystemBodyTrackingPropertiesBD::TYPE,
+                next: ptr::null_mut(),
                 supports_body_tracking: sys::FALSE,
             },
         )?;
@@ -157,15 +78,19 @@ impl BodyTrackerBD {
             return Err(sys::Result::ERROR_FEATURE_UNSUPPORTED);
         }
 
-        let mut handle = XrBodyTrackerBD(0);
-        let info = BodyTrackerCreateInfoBD {
-            ty: *TYPE_BODY_TRACKER_CREATE_INFO_BD,
+        let mut handle = sys::BodyTrackerBD::NULL;
+        let info = sys::BodyTrackerCreateInfoBD {
+            ty: sys::BodyTrackerCreateInfoBD::TYPE,
             next: ptr::null(),
             joint_set,
         };
 
         unsafe {
-            super::xr_res(create_body_tracker(session.as_raw(), &info, &mut handle))?;
+            super::xr_res((ext_fns.create_body_tracker)(
+                session.as_raw(),
+                &info,
+                &mut handle,
+            ))?;
         };
 
         let mut status_code = BodyTrackingStatusCodeBD::INVALID;
@@ -197,8 +122,7 @@ impl BodyTrackerBD {
         Ok(Self {
             handle,
             session: session.into_any_graphics(),
-            destroy_body_tracker,
-            locate_body_joints,
+            ext_fns,
             get_body_tracking_state,
         })
     }
@@ -207,7 +131,7 @@ impl BodyTrackerBD {
         &self,
         time: xr::Time,
         reference_space: &xr::Space,
-    ) -> xr::Result<Option<Vec<BodyJointLocationBD>>> {
+    ) -> xr::Result<Option<Vec<xr::BodyJointLocationBD>>> {
         let mut status_code = BodyTrackingStatusCodeBD::INVALID;
         let mut error_code = BodyTrackingErrorCodeBD::INNER_EXCEPTION;
 
@@ -223,26 +147,26 @@ impl BodyTrackerBD {
             return Ok(None);
         }
 
-        let locate_info = BodyJointsLocateInfoBD {
-            ty: *TYPE_BODY_JOINTS_LOCATE_INFO_BD,
+        let locate_info = sys::BodyJointsLocateInfoBD {
+            ty: sys::BodyJointsLocateInfoBD::TYPE,
             next: ptr::null(),
             base_space: reference_space.as_raw(),
             time,
         };
 
-        let joint_count = BODY_JOINT_COUNT_BD;
-        let mut locations: Vec<BodyJointLocationBD> = Vec::with_capacity(joint_count);
+        let joint_count = sys::BODY_JOINT_COUNT_BD;
+        let mut locations: Vec<xr::BodyJointLocationBD> = Vec::with_capacity(joint_count);
 
-        let mut location_info = BodyJointLocationsBD {
-            ty: *TYPE_BODY_JOINT_LOCATIONS_BD,
-            next: ptr::null(),
+        let mut location_info = sys::BodyJointLocationsBD {
+            ty: sys::BodyJointLocationsBD::TYPE,
+            next: ptr::null_mut(),
             all_joint_poses_tracked: sys::FALSE,
-            joint_count: joint_count as u32,
+            joint_location_count: joint_count as u32,
             joint_locations: locations.as_mut_ptr(),
         };
 
         unsafe {
-            super::xr_res((self.locate_body_joints)(
+            super::xr_res((self.ext_fns.locate_body_joints)(
                 self.handle,
                 &locate_info,
                 &mut location_info,
@@ -262,7 +186,7 @@ impl BodyTrackerBD {
 impl Drop for BodyTrackerBD {
     fn drop(&mut self) {
         unsafe {
-            (self.destroy_body_tracker)(self.handle);
+            (self.ext_fns.destroy_body_tracker)(self.handle);
         }
     }
 }

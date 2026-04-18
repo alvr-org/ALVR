@@ -1,8 +1,7 @@
 use crate::{
     Platform,
     extra_extensions::{
-        self, BODY_JOINT_SET_FULL_BODY_META, BodyJointSetBD, BodyTrackerBD, BodyTrackerFB,
-        EyeTrackerSocial, FULL_BODY_JOINT_COUNT_META, FaceTracker2FB, FaceTrackerPico,
+        self, BodyTrackerBD, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB, FaceTrackerPico,
         FacialTrackerHTC, MotionTrackerBD, MultimodalMeta,
     },
 };
@@ -310,7 +309,7 @@ impl InteractionContext {
 
         let multimodal_handle = check_ext_object(
             "MultimodalMeta",
-            MultimodalMeta::new(xr_session.clone(), &extra_extensions, xr_system),
+            MultimodalMeta::new(xr_session.clone(), xr_system),
         );
 
         let mut left_detached_grip_action = None;
@@ -601,13 +600,13 @@ impl InteractionContext {
                     BodyTrackerFB::new(
                         &self.xr_session,
                         self.xr_system,
-                        *BODY_JOINT_SET_FULL_BODY_META,
+                        xr::BodyJointSetFB::FULL_BODY_M,
                         config.meta.prefer_high_fidelity,
                     ),
                 )
                 .map(|tracker| BodyTracker::Fb {
                     tracker,
-                    joint_count: FULL_BODY_JOINT_COUNT_META,
+                    joint_count: xr::FullBodyJointMETA::COUNT.into_raw() as usize,
                 });
             }
             if self.body_source.is_none() {
@@ -636,8 +635,7 @@ impl InteractionContext {
                                 "BodyTrackerBD (high accuracy)",
                                 BodyTrackerBD::new(
                                     self.xr_session.clone(),
-                                    BodyJointSetBD::FULL_BODY_JOINTS,
-                                    &self.extra_extensions,
+                                    xr::BodyJointSetBD::FULL_BODY_JOINTS,
                                     self.xr_system,
                                     prompt_calibration_on_start,
                                 ),
@@ -649,8 +647,7 @@ impl InteractionContext {
                                 "BodyTrackerBD (low accuracy)",
                                 BodyTrackerBD::new(
                                     self.xr_session.clone(),
-                                    BodyJointSetBD::BODY_WITHOUT_ARM,
-                                    &self.extra_extensions,
+                                    xr::BodyJointSetBD::BODY_WITHOUT_ARM,
                                     self.xr_system,
                                     prompt_calibration_on_start,
                                 ),

@@ -1,7 +1,7 @@
 use crate::{
     Platform,
     extra_extensions::{
-        self, BodyTrackerBD, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB, FaceTrackerPico,
+        self, BodyTrackerBD, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB, FaceTrackerBD,
         FacialTrackerHTC, MotionTrackerBD, MultimodalMeta,
     },
 };
@@ -117,7 +117,7 @@ pub struct HandInteraction {
 
 pub enum FaceExpressionsTracker {
     Fb(FaceTracker2FB),
-    Pico(FaceTrackerPico),
+    Bd(FaceTrackerBD),
     Htc {
         eye: Option<FacialTrackerHTC>,
         lip: Option<FacialTrackerHTC>,
@@ -505,12 +505,6 @@ impl InteractionContext {
             handle.pause().ok();
         }
 
-        if let Some(FaceExpressionsTracker::Pico(tracker)) =
-            &self.face_sources.face_expressions_tracker
-        {
-            tracker.stop_face_tracking().ok();
-        }
-
         self.multimodal_hands_enabled = false;
         self.face_sources.eyes_social = None;
 
@@ -580,13 +574,11 @@ impl InteractionContext {
                     self.face_sources.face_expressions_tracker =
                         Some(FaceExpressionsTracker::Fb(tracker))
                 } else if let Some(tracker) = check_ext_object(
-                    "FaceTrackerPico",
-                    FaceTrackerPico::new(self.xr_session.clone()),
+                    "FaceTrackerBD",
+                    FaceTrackerBD::new(self.xr_session.clone(), self.xr_system),
                 ) {
-                    tracker.start_face_tracking().ok();
-
                     self.face_sources.face_expressions_tracker =
-                        Some(FaceExpressionsTracker::Pico(tracker));
+                        Some(FaceExpressionsTracker::Bd(tracker));
                 }
                 // For vive, face trackers are always created at startup regardless of settings, and
                 // also cannot be destroyed early.
@@ -1010,12 +1002,12 @@ pub fn get_face_data(
                 .get_face_expression_weights(xr_time)
                 .ok()
                 .flatten()
-                .map(|weights| FaceExpressions::Fb(weights.into_iter().collect())),
-            FaceExpressionsTracker::Pico(face_tracker_pico) => face_tracker_pico
-                .get_face_tracking_data(xr_time)
+                .map(FaceExpressions::Fb),
+            FaceExpressionsTracker::Bd(face_tracker_bd) => face_tracker_bd
+                .get_facial_simulation_data(xr_time)
                 .ok()
                 .flatten()
-                .map(|weights| FaceExpressions::Pico(weights.into_iter().collect())),
+                .map(FaceExpressions::Bd),
             FaceExpressionsTracker::Htc { eye, lip } => {
                 let eye = eye
                     .as_ref()

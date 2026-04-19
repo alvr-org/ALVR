@@ -205,8 +205,8 @@ pub enum ClientControlPacket {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum FaceExpressions {
-    Fb(Vec<f32>),   // 70 values
-    Pico(Vec<f32>), // 52 values
+    Fb(Vec<f32>), // 70 values
+    Bd(Vec<f32>), // 52 values
     Htc {
         eye: Option<Vec<f32>>, // 14 values
         lip: Option<Vec<f32>>, // 37 values

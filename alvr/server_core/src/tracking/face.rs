@@ -81,7 +81,7 @@ impl FaceTrackingSink {
 
                 let (left_eye_blink, right_eye_blink) = match &face_data.face_expressions {
                     Some(FaceExpressions::Fb(items)) => (Some(items[12]), Some(items[13])),
-                    Some(FaceExpressions::Pico(items)) => (Some(items[28]), Some(items[38])),
+                    Some(FaceExpressions::Bd(items)) => (Some(items[28]), Some(items[38])),
                     Some(FaceExpressions::Htc { eye, .. }) => {
                         (eye.as_ref().map(|v| v[0]), eye.as_ref().map(|v| v[2]))
                     }
@@ -115,7 +115,7 @@ impl FaceTrackingSink {
                     Some(FaceExpressions::Fb(items)) => {
                         self.append_packet_vrcft(*b"Face2Fb\0", items);
                     }
-                    Some(FaceExpressions::Pico(items)) => {
+                    Some(FaceExpressions::Bd(items)) => {
                         self.append_packet_vrcft(*b"FacePico", items);
                     }
                     Some(FaceExpressions::Htc { eye, lip }) => {

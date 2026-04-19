@@ -2,9 +2,6 @@ name: Rust
 
 on:
   pull_request:
-    branches: [master]
-  merge_group:
-  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -31,7 +28,6 @@ jobs:
       - run: cargo xtask clippy --ci
 
   build-windows:
-    if: github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
@@ -60,7 +56,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: check-windows
+          name: Windows packages
           path: ./artifacts/*
 
   check-linux:
@@ -88,7 +84,6 @@ jobs:
       - run: cargo xtask clippy --ci
 
   build-linux:
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
@@ -119,7 +114,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: check-linux
+          name: Linux packages
           path: ./artifacts/*
 
   check-macos:
@@ -140,7 +135,7 @@ jobs:
 
       - run: cargo clippy
 
-  build-android:
+  check-android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -178,6 +173,50 @@ jobs:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         working-directory: ./alvr/client_openxr
         run: cargo xtask build-client
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-32"
+
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26b
+
+      - name: Prepare deps
+        env:
+          RUST_BACKTRACE: 1
+        run: cargo xtask prepare-deps --platform android
+
+      - name: Build client
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        working-directory: ./alvr/client_openxr
+        run: cargo xtask build-client
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: Android APK
+          path: ./build/alvr_client_android/alvr_client_android.apk
 
   tests:
     runs-on: ubuntu-latest

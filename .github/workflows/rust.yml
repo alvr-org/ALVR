@@ -2,9 +2,6 @@ name: Rust
 
 on:
   pull_request:
-    branches: [master]
-  merge_group:
-  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -31,7 +28,6 @@ jobs:
       - run: cargo xtask clippy --ci
 
   build-windows:
-    if: github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
@@ -88,7 +84,6 @@ jobs:
       - run: cargo xtask clippy --ci
 
   build-linux:
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6

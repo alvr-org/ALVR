@@ -18,10 +18,8 @@ use alvr_graphics::GraphicsContext;
 use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, PerformanceLevel};
 use alvr_system_info::Platform;
 use extra_extensions::{
-    BD_BODY_TRACKING_EXTENSION_NAME, BD_MOTION_TRACKING_EXTENSION_NAME,
-    META_BODY_TRACKING_FIDELITY_EXTENSION_NAME, META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
-    META_DETACHED_CONTROLLERS_EXTENSION_NAME,
-    META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME, PICO_CONFIGURATION_EXTENSION_NAME,
+    BD_MOTION_TRACKING_EXTENSION_NAME, META_BODY_TRACKING_FIDELITY_EXTENSION_NAME,
+    PICO_CONFIGURATION_EXTENSION_NAME,
 };
 use interaction::{InteractionContext, InteractionSourcesConfig};
 use lobby::Lobby;
@@ -184,72 +182,65 @@ pub fn entry_point() {
     #[cfg(target_os = "android")]
     xr_entry.initialize_android_loader().unwrap();
 
-    let available_extensions = xr_entry.enumerate_extensions().unwrap();
-    info!("OpenXR available extensions: {available_extensions:#?}");
+    let available_exts = xr_entry.enumerate_extensions().unwrap();
     info!(
-        "Extra available extensions: {:#?}",
-        available_extensions
-            .other
+        "OpenXR available extensions: {:#?}",
+        available_exts
+            .names()
             .iter()
-            .map(|vec| CStr::from_bytes_with_nul(vec)
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_owned())
+            .map(|s| CStr::from_bytes_with_nul(s).unwrap().to_str().unwrap())
             .collect::<Vec<_>>()
     );
 
     // todo: switch to vulkan
-    assert!(available_extensions.khr_opengl_es_enable);
+    assert!(available_exts.khr_opengl_es_enable);
 
-    let mut exts = xr::ExtensionSet::default();
-    exts.bd_controller_interaction = available_extensions.bd_controller_interaction;
-    exts.ext_eye_gaze_interaction = available_extensions.ext_eye_gaze_interaction;
-    exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
-    exts.ext_local_floor = available_extensions.ext_local_floor;
-    exts.ext_performance_settings = available_extensions.ext_performance_settings;
-    exts.ext_user_presence = available_extensions.ext_user_presence;
-    exts.fb_body_tracking = available_extensions.fb_body_tracking;
-    exts.fb_color_space = available_extensions.fb_color_space;
-    exts.fb_composition_layer_settings = available_extensions.fb_composition_layer_settings;
-    exts.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
-    exts.fb_eye_tracking_social = available_extensions.fb_eye_tracking_social;
-    exts.fb_face_tracking2 = available_extensions.fb_face_tracking2;
-    exts.fb_foveation = available_extensions.fb_foveation;
-    exts.fb_foveation_configuration = available_extensions.fb_foveation_configuration;
-    exts.fb_passthrough = available_extensions.fb_passthrough;
-    exts.fb_swapchain_update_state = available_extensions.fb_swapchain_update_state;
-    exts.htc_facial_tracking = available_extensions.htc_facial_tracking;
-    exts.htc_passthrough = available_extensions.htc_passthrough;
-    exts.htc_vive_focus3_controller_interaction =
-        available_extensions.htc_vive_focus3_controller_interaction;
+    let mut selected_exts = xr::ExtensionSet::default();
+    selected_exts.bd_body_tracking = true;
+    selected_exts.bd_controller_interaction = true;
+    selected_exts.bd_facial_simulation = true;
+    selected_exts.ext_eye_gaze_interaction = true;
+    selected_exts.ext_hand_tracking = true;
+    selected_exts.ext_local_floor = true;
+    selected_exts.ext_performance_settings = true;
+    selected_exts.ext_user_presence = true;
+    selected_exts.fb_body_tracking = true;
+    selected_exts.fb_color_space = true;
+    selected_exts.fb_composition_layer_settings = true;
+    selected_exts.fb_display_refresh_rate = true;
+    selected_exts.fb_eye_tracking_social = true;
+    selected_exts.fb_face_tracking2 = true;
+    selected_exts.fb_foveation = true;
+    selected_exts.fb_foveation_configuration = true;
+    selected_exts.fb_passthrough = true;
+    selected_exts.fb_swapchain_update_state = true;
+    selected_exts.htc_facial_tracking = true;
+    selected_exts.htc_passthrough = true;
+    selected_exts.htc_vive_focus3_controller_interaction = true;
     #[cfg(target_os = "android")]
     {
-        exts.khr_android_create_instance = true;
+        selected_exts.khr_android_create_instance = true;
     }
-    exts.khr_convert_timespec_time = true;
-    exts.khr_opengl_es_enable = true;
-    exts.other = available_extensions
-        .other
-        .into_iter()
-        .filter(|ext| {
-            [
-                META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME,
-                META_BODY_TRACKING_FIDELITY_EXTENSION_NAME,
-                META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME,
-                META_DETACHED_CONTROLLERS_EXTENSION_NAME,
-                BD_BODY_TRACKING_EXTENSION_NAME,
-                BD_MOTION_TRACKING_EXTENSION_NAME,
-                PICO_CONFIGURATION_EXTENSION_NAME,
-            ]
-            .contains(&CStr::from_bytes_with_nul(ext).unwrap().to_str().unwrap())
-        })
-        .collect();
+    selected_exts.khr_convert_timespec_time = true;
+    selected_exts.khr_opengl_es_enable = true;
+    selected_exts.meta_body_tracking_full_body = true;
+    selected_exts.meta_simultaneous_hands_and_controllers = true;
+    selected_exts.meta_detached_controllers = true;
+    selected_exts.other = [
+        META_BODY_TRACKING_FIDELITY_EXTENSION_NAME,
+        BD_MOTION_TRACKING_EXTENSION_NAME,
+        PICO_CONFIGURATION_EXTENSION_NAME,
+    ]
+    .into_iter()
+    .map(|s| s.as_bytes().to_vec())
+    .collect();
+
+    selected_exts = selected_exts.intersection(&available_exts);
 
     let available_layers = xr_entry.enumerate_layers().unwrap();
     info!("OpenXR available layers: {available_layers:#?}");
 
-    let other_exts = exts
+    let other_exts = selected_exts
         .other
         .iter()
         .map(|vec| {
@@ -270,7 +261,7 @@ pub fn entry_point() {
                 engine_version: 0,
                 api_version: openxr_version,
             },
-            &exts,
+            &selected_exts,
             &[],
         )
         .unwrap();
@@ -321,13 +312,13 @@ pub fn entry_point() {
             views_config[0].max_image_rect_height,
         );
 
-        let refresh_rates = if exts.fb_display_refresh_rate {
+        let refresh_rates = if selected_exts.fb_display_refresh_rate {
             xr_session.enumerate_display_refresh_rates().unwrap()
         } else {
             vec![90.0]
         };
 
-        if exts.fb_color_space {
+        if selected_exts.fb_color_space {
             xr_session
                 .set_color_space(xr::ColorSpaceFB::REC709)
                 .unwrap();
@@ -457,10 +448,6 @@ pub fn entry_point() {
                         headset_is_worn = event.is_user_present();
 
                         core_context.send_proximity_state(event.is_user_present());
-                    }
-                    xr::Event::Unknown => {
-                        // use event_storage.as_raw(), reinterpret as sys::BaseInStructure, get type
-                        // and then reinterpret as the event struct
                     }
                     _ => (),
                 }

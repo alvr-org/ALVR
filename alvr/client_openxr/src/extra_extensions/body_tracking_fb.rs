@@ -7,25 +7,9 @@ use openxr::{
 };
 use std::{ptr, sync::LazyLock};
 
-pub const META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME: &str = "XR_META_body_tracking_full_body";
-pub static BODY_JOINT_SET_FULL_BODY_META: LazyLock<xr::BodyJointSetFB> =
-    LazyLock::new(|| xr::BodyJointSetFB::from_raw(1000274000));
 pub const META_BODY_TRACKING_FIDELITY_EXTENSION_NAME: &str = "XR_META_body_tracking_fidelity";
 pub static SYSTEM_PROPERTIES_BODY_TRACKING_FIDELITY_META: LazyLock<xr::StructureType> =
     LazyLock::new(|| xr::StructureType::from_raw(1000284001));
-pub const FULL_BODY_JOINT_COUNT_META: usize = 84;
-
-#[repr(C)]
-struct SystemPropertiesBodyTrackingFullBodyMETA {
-    ty: xr::StructureType,
-    next: *mut std::ffi::c_void,
-    supports_full_body_tracking: sys::Bool32,
-}
-
-pub struct BodyTrackerFB {
-    handle: sys::BodyTrackerFB,
-    ext_fns: raw::BodyTrackingFB,
-}
 
 #[repr(C)]
 struct SystemPropertiesBodyTrackingFidelityMETA {
@@ -42,6 +26,11 @@ enum BodyTrackingFidelityMode {
 
 type RequestBodyTrackingFidelityMETA =
     unsafe extern "system" fn(sys::BodyTrackerFB, BodyTrackingFidelityMode) -> sys::Result;
+
+pub struct BodyTrackerFB {
+    handle: sys::BodyTrackerFB,
+    ext_fns: raw::BodyTrackingFB,
+}
 
 impl BodyTrackerFB {
     pub fn new<G>(

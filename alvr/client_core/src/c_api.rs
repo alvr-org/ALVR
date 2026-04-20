@@ -750,7 +750,7 @@ pub extern "C" fn alvr_render_lobby_opengl(
                     },
                 ],
                 None,
-                None,
+                vec![],
                 render_background,
                 false,
             );

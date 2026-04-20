@@ -5,6 +5,7 @@ use alvr_session::{
 };
 use std::{
     collections::VecDeque,
+    num::NonZeroUsize,
     time::{Duration, Instant},
 };
 
@@ -77,7 +78,8 @@ impl BitrateManager {
                 || interval_ratio < 1.0 / config.framerate_reset_threshold_multiplier
             {
                 // Clear most of the samples, keep some for stability
-                self.frame_interval_average.retain(5);
+                self.frame_interval_average
+                    .retain(NonZeroUsize::new(5).unwrap());
                 self.update_needed = true;
             }
         }

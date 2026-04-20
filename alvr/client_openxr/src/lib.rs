@@ -411,7 +411,7 @@ pub fn entry_point() {
 
                             core_context.pause();
 
-                            xr_session.end().unwrap();
+                            xr_session.end().ok();
                         }
                         xr::SessionState::EXITING | xr::SessionState::LOSS_PENDING => {
                             break 'render_loop;

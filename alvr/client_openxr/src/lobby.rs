@@ -130,17 +130,14 @@ impl Lobby {
             &mut Pose::default(),
         );
 
-        let additional_motions = self
-            .interaction_ctx
-            .read()
-            .body_source
-            .as_ref()
-            .map(|source| {
+        let mut additional_motions = vec![];
+        if let Some(source) = &self.interaction_ctx.read().body_source {
+            additional_motions.extend(
                 interaction::get_bd_motion_trackers(source, vsync_time)
                     .iter()
-                    .map(|(_, motion)| *motion)
-                    .collect()
-            });
+                    .map(|(_, motion)| *motion),
+            )
+        }
 
         let body_skeleton = self
             .interaction_ctx

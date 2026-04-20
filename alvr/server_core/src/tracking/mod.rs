@@ -13,17 +13,16 @@ use crate::{
     input_mapping::ButtonMappingManager,
 };
 use alvr_common::{
-    BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID,
-    BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, ConnectionError,
-    DEVICE_ID_TO_PATH, DeviceMotion, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID, Pose, ViewParams,
+    ConnectionError, DEVICE_ID_TO_PATH, DeviceMotion, Pose, ViewParams,
     glam::{Quat, Vec3},
+    inputs as inp,
     parking_lot::Mutex,
 };
 use alvr_events::{EventType, TrackingEvent};
 use alvr_packets::TrackingData;
 use alvr_session::{
-    BodyTrackingConfig, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode, Settings,
-    VMCConfig, settings_schema::Switch,
+    BodyTrackingConfig, HeadsetConfig, RecenteringMode, Settings, VMCConfig,
+    settings_schema::Switch,
 };
 use alvr_sockets::StreamReceiver;
 use std::{
@@ -70,27 +69,23 @@ impl TrackingManager {
         }
     }
 
-    pub fn recenter(
-        &mut self,
-        position_recentering_mode: PositionRecenteringMode,
-        rotation_recentering_mode: RotationRecenteringMode,
-    ) {
-        let position = match position_recentering_mode {
-            PositionRecenteringMode::Disabled => Vec3::ZERO,
-            PositionRecenteringMode::LocalFloor => {
+    pub fn recenter(&mut self, recentering_mode: &RecenteringMode) {
+        let position = match recentering_mode {
+            RecenteringMode::Stage => Vec3::ZERO,
+            RecenteringMode::LocalFloor => {
                 let mut pos = self.last_head_pose.position;
                 pos.y = 0.0;
 
                 pos
             }
-            PositionRecenteringMode::Local { view_height } => {
-                self.last_head_pose.position - Vec3::new(0.0, view_height, 0.0)
+            RecenteringMode::Local { view_height } | RecenteringMode::Tilted { view_height } => {
+                self.last_head_pose.position - Vec3::new(0.0, *view_height, 0.0)
             }
         };
 
-        let orientation = match rotation_recentering_mode {
-            RotationRecenteringMode::Disabled => Quat::IDENTITY,
-            RotationRecenteringMode::Yaw => {
+        let orientation = match recentering_mode {
+            RecenteringMode::Stage => Quat::IDENTITY,
+            RecenteringMode::LocalFloor | RecenteringMode::Local { .. } => {
                 let mut rot = self.last_head_pose.orientation;
                 // extract yaw rotation
                 rot.x = 0.0;
@@ -99,7 +94,7 @@ impl TrackingManager {
 
                 rot
             }
-            RotationRecenteringMode::Tilted => self.last_head_pose.orientation,
+            RecenteringMode::Tilted { .. } => self.last_head_pose.orientation,
         };
 
         self.inverse_recentering_origin = Pose {
@@ -125,21 +120,21 @@ impl TrackingManager {
         device_motions: &[(u64, DeviceMotion)],
     ) {
         let mut device_motion_configs = HashMap::new();
-        device_motion_configs.insert(*HEAD_ID, MotionConfig::default());
+        device_motion_configs.insert(*inp::HEAD_ID, MotionConfig::default());
         device_motion_configs.extend([
-            (*BODY_CHEST_ID, MotionConfig::default()),
-            (*BODY_HIPS_ID, MotionConfig::default()),
-            (*BODY_LEFT_ELBOW_ID, MotionConfig::default()),
-            (*BODY_RIGHT_ELBOW_ID, MotionConfig::default()),
-            (*BODY_LEFT_KNEE_ID, MotionConfig::default()),
-            (*BODY_LEFT_FOOT_ID, MotionConfig::default()),
-            (*BODY_RIGHT_KNEE_ID, MotionConfig::default()),
-            (*BODY_RIGHT_FOOT_ID, MotionConfig::default()),
+            (*inp::BODY_CHEST_ID, MotionConfig::default()),
+            (*inp::BODY_HIPS_ID, MotionConfig::default()),
+            (*inp::BODY_LEFT_ELBOW_ID, MotionConfig::default()),
+            (*inp::BODY_RIGHT_ELBOW_ID, MotionConfig::default()),
+            (*inp::BODY_LEFT_KNEE_ID, MotionConfig::default()),
+            (*inp::BODY_LEFT_FOOT_ID, MotionConfig::default()),
+            (*inp::BODY_RIGHT_KNEE_ID, MotionConfig::default()),
+            (*inp::BODY_RIGHT_FOOT_ID, MotionConfig::default()),
         ]);
 
         if let Switch::Enabled(controllers) = &headset_config.controllers {
             device_motion_configs.insert(
-                *HAND_LEFT_ID,
+                *inp::HAND_LEFT_ID,
                 MotionConfig {
                     pose_offset: Pose::IDENTITY,
                     linear_velocity_cutoff: controllers.linear_velocity_cutoff,
@@ -148,7 +143,7 @@ impl TrackingManager {
             );
 
             device_motion_configs.insert(
-                *HAND_RIGHT_ID,
+                *inp::HAND_RIGHT_ID,
                 MotionConfig {
                     pose_offset: Pose::IDENTITY,
                     linear_velocity_cutoff: controllers.linear_velocity_cutoff,
@@ -158,7 +153,7 @@ impl TrackingManager {
         }
 
         for &(device_id, mut motion) in device_motions {
-            if device_id == *HEAD_ID {
+            if device_id == *inp::HEAD_ID {
                 self.last_head_pose = motion.pose;
             }
 
@@ -336,7 +331,8 @@ pub fn tracking_loop(
                 .into_option()
         };
 
-        let device_motion_keys = {
+        let device_motion_keys;
+        {
             let mut tracking_manager_lock = ctx.tracking_manager.write();
             let session_manager_lock = SESSION_MANAGER.read();
             let headset_config = &session_manager_lock.settings().headset;
@@ -355,7 +351,7 @@ pub fn tracking_loop(
                     .extend_from_slice(&body::extract_default_trackers(skeleton));
             }
 
-            let device_motion_keys = tracking
+            device_motion_keys = tracking
                 .device_motions
                 .iter()
                 .map(|(id, _)| *id)
@@ -403,8 +399,6 @@ pub fn tracking_loop(
                     face: tracking.face,
                 })))
             }
-
-            device_motion_keys
         };
 
         // Handle hand gestures
@@ -416,36 +410,36 @@ pub fn tracking_loop(
         ) {
             let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
 
-            if !device_motion_keys.contains(&*HAND_LEFT_ID)
+            if !device_motion_keys.contains(&*inp::HAND_LEFT_ID)
                 && let Some(hand_skeleton) = tracking.hand_skeletons[0]
             {
                 ctx.events_sender
                     .send(ServerCoreEvent::Buttons(
                         hand_gestures::trigger_hand_gesture_actions(
                             gestures_button_mapping_manager,
-                            *HAND_LEFT_ID,
+                            *inp::HAND_LEFT_ID,
                             &hand_gesture_manager_lock.get_active_gestures(
                                 &hand_skeleton,
                                 gestures_config,
-                                *HAND_LEFT_ID,
+                                *inp::HAND_LEFT_ID,
                             ),
                             gestures_config.only_touch,
                         ),
                     ))
                     .ok();
             }
-            if !device_motion_keys.contains(&*HAND_RIGHT_ID)
+            if !device_motion_keys.contains(&*inp::HAND_RIGHT_ID)
                 && let Some(hand_skeleton) = tracking.hand_skeletons[1]
             {
                 ctx.events_sender
                     .send(ServerCoreEvent::Buttons(
                         hand_gestures::trigger_hand_gesture_actions(
                             gestures_button_mapping_manager,
-                            *HAND_RIGHT_ID,
+                            *inp::HAND_RIGHT_ID,
                             &hand_gesture_manager_lock.get_active_gestures(
                                 &hand_skeleton,
                                 gestures_config,
-                                *HAND_RIGHT_ID,
+                                *inp::HAND_RIGHT_ID,
                             ),
                             gestures_config.only_touch,
                         ),

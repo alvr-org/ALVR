@@ -1250,21 +1250,18 @@ Currently this cannot be reliably estimated automatically. The correct value sho
     pub button_mapping_config: AutomaticButtonMappingConfig,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
-pub enum PositionRecenteringMode {
-    Disabled,
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum RecenteringMode {
+    Stage,
     LocalFloor,
     Local {
         #[schema(gui(slider(min = 0.0, max = 3.0)), suffix = "m")]
         view_height: f32,
     },
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
-pub enum RotationRecenteringMode {
-    Disabled,
-    Yaw,
-    Tilted,
+    Tilted {
+        #[schema(gui(slider(min = 0.0, max = 3.0)), suffix = "m")]
+        view_height: f32,
+    },
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -1283,20 +1280,13 @@ This will be configurable in the future."
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct HeadsetConfig {
     #[schema(strings(
-        help = r#"Disabled: the playspace origin is determined by the room-scale guardian setup.
-Local floor: the origin is on the floor and resets when long pressing the oculus button.
-Local: the origin resets when long pressing the oculus button, and is calculated as an offset from the current head position."#
+        help = r"Stage: the playspace origin is determined by the room-scale guardian setup.
+Local floor: the origin is on the floor and resets when long pressing the recentering button.
+Local: the origin resets when long pressing the recentering button, and is calculated as an offset from the current head position.
+Tilted: the world gets tilted when long pressing the recentering button. This is useful for using VR while laying down."
     ))]
     #[schema(flag = "real-time")]
-    pub position_recentering_mode: PositionRecenteringMode,
-
-    #[schema(strings(
-        help = r#"Disabled: the playspace orientation is determined by the room-scale guardian setup.
-Yaw: the forward direction is reset when long pressing the oculus button.
-Tilted: the world gets tilted when long pressing the oculus button. This is useful for using VR while laying down."#
-    ))]
-    #[schema(flag = "real-time")]
-    pub rotation_recentering_mode: RotationRecenteringMode,
+    pub recentering_mode: RecenteringMode,
 
     #[schema(flag = "steamvr-restart")]
     pub controllers: Switch<ControllersConfig>,
@@ -2147,12 +2137,10 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                 },
             },
-            position_recentering_mode: PositionRecenteringModeDefault {
-                Local: PositionRecenteringModeLocalDefault { view_height: 1.5 },
-                variant: PositionRecenteringModeDefaultVariant::LocalFloor,
-            },
-            rotation_recentering_mode: RotationRecenteringModeDefault {
-                variant: RotationRecenteringModeDefaultVariant::Yaw,
+            recentering_mode: RecenteringModeDefault {
+                Local: RecenteringModeLocalDefault { view_height: 1.5 },
+                Tilted: RecenteringModeTiltedDefault { view_height: 1.5 },
+                variant: RecenteringModeDefaultVariant::LocalFloor,
             },
             max_prediction_ms: 100,
         },

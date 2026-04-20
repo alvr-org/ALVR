@@ -21,10 +21,10 @@ pub use motion_tracking_bd::*;
 pub use multimodal_input::*;
 pub use passthrough_fb::*;
 pub use passthrough_htc::*;
-use std::ffi::CString;
-use std::mem;
 
 use openxr::{self as xr, sys};
+use std::ffi::CString;
+use std::mem;
 
 fn xr_res(result: sys::Result) -> xr::Result<()> {
     if result.into_raw() >= 0 {

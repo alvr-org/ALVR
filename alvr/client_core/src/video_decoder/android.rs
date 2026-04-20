@@ -154,7 +154,7 @@ fn mime_for_codec(codec: CodecType) -> &'static str {
 }
 
 // Attempts to create a MediaCodec, and then configure and start it.
-fn decoder_attempt_setup(
+fn decoder_setup(
     codec_type: CodecType,
     is_software: bool,
     format: &MediaFormat,
@@ -283,17 +283,17 @@ fn decoder_lifecycle(
     info!("Using AMediaCodec format:{} ", format);
 
     let decoder = if config.force_software_decoder {
-        decoder_attempt_setup(config.codec, true, &format, &image_reader)?
+        decoder_setup(config.codec, true, &format, &image_reader)?
     } else {
         // Hardware decoders sometimes fail at the CSD-0.
         // May as well fall back if this occurs.
-        match decoder_attempt_setup(config.codec, false, &format, &image_reader) {
+        match decoder_setup(config.codec, false, &format, &image_reader) {
             Ok(d) => d,
             Err(e) => {
                 // would be "warn!" but this is a severe caveat and a pretty major error.
                 error!("Attempting software fallback due to error in default decoder: {e:#}");
 
-                decoder_attempt_setup(config.codec, true, &format, &image_reader)?
+                decoder_setup(config.codec, true, &format, &image_reader)?
             }
         }
     };
@@ -397,8 +397,6 @@ pub fn video_decoder_split(
             }
 
             image_queue.lock().clear();
-            error!("FIXME: Leaking Imagereader!");
-            Box::leak(Box::new(image_reader));
         }
     });
 

@@ -116,68 +116,67 @@ impl TrackingManager {
     }
 
     pub fn recenter_from_marker(&mut self, config: &MarkerColocationConfig) {
-        if let Some(marker_pose) = self.markers.get(&config.qr_code_string) {
-            // Detect if the marker is vertical or horizontal, and use two different
-            // robust methods to extract the recentering orientation.
-            let marker_z_axis = marker_pose.orientation * Vec3::Z;
-            let angle_from_y = Vec3::angle_between(marker_z_axis, Vec3::Y);
+        let Some(marker_pose) = self.markers.get(&config.qr_code_string) else {
+            // In case the marker isn't found, don't recenter to keep the last
+            // `inverse_recentering_origin`
+            return;
+        };
 
-            let marker_y_angle = if (angle_from_y - FRAC_PI_2).abs() < FRAC_PI_4 {
-                // The marker is vertical
-                Vec2::new(marker_z_axis.x, marker_z_axis.z)
-                    .normalize()
-                    .angle_to(Vec2::Y) // (this Y is on the XZ plane -> Z)
-            } else {
-                let marker_x_axis = marker_pose.orientation * Vec3::X;
-                Vec2::new(marker_x_axis.x, marker_x_axis.z)
-                    .normalize()
-                    .angle_to(Vec2::X)
-            };
-            let marker_floor_position = Vec2::new(marker_pose.position.x, marker_pose.position.z);
+        // Detect if the marker is vertical or horizontal, and use two different
+        // robust methods to extract the recentering orientation.
+        let marker_z_axis = marker_pose.orientation * Vec3::Z;
+        let angle_from_y = Vec3::angle_between(marker_z_axis, Vec3::Y);
 
-            self.recentering_marker
-                .take_if(|rm| rm.string != config.qr_code_string);
-            let recentering_marker = if let Some(rm) = &mut self.recentering_marker {
-                rm.average_angle.submit_sample(marker_y_angle);
-                rm.average_position.submit_sample(marker_floor_position);
-                rm
-            } else {
-                self.recentering_marker.insert(RecenteringMarker {
-                    string: config.qr_code_string.clone(),
-                    average_angle: AngleSlidingWindowAverage::new(
-                        marker_y_angle,
-                        self.max_history_size,
-                    ),
-                    average_position: SlidingWindowAverage::new(
-                        marker_floor_position,
-                        self.max_history_size,
-                    ),
-                })
-            };
+        let marker_y_angle = if (angle_from_y - FRAC_PI_2).abs() < FRAC_PI_4 {
+            // The marker is vertical
+            Vec2::new(marker_z_axis.x, marker_z_axis.z)
+                .normalize()
+                .angle_to(Vec2::Y) // (this Y is on the XZ plane -> Z)
+        } else {
+            let marker_x_axis = marker_pose.orientation * Vec3::X;
+            Vec2::new(marker_x_axis.x, marker_x_axis.z)
+                .normalize()
+                .angle_to(Vec2::X)
+        };
+        let marker_floor_position = Vec2::new(marker_pose.position.x, marker_pose.position.z);
 
-            let average_angle =
-                Quat::from_rotation_y(recentering_marker.average_angle.get_average());
-            let position = {
-                let marker_offset_2d = Vec2::from_array(config.floor_offset);
+        self.recentering_marker
+            .take_if(|rm| rm.string != config.qr_code_string);
+        let recentering_marker = if let Some(rm) = &mut self.recentering_marker {
+            rm.average_angle.submit_sample(marker_y_angle);
+            rm.average_position.submit_sample(marker_floor_position);
+            rm
+        } else {
+            self.recentering_marker.insert(RecenteringMarker {
+                string: config.qr_code_string.clone(),
+                average_angle: AngleSlidingWindowAverage::new(
+                    marker_y_angle,
+                    self.max_history_size,
+                ),
+                average_position: SlidingWindowAverage::new(
+                    marker_floor_position,
+                    self.max_history_size,
+                ),
+            })
+        };
 
-                let offset_2d =
-                    recentering_marker.average_position.get_average() - marker_offset_2d;
-                Vec3::new(offset_2d.x, 0.0, offset_2d.y)
-            };
-            alvr_common::debug!(
-                "Recentering from marker. Angle: {average_angle}, Position: {position}"
-            );
+        let average_angle = recentering_marker.average_angle.get_average();
+        let position = {
+            let marker_offset_2d = Vec2::from_array(config.floor_offset);
 
-            let recentering_origin = Pose {
-                position,
-                orientation: Quat::from_rotation_y(recentering_marker.average_angle.get_average()),
-            };
+            let offset_2d = recentering_marker.average_position.get_average() - marker_offset_2d;
+            Vec3::new(offset_2d.x, 0.0, offset_2d.y)
+        };
+        alvr_common::debug!(
+            "Recentering from marker. Angle: {average_angle}, Position: {position}"
+        );
 
-            self.inverse_recentering_origin = recentering_origin.inverse();
-        }
+        let recentering_origin = Pose {
+            position,
+            orientation: Quat::from_rotation_y(average_angle),
+        };
 
-        // In case the marker is not found, abort recentering, we still want to use
-        // the last marker recentering origin.
+        self.inverse_recentering_origin = recentering_origin.inverse();
     }
 
     pub fn recenter_pose(&self, pose: Pose) -> Pose {

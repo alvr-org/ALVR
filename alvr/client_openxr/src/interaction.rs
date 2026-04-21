@@ -552,19 +552,22 @@ impl InteractionContext {
                 }
             }
         }
-        if self.platform.is_quest() {
-            #[cfg(target_os = "android")]
-            {
-                alvr_system_info::try_get_permission("com.oculus.permission.USE_ANCHOR_API");
-                alvr_system_info::try_get_permission("com.oculus.permission.USE_SCENE")
-            }
-        } else if matches!(self.platform, Platform::SamsungGalaxyXR) {
-            #[cfg(target_os = "android")]
-            {
-                alvr_system_info::try_get_permission("android.permission.SCENE_UNDERSTANDING");
-                alvr_system_info::try_get_permission(
-                    "android.permission.SCENE_UNDERSTANDING_COARSE",
-                );
+
+        if config.markers_to_track.is_some() {
+            if self.platform.is_quest() {
+                #[cfg(target_os = "android")]
+                {
+                    alvr_system_info::try_get_permission("com.oculus.permission.USE_ANCHOR_API");
+                    alvr_system_info::try_get_permission("com.oculus.permission.USE_SCENE")
+                }
+            } else if matches!(self.platform, Platform::SamsungGalaxyXR) {
+                #[cfg(target_os = "android")]
+                {
+                    alvr_system_info::try_get_permission("android.permission.SCENE_UNDERSTANDING");
+                    alvr_system_info::try_get_permission(
+                        "android.permission.SCENE_UNDERSTANDING_COARSE",
+                    );
+                }
             }
         }
 

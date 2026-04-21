@@ -199,6 +199,7 @@ pub fn entry_point() {
     selected_exts.bd_body_tracking = true;
     selected_exts.bd_controller_interaction = true;
     selected_exts.bd_facial_simulation = true;
+    selected_exts.ext_future = true;
     selected_exts.ext_eye_gaze_interaction = true;
     selected_exts.ext_hand_tracking = true;
     selected_exts.ext_local_floor = true;

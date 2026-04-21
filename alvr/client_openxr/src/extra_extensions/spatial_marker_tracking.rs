@@ -9,7 +9,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-const SPATIAL_CAPABILITY: sys::SpatialCapabilityEXT =
+const QR_CODE_CAPABILITY: sys::SpatialCapabilityEXT =
     sys::SpatialCapabilityEXT::MARKER_TRACKING_QR_CODE;
 // Note: The Meta implementation is currently bugged and the buffer capacity cannot be changed once
 // the fist call of query_spatial_component_data is made.
@@ -19,7 +19,7 @@ const DISCOVERY_TIMEOUT: Duration = Duration::from_secs(1);
 struct SpatialContextReadyData {
     handle: sys::SpatialContextEXT,
     discovery_snapshot_future: Option<sys::FutureEXT>,
-    spatial_entities: HashMap<sys::SpatialEntityIdEXT, (String, sys::SpatialEntityEXT)>,
+    spatial_entities: HashMap<sys::SpatialEntityIdEXT, (sys::SpatialEntityEXT, String)>,
     entity_ids: [sys::SpatialEntityIdEXT; MAX_MARKERS_COUNT],
     entity_states: [sys::SpatialEntityTrackingStateEXT; MAX_MARKERS_COUNT],
     bounded_2d_arr: [sys::SpatialBounded2DDataEXT; MAX_MARKERS_COUNT],
@@ -30,6 +30,19 @@ struct SpatialContextReadyData {
 enum SpatialContextState {
     Creating(sys::FutureEXT),
     Ready(Box<SpatialContextReadyData>),
+}
+
+struct SnapshotDropWrapper {
+    handle: sys::SpatialSnapshotEXT,
+    ext_fns: raw::SpatialEntityEXT,
+}
+
+impl Drop for SnapshotDropWrapper {
+    fn drop(&mut self) {
+        unsafe {
+            super::xr_res((self.ext_fns.destroy_spatial_snapshot)(self.handle)).ok();
+        }
+    }
 }
 
 pub struct QRCodesSpatialContext {
@@ -69,7 +82,7 @@ impl QRCodesSpatialContext {
         let qr_code_capability_configuration = sys::SpatialCapabilityConfigurationQrCodeEXT {
             ty: sys::SpatialCapabilityConfigurationQrCodeEXT::TYPE,
             next: ptr::null(),
-            capability: SPATIAL_CAPABILITY,
+            capability: QR_CODE_CAPABILITY,
             enabled_component_count: enabled_components.len() as u32,
             enabled_components: enabled_components.as_ptr(),
         };
@@ -143,7 +156,7 @@ impl QRCodesSpatialContext {
                             extents: xr::Extent2Df::default(),
                         }; MAX_MARKERS_COUNT],
                         marker_arr: [sys::SpatialMarkerDataEXT {
-                            capability: SPATIAL_CAPABILITY,
+                            capability: QR_CODE_CAPABILITY,
                             marker_id: 0,
                             data: sys::SpatialBufferEXT {
                                 buffer_id: sys::SpatialBufferIdEXT::from_raw(0),
@@ -230,7 +243,7 @@ impl QRCodesSpatialContext {
             let entities = spatial_context_data
                 .spatial_entities
                 .values()
-                .map(|(_, entity)| *entity)
+                .map(|(entity, _)| *entity)
                 .collect::<Vec<sys::SpatialEntityEXT>>();
             let create_info = sys::SpatialUpdateSnapshotCreateInfoEXT {
                 ty: sys::SpatialUpdateSnapshotCreateInfoEXT::TYPE,
@@ -253,6 +266,12 @@ impl QRCodesSpatialContext {
             }
 
             snapshot_handle
+        };
+
+        // Make sure to always destroy the snapshot even when bailing out with "?"
+        let _wrapper = SnapshotDropWrapper {
+            handle: snapshot_handle,
+            ext_fns: self.spatial_entity_fns,
         };
 
         let query_contition = sys::SpatialComponentDataQueryConditionEXT {
@@ -295,7 +314,11 @@ impl QRCodesSpatialContext {
             marker_count,
             markers: spatial_context_data.marker_arr.as_mut_ptr(),
         };
-        bounded_2d_list.next = (&raw mut marker_list).cast();
+        // lint false positive:
+        #[expect(unused_assignments)]
+        {
+            bounded_2d_list.next = (&raw mut marker_list).cast();
+        }
 
         unsafe {
             super::xr_res((self.spatial_entity_fns.query_spatial_component_data)(
@@ -305,38 +328,36 @@ impl QRCodesSpatialContext {
             ))?;
         }
 
-        let mut out_markers = vec![];
-        for idx in 0..query_result.entity_id_count_output as usize {
+        let mut out_markers = Vec::with_capacity(marker_count as usize);
+        for idx in 0..marker_count as usize {
+            let entity_id = spatial_context_data.entity_ids[idx];
+            let marker = spatial_context_data.marker_arr[idx];
+
             if spatial_context_data.entity_states[idx]
                 != sys::SpatialEntityTrackingStateEXT::TRACKING
-                || spatial_context_data.marker_arr[idx].capability != SPATIAL_CAPABILITY
-                || spatial_context_data.marker_arr[idx].data.buffer_id
-                    == sys::SpatialBufferIdEXT::from_raw(0)
-                || spatial_context_data.marker_arr[idx].data.buffer_type
-                    != sys::SpatialBufferTypeEXT::STRING
+                || marker.capability != QR_CODE_CAPABILITY
+                || marker.data.buffer_id == sys::SpatialBufferIdEXT::from_raw(0)
+                || marker.data.buffer_type != sys::SpatialBufferTypeEXT::STRING
             {
                 alvr_common::debug!(
                     "Parsing marker failed! {:?} {:?} {:?} {:?}",
                     spatial_context_data.entity_states[idx],
-                    spatial_context_data.marker_arr[idx].capability,
-                    spatial_context_data.marker_arr[idx].data.buffer_id,
-                    spatial_context_data.marker_arr[idx].data.buffer_type
+                    marker.capability,
+                    marker.data.buffer_id,
+                    marker.data.buffer_type,
                 );
                 continue;
             }
 
-            let entity_id = spatial_context_data.entity_ids[idx];
-
-            let string = if let Some((string, _)) = spatial_context_data
-                .spatial_entities
-                .get(&spatial_context_data.entity_ids[idx])
+            let string = if let Some((_, string)) =
+                spatial_context_data.spatial_entities.get(&entity_id)
             {
                 string.clone()
             } else {
                 let get_info = sys::SpatialBufferGetInfoEXT {
                     ty: sys::SpatialBufferGetInfoEXT::TYPE,
                     next: ptr::null(),
-                    buffer_id: spatial_context_data.marker_arr[idx].data.buffer_id,
+                    buffer_id: marker.data.buffer_id,
                 };
 
                 unsafe {
@@ -373,7 +394,7 @@ impl QRCodesSpatialContext {
 
                     spatial_context_data
                         .spatial_entities
-                        .insert(entity_id, (string.clone(), spatial_entity));
+                        .insert(entity_id, (spatial_entity, string.clone()));
                 }
 
                 string
@@ -381,12 +402,6 @@ impl QRCodesSpatialContext {
 
             let pose = spatial_context_data.bounded_2d_arr[idx].center;
             out_markers.push((string, pose));
-        }
-
-        unsafe {
-            super::xr_res((self.spatial_entity_fns.destroy_spatial_snapshot)(
-                snapshot_handle,
-            ))?;
         }
 
         Ok(Some(out_markers))

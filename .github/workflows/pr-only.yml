@@ -1,0 +1,46 @@
+name: PR only checks
+
+on:
+  pull_request:
+    branches: [master]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check-msrv-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Prepare deps
+        env:
+          RUST_BACKTRACE: 1
+        run: cargo xtask prepare-deps --platform windows
+
+      - run: cargo xtask check-msrv
+
+  check-msrv-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libasound2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
+
+      - name: Prepare deps
+        env:
+          RUST_BACKTRACE: 1
+        run: cargo xtask prepare-deps --platform linux --no-nvidia
+
+      - run: cargo xtask check-msrv

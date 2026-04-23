@@ -1,5 +1,19 @@
 use std::{env, path::PathBuf};
 
+#[cfg(feature = "nix")]
+fn get_ffmpeg_path() -> PathBuf {
+    pkg_config::Config::new()
+        .probe("libavcodec")
+        .unwrap()
+        .to_owned()
+        .include_paths
+        .pop()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_path_buf()
+}
+#[cfg(not(feature = "nix"))]
 fn get_ffmpeg_path() -> PathBuf {
     let ffmpeg_path = alvr_filesystem::deps_dir()
         .join(if cfg!(target_os = "linux") {

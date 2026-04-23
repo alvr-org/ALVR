@@ -25,7 +25,7 @@ use interaction::{InteractionContext, InteractionSourcesConfig};
 use lobby::Lobby;
 use openxr as xr;
 use passthrough::PassthroughLayer;
-use std::{ffi::CStr, path::Path, rc::Rc, sync::Arc, thread, time::Duration};
+use std::{collections::HashSet, ffi::CStr, path::Path, rc::Rc, sync::Arc, thread, time::Duration};
 use stream::StreamContext;
 
 fn from_xr_vec3(v: xr::Vector3f) -> Vec3 {
@@ -199,10 +199,13 @@ pub fn entry_point() {
     selected_exts.bd_body_tracking = true;
     selected_exts.bd_controller_interaction = true;
     selected_exts.bd_facial_simulation = true;
+    selected_exts.ext_future = true;
     selected_exts.ext_eye_gaze_interaction = true;
     selected_exts.ext_hand_tracking = true;
     selected_exts.ext_local_floor = true;
     selected_exts.ext_performance_settings = true;
+    selected_exts.ext_spatial_entity = true;
+    selected_exts.ext_spatial_marker_tracking = true;
     selected_exts.ext_user_presence = true;
     selected_exts.fb_body_tracking = true;
     selected_exts.fb_color_space = true;
@@ -374,6 +377,7 @@ pub fn entry_point() {
             face_tracking: None,
             body_tracking: lobby_body_tracking_config,
             prefers_multimodal_input: true,
+            markers_to_track: Some(HashSet::new()),
         };
         interaction_context
             .write()

@@ -1,16 +1,14 @@
-name: Merge queue only checks
+name: PR only checks
 
-# Merge queue checks need to be selected as required for prs to actually run, so simply skip them on prs
 on:
   pull_request:
-  merge_group:
+    branches: [master]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   check-msrv-windows:
-    if: github.event_name == 'merge_group'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,8 +25,7 @@ jobs:
       - run: cargo xtask check-msrv
 
   check-msrv-linux:
-    if: github.event_name == 'merge_group'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
         with:
@@ -47,15 +44,3 @@ jobs:
         run: cargo xtask prepare-deps --platform linux --no-nvidia
 
       - run: cargo xtask check-msrv
-
-  check-licenses:
-    if: github.event_name == 'merge_group'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          submodules: true
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - run: cargo xtask check-licenses

@@ -4,7 +4,7 @@ ALVR can be built on Windows and Linux. The following instructions are for both 
 
 Preferred IDE (optional): Visual Studio Code with rust-analyzer extension
 
-You need to install [rustup](https://www.rust-lang.org/tools/install).
+You need to install [rustup](https://www.rust-lang.org/tools/install) and [CMake](https://cmake.org/download/).
 
 On Windows you also need [Chocolatey](https://chocolatey.org/install).
 

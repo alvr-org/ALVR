@@ -235,7 +235,7 @@ mfxFrameSurface1* VideoEncoderVPL::VplImportTexture(ID3D11Texture2D* texture) {
 }
 
 void VideoEncoderVPL::ChooseParams() {
-    Settings& s = Settings::Instance();
+    Settings& s = Settings_Instance();
 
     m_refreshRate = s.m_refreshRate;
     m_codec = s.m_codec;

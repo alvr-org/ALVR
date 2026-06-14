@@ -82,7 +82,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
         throw alvr::AvException("Failed to create a CUDA device:", err);
     }
 
-    const auto& settings = Settings::Instance();
+    const auto& settings = Settings_Instance();
 
     auto codec_id = ALVR_CODEC(settings.m_codec);
     const char* encoder_name = encoder(codec_id);

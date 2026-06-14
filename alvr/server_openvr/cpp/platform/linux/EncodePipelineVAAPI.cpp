@@ -38,9 +38,9 @@ void set_hwframe_ctx(AVCodecContext* ctx, AVBufferRef* hw_device_ctx) {
     }
     frames_ctx = (AVHWFramesContext*)(hw_frames_ref->data);
     frames_ctx->format = AV_PIX_FMT_VAAPI;
-    frames_ctx->sw_format = (Settings::Instance().m_codec == ALVR_CODEC_HEVC
-                             || Settings::Instance().m_codec == ALVR_CODEC_AV1)
-            && Settings::Instance().m_use10bitEncoder
+    frames_ctx->sw_format = (Settings_Instance().m_codec == ALVR_CODEC_HEVC
+                             || Settings_Instance().m_codec == ALVR_CODEC_AV1)
+            && Settings_Instance().m_use10bitEncoder
         ? AV_PIX_FMT_P010
         : AV_PIX_FMT_NV12;
     frames_ctx->width = ctx->width;
@@ -157,7 +157,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
         throw alvr::AvException("Failed to create DRM device:", err);
     }
 
-    const auto& settings = Settings::Instance();
+    const auto& settings = Settings_Instance();
 
     auto codec_id = ALVR_CODEC(settings.m_codec);
     const char* encoder_name = encoder(codec_id);
@@ -199,8 +199,8 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
 
         break;
     case ALVR_CODEC_HEVC:
-        encoder_ctx->profile = Settings::Instance().m_use10bitEncoder ? AV_PROFILE_HEVC_MAIN_10
-                                                                      : AV_PROFILE_HEVC_MAIN;
+        encoder_ctx->profile = Settings_Instance().m_use10bitEncoder ? AV_PROFILE_HEVC_MAIN_10
+                                                                     : AV_PROFILE_HEVC_MAIN;
         encoder_ctx->gop_size = INT16_MAX;
         break;
     case ALVR_CODEC_AV1:
@@ -236,7 +236,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
 
     vlVaQualityBits quality = {};
     quality.vbaq_mode
-        = Settings::Instance()
+        = Settings_Instance()
               .m_enableVbaq; // No noticable performance difference and should improve subjective
                              // quality by allocating more bits to smooth areas
     switch (settings.m_encoderQualityPreset) {
@@ -343,9 +343,9 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
     inputs->next = NULL;
 
     std::string filters = "scale_vaapi=out_range=full:format=";
-    if ((Settings::Instance().m_codec == ALVR_CODEC_HEVC
-         || Settings::Instance().m_codec == ALVR_CODEC_AV1)
-        && Settings::Instance().m_use10bitEncoder) {
+    if ((Settings_Instance().m_codec == ALVR_CODEC_HEVC
+         || Settings_Instance().m_codec == ALVR_CODEC_AV1)
+        && Settings_Instance().m_use10bitEncoder) {
         filters += "p010";
     } else {
         filters += "nv12";
@@ -413,7 +413,7 @@ void alvr::EncodePipelineVAAPI::SetParams(FfiDynamicEncoderParams params) {
     encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
     encoder_ctx->rc_initial_buffer_occupancy = encoder_ctx->rc_buffer_size;
 
-    if (Settings::Instance().m_amdBitrateCorruptionFix) {
+    if (Settings_Instance().m_amdBitrateCorruptionFix) {
         RequestIDR();
     }
 }

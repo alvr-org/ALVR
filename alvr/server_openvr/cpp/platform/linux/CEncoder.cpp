@@ -236,10 +236,10 @@ void CEncoder::Run() {
             if (m_captureFrame) {
                 m_captureFrame = false;
                 render.CaptureInputFrame(
-                    Settings::Instance().m_captureFrameDir + "/alvr_frame_input.ppm"
+                    std::string(Settings_Instance().m_captureFrameDir) + "/alvr_frame_input.ppm"
                 );
                 render.CaptureOutputFrame(
-                    Settings::Instance().m_captureFrameDir + "/alvr_frame_output.ppm"
+                    std::string(Settings_Instance().m_captureFrameDir) + "/alvr_frame_output.ppm"
                 );
             }
 

@@ -14,7 +14,7 @@
 VideoEncoderSW::VideoEncoderSW(std::shared_ptr<CD3DRender> d3dRender, int width, int height)
     : m_d3dRender(d3dRender)
     , m_codec(ALVR_CODEC_H264)
-    , m_refreshRate(Settings::Instance().m_refreshRate)
+    , m_refreshRate(Settings_Instance().m_refreshRate)
     , m_renderWidth(width)
     , m_renderHeight(height)
     , m_bitrateInMBits(30) {
@@ -38,7 +38,7 @@ void VideoEncoderSW::Initialize() {
     int err;
     Debug("Initializing VideoEncoderSW.\n");
 
-    const auto& settings = Settings::Instance();
+    const auto& settings = Settings_Instance();
 
     // Query codec
     AVCodecID codecId = ToFFMPEGCodec(m_codec);
@@ -178,9 +178,9 @@ void VideoEncoderSW::Transmit(
     // Debug("Success in mapping staging texture");
 
     AVPixelFormat inputFormat = AV_PIX_FMT_RGBA;
-    if (Settings::Instance().m_enableHdr) {
+    if (Settings_Instance().m_enableHdr) {
         inputFormat
-            = Settings::Instance().m_use10bitEncoder ? AV_PIX_FMT_YUV420P10 : AV_PIX_FMT_YUV420P;
+            = Settings_Instance().m_use10bitEncoder ? AV_PIX_FMT_YUV420P10 : AV_PIX_FMT_YUV420P;
     }
 
     // Setup software scaler if not defined yet; we can only define it here as we now have the

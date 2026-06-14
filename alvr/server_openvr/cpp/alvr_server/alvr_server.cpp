@@ -221,7 +221,7 @@ void (*SetOpenvrProps)(void* instancePtr, unsigned long long deviceID);
 void (*RegisterButtons)(void* instancePtr, unsigned long long deviceID);
 void (*WaitForVSync)();
 
-void CppInit(bool earlyHmdInitialization) {
+void CppInit(bool earlyHmdInitialization, Settings settings) {
     g_driver_provider.early_hmd_initialization = earlyHmdInitialization;
 
     HookCrashHandler();
@@ -244,8 +244,8 @@ void* CppOpenvrEntryPoint(const char* interface_name, int* return_code) {
     }
 }
 
-bool InitializeStreaming() {
-    Settings_Load();
+bool InitializeStreaming(Settings settings) {
+    g_settings = settings;
 
     if (!g_driver_provider.devices_initialized) {
         if (!g_driver_provider.early_hmd_initialization) {

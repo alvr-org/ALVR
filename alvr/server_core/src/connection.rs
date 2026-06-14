@@ -1,5 +1,6 @@
 use crate::{
     ConnectionContext, FILESYSTEM_LAYOUT, SESSION_MANAGER, ServerCoreEvent,
+    ServerNegotiatedStreamingConfig,
     bitrate::BitrateManager,
     hand_gestures::HandGestureManager,
     input_mapping::ButtonMappingManager,
@@ -19,9 +20,10 @@ use alvr_common::{
 };
 use alvr_events::{AdbEvent, ButtonEvent, EventType};
 use alvr_packets::{
-    AUDIO, ClientConnectionResult, ClientConnectionsAction, ClientControlPacket, ClientStatistics,
-    HAPTICS, NegotiatedStreamingConfig, NegotiatedStreamingConfigExt, RealTimeConfig, STATISTICS,
-    ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData, VIDEO, VideoPacketHeader,
+    AUDIO, ClientConnectionResult, ClientConnectionsAction, ClientControlPacket,
+    ClientNegotiatedStreamingConfig, ClientStatistics, HAPTICS, NegotiatedStreamingConfigExt,
+    RealTimeConfig, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData,
+    VIDEO, VideoPacketHeader,
 };
 use alvr_session::{
     BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile,
@@ -764,7 +766,7 @@ fn connection_pipeline(
     dbg_connection!("connection_pipeline: send streaming config");
     let stream_config_packet = StreamConfigPacket::new(
         session_manager_lock.session(),
-        NegotiatedStreamingConfig {
+        ClientNegotiatedStreamingConfig {
             view_resolution: transcoding_view_resolution,
             refresh_rate_hint: fps,
             game_audio_sample_rate,
@@ -1380,7 +1382,19 @@ fn connection_pipeline(
     );
 
     ctx.events_sender
-        .send(ServerCoreEvent::ClientConnected)
+        .send(ServerCoreEvent::ClientConnected(
+            ServerNegotiatedStreamingConfig {
+                transcoding_view_resolution,
+                emulated_headset_view_resolution: transcoding_view_resolution,
+                refresh_rate: fps as _,
+                enable_foveated_encoding,
+                codec,
+                h264_profile: encoder_profile,
+                use_10bit_encoder: enable_10_bits_encoding,
+                encoding_gamma,
+                enable_hdr,
+            },
+        ))
         .ok();
 
     dbg_connection!("connection_pipeline: handshake finished; unlocking streams");

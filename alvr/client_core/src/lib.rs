@@ -24,7 +24,7 @@ use alvr_common::{
     warn,
 };
 use alvr_packets::{
-    BatteryInfo, ButtonEntry, ClientControlPacket, RealTimeConfig, StreamConfig, TrackingData,
+    BatteryInfo, ButtonEntry, ClientControlPacket, ClientStreamConfig, RealTimeConfig, TrackingData,
 };
 use alvr_session::CodecType;
 use alvr_system_info::Platform;
@@ -41,7 +41,7 @@ pub use logging_backend::init_logging;
 
 pub enum ClientCoreEvent {
     UpdateHudMessage(String),
-    StreamingStarted(Box<StreamConfig>),
+    StreamingStarted(Box<ClientStreamConfig>),
     StreamingStopped,
     Haptics {
         device_id: u64,

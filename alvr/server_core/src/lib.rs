@@ -18,7 +18,7 @@ use crate::connection::VideoPacket;
 use alvr_common::{
     ConnectionState, DEVICE_ID_TO_PATH, DeviceMotion, LifecycleState, Pose, RelaxedAtomic,
     ViewParams, dbg_server_core, error,
-    glam::Vec2,
+    glam::{UVec2, Vec2},
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
     warn,
@@ -30,7 +30,7 @@ use alvr_packets::{
     VideoPacketHeader,
 };
 use alvr_server_io::ServerSessionManager;
-use alvr_session::{CodecType, OpenvrProperty, Settings};
+use alvr_session::{CodecType, H264Profile, OpenvrConfig, OpenvrProperty, Settings};
 use alvr_sockets::StreamSender;
 use bitrate::{BitrateManager, DynamicEncoderParams};
 use statistics::StatisticsManager;
@@ -70,12 +70,24 @@ pub fn initialize_environment(layout: afs::Layout) {
     SESSION_MANAGER.write().session_mut();
 }
 
+pub struct ServerNegotiatedStreamingConfig {
+    pub transcoding_view_resolution: UVec2,
+    pub emulated_headset_view_resolution: UVec2,
+    pub refresh_rate: f32,
+    pub enable_foveated_encoding: bool,
+    pub codec: CodecType,
+    pub h264_profile: H264Profile,
+    pub use_10bit_encoder: bool,
+    pub encoding_gamma: f32,
+    pub enable_hdr: bool,
+}
+
 pub enum ServerCoreEvent {
     SetOpenvrProperty {
         device_id: u64,
         prop: OpenvrProperty,
     },
-    ClientConnected,
+    ClientConnected(ServerNegotiatedStreamingConfig),
     ClientDisconnected,
     Battery(BatteryInfo),
     PlayspaceSync(Vec2),
@@ -152,6 +164,10 @@ pub fn notify_restart_driver() {
 
 pub fn settings() -> Settings {
     SESSION_MANAGER.read().settings().clone()
+}
+
+pub fn openvr_config() -> OpenvrConfig {
+    SESSION_MANAGER.read().session().openvr_config.clone()
 }
 
 pub fn registered_button_set() -> HashSet<u64> {

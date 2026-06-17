@@ -104,9 +104,9 @@ bool FrameRender::Startup() {
 
     D3D11_TEXTURE2D_DESC compositionTextureDesc;
     ZeroMemory(&compositionTextureDesc, sizeof(compositionTextureDesc));
-    compositionTextureDesc.Width = Settings_Instance().m_renderWidth;
-    compositionTextureDesc.Height = Settings_Instance().m_renderHeight;
-    compositionTextureDesc.Format = Settings_Instance().m_enableHdr
+    compositionTextureDesc.Width = Settings_Instance()->m_renderWidth;
+    compositionTextureDesc.Height = Settings_Instance()->m_renderHeight;
+    compositionTextureDesc.Format = Settings_Instance()->m_enableHdr
         ? DXGI_FORMAT_R16G16B16A16_FLOAT
         : DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     compositionTextureDesc.MipLevels = 1;
@@ -156,24 +156,24 @@ bool FrameRender::Startup() {
 
     // Left eye viewport
 
-    m_viewportL.Width = (float)Settings_Instance().m_renderWidth / 2.0;
-    m_viewportL.Height = (float)Settings_Instance().m_renderHeight;
+    m_viewportL.Width = (float)Settings_Instance()->m_renderWidth / 2.0;
+    m_viewportL.Height = (float)Settings_Instance()->m_renderHeight;
     m_viewportL.MinDepth = 0.0f;
     m_viewportL.MaxDepth = 1.0f;
     m_viewportL.TopLeftX = 0;
     m_viewportL.TopLeftY = 0;
 
     // Right eye viewport
-    m_viewportR.Width = (float)Settings_Instance().m_renderWidth / 2.0;
-    m_viewportR.Height = (float)Settings_Instance().m_renderHeight;
+    m_viewportR.Width = (float)Settings_Instance()->m_renderWidth / 2.0;
+    m_viewportR.Height = (float)Settings_Instance()->m_renderHeight;
     m_viewportR.MinDepth = 0.0f;
     m_viewportR.MaxDepth = 1.0f;
-    m_viewportR.TopLeftX = (float)Settings_Instance().m_renderWidth / 2.0;
+    m_viewportR.TopLeftX = (float)Settings_Instance()->m_renderWidth / 2.0;
     m_viewportR.TopLeftY = 0;
 
     // Final composition viewport
-    m_viewport.Width = (float)Settings_Instance().m_renderWidth;
-    m_viewport.Height = (float)Settings_Instance().m_renderHeight;
+    m_viewport.Width = (float)Settings_Instance()->m_renderWidth;
+    m_viewport.Height = (float)Settings_Instance()->m_renderHeight;
     m_viewport.MinDepth = 0.0f;
     m_viewport.MaxDepth = 1.0f;
     m_viewport.TopLeftX = 0;
@@ -182,20 +182,20 @@ bool FrameRender::Startup() {
     // Left eye scissor
     m_scissorL.bottom = 0.0f;
     m_scissorL.left = 0.0f;
-    m_scissorL.right = (float)Settings_Instance().m_renderWidth / 2.0f;
-    m_scissorL.top = (float)Settings_Instance().m_renderHeight;
+    m_scissorL.right = (float)Settings_Instance()->m_renderWidth / 2.0f;
+    m_scissorL.top = (float)Settings_Instance()->m_renderHeight;
 
     // Right eye scissor
     m_scissorR.bottom = 0.0f;
-    m_scissorR.left = (float)Settings_Instance().m_renderWidth / 2.0f;
-    m_scissorR.right = (float)Settings_Instance().m_renderWidth;
-    m_scissorR.top = (float)Settings_Instance().m_renderHeight;
+    m_scissorR.left = (float)Settings_Instance()->m_renderWidth / 2.0f;
+    m_scissorR.right = (float)Settings_Instance()->m_renderWidth;
+    m_scissorR.top = (float)Settings_Instance()->m_renderHeight;
 
     // Final composition scissor
     m_scissor.bottom = 0.0f;
     m_scissor.left = 0.0f;
-    m_scissor.right = (float)Settings_Instance().m_renderWidth;
-    m_scissor.top = (float)Settings_Instance().m_renderHeight;
+    m_scissor.right = (float)Settings_Instance()->m_renderWidth;
+    m_scissor.top = (float)Settings_Instance()->m_renderHeight;
 
     //
     // Compile shaders
@@ -257,7 +257,7 @@ bool FrameRender::Startup() {
         float _align2;
     };
     FrameRenderBuffer frameRenderStruct
-        = { (float)(1.0 / Settings_Instance().m_encodingGamma), 0.0f, 0.0f, 0.0f };
+        = { (float)(1.0 / Settings_Instance()->m_encodingGamma), 0.0f, 0.0f, 0.0f };
     m_pFrameRenderCBuffer = CreateBuffer(m_pD3DRender->GetDevice(), frameRenderStruct);
 
     //
@@ -392,7 +392,7 @@ bool FrameRender::Startup() {
     ComPtr<ID3D11VertexShader> quadVertexShader
         = CreateVertexShader(m_pD3DRender->GetDevice(), quadShaderCSO);
 
-    enableColorCorrection = Settings_Instance().m_enableColorCorrection;
+    enableColorCorrection = Settings_Instance()->m_enableColorCorrection;
     if (enableColorCorrection) {
         std::vector<uint8_t> colorCorrectionShaderCSO(
             COLOR_CORRECTION_CSO_PTR, COLOR_CORRECTION_CSO_PTR + COLOR_CORRECTION_CSO_LEN
@@ -400,10 +400,10 @@ bool FrameRender::Startup() {
 
         ComPtr<ID3D11Texture2D> colorCorrectedTexture = CreateTexture(
             m_pD3DRender->GetDevice(),
-            Settings_Instance().m_renderWidth,
-            Settings_Instance().m_renderHeight,
-            Settings_Instance().m_enableHdr ? DXGI_FORMAT_R16G16B16A16_FLOAT
-                                            : DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
+            Settings_Instance()->m_renderWidth,
+            Settings_Instance()->m_renderHeight,
+            Settings_Instance()->m_enableHdr ? DXGI_FORMAT_R16G16B16A16_FLOAT
+                                             : DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
         );
 
         struct ColorCorrection {
@@ -416,11 +416,12 @@ bool FrameRender::Startup() {
             float sharpening;
             float _align;
         };
-        ColorCorrection colorCorrectionStruct
-            = { (float)Settings_Instance().m_renderWidth, (float)Settings_Instance().m_renderHeight,
-                Settings_Instance().m_brightness,         Settings_Instance().m_contrast + 1.f,
-                Settings_Instance().m_saturation + 1.f,   Settings_Instance().m_gamma,
-                Settings_Instance().m_sharpening };
+        ColorCorrection colorCorrectionStruct = {
+            (float)Settings_Instance()->m_renderWidth, (float)Settings_Instance()->m_renderHeight,
+            Settings_Instance()->m_brightness,         Settings_Instance()->m_contrast + 1.f,
+            Settings_Instance()->m_saturation + 1.f,   Settings_Instance()->m_gamma,
+            Settings_Instance()->m_sharpening
+        };
         ComPtr<ID3D11Buffer> colorCorrectionBuffer
             = CreateBuffer(m_pD3DRender->GetDevice(), colorCorrectionStruct);
 
@@ -436,7 +437,7 @@ bool FrameRender::Startup() {
         m_pStagingTexture = colorCorrectedTexture;
     }
 
-    enableFFE = Settings_Instance().m_enableFoveatedEncoding;
+    enableFFE = Settings_Instance()->m_enableFoveatedEncoding;
     if (enableFFE) {
         m_ffr = std::make_unique<FFR>(m_pD3DRender->GetDevice());
         m_ffr->Initialize(m_pStagingTexture.Get());
@@ -444,7 +445,7 @@ bool FrameRender::Startup() {
         m_pStagingTexture = m_ffr->GetOutputTexture();
     }
 
-    if (Settings_Instance().m_enableHdr) {
+    if (Settings_Instance()->m_enableHdr) {
         std::vector<uint8_t> yuv420ShaderCSO(
             RGBTOYUV420_CSO_PTR, RGBTOYUV420_CSO_PTR + RGBTOYUV420_CSO_LEN
         );
@@ -455,7 +456,7 @@ bool FrameRender::Startup() {
             m_pD3DRender->GetDevice(),
             texWidth,
             texHeight,
-            Settings_Instance().m_use10bitEncoder ? DXGI_FORMAT_P010 : DXGI_FORMAT_NV12
+            Settings_Instance()->m_use10bitEncoder ? DXGI_FORMAT_P010 : DXGI_FORMAT_NV12
         );
 
         struct YUVParams {
@@ -514,7 +515,7 @@ bool FrameRender::Startup() {
                 0.0 };
 
         YUVParams& paramStruct = paramStruct_bt2020_8bit_full;
-        if (Settings_Instance().m_use10bitEncoder) {
+        if (Settings_Instance()->m_use10bitEncoder) {
             paramStruct = paramStruct_bt2020_10bit_full;
         } else {
             paramStruct = paramStruct_bt2020_8bit_full;
@@ -665,16 +666,16 @@ bool FrameRender::RenderFrame(
         }
 
         uint32_t inputColorAdjust = 0;
-        if (Settings_Instance().m_enableHdr) {
+        if (Settings_Instance()->m_enableHdr) {
             if (SRVDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
                 || SRVDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB
                 || SRVDesc.Format == DXGI_FORMAT_B8G8R8X8_UNORM_SRGB) {
                 inputColorAdjust = 1; // do sRGB manually
             }
-            if (Settings_Instance().m_forceHdrSrgbCorrection) {
+            if (Settings_Instance()->m_forceHdrSrgbCorrection) {
                 inputColorAdjust = 1;
             }
-            if (Settings_Instance().m_clampHdrExtendedRange) {
+            if (Settings_Instance()->m_clampHdrExtendedRange) {
                 inputColorAdjust |= 0x10; // Clamp values to 0.0 to 1.0
             }
         } else {
@@ -683,12 +684,12 @@ bool FrameRender::RenderFrame(
                 && SRVDesc.Format != DXGI_FORMAT_B8G8R8X8_UNORM_SRGB) {
                 inputColorAdjust = 2; // undo sRGB?
 
-                if (Settings_Instance().m_forceHdrSrgbCorrection) {
+                if (Settings_Instance()->m_forceHdrSrgbCorrection) {
                     inputColorAdjust = 0;
                 }
             }
 
-            if (Settings_Instance().m_clampHdrExtendedRange) {
+            if (Settings_Instance()->m_clampHdrExtendedRange) {
                 inputColorAdjust |= 0x10; // Clamp values to 0.0 to 1.0
             }
         }
@@ -871,7 +872,7 @@ bool FrameRender::RenderFrame(
         m_ffr->Render();
     }
 
-    if (Settings_Instance().m_enableHdr) {
+    if (Settings_Instance()->m_enableHdr) {
         m_yuvPipeline->Render();
     }
 
@@ -886,7 +887,7 @@ void FrameRender::GetEncodingResolution(uint32_t* width, uint32_t* height) {
     if (enableFFE) {
         m_ffr->GetOptimizedResolution(width, height);
     } else {
-        *width = Settings_Instance().m_renderWidth;
-        *height = Settings_Instance().m_renderHeight;
+        *width = Settings_Instance()->m_renderWidth;
+        *height = Settings_Instance()->m_renderHeight;
     }
 }

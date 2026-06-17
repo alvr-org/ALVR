@@ -12,7 +12,6 @@
 #include "Logger.h"
 #include "Paths.h"
 #include "PoseHistory.h"
-#include "Settings.h"
 #include "TrackedDevice.h"
 #include "bindings.h"
 #include "driverlog.h"
@@ -201,6 +200,9 @@ unsigned int RGBTOYUV420_SHADER_COMP_SPV_LEN;
 const char* g_sessionPath;
 const char* g_driverRootDir;
 
+Settings g_settings;
+const Settings* Settings_Instance() { return &g_settings; }
+
 void (*LogError)(const char* stringPtr);
 void (*LogWarn)(const char* stringPtr);
 void (*LogInfo)(const char* stringPtr);
@@ -259,8 +261,8 @@ bool InitializeStreaming(Settings settings) {
         }
 
         // Note: for controllers, hands and trackers don't bail out if registration fails
-        if (Settings_Instance().m_enableControllers) {
-            auto controllerSkeletonLevel = Settings_Instance().m_useSeparateHandTrackers
+        if (Settings_Instance()->m_enableControllers) {
+            auto controllerSkeletonLevel = Settings_Instance()->m_useSeparateHandTrackers
                 ? vr::VRSkeletalTracking_Estimated
                 : vr::VRSkeletalTracking_Partial;
 
@@ -280,7 +282,7 @@ bool InitializeStreaming(Settings settings) {
                 );
             }
 
-            if (Settings_Instance().m_useSeparateHandTrackers) {
+            if (Settings_Instance()->m_useSeparateHandTrackers) {
                 auto left_hand_tracker
                     = new Controller(HAND_TRACKER_LEFT_ID, vr::VRSkeletalTracking_Full);
                 if (left_hand_tracker->register_device(true)) {
@@ -303,7 +305,7 @@ bool InitializeStreaming(Settings settings) {
             }
         }
 
-        if (Settings_Instance().m_enableBodyTrackingFakeVive) {
+        if (Settings_Instance()->m_enableBodyTrackingFakeVive) {
             auto chestTracker = std::make_unique<FakeViveTracker>(BODY_CHEST_ID);
             if (chestTracker->register_device(true)) {
                 g_driver_provider.tracked_devices.insert({ BODY_CHEST_ID, chestTracker.get() });
@@ -330,7 +332,7 @@ bool InitializeStreaming(Settings settings) {
                 g_driver_provider.generic_trackers.push_back(std::move(rightElbowTracker));
             }
 
-            if (Settings_Instance().m_bodyTrackingHasLegs) {
+            if (Settings_Instance()->m_bodyTrackingHasLegs) {
                 auto leftKneeTracker = std::make_unique<FakeViveTracker>(BODY_LEFT_KNEE_ID);
                 if (leftKneeTracker->register_device(true)) {
                     g_driver_provider.tracked_devices.insert({ BODY_LEFT_KNEE_ID,
@@ -422,7 +424,7 @@ void SetTracking(
         );
     }
 
-    if (Settings_Instance().m_enableBodyTrackingFakeVive) {
+    if (Settings_Instance()->m_enableBodyTrackingFakeVive) {
         std::map<uint64_t, FfiDeviceMotion> motionsMap;
         for (int i = 0; i < bodyTrackerMotionCount; i++) {
             auto m = bodyTrackerMotions[i];

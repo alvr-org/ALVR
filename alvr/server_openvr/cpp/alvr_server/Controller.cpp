@@ -1,8 +1,8 @@
 #include "Controller.h"
 #include "Logger.h"
 #include "Paths.h"
-#include "Settings.h"
 #include "Utils.h"
+#include "bindings.h"
 #include "include/openvr_math.h"
 #include <algorithm>
 #include <cstring>
@@ -11,8 +11,8 @@
 Controller::Controller(uint64_t deviceID, vr::EVRSkeletalTrackingLevel skeletonLevel)
     : TrackedDevice(
           deviceID,
-          Settings_Instance().m_controllerIsTracker ? vr::TrackedDeviceClass_GenericTracker
-                                                    : vr::TrackedDeviceClass_Controller
+          Settings_Instance()->m_controllerIsTracker ? vr::TrackedDeviceClass_GenericTracker
+                                                     : vr::TrackedDeviceClass_Controller
       )
     , m_skeletonLevel(skeletonLevel) {
     Debug("Controller::constructor deviceID=%llu", deviceID);

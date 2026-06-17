@@ -1,6 +1,5 @@
 
 #include "Logger.h"
-#include "Settings.h"
 #include "Utils.h"
 #include "bindings.h"
 #include <mutex>

@@ -254,3 +254,6 @@ void ParseFrameNals(
 
 // CrashHandler.cpp
 void HookCrashHandler();
+
+// alvr_server.cpp
+const Settings* Settings_Instance();

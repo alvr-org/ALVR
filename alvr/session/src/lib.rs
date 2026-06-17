@@ -24,7 +24,7 @@ pub type SessionSettings = settings::SettingsDefault;
 // InitializeStreaming() is called (HMD device registration). Settings-derived fields are read
 // directly from the settings section of session.json and do not need to be duplicated here.
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
-pub struct OpenvrConfig {
+pub struct SteamvrHmdInitConfig {
     pub eye_resolution_width: u32,
     pub eye_resolution_height: u32,
     pub target_eye_resolution_width: u32,
@@ -48,7 +48,7 @@ pub struct SessionConfig {
     pub client_connections: HashMap<String, ClientConnectionConfig>,
     pub session_settings: SessionSettings,
     pub restart_settings_hash: u64,
-    pub openvr_config: OpenvrConfig,
+    pub steamvr_hmd_init_config: SteamvrHmdInitConfig,
 }
 
 impl Default for SessionConfig {
@@ -58,7 +58,7 @@ impl Default for SessionConfig {
             client_connections: HashMap::new(),
             session_settings: settings::session_settings_default(),
             restart_settings_hash: 0,
-            openvr_config: OpenvrConfig {
+            steamvr_hmd_init_config: SteamvrHmdInitConfig {
                 // avoid realistic resolutions, as on first start, on Linux, it
                 // could trigger direct mode on an existing monitor
                 eye_resolution_width: 800,

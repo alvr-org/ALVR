@@ -30,7 +30,7 @@ use alvr_packets::{
     VideoPacketHeader,
 };
 use alvr_server_io::ServerSessionManager;
-use alvr_session::{CodecType, H264Profile, OpenvrConfig, OpenvrProperty, Settings};
+use alvr_session::{CodecType, H264Profile, OpenvrProperty, Settings, SteamvrHmdInitConfig};
 use alvr_sockets::StreamSender;
 use bitrate::{BitrateManager, DynamicEncoderParams};
 use statistics::StatisticsManager;
@@ -166,8 +166,12 @@ pub fn settings() -> Settings {
     SESSION_MANAGER.read().settings().clone()
 }
 
-pub fn openvr_config() -> OpenvrConfig {
-    SESSION_MANAGER.read().session().openvr_config.clone()
+pub fn steamvr_hmd_init_config() -> SteamvrHmdInitConfig {
+    SESSION_MANAGER
+        .read()
+        .session()
+        .steamvr_hmd_init_config
+        .clone()
 }
 
 pub fn registered_button_set() -> HashSet<u64> {
@@ -579,11 +583,15 @@ impl Drop for ServerCoreContext {
         dbg_server_core!("Setting restart settings chache");
         {
             let mut session_manager_lock = SESSION_MANAGER.write();
-            let new_openvr_config = session_manager_lock.session().openvr_config.clone();
+            let new_steamvr_hmd_init_config = session_manager_lock
+                .session()
+                .steamvr_hmd_init_config
+                .clone();
             let settings = session_manager_lock.session().to_settings();
-            let new_hash = connection::compute_restart_settings_hash(&new_openvr_config, &settings);
+            let new_hash =
+                connection::compute_restart_settings_hash(&new_steamvr_hmd_init_config, &settings);
             let mut session = session_manager_lock.session_mut();
-            session.openvr_config = new_openvr_config;
+            session.steamvr_hmd_init_config = new_steamvr_hmd_init_config;
             session.restart_settings_hash = new_hash;
         }
 

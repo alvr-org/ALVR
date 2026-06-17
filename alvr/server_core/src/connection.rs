@@ -26,8 +26,8 @@ use alvr_packets::{
     VIDEO, VideoPacketHeader,
 };
 use alvr_session::{
-    BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile,
-    OpenvrConfig, Settings, SocketProtocol,
+    BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile, Settings,
+    SocketProtocol, SteamvrHmdInitConfig,
 };
 use alvr_sockets::{
     CONTROL_PORT, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, PeerType, ProtoControlSocket,
@@ -68,9 +68,12 @@ fn is_streaming(client_hostname: &str) -> bool {
 }
 
 // Compute a hash over all steamvr-restart settings and client-negotiated values.
-// The small OpenvrConfig carries the negotiated resolution/fps; everything else comes from
-// Settings directly, using the same derivation as the old full OpenvrConfig did.
-pub fn compute_restart_settings_hash(openvr_config: &OpenvrConfig, settings: &Settings) -> u64 {
+// The small SteamvrHmdInitConfig carries the negotiated resolution/fps; everything else comes from
+// Settings directly, using the same derivation as the old full SteamvrHmdInitConfig did.
+pub fn compute_restart_settings_hash(
+    steamvr_hmd_init_config: &SteamvrHmdInitConfig,
+    settings: &Settings,
+) -> u64 {
     let mut controller_is_tracker = false;
     let mut controller_profile: i32 = 0;
     let mut use_separate_hand_trackers = false;
@@ -159,12 +162,16 @@ pub fn compute_restart_settings_hash(openvr_config: &OpenvrConfig, settings: &Se
 
     let mut h = DefaultHasher::new();
 
-    // Negotiated fields (persisted in OpenvrConfig)
-    openvr_config.eye_resolution_width.hash(&mut h);
-    openvr_config.eye_resolution_height.hash(&mut h);
-    openvr_config.target_eye_resolution_width.hash(&mut h);
-    openvr_config.target_eye_resolution_height.hash(&mut h);
-    openvr_config.refresh_rate.hash(&mut h);
+    // Negotiated fields (persisted in SteamvrHmdInitConfig)
+    steamvr_hmd_init_config.eye_resolution_width.hash(&mut h);
+    steamvr_hmd_init_config.eye_resolution_height.hash(&mut h);
+    steamvr_hmd_init_config
+        .target_eye_resolution_width
+        .hash(&mut h);
+    steamvr_hmd_init_config
+        .target_eye_resolution_height
+        .hash(&mut h);
+    steamvr_hmd_init_config.refresh_rate.hash(&mut h);
     // Pre-init settings fields (read directly from settings)
     settings.video.adapter_index.hash(&mut h);
     settings.headset.tracking_ref_only.hash(&mut h);
@@ -799,17 +806,17 @@ fn connection_pipeline(
     let (mut control_sender, mut control_receiver) =
         proto_socket.split(STREAMING_RECV_TIMEOUT).to_con()?;
 
-    let new_openvr_config = OpenvrConfig {
+    let new_steamvr_hmd_init_config = SteamvrHmdInitConfig {
         eye_resolution_width: transcoding_view_resolution.x,
         eye_resolution_height: transcoding_view_resolution.y,
         target_eye_resolution_width: emulated_headset_view_resolution.x,
         target_eye_resolution_height: emulated_headset_view_resolution.y,
         refresh_rate: fps as _,
     };
-    let new_hash = compute_restart_settings_hash(&new_openvr_config, &initial_settings);
+    let new_hash = compute_restart_settings_hash(&new_steamvr_hmd_init_config, &initial_settings);
     if session_manager_lock.session().restart_settings_hash != new_hash {
         let mut session = session_manager_lock.session_mut();
-        session.openvr_config = new_openvr_config;
+        session.steamvr_hmd_init_config = new_steamvr_hmd_init_config;
         session.restart_settings_hash = new_hash;
 
         control_sender.send(&ServerControlPacket::Restarting).ok();

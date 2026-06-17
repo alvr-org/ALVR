@@ -200,10 +200,10 @@ pub extern "C" fn alvr_get_settings_json(buffer: *mut c_char) -> u64 {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn alvr_get_openvr_config_json(buffer: *mut c_char) -> u64 {
+pub extern "C" fn alvr_get_steamvr_hmd_init_config_json(buffer: *mut c_char) -> u64 {
     string_to_c_str(
         buffer,
-        &serde_json::to_string(&crate::openvr_config()).unwrap(),
+        &serde_json::to_string(&crate::steamvr_hmd_init_config()).unwrap(),
     )
 }
 
@@ -253,7 +253,7 @@ pub extern "C" fn alvr_initialize() -> AlvrTargetConfig {
     *EVENTS_RECEIVER.lock() = Some(receiver);
 
     let session_manager_lock = SESSION_MANAGER.read();
-    let restart_settings = &session_manager_lock.session().openvr_config;
+    let restart_settings = &session_manager_lock.session().steamvr_hmd_init_config;
 
     AlvrTargetConfig {
         game_render_width: restart_settings.target_eye_resolution_width,

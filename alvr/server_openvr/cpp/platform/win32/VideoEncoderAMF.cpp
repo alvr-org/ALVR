@@ -2,7 +2,7 @@
 #include "ALVR-common/packet_types.h"
 
 #include "alvr_server/Logger.h"
-#include "alvr_server/Settings.h"
+#include "alvr_server/bindings.h"
 
 #define AMF_THROW_IF(expr)                                                                         \
     {                                                                                              \

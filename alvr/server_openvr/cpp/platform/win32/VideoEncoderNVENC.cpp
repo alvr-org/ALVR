@@ -2,8 +2,8 @@
 #include "NvCodecUtils.h"
 
 #include "alvr_server/Logger.h"
-#include "alvr_server/Settings.h"
 #include "alvr_server/Utils.h"
+#include "alvr_server/bindings.h"
 
 VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender, int width, int height)
     : m_pD3DRender(pD3DRender)

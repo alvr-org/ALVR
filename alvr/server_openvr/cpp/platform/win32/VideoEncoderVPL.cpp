@@ -1,7 +1,7 @@
 #include "VideoEncoderVPL.h"
 #include "alvr_server/Logger.h"
-#include "alvr_server/Settings.h"
 #include "alvr_server/Utils.h"
+#include "alvr_server/bindings.h"
 
 #define VPLVERSION(major, minor) (major << 16 | minor)
 #define MAJOR_API_VERSION_REQUIRED 2

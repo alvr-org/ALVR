@@ -229,7 +229,7 @@ void CppInit(bool earlyHmdInitialization, Settings settings) {
     // Initialize path constants
     init_paths();
 
-    Settings_Load();
+    g_settings = settings;
 
     load_debug_privilege();
 }

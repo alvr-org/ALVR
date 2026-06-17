@@ -579,8 +579,12 @@ impl Drop for ServerCoreContext {
         dbg_server_core!("Setting restart settings chache");
         {
             let mut session_manager_lock = SESSION_MANAGER.write();
-            session_manager_lock.session_mut().openvr_config =
-                connection::contruct_openvr_config(session_manager_lock.session());
+            let new_openvr_config = session_manager_lock.session().openvr_config.clone();
+            let settings = session_manager_lock.session().to_settings();
+            let new_hash = connection::compute_restart_settings_hash(&new_openvr_config, &settings);
+            let mut session = session_manager_lock.session_mut();
+            session.openvr_config = new_openvr_config;
+            session.restart_settings_hash = new_hash;
         }
 
         // todo: check if this is still needed

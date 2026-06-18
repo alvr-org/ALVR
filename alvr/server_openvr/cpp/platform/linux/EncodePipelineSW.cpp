@@ -2,6 +2,7 @@
 
 #include <chrono>
 
+#include "ALVR-common/packet_types.h"
 #include "FormatConverter.h"
 #include "alvr_server/Logger.h"
 #include "alvr_server/bindings.h"

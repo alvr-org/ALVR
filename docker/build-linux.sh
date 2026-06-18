@@ -3,6 +3,7 @@
 #
 # Usage:
 #   ./docker/build-linux.sh                    # full build: prepare-deps + build-streamer + build-launcher
+#   ./docker/build-linux.sh check              # cargo check -D warnings (matches CI)
 #   ./docker/build-linux.sh <xtask-args...>    # run a specific cargo xtask subcommand
 #   ./docker/build-linux.sh shell              # drop into an interactive shell
 #
@@ -57,6 +58,15 @@ if [[ $# -eq 0 ]]; then
         cargo xtask prepare-deps --platform linux
         cargo xtask build-streamer --platform linux
         cargo xtask build-launcher --platform linux
+    "
+elif [[ "$1" == "check" ]]; then
+    run_in_container bash -c "
+        set -e
+        cargo xtask prepare-deps --platform linux
+        RUSTFLAGS='-D warnings' cargo check \
+            -p alvr_server_openvr \
+            -p alvr_dashboard \
+            -p alvr_launcher
     "
 elif [[ "$1" == "shell" ]]; then
     run_in_container bash

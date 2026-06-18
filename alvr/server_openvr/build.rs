@@ -26,6 +26,7 @@ fn get_ffmpeg_path(platform_name: &str) -> PathBuf {
     }
 }
 
+#[cfg(all(target_os = "linux", feature = "gpl"))]
 fn get_linux_x264_path() -> PathBuf {
     alvr_filesystem::deps_dir().join("linux/x264/alvr_build")
 }

@@ -13,6 +13,11 @@
 # Note: cargo xtask build-streamer/build-launcher do not support Linux→Windows
 # cross-compilation (they don't pass --target). The default build here compiles
 # the server and launcher packages directly via cargo xwin.
+#
+# Usage:
+#   ./docker/build-windows.sh         # full build
+#   ./docker/build-windows.sh check   # cargo xwin check -D warnings (matches CI)
+#   ./docker/build-windows.sh shell   # interactive shell for debugging
 
 set -euo pipefail
 
@@ -132,6 +137,14 @@ if [[ $# -eq 0 ]]; then
     run_in_container bash -c "
         $(setup_libvpl)
         cargo xwin build \
+            --target $TARGET \
+            -p alvr_server_openvr \
+            -p alvr_dashboard \
+            -p alvr_launcher
+    "
+elif [[ "$1" == "check" ]]; then
+    run_in_container bash -c "
+        RUSTFLAGS='-D warnings' cargo xwin check \
             --target $TARGET \
             -p alvr_server_openvr \
             -p alvr_dashboard \

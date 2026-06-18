@@ -172,7 +172,7 @@ public:
     virtual void LeaveStandby() override { Debug("DriverProvider::LeaveStandby"); }
 } g_driver_provider;
 
-// bindigs for Rust
+// bindings for Rust
 
 const unsigned char* FRAME_RENDER_VS_CSO_PTR;
 unsigned int FRAME_RENDER_VS_CSO_LEN;

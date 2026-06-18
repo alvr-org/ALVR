@@ -2,13 +2,13 @@
 #include "NvCodecUtils.h"
 
 #include "alvr_server/Logger.h"
-#include "alvr_server/Settings.h"
 #include "alvr_server/Utils.h"
+#include "alvr_server/bindings.h"
 
 VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender, int width, int height)
     : m_pD3DRender(pD3DRender)
-    , m_codec(Settings::Instance().m_codec)
-    , m_refreshRate(Settings::Instance().m_refreshRate)
+    , m_codec(Settings_Instance()->m_codec)
+    , m_refreshRate(Settings_Instance()->m_refreshRate)
     , m_renderWidth(width)
     , m_renderHeight(height)
     , m_bitrateInMBits(30) { }
@@ -21,10 +21,10 @@ void VideoEncoderNVENC::Initialize() {
     //
 
     NV_ENC_BUFFER_FORMAT format
-        = Settings::Instance().m_enableHdr ? NV_ENC_BUFFER_FORMAT_NV12 : NV_ENC_BUFFER_FORMAT_ABGR;
+        = Settings_Instance()->m_enableHdr ? NV_ENC_BUFFER_FORMAT_NV12 : NV_ENC_BUFFER_FORMAT_ABGR;
 
-    if (Settings::Instance().m_use10bitEncoder) {
-        format = Settings::Instance().m_enableHdr ? NV_ENC_BUFFER_FORMAT_YUV420_10BIT
+    if (Settings_Instance()->m_use10bitEncoder) {
+        format = Settings_Instance()->m_enableHdr ? NV_ENC_BUFFER_FORMAT_YUV420_10BIT
                                                   : NV_ENC_BUFFER_FORMAT_ABGR10;
     }
 
@@ -184,7 +184,7 @@ void VideoEncoderNVENC::FillEncodeConfig(
     GUID qualityPreset;
     // See recommended NVENC settings for low-latency encoding.
     // https://docs.nvidia.com/video-technologies/video-codec-sdk/nvenc-video-encoder-api-prog-guide/#recommended-nvenc-settings
-    switch (Settings::Instance().m_nvencQualityPreset) {
+    switch (Settings_Instance()->m_nvencQualityPreset) {
     case 7:
         qualityPreset = NV_ENC_PRESET_P7_GUID;
         break;
@@ -210,7 +210,7 @@ void VideoEncoderNVENC::FillEncodeConfig(
     }
 
     NV_ENC_TUNING_INFO tuningPreset
-        = static_cast<NV_ENC_TUNING_INFO>(Settings::Instance().m_nvencTuningPreset);
+        = static_cast<NV_ENC_TUNING_INFO>(Settings_Instance()->m_nvencTuningPreset);
 
     m_NvNecoder->CreateDefaultEncoderParams(
         &initializeParams, encoderGUID, qualityPreset, tuningPreset
@@ -221,39 +221,39 @@ void VideoEncoderNVENC::FillEncodeConfig(
     initializeParams.frameRateNum = refreshRate;
     initializeParams.frameRateDen = 1;
 
-    if (Settings::Instance().m_nvencRefreshRate != -1) {
-        initializeParams.frameRateNum = Settings::Instance().m_nvencRefreshRate;
+    if (Settings_Instance()->m_nvencRefreshRate != -1) {
+        initializeParams.frameRateNum = Settings_Instance()->m_nvencRefreshRate;
     }
 
     initializeParams.enableWeightedPrediction
-        = Settings::Instance().m_nvencEnableWeightedPrediction;
+        = Settings_Instance()->m_nvencEnableWeightedPrediction;
 
     // 16 is recommended when using reference frame invalidation. But it has caused bad visual
     // quality. Now, use 0 (use default).
     uint32_t maxNumRefFrames = 0;
     uint32_t gopLength = NVENC_INFINITE_GOPLENGTH;
 
-    if (Settings::Instance().m_nvencMaxNumRefFrames != -1) {
-        maxNumRefFrames = Settings::Instance().m_nvencMaxNumRefFrames;
+    if (Settings_Instance()->m_nvencMaxNumRefFrames != -1) {
+        maxNumRefFrames = Settings_Instance()->m_nvencMaxNumRefFrames;
     }
-    if (Settings::Instance().m_nvencGopLength != -1) {
-        gopLength = Settings::Instance().m_nvencGopLength;
+    if (Settings_Instance()->m_nvencGopLength != -1) {
+        gopLength = Settings_Instance()->m_nvencGopLength;
     }
 
     switch (m_codec) {
     case ALVR_CODEC_H264: {
         auto& config = encodeConfig.encodeCodecConfig.h264Config;
         config.repeatSPSPPS = 1;
-        config.enableIntraRefresh = Settings::Instance().m_nvencEnableIntraRefresh;
+        config.enableIntraRefresh = Settings_Instance()->m_nvencEnableIntraRefresh;
 
-        if (Settings::Instance().m_nvencIntraRefreshPeriod != -1) {
-            config.intraRefreshPeriod = Settings::Instance().m_nvencIntraRefreshPeriod;
+        if (Settings_Instance()->m_nvencIntraRefreshPeriod != -1) {
+            config.intraRefreshPeriod = Settings_Instance()->m_nvencIntraRefreshPeriod;
         }
-        if (Settings::Instance().m_nvencIntraRefreshCount != -1) {
-            config.intraRefreshCnt = Settings::Instance().m_nvencIntraRefreshCount;
+        if (Settings_Instance()->m_nvencIntraRefreshCount != -1) {
+            config.intraRefreshCnt = Settings_Instance()->m_nvencIntraRefreshCount;
         }
 
-        switch (Settings::Instance().m_entropyCoding) {
+        switch (Settings_Instance()->m_entropyCoding) {
         case ALVR_CABAC:
             config.entropyCodingMode = NV_ENC_H264_ENTROPY_CODING_MODE_CABAC;
             break;
@@ -265,15 +265,15 @@ void VideoEncoderNVENC::FillEncodeConfig(
         config.maxNumRefFrames = maxNumRefFrames;
         config.idrPeriod = gopLength;
 
-        if (Settings::Instance().m_fillerData) {
-            config.enableFillerDataInsertion = Settings::Instance().m_rateControlMode == ALVR_CBR;
+        if (Settings_Instance()->m_fillerData) {
+            config.enableFillerDataInsertion = Settings_Instance()->m_rateControlMode == ALVR_CBR;
         }
 
         config.h264VUIParameters.videoSignalTypePresentFlag = 1;
         config.h264VUIParameters.videoFormat = NV_ENC_VUI_VIDEO_FORMAT_UNSPECIFIED;
         config.h264VUIParameters.videoFullRangeFlag = 1;
         config.h264VUIParameters.colourDescriptionPresentFlag = 1;
-        if (Settings::Instance().m_enableHdr) {
+        if (Settings_Instance()->m_enableHdr) {
             config.h264VUIParameters.colourPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT2020;
             config.h264VUIParameters.transferCharacteristics
                 = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
@@ -288,31 +288,31 @@ void VideoEncoderNVENC::FillEncodeConfig(
     case ALVR_CODEC_HEVC: {
         auto& config = encodeConfig.encodeCodecConfig.hevcConfig;
         config.repeatSPSPPS = 1;
-        config.enableIntraRefresh = Settings::Instance().m_nvencEnableIntraRefresh;
+        config.enableIntraRefresh = Settings_Instance()->m_nvencEnableIntraRefresh;
 
-        if (Settings::Instance().m_nvencIntraRefreshPeriod != -1) {
-            config.intraRefreshPeriod = Settings::Instance().m_nvencIntraRefreshPeriod;
+        if (Settings_Instance()->m_nvencIntraRefreshPeriod != -1) {
+            config.intraRefreshPeriod = Settings_Instance()->m_nvencIntraRefreshPeriod;
         }
-        if (Settings::Instance().m_nvencIntraRefreshCount != -1) {
-            config.intraRefreshCnt = Settings::Instance().m_nvencIntraRefreshCount;
+        if (Settings_Instance()->m_nvencIntraRefreshCount != -1) {
+            config.intraRefreshCnt = Settings_Instance()->m_nvencIntraRefreshCount;
         }
 
         config.maxNumRefFramesInDPB = maxNumRefFrames;
         config.idrPeriod = gopLength;
 
-        if (Settings::Instance().m_use10bitEncoder) {
+        if (Settings_Instance()->m_use10bitEncoder) {
             encodeConfig.encodeCodecConfig.hevcConfig.pixelBitDepthMinus8 = 2;
         }
 
-        if (Settings::Instance().m_fillerData) {
-            config.enableFillerDataInsertion = Settings::Instance().m_rateControlMode == ALVR_CBR;
+        if (Settings_Instance()->m_fillerData) {
+            config.enableFillerDataInsertion = Settings_Instance()->m_rateControlMode == ALVR_CBR;
         }
 
         config.hevcVUIParameters.videoSignalTypePresentFlag = 1;
         config.hevcVUIParameters.videoFormat = NV_ENC_VUI_VIDEO_FORMAT_UNSPECIFIED;
         config.hevcVUIParameters.videoFullRangeFlag = 1;
         config.hevcVUIParameters.colourDescriptionPresentFlag = 1;
-        if (Settings::Instance().m_enableHdr) {
+        if (Settings_Instance()->m_enableHdr) {
             config.hevcVUIParameters.colourPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT2020;
             config.hevcVUIParameters.transferCharacteristics
                 = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
@@ -327,29 +327,29 @@ void VideoEncoderNVENC::FillEncodeConfig(
     case ALVR_CODEC_AV1: {
         auto& config = encodeConfig.encodeCodecConfig.av1Config;
         config.repeatSeqHdr = 1;
-        config.enableIntraRefresh = Settings::Instance().m_nvencEnableIntraRefresh;
+        config.enableIntraRefresh = Settings_Instance()->m_nvencEnableIntraRefresh;
 
-        if (Settings::Instance().m_nvencIntraRefreshPeriod != -1) {
-            config.intraRefreshPeriod = Settings::Instance().m_nvencIntraRefreshPeriod;
+        if (Settings_Instance()->m_nvencIntraRefreshPeriod != -1) {
+            config.intraRefreshPeriod = Settings_Instance()->m_nvencIntraRefreshPeriod;
         }
-        if (Settings::Instance().m_nvencIntraRefreshCount != -1) {
-            config.intraRefreshCnt = Settings::Instance().m_nvencIntraRefreshCount;
+        if (Settings_Instance()->m_nvencIntraRefreshCount != -1) {
+            config.intraRefreshCnt = Settings_Instance()->m_nvencIntraRefreshCount;
         }
 
         config.maxNumRefFramesInDPB = maxNumRefFrames;
         config.idrPeriod = gopLength;
 
-        if (Settings::Instance().m_use10bitEncoder) {
+        if (Settings_Instance()->m_use10bitEncoder) {
             config.pixelBitDepthMinus8 = 2;
         }
 
-        if (Settings::Instance().m_fillerData) {
-            config.enableBitstreamPadding = Settings::Instance().m_rateControlMode == ALVR_CBR;
+        if (Settings_Instance()->m_fillerData) {
+            config.enableBitstreamPadding = Settings_Instance()->m_rateControlMode == ALVR_CBR;
         }
 
         config.chromaFormatIDC = 1; // 4:2:0, 4:4:4 currently not supported
         config.colorRange = 1;
-        if (Settings::Instance().m_enableHdr) {
+        if (Settings_Instance()->m_enableHdr) {
             config.colorPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT2020;
             config.transferCharacteristics = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
             config.matrixCoefficients = NV_ENC_VUI_MATRIX_COEFFS_BT2020_NCL;
@@ -366,11 +366,11 @@ void VideoEncoderNVENC::FillEncodeConfig(
     encodeConfig.gopLength = gopLength;
     encodeConfig.frameIntervalP = 1;
 
-    if (Settings::Instance().m_nvencPFrameStrategy != -1) {
-        encodeConfig.frameIntervalP = Settings::Instance().m_nvencPFrameStrategy;
+    if (Settings_Instance()->m_nvencPFrameStrategy != -1) {
+        encodeConfig.frameIntervalP = Settings_Instance()->m_nvencPFrameStrategy;
     }
 
-    switch (Settings::Instance().m_rateControlMode) {
+    switch (Settings_Instance()->m_rateControlMode) {
     case ALVR_CBR:
         encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR;
         break;
@@ -379,12 +379,12 @@ void VideoEncoderNVENC::FillEncodeConfig(
         break;
     }
     encodeConfig.rcParams.multiPass
-        = static_cast<NV_ENC_MULTI_PASS>(Settings::Instance().m_nvencMultiPass);
+        = static_cast<NV_ENC_MULTI_PASS>(Settings_Instance()->m_nvencMultiPass);
     encodeConfig.rcParams.lowDelayKeyFrameScale = 1;
 
-    if (Settings::Instance().m_nvencLowDelayKeyFrameScale != -1) {
+    if (Settings_Instance()->m_nvencLowDelayKeyFrameScale != -1) {
         encodeConfig.rcParams.lowDelayKeyFrameScale
-            = Settings::Instance().m_nvencLowDelayKeyFrameScale;
+            = Settings_Instance()->m_nvencLowDelayKeyFrameScale;
     }
 
     uint32_t maxFrameSize = static_cast<uint32_t>(bitrate_bps / refreshRate);
@@ -393,26 +393,26 @@ void VideoEncoderNVENC::FillEncodeConfig(
     encodeConfig.rcParams.vbvInitialDelay = maxFrameSize * 1.1;
     encodeConfig.rcParams.maxBitRate = static_cast<uint32_t>(bitrate_bps);
     encodeConfig.rcParams.averageBitRate = static_cast<uint32_t>(bitrate_bps);
-    if (Settings::Instance().m_nvencAdaptiveQuantizationMode == SpatialAQ) {
+    if (Settings_Instance()->m_nvencAdaptiveQuantizationMode == SpatialAQ) {
         encodeConfig.rcParams.enableAQ = 1;
-    } else if (Settings::Instance().m_nvencAdaptiveQuantizationMode == TemporalAQ) {
+    } else if (Settings_Instance()->m_nvencAdaptiveQuantizationMode == TemporalAQ) {
         encodeConfig.rcParams.enableTemporalAQ = 1;
     }
 
-    if (Settings::Instance().m_nvencRateControlMode != -1) {
+    if (Settings_Instance()->m_nvencRateControlMode != -1) {
         encodeConfig.rcParams.rateControlMode
-            = (NV_ENC_PARAMS_RC_MODE)Settings::Instance().m_nvencRateControlMode;
+            = (NV_ENC_PARAMS_RC_MODE)Settings_Instance()->m_nvencRateControlMode;
     }
-    if (Settings::Instance().m_nvencRcBufferSize != -1) {
-        encodeConfig.rcParams.vbvBufferSize = Settings::Instance().m_nvencRcBufferSize;
+    if (Settings_Instance()->m_nvencRcBufferSize != -1) {
+        encodeConfig.rcParams.vbvBufferSize = Settings_Instance()->m_nvencRcBufferSize;
     }
-    if (Settings::Instance().m_nvencRcInitialDelay != -1) {
-        encodeConfig.rcParams.vbvInitialDelay = Settings::Instance().m_nvencRcInitialDelay;
+    if (Settings_Instance()->m_nvencRcInitialDelay != -1) {
+        encodeConfig.rcParams.vbvInitialDelay = Settings_Instance()->m_nvencRcInitialDelay;
     }
-    if (Settings::Instance().m_nvencRcMaxBitrate != -1) {
-        encodeConfig.rcParams.maxBitRate = Settings::Instance().m_nvencRcMaxBitrate;
+    if (Settings_Instance()->m_nvencRcMaxBitrate != -1) {
+        encodeConfig.rcParams.maxBitRate = Settings_Instance()->m_nvencRcMaxBitrate;
     }
-    if (Settings::Instance().m_nvencRcAverageBitrate != -1) {
-        encodeConfig.rcParams.averageBitRate = Settings::Instance().m_nvencRcAverageBitrate;
+    if (Settings_Instance()->m_nvencRcAverageBitrate != -1) {
+        encodeConfig.rcParams.averageBitRate = Settings_Instance()->m_nvencRcAverageBitrate;
     }
 }

@@ -3,8 +3,8 @@
 #include "VideoEncoderSW.h"
 
 #include "alvr_server/Logger.h"
-#include "alvr_server/Settings.h"
 #include "alvr_server/Utils.h"
+#include "alvr_server/bindings.h"
 
 #include <algorithm>
 #include <array>
@@ -14,7 +14,7 @@
 VideoEncoderSW::VideoEncoderSW(std::shared_ptr<CD3DRender> d3dRender, int width, int height)
     : m_d3dRender(d3dRender)
     , m_codec(ALVR_CODEC_H264)
-    , m_refreshRate(Settings::Instance().m_refreshRate)
+    , m_refreshRate(Settings_Instance()->m_refreshRate)
     , m_renderWidth(width)
     , m_renderHeight(height)
     , m_bitrateInMBits(30) {
@@ -38,7 +38,7 @@ void VideoEncoderSW::Initialize() {
     int err;
     Debug("Initializing VideoEncoderSW.\n");
 
-    const auto& settings = Settings::Instance();
+    const auto* settings = Settings_Instance();
 
     // Query codec
     AVCodecID codecId = ToFFMPEGCodec(m_codec);
@@ -59,7 +59,7 @@ void VideoEncoderSW::Initialize() {
     av_dict_set(&opt, "preset", "ultrafast", 0);
     av_dict_set(&opt, "tune", "zerolatency", 0);
 
-    switch (settings.m_h264Profile) {
+    switch (settings->m_h264Profile) {
     case ALVR_H264_PROFILE_BASELINE:
         m_codecContext->profile = AV_PROFILE_H264_BASELINE;
         break;
@@ -71,7 +71,7 @@ void VideoEncoderSW::Initialize() {
         m_codecContext->profile = AV_PROFILE_H264_HIGH;
         break;
     }
-    switch (settings.m_entropyCoding) {
+    switch (settings->m_entropyCoding) {
     case ALVR_CABAC:
         av_dict_set(&opt, "coder", "ac", 0);
         break;
@@ -83,12 +83,12 @@ void VideoEncoderSW::Initialize() {
     m_codecContext->width = m_renderWidth;
     m_codecContext->height = m_renderHeight;
     m_codecContext->time_base = AVRational { 1, (int)(1e9) };
-    m_codecContext->framerate = AVRational { settings.m_refreshRate, 1 };
+    m_codecContext->framerate = AVRational { settings->m_refreshRate, 1 };
     m_codecContext->sample_aspect_ratio = AVRational { 1, 1 };
     m_codecContext->pix_fmt
-        = settings.m_use10bitEncoder ? AV_PIX_FMT_YUV420P10 : AV_PIX_FMT_YUV420P;
+        = settings->m_use10bitEncoder ? AV_PIX_FMT_YUV420P10 : AV_PIX_FMT_YUV420P;
     m_codecContext->color_range = AVCOL_RANGE_JPEG;
-    if (settings.m_enableHdr) {
+    if (settings->m_enableHdr) {
         m_codecContext->color_primaries = AVCOL_PRI_BT2020;
         m_codecContext->color_trc = AVCOL_TRC_GAMMA22;
         m_codecContext->colorspace = AVCOL_SPC_BT2020_NCL;
@@ -100,10 +100,10 @@ void VideoEncoderSW::Initialize() {
     m_codecContext->max_b_frames = 0;
     m_codecContext->gop_size = 0;
     m_codecContext->bit_rate = m_bitrateInMBits * 1'000'000L;
-    m_codecContext->rc_buffer_size = m_codecContext->bit_rate / settings.m_refreshRate * 1.1;
-    switch (settings.m_rateControlMode) {
+    m_codecContext->rc_buffer_size = m_codecContext->bit_rate / settings->m_refreshRate * 1.1;
+    switch (settings->m_rateControlMode) {
     case ALVR_CBR:
-        if (settings.m_fillerData) {
+        if (settings->m_fillerData) {
             av_dict_set(&opt, "nal-hrd", "cbr", 0);
         }
         break;
@@ -112,7 +112,7 @@ void VideoEncoderSW::Initialize() {
         break;
     }
     m_codecContext->rc_max_rate = m_codecContext->bit_rate;
-    m_codecContext->thread_count = settings.m_swThreadCount;
+    m_codecContext->thread_count = settings->m_swThreadCount;
 
     if ((err = avcodec_open2(m_codecContext, codec, &opt)))
         throw MakeException("Cannot open video encoder codec: %d", err);
@@ -178,9 +178,9 @@ void VideoEncoderSW::Transmit(
     // Debug("Success in mapping staging texture");
 
     AVPixelFormat inputFormat = AV_PIX_FMT_RGBA;
-    if (Settings::Instance().m_enableHdr) {
+    if (Settings_Instance()->m_enableHdr) {
         inputFormat
-            = Settings::Instance().m_use10bitEncoder ? AV_PIX_FMT_YUV420P10 : AV_PIX_FMT_YUV420P;
+            = Settings_Instance()->m_use10bitEncoder ? AV_PIX_FMT_YUV420P10 : AV_PIX_FMT_YUV420P;
     }
 
     // Setup software scaler if not defined yet; we can only define it here as we now have the

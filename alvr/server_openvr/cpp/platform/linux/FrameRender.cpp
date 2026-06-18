@@ -1,6 +1,5 @@
 #include "FrameRender.h"
 #include "alvr_server/Logger.h"
-#include "alvr_server/Settings.h"
 #include "alvr_server/bindings.h"
 
 #include <filesystem>
@@ -27,12 +26,12 @@ FrameRender::FrameRender(alvr::VkContext& ctx, init_packet& init, int fds[])
         AddImage(init.image_create_info, init.mem_index, fds[2 * i], fds[2 * i + 1]);
     }
 
-    m_width = Settings::Instance().m_renderWidth;
-    m_height = Settings::Instance().m_renderHeight;
+    m_width = Settings_Instance()->m_renderWidth;
+    m_height = Settings_Instance()->m_renderHeight;
 
     Info("FrameRender: Input size %ux%u", m_width, m_height);
 
-    if (Settings::Instance().m_force_sw_encoding) {
+    if (Settings_Instance()->m_force_sw_encoding) {
         m_handle = ExternalHandle::None;
     } else if (ctx.amd || ctx.intel) {
         m_handle = ExternalHandle::DmaBuf;
@@ -42,11 +41,11 @@ FrameRender::FrameRender(alvr::VkContext& ctx, init_packet& init, int fds[])
 
     setupCustomShaders("pre");
 
-    if (Settings::Instance().m_enableColorCorrection) {
+    if (Settings_Instance()->m_enableColorCorrection) {
         setupColorCorrection();
     }
 
-    if (Settings::Instance().m_enableFoveatedEncoding) {
+    if (Settings_Instance()->m_enableFoveatedEncoding) {
         setupFoveatedRendering();
     }
 
@@ -88,11 +87,11 @@ void FrameRender::setupColorCorrection() {
 
     ENTRY(renderWidth, m_width);
     ENTRY(renderHeight, m_height);
-    ENTRY(brightness, Settings::Instance().m_brightness);
-    ENTRY(contrast, Settings::Instance().m_contrast + 1.f);
-    ENTRY(saturation, Settings::Instance().m_saturation + 1.f);
-    ENTRY(gamma, Settings::Instance().m_gamma);
-    ENTRY(sharpening, Settings::Instance().m_sharpening);
+    ENTRY(brightness, Settings_Instance()->m_brightness);
+    ENTRY(contrast, Settings_Instance()->m_contrast + 1.f);
+    ENTRY(saturation, Settings_Instance()->m_saturation + 1.f);
+    ENTRY(gamma, Settings_Instance()->m_gamma);
+    ENTRY(sharpening, Settings_Instance()->m_sharpening);
 #undef ENTRY
 
     RenderPipeline* pipeline = new RenderPipeline(this);
@@ -106,12 +105,12 @@ void FrameRender::setupFoveatedRendering() {
     float targetEyeWidth = (float)m_width / 2;
     float targetEyeHeight = (float)m_height;
 
-    float centerSizeX = (float)Settings::Instance().m_foveationCenterSizeX;
-    float centerSizeY = (float)Settings::Instance().m_foveationCenterSizeY;
-    float centerShiftX = (float)Settings::Instance().m_foveationCenterShiftX;
-    float centerShiftY = (float)Settings::Instance().m_foveationCenterShiftY;
-    float edgeRatioX = (float)Settings::Instance().m_foveationEdgeRatioX;
-    float edgeRatioY = (float)Settings::Instance().m_foveationEdgeRatioY;
+    float centerSizeX = (float)Settings_Instance()->m_foveationCenterSizeX;
+    float centerSizeY = (float)Settings_Instance()->m_foveationCenterSizeY;
+    float centerShiftX = (float)Settings_Instance()->m_foveationCenterShiftX;
+    float centerShiftY = (float)Settings_Instance()->m_foveationCenterShiftY;
+    float edgeRatioX = (float)Settings_Instance()->m_foveationEdgeRatioX;
+    float edgeRatioY = (float)Settings_Instance()->m_foveationEdgeRatioY;
 
     float edgeSizeX = targetEyeWidth - centerSizeX * targetEyeWidth;
     float edgeSizeY = targetEyeHeight - centerSizeY * targetEyeHeight;

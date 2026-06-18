@@ -1,6 +1,6 @@
 #include "ViveTrackerProxy.h"
 #include "HMD.h"
-#include "Settings.h"
+#include "bindings.h"
 
 #include <cassert>
 

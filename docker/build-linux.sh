@@ -22,11 +22,15 @@ CARGO_TARGET_VOLUME="alvr-linux-cargo-target"
 CARGO_REGISTRY_VOLUME="alvr-linux-cargo-registry"
 
 build_image() {
-    # DOCKER_BUILDKIT=0 + --network=host is required on macOS Docker Desktop:
-    # buildkit's DNS resolution fails for some hosts (e.g. sh.rustup.rs) during
-    # build, but works fine in running containers.
-    DOCKER_BUILDKIT=0 docker build \
+    # --platform linux/amd64 ensures x86_64 even on Apple Silicon — our target is
+    # always x86_64 Linux and openvr/ffmpeg deps are x86_64-only.
+    # docker buildx + --network=host works around buildkit DNS failures on macOS
+    # Docker Desktop that affect plain `docker build --network=host`.
+    # --load makes the built image available in the local docker images store.
+    docker buildx build \
+        --platform linux/amd64 \
         --network=host \
+        --load \
         --file "$SCRIPT_DIR/Dockerfile.linux-build" \
         --tag "$IMAGE_NAME" \
         "$SCRIPT_DIR"

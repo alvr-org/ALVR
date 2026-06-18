@@ -143,24 +143,25 @@ public:
                 }
 
                 HapticsSend(id, haptics.fDurationSeconds, haptics.fFrequency, haptics.fAmplitude);
-            }
+            } else if (event.eventType == vr::VREvent_ChaperoneUniverseHasChanged
+                       || event.eventType == vr::VREvent_ChaperoneRoomSetupFinished
+                       || event.eventType == vr::VREvent_ChaperoneFlushCache
+                       || event.eventType == vr::VREvent_ChaperoneSettingsHaveChanged
+                       || event.eventType == vr::VREvent_SeatedZeroPoseReset
+                       || event.eventType == vr::VREvent_StandingZeroPoseReset
+                       || event.eventType == vr::VREvent_SceneApplicationChanged
+                       || event.eventType == VendorEvent_ALVRDriverResync) {
+                ResetChaperoneToStage();
+
 #ifdef __linux__
-            else if (event.eventType == vr::VREvent_ChaperoneUniverseHasChanged
-                     || event.eventType == vr::VREvent_ChaperoneRoomSetupFinished
-                     || event.eventType == vr::VREvent_ChaperoneFlushCache
-                     || event.eventType == vr::VREvent_ChaperoneSettingsHaveChanged
-                     || event.eventType == vr::VREvent_SeatedZeroPoseReset
-                     || event.eventType == vr::VREvent_StandingZeroPoseReset
-                     || event.eventType == vr::VREvent_SceneApplicationChanged
-                     || event.eventType == VendorEvent_ALVRDriverResync) {
                 if (hmd && hmd->m_poseHistory) {
                     auto rawZeroPose = GetRawZeroPose();
                     if (rawZeroPose != nullptr) {
                         hmd->m_poseHistory->SetTransform(*rawZeroPose);
                     }
                 }
-            }
 #endif
+            }
         }
         if (vr::VRServerDriverHost()->IsExiting() && !shutdown_called) {
             Debug("DriverProvider: Received shutdown event");

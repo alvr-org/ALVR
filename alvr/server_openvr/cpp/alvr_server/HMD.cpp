@@ -19,7 +19,7 @@
 Hmd::Hmd()
     : TrackedDevice(
           HEAD_ID,
-          Settings_Instance()->m_TrackingRefOnly ? vr::TrackedDeviceClass_TrackingReference
+          Settings_Instance()->m_trackingRefOnly ? vr::TrackedDeviceClass_TrackingReference
                                                  : vr::TrackedDeviceClass_HMD
       )
     , m_baseComponentsInitialized(false)

@@ -114,7 +114,6 @@ public:
         this->left_controller.reset();
         this->right_controller.reset();
         this->hmd.reset();
-        // this->generic_trackers.clear();
 
         CleanupDriverLog();
 

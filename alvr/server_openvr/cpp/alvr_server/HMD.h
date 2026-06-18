@@ -34,7 +34,7 @@ public:
 private:
     vr::VRInputComponentHandle_t m_proximity;
 
-    FfiViewParams view_params[2];
+    FfiViewParams m_viewParams[2];
 
     bool m_baseComponentsInitialized;
     bool m_streamComponentsInitialized;

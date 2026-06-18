@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Cross-build ALVR for Linux from macOS using Docker (Ubuntu 24.04).
+#
+# Usage:
+#   ./docker/build-linux.sh                    # full build: prepare-deps + build-streamer + build-launcher
+#   ./docker/build-linux.sh <xtask-args...>    # run a specific cargo xtask subcommand
+#   ./docker/build-linux.sh shell              # drop into an interactive shell
+#
+# Build artifacts land in build/alvr_streamer_linux/ and build/alvr_launcher_linux/
+# as they would from CI.
+#
+# The Rust target dir is kept in a named Docker volume (alvr-linux-cargo-target)
+# so it persists across builds without conflicting with the macOS target/ dir.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+IMAGE_NAME="alvr-linux-build"
+CARGO_TARGET_VOLUME="alvr-linux-cargo-target"
+CARGO_REGISTRY_VOLUME="alvr-linux-cargo-registry"
+
+build_image() {
+    # DOCKER_BUILDKIT=0 + --network=host is required on macOS Docker Desktop:
+    # buildkit's DNS resolution fails for some hosts (e.g. sh.rustup.rs) during
+    # build, but works fine in running containers.
+    DOCKER_BUILDKIT=0 docker build \
+        --network=host \
+        --file "$SCRIPT_DIR/Dockerfile.linux-build" \
+        --tag "$IMAGE_NAME" \
+        "$SCRIPT_DIR"
+}
+
+run_in_container() {
+    docker run --rm \
+        --volume "$REPO_ROOT:/workspace" \
+        --volume "$CARGO_TARGET_VOLUME:/cargo-target" \
+        --volume "$CARGO_REGISTRY_VOLUME:/root/.cargo/registry" \
+        --env CARGO_TARGET_DIR=/cargo-target \
+        --env CARGO_TERM_COLOR=always \
+        --env RUST_BACKTRACE=1 \
+        --workdir /workspace \
+        "$IMAGE_NAME" \
+        "$@"
+}
+
+build_image
+
+if [[ $# -eq 0 ]]; then
+    run_in_container bash -c "
+        set -e
+        cargo xtask prepare-deps --platform linux
+        cargo xtask build-streamer --platform linux
+        cargo xtask build-launcher --platform linux
+    "
+elif [[ "$1" == "shell" ]]; then
+    run_in_container bash
+else
+    run_in_container cargo xtask "$@"
+fi

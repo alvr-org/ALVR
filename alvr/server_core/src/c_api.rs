@@ -120,11 +120,13 @@ fn string_to_c_str(buffer: *mut c_char, value: &str) -> u64 {
     cstring.as_bytes_with_nul().len() as u64
 }
 
+static SERVER_START_INSTANT: LazyLock<Instant> = LazyLock::new(Instant::now);
+
 // Get ALVR server time. The libalvr user should provide timestamps in the provided time frame of
 // reference in the following functions
 #[unsafe(no_mangle)]
 pub extern "C" fn alvr_get_time_ns() -> u64 {
-    Instant::now().elapsed().as_nanos() as u64
+    SERVER_START_INSTANT.elapsed().as_nanos() as u64
 }
 
 // The libalvr user is responsible of interpreting values and calling functions using

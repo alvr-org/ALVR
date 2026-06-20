@@ -238,7 +238,7 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
     }
 }
 
-fn event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
+fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
     thread::spawn(move || {
         if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
             context.start_connection();
@@ -749,7 +749,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
 
         *SERVER_CORE_CONTEXT.write() = Some(context);
 
-        event_loop(events_receiver);
+        spawn_event_loop(events_receiver);
     });
 
     unsafe { CppOpenvrEntryPoint(interface_name, return_code) }

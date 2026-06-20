@@ -485,15 +485,12 @@ impl ServerCoreContext {
                 .get_encoder_params(&session_manager_lock.settings().video.bitrate)
         };
 
-        if let Some((params, stats)) = pair {
+        pair.map(|(params, stats)| {
             if let Some(stats_manager) = &mut *self.connection_context.statistics_manager.write() {
                 stats_manager.report_throughput_stats(stats);
             }
-
-            Some(params)
-        } else {
-            None
-        }
+            params
+        })
     }
 
     pub fn report_composed(&self, target_timestamp: Duration, offset: Duration) {

@@ -580,7 +580,7 @@ impl Drop for ServerCoreContext {
         }
 
         // apply openvr config for the next launch
-        dbg_server_core!("Setting restart settings chache");
+        dbg_server_core!("Setting restart settings cache");
         {
             let mut session_manager_lock = SESSION_MANAGER.write();
             let new_steamvr_hmd_init_config = session_manager_lock

@@ -106,7 +106,7 @@ fn main() {
     }
 
     if platform_name == "linux" {
-        #[cfg(feature = "gpl")]
+        #[cfg(all(target_os = "linux", feature = "gpl"))]
         {
             let x264_path = get_linux_x264_path();
 
@@ -136,7 +136,7 @@ fn main() {
     build.compile("bindings");
 
     if platform_name == "linux" {
-        #[cfg(feature = "gpl")]
+        #[cfg(all(target_os = "linux", feature = "gpl"))]
         {
             let x264_path = get_linux_x264_path();
             let x264_lib_path = x264_path.join("lib");

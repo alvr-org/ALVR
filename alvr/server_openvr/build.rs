@@ -252,4 +252,12 @@ fn main() {
     for path in cpp_paths {
         println!("cargo:rerun-if-changed={}", path.to_string_lossy());
     }
+
+    for path in walkdir::WalkDir::new(alvr_filesystem::workspace_dir().join("openvr/headers"))
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .map(|e| e.into_path())
+    {
+        println!("cargo:rerun-if-changed={}", path.to_string_lossy());
+    }
 }

@@ -2,7 +2,6 @@ use crate::{
     ConnectionContext, FILESYSTEM_LAYOUT, SESSION_MANAGER, ServerCoreEvent,
     ServerNegotiatedStreamingConfig,
     bitrate::BitrateManager,
-    hand_gestures::HandGestureManager,
     input_mapping::ButtonMappingManager,
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
@@ -551,8 +550,6 @@ fn connection_pipeline(
         ClientConnectionsAction::UpdateCurrentIp(Some(client_ip)),
     );
 
-    let disconnect_notif = Arc::new(Condvar::new());
-
     dbg_connection!("connection_pipeline: Getting client status packet");
     let connection_result = match proto_socket.recv(HANDSHAKE_ACTION_TIMEOUT) {
         Ok(r) => r,
@@ -592,8 +589,6 @@ fn connection_pipeline(
     let Some(streaming_caps) = maybe_streaming_caps else {
         con_bail!("Only streaming clients are supported for now");
     };
-
-    dbg_connection!("connection_pipeline: setting up negotiated streaming config");
 
     let initial_settings = session_manager_lock.settings().clone();
 
@@ -839,6 +834,8 @@ fn connection_pipeline(
     }
     dbg_connection!("connection_pipeline: Got StreamReady packet");
 
+    let disconnect_notif = Arc::new(Condvar::new());
+
     *ctx.statistics_manager.write() = Some(StatisticsManager::new(
         initial_settings.connection.statistics_history_size,
         Duration::from_secs_f32(1.0 / fps),
@@ -851,6 +848,8 @@ fn connection_pipeline(
 
     *ctx.bitrate_manager.lock() =
         BitrateManager::new(initial_settings.video.bitrate.history_size, fps);
+    *ctx.tracking_manager.write() =
+        TrackingManager::new(initial_settings.connection.statistics_history_size);
 
     let stream_protocol = if wired {
         SocketProtocol::Tcp
@@ -1063,23 +1062,14 @@ fn connection_pipeline(
         }
     };
 
-    *ctx.tracking_manager.write() =
-        TrackingManager::new(initial_settings.connection.statistics_history_size);
-    let hand_gesture_manager = Arc::new(Mutex::new(HandGestureManager::new()));
-
     let tracking_receive_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
-        let hand_gesture_manager = Arc::clone(&hand_gesture_manager);
         let initial_settings = initial_settings.clone();
         let client_hostname = client_hostname.clone();
         move || {
-            tracking::tracking_loop(
-                &ctx,
-                initial_settings,
-                hand_gesture_manager,
-                tracking_receiver,
-                || is_streaming(&client_hostname),
-            );
+            tracking::tracking_loop(&ctx, initial_settings, tracking_receiver, || {
+                is_streaming(&client_hostname)
+            });
         }
     });
 
@@ -1378,19 +1368,17 @@ fn connection_pipeline(
         }
     });
 
-    {
-        if initial_settings.connection.enable_on_connect_script {
-            let on_connect_script = FILESYSTEM_LAYOUT.get().map(|l| l.connect_script()).unwrap();
-            info!(
-                "Running on connect script (connect): {}",
-                on_connect_script.display()
-            );
-            if let Err(e) = Command::new(&on_connect_script)
-                .env("ACTION", "connect")
-                .spawn()
-            {
-                warn!("Failed to run connect script: {e}");
-            }
+    if initial_settings.connection.enable_on_connect_script {
+        let on_connect_script = FILESYSTEM_LAYOUT.get().map(|l| l.connect_script()).unwrap();
+        info!(
+            "Running on connect script (connect): {}",
+            on_connect_script.display()
+        );
+        if let Err(e) = Command::new(&on_connect_script)
+            .env("ACTION", "connect")
+            .spawn()
+        {
+            warn!("Failed to run connect script: {e}");
         }
     }
 
@@ -1420,7 +1408,7 @@ fn connection_pipeline(
         ))
         .ok();
 
-    dbg_connection!("connection_pipeline: handshake finished; unlocking streams");
+    dbg_connection!("connection_pipeline: Threads initialized; unlocking streams");
     alvr_common::wait_rwlock(&disconnect_notif, &mut session_manager_lock);
     dbg_connection!("connection_pipeline: Begin connection shutdown");
 

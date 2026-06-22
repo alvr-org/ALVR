@@ -62,6 +62,7 @@ private:
         uint32_t pid;
     };
     std::map<HANDLE, std::pair<ProcessResource*, int>> m_handleMap;
+    std::map<ProcessResource*, uint32_t> m_swapchainIndices;
 
     static const int MAX_LAYERS = 10;
     int m_submitLayer;

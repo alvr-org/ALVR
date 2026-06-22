@@ -822,6 +822,10 @@ fn connection_pipeline(
         control_sender.send(&ServerControlPacket::Restarting).ok();
 
         crate::notify_restart_driver();
+
+        *lifecycle_state.write() = LifecycleState::ShuttingDown;
+
+        return Ok(());
     }
 
     dbg_connection!("connection_pipeline: Send StartStream packet");

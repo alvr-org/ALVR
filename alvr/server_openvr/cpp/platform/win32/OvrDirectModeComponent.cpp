@@ -55,6 +55,7 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
 
     ProcessResource* processResource = new ProcessResource();
     processResource->pid = unPid;
+    m_swapchainIndices[processResource] = 0;
 
     for (int i = 0; i < 3; i++) {
         HRESULT hr = m_pD3DRender->GetDevice()->CreateTexture2D(
@@ -63,6 +64,7 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
         // LogDriver("texture%d %p res:%d %s", i, texture[i], hr, GetDxErrorStr(hr).c_str());
         if (FAILED(hr)) {
             Error("CreateSwapTextureSet CreateTexture2D %p %ls", hr, GetErrorStr(hr).c_str());
+            m_swapchainIndices.erase(processResource);
             delete processResource;
             break;
         }
@@ -73,6 +75,7 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
         );
         if (FAILED(hr)) {
             Error("CreateSwapTextureSet QueryInterface %p %ls", hr, GetErrorStr(hr).c_str());
+            m_swapchainIndices.erase(processResource);
             delete processResource;
             break;
         }
@@ -81,6 +84,7 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
         hr = pResource->GetSharedHandle(&processResource->sharedHandles[i]);
         if (FAILED(hr)) {
             Error("CreateSwapTextureSet GetSharedHandle %p %ls", hr, GetErrorStr(hr).c_str());
+            m_swapchainIndices.erase(processResource);
             delete processResource;
             pResource->Release();
             break;
@@ -114,6 +118,7 @@ void OvrDirectModeComponent::DestroySwapTextureSet(vr::SharedTextureHandle_t sha
         m_handleMap.erase(p->sharedHandles[0]);
         m_handleMap.erase(p->sharedHandles[1]);
         m_handleMap.erase(p->sharedHandles[2]);
+        m_swapchainIndices.erase(p);
         delete p;
     } else {
         Debug("Requested to destroy not managing texture. handle:%p", sharedTextureHandle);
@@ -127,6 +132,7 @@ void OvrDirectModeComponent::DestroyAllSwapTextureSets(uint32_t unPid) {
     for (auto it = m_handleMap.begin(); it != m_handleMap.end();) {
         if (it->second.first->pid == unPid) {
             if (it->second.second == 0) {
+                m_swapchainIndices.erase(it->second.first);
                 delete it->second.first;
             }
             m_handleMap.erase(it++);
@@ -142,10 +148,17 @@ void OvrDirectModeComponent::GetNextSwapTextureSetIndex(
 ) {
     Debug("OvrDirectModeComponent::GetNextSwapTextureSetIndex");
 
-    (*pIndices)[0]++;
-    (*pIndices)[0] %= 3;
-    (*pIndices)[1]++;
-    (*pIndices)[1] %= 3;
+    for (int eye = 0; eye < 2; eye++) {
+        auto it = m_handleMap.find((HANDLE)sharedTextureHandles[eye]);
+        if (it == m_handleMap.end()) {
+            continue;
+        }
+        auto& idx = m_swapchainIndices[it->second.first];
+        idx = (idx + 1) % 3;
+        if (pIndices) {
+            (*pIndices)[eye] = idx;
+        }
+    }
 }
 
 /** Call once per layer to draw for this frame.  One shared texture handle per eye.  Textures must

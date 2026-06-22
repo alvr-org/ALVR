@@ -144,6 +144,7 @@ if [[ $# -eq 0 ]]; then
     "
 elif [[ "$1" == "check" ]]; then
     run_in_container bash -c "
+        $(setup_libvpl)
         cargo clean -p alvr_server_openvr -p alvr_dashboard -p alvr_launcher
         RUSTFLAGS='-D warnings' cargo xwin check \
             --target $TARGET \

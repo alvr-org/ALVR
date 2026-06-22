@@ -120,11 +120,13 @@ fn string_to_c_str(buffer: *mut c_char, value: &str) -> u64 {
     cstring.as_bytes_with_nul().len() as u64
 }
 
+static SERVER_START_INSTANT: LazyLock<Instant> = LazyLock::new(Instant::now);
+
 // Get ALVR server time. The libalvr user should provide timestamps in the provided time frame of
 // reference in the following functions
 #[unsafe(no_mangle)]
 pub extern "C" fn alvr_get_time_ns() -> u64 {
-    Instant::now().elapsed().as_nanos() as u64
+    SERVER_START_INSTANT.elapsed().as_nanos() as u64
 }
 
 // The libalvr user is responsible of interpreting values and calling functions using
@@ -177,13 +179,13 @@ pub unsafe extern "C" fn alvr_dbg_encoder(string_ptr: *const c_char) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn alvr_log_periodically(tag_ptr: *const c_char, message_ptr: *const c_char) {
     const INTERVAL: Duration = Duration::from_secs(1);
-    static LASTEST_TAG_TIMESTAMPS: LazyLock<Mutex<HashMap<String, Instant>>> =
+    static LATEST_TAG_TIMESTAMPS: LazyLock<Mutex<HashMap<String, Instant>>> =
         LazyLock::new(|| Mutex::new(HashMap::new()));
 
     let tag = unsafe { CStr::from_ptr(tag_ptr) }.to_string_lossy();
     let message = unsafe { CStr::from_ptr(message_ptr) }.to_string_lossy();
 
-    let mut timestamps_ref = LASTEST_TAG_TIMESTAMPS.lock();
+    let mut timestamps_ref = LATEST_TAG_TIMESTAMPS.lock();
     let old_timestamp = timestamps_ref
         .entry(tag.to_string())
         .or_insert_with(Instant::now);
@@ -546,7 +548,7 @@ pub extern "C" fn alvr_report_present(timestamp_ns: u64, offset_ns: u64) {
     }
 }
 
-/// Retr  un true if a valid value is provided
+/// Return true if a valid value is provided
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn alvr_duration_until_next_vsync(out_ns: *mut u64) -> bool {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read()

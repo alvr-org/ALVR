@@ -564,5 +564,21 @@ pub unsafe extern "C" fn alvr_duration_until_next_vsync(out_ns: *mut u64) -> boo
 
 #[unsafe(no_mangle)]
 pub extern "C" fn alvr_shutdown() {
-    SERVER_CORE_CONTEXT.write().take();
+    // 1. Немедленно глушим приемники событий, чтобы alvr_poll_event гарантированно возвращал false
+    if let Some(mut receiver_lock) = EVENTS_RECEIVER.try_lock() {
+        *receiver_lock = None;
+    }
+    if let Some(mut buttons_lock) = BUTTONS_QUEUE.try_lock() {
+        buttons_lock.clear();
+    }
+
+    // 2. Изымаем контекст. Его drop() должен быть блокирующим (реализуйте Drop для ServerCoreContext)
+    let maybe_context = SERVER_CORE_CONTEXT.write().take();
+    if let Some(context) = maybe_context {
+        drop(context); // Здесь уничтожается Tokio-рантайм и закрываются сокеты
+    }
+
+    // 3. Жесткий барьер (Fence) для Windows Thread Scheduler
+    // Даем 50 мс, чтобы любые системные буферы вывода ОС (stdout/stderr/pipe) сбросили данные
+    std::thread::sleep(std::time::Duration::from_millis(50));
 }

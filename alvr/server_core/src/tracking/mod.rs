@@ -16,7 +16,6 @@ use alvr_common::{
     ConnectionError, DEVICE_ID_TO_PATH, DeviceMotion, Pose, ViewParams,
     glam::{Quat, Vec3},
     inputs as inp,
-    parking_lot::Mutex,
 };
 use alvr_events::{EventType, TrackingEvent};
 use alvr_packets::TrackingData;
@@ -29,7 +28,6 @@ use std::{
     cmp::Ordering,
     collections::{HashMap, VecDeque},
     f32::consts::PI,
-    sync::Arc,
     time::Duration,
 };
 
@@ -266,10 +264,11 @@ impl TrackingManager {
 pub fn tracking_loop(
     ctx: &ConnectionContext,
     initial_settings: Settings,
-    hand_gesture_manager: Arc<Mutex<HandGestureManager>>,
     mut tracking_receiver: StreamReceiver<TrackingData>,
     is_streaming: impl Fn() -> bool,
 ) {
+    let mut hand_gesture_manager = HandGestureManager::new();
+
     let mut gestures_button_mapping_manager =
         initial_settings
             .headset
@@ -408,8 +407,6 @@ pub fn tracking_loop(
                 .and_then(|c| c.hand_tracking_interaction.as_option()),
             &mut gestures_button_mapping_manager,
         ) {
-            let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
-
             if !device_motion_keys.contains(&*inp::HAND_LEFT_ID)
                 && let Some(hand_skeleton) = tracking.hand_skeletons[0]
             {
@@ -418,7 +415,7 @@ pub fn tracking_loop(
                         hand_gestures::trigger_hand_gesture_actions(
                             gestures_button_mapping_manager,
                             *inp::HAND_LEFT_ID,
-                            &hand_gesture_manager_lock.get_active_gestures(
+                            &hand_gesture_manager.get_active_gestures(
                                 &hand_skeleton,
                                 gestures_config,
                                 *inp::HAND_LEFT_ID,
@@ -436,7 +433,7 @@ pub fn tracking_loop(
                         hand_gestures::trigger_hand_gesture_actions(
                             gestures_button_mapping_manager,
                             *inp::HAND_RIGHT_ID,
-                            &hand_gesture_manager_lock.get_active_gestures(
+                            &hand_gesture_manager.get_active_gestures(
                                 &hand_skeleton,
                                 gestures_config,
                                 *inp::HAND_RIGHT_ID,

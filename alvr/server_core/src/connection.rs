@@ -2,7 +2,6 @@ use crate::{
     ConnectionContext, FILESYSTEM_LAYOUT, SESSION_MANAGER, ServerCoreEvent,
     ServerNegotiatedStreamingConfig,
     bitrate::BitrateManager,
-    hand_gestures::HandGestureManager,
     input_mapping::ButtonMappingManager,
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
@@ -30,8 +29,8 @@ use alvr_session::{
     SocketProtocol, SteamvrHmdInitConfig,
 };
 use alvr_sockets::{
-    CONTROL_PORT, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, PeerType, ProtoControlSocket,
-    StreamSocketBuilder, WIRED_CLIENT_HOSTNAME,
+    CONTROL_PORT, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, ProtoControlSocket, SocketConnection,
+    StreamSocketConfig, WIRED_CLIENT_HOSTNAME,
 };
 use std::{
     collections::{HashMap, hash_map::DefaultHasher},
@@ -485,9 +484,9 @@ fn try_connect(
 ) -> ConResult {
     dbg_connection!("try_connect: Finding client and creating control socket");
 
-    let (proto_socket, client_ip) = ProtoControlSocket::connect_to(
+    let (socket, client_ip, connection_result) = alvr_sockets::connect_to_client(
+        client_ips.keys().cloned().collect(),
         Duration::from_secs(1),
-        PeerType::AnyClient(client_ips.keys().cloned().collect()),
     )?;
 
     let Some(client_hostname) = client_ips.remove(&client_ip) else {
@@ -502,7 +501,8 @@ fn try_connect(
             if let Err(e) = connection_pipeline(
                 Arc::clone(&ctx),
                 lifecycle_state,
-                proto_socket,
+                socket,
+                connection_result,
                 client_hostname.clone(),
                 client_ip,
             ) {
@@ -530,7 +530,8 @@ fn try_connect(
 fn connection_pipeline(
     ctx: Arc<ConnectionContext>,
     lifecycle_state: Arc<RwLock<LifecycleState>>,
-    mut proto_socket: ProtoControlSocket,
+    socket: ProtoControlSocket,
+    connection_result: ClientConnectionResult,
     client_hostname: String,
     client_ip: IpAddr,
 ) -> ConResult {
@@ -550,21 +551,6 @@ fn connection_pipeline(
         client_hostname.clone(),
         ClientConnectionsAction::UpdateCurrentIp(Some(client_ip)),
     );
-
-    let disconnect_notif = Arc::new(Condvar::new());
-
-    dbg_connection!("connection_pipeline: Getting client status packet");
-    let connection_result = match proto_socket.recv(HANDSHAKE_ACTION_TIMEOUT) {
-        Ok(r) => r,
-        Err(ConnectionError::TryAgain(e)) => {
-            debug!(
-                "Failed to recive client connection packet. This is normal for USB connection.\n{e}"
-            );
-
-            return Ok(());
-        }
-        Err(e) => return Err(e),
-    };
 
     let maybe_streaming_caps =
         if let ClientConnectionResult::ConnectionAccepted(info) = connection_result {
@@ -592,8 +578,6 @@ fn connection_pipeline(
     let Some(streaming_caps) = maybe_streaming_caps else {
         con_bail!("Only streaming clients are supported for now");
     };
-
-    dbg_connection!("connection_pipeline: setting up negotiated streaming config");
 
     let initial_settings = session_manager_lock.settings().clone();
 
@@ -801,10 +785,6 @@ fn connection_pipeline(
         .with_ext(NegotiatedStreamingConfigExt {}),
     )
     .to_con()?;
-    proto_socket.send(&stream_config_packet).to_con()?;
-
-    let (mut control_sender, mut control_receiver) =
-        proto_socket.split(STREAMING_RECV_TIMEOUT).to_con()?;
 
     let new_steamvr_hmd_init_config = SteamvrHmdInitConfig {
         eye_resolution_width: transcoding_view_resolution.x,
@@ -819,21 +799,38 @@ fn connection_pipeline(
         session.steamvr_hmd_init_config = new_steamvr_hmd_init_config;
         session.restart_settings_hash = new_hash;
 
-        control_sender.send(&ServerControlPacket::Restarting).ok();
+        alvr_sockets::send_restart_signal(socket, stream_config_packet)?;
 
         crate::notify_restart_driver();
+
+        *lifecycle_state.write() = LifecycleState::ShuttingDown;
+
+        return Ok(());
     }
 
-    dbg_connection!("connection_pipeline: Send StartStream packet");
-    control_sender
-        .send(&ServerControlPacket::StartStream)
-        .to_con()?;
+    let stream_protocol = if wired {
+        SocketProtocol::Tcp
+    } else {
+        initial_settings.connection.stream_protocol
+    };
 
-    let signal = control_receiver.recv(HANDSHAKE_ACTION_TIMEOUT)?;
-    if !matches!(signal, ClientControlPacket::StreamReady) {
-        con_bail!("Got unexpected packet waiting for stream ack");
-    }
-    dbg_connection!("connection_pipeline: Got StreamReady packet");
+    dbg_connection!("connection_pipeline: Finishing handshake");
+    let mut socket = SocketConnection::from_client_connection(
+        socket,
+        HANDSHAKE_ACTION_TIMEOUT,
+        stream_config_packet,
+        StreamSocketConfig {
+            protocol: stream_protocol,
+            port: initial_settings.connection.stream_port,
+            buffer_config: initial_settings.connection.server_buffer_config,
+            max_packet_size: initial_settings.connection.packet_size as _,
+            dscp: initial_settings.connection.dscp,
+        },
+    )?;
+
+    dbg_connection!("connection_pipeline: Handshake successful, spawning threads");
+
+    let disconnect_notif = Arc::new(Condvar::new());
 
     *ctx.statistics_manager.write() = Some(StatisticsManager::new(
         initial_settings.connection.statistics_history_size,
@@ -844,36 +841,23 @@ fn connection_pipeline(
             0.0
         },
     ));
-
     *ctx.bitrate_manager.lock() =
         BitrateManager::new(initial_settings.video.bitrate.history_size, fps);
+    *ctx.tracking_manager.write() =
+        TrackingManager::new(initial_settings.connection.statistics_history_size);
 
-    let stream_protocol = if wired {
-        SocketProtocol::Tcp
-    } else {
-        initial_settings.connection.stream_protocol
-    };
+    let control_sender = Arc::new(Mutex::new(socket.request_reliable_stream()?));
+    let mut video_sender = socket.request_unreliable_stream(VIDEO);
+    let game_audio_sender: alvr_sockets::StreamSender<()> = socket.request_unreliable_stream(AUDIO);
+    let haptics_sender = socket.request_unreliable_stream(HAPTICS);
 
-    dbg_connection!("connection_pipeline: StreamSocket connect_to_client");
-    let mut stream_socket = StreamSocketBuilder::connect_to_client(
-        HANDSHAKE_ACTION_TIMEOUT,
-        client_ip,
-        initial_settings.connection.stream_port,
-        stream_protocol,
-        initial_settings.connection.dscp,
-        initial_settings.connection.server_buffer_config,
-        initial_settings.connection.packet_size as _,
-    )?;
-
-    let mut video_sender = stream_socket.request_stream(VIDEO);
-    let game_audio_sender: alvr_sockets::StreamSender<()> = stream_socket.request_stream(AUDIO);
+    let mut control_receiver = socket.subscribe_to_reliable_stream()?;
     let mut microphone_receiver: alvr_sockets::StreamReceiver<()> =
-        stream_socket.subscribe_to_stream(AUDIO, MAX_UNREAD_PACKETS);
+        socket.subscribe_to_unreliable_stream(AUDIO, MAX_UNREAD_PACKETS);
     let tracking_receiver =
-        stream_socket.subscribe_to_stream::<TrackingData>(TRACKING, MAX_UNREAD_PACKETS);
-    let haptics_sender = stream_socket.request_stream(HAPTICS);
+        socket.subscribe_to_unreliable_stream::<TrackingData>(TRACKING, MAX_UNREAD_PACKETS);
     let mut statics_receiver =
-        stream_socket.subscribe_to_stream::<ClientStatistics>(STATISTICS, MAX_UNREAD_PACKETS);
+        socket.subscribe_to_unreliable_stream::<ClientStatistics>(STATISTICS, MAX_UNREAD_PACKETS);
 
     let (video_channel_sender, video_channel_receiver) =
         std::sync::mpsc::sync_channel(initial_settings.connection.max_queued_server_video_frames);
@@ -906,7 +890,7 @@ fn connection_pipeline(
         }
     });
 
-    #[cfg_attr(target_os = "linux", allow(unused_variables))]
+    #[cfg_attr(target_os = "linux", expect(unused_variables))]
     let game_audio_thread = if let Switch::Enabled(config) =
         initial_settings.audio.game_audio.clone()
     {
@@ -1059,23 +1043,14 @@ fn connection_pipeline(
         }
     };
 
-    *ctx.tracking_manager.write() =
-        TrackingManager::new(initial_settings.connection.statistics_history_size);
-    let hand_gesture_manager = Arc::new(Mutex::new(HandGestureManager::new()));
-
     let tracking_receive_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
-        let hand_gesture_manager = Arc::clone(&hand_gesture_manager);
         let initial_settings = initial_settings.clone();
         let client_hostname = client_hostname.clone();
         move || {
-            tracking::tracking_loop(
-                &ctx,
-                initial_settings,
-                hand_gesture_manager,
-                tracking_receiver,
-                || is_streaming(&client_hostname),
-            );
+            tracking::tracking_loop(&ctx, initial_settings, tracking_receiver, || {
+                is_streaming(&client_hostname)
+            });
         }
     });
 
@@ -1113,8 +1088,6 @@ fn connection_pipeline(
             }
         }
     });
-
-    let control_sender = Arc::new(Mutex::new(control_sender));
 
     let real_time_update_thread = thread::spawn({
         let control_sender = Arc::clone(&control_sender);
@@ -1341,7 +1314,7 @@ fn connection_pipeline(
         let client_hostname = client_hostname.clone();
         move || {
             while is_streaming(&client_hostname) {
-                match stream_socket.recv() {
+                match socket.recv_poll() {
                     Ok(()) => (),
                     Err(ConnectionError::TryAgain(_)) => continue,
                     Err(e) => {
@@ -1374,22 +1347,19 @@ fn connection_pipeline(
         }
     });
 
-    {
-        if initial_settings.connection.enable_on_connect_script {
-            let on_connect_script = FILESYSTEM_LAYOUT.get().map(|l| l.connect_script()).unwrap();
-            info!(
-                "Running on connect script (connect): {}",
-                on_connect_script.display()
-            );
-            if let Err(e) = Command::new(&on_connect_script)
-                .env("ACTION", "connect")
-                .spawn()
-            {
-                warn!("Failed to run connect script: {e}");
-            }
+    if initial_settings.connection.enable_on_connect_script {
+        let on_connect_script = FILESYSTEM_LAYOUT.get().map(|l| l.connect_script()).unwrap();
+        info!(
+            "Running on connect script (connect): {}",
+            on_connect_script.display()
+        );
+        if let Err(e) = Command::new(&on_connect_script)
+            .env("ACTION", "connect")
+            .spawn()
+        {
+            warn!("Failed to run connect script: {e}");
         }
     }
-
     if initial_settings.extra.capture.startup_video_recording {
         info!("Creating recording file");
         crate::create_recording_file(&ctx, session_manager_lock.settings());
@@ -1416,7 +1386,7 @@ fn connection_pipeline(
         ))
         .ok();
 
-    dbg_connection!("connection_pipeline: handshake finished; unlocking streams");
+    dbg_connection!("connection_pipeline: Threads initialized; unlocking streams");
     alvr_common::wait_rwlock(&disconnect_notif, &mut session_manager_lock);
     dbg_connection!("connection_pipeline: Begin connection shutdown");
 

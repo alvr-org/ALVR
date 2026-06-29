@@ -149,9 +149,9 @@ fn framed_recv<R: DeserializeOwned>(
 }
 
 pub struct ControlSocketSender<T> {
-    inner: TcpStream,
-    buffer: Vec<u8>,
-    _phantom: PhantomData<T>,
+    pub(crate) inner: TcpStream,
+    pub(crate) buffer: Vec<u8>,
+    pub(crate) _phantom: PhantomData<T>,
 }
 
 impl<S: Serialize> ControlSocketSender<S> {
@@ -161,10 +161,10 @@ impl<S: Serialize> ControlSocketSender<S> {
 }
 
 pub struct ControlSocketReceiver<T> {
-    inner: TcpStream,
-    buffer: Vec<u8>,
-    recv_cursor: Option<usize>,
-    _phantom: PhantomData<T>,
+    pub(crate) inner: TcpStream,
+    pub(crate) buffer: Vec<u8>,
+    pub(crate) recv_cursor: Option<usize>,
+    pub(crate) _phantom: PhantomData<T>,
 }
 
 impl<R: DeserializeOwned> ControlSocketReceiver<R> {
@@ -187,7 +187,7 @@ pub fn get_server_listener(timeout: Duration) -> Result<TcpListener> {
 // Proto-control-socket that can send and receive any packet. After the split, only the packets of
 // the specified types can be exchanged
 pub struct ProtoControlSocket {
-    inner: TcpStream,
+    pub(crate) inner: TcpStream,
 }
 
 pub enum PeerType<'a> {

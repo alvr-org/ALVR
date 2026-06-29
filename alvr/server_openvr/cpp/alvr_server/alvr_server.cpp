@@ -107,31 +107,31 @@ public:
         return vr::VRInitError_None;
     }
     virtual void Cleanup() override {
-    Debug("DriverProvider::Cleanup - Triggering safe shutdown sequence");
+        Debug("DriverProvider::Cleanup - Triggering safe shutdown sequence");
 
-    // 1. Гарантируем, что рантайм Rust остановлен ДО уничтожения чего-либо еще
-    if (!shutdown_called) {
-        shutdown_called = true;
-        ShutdownRuntime(); // Вызывает блокирующий alvr_shutdown в Rust
+        // 1. Гарантируем, что рантайм Rust остановлен ДО уничтожения чего-либо еще
+        if (!shutdown_called) {
+            shutdown_called = true;
+            ShutdownRuntime(); // Вызывает блокирующий alvr_shutdown в Rust
+        }
+
+        // 2. Уничтожаем девайсы только после того, как Rust полностью освободил контексты
+        this->left_hand_tracker.reset();
+        this->right_hand_tracker.reset();
+        this->left_controller.reset();
+        this->right_controller.reset();
+        this->hmd.reset();
+
+        // 3. Даем планировщику Windows (Thread Scheduler) 50 мс, чтобы завершить context switch
+        // фоновых системных потоков логирования, которые могли выполнять kernel-вызовы.
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+        // 4. Только теперь закрываем логгер драйвера
+        CleanupDriverLog();
+
+        // 5. Вызываем деструктор контекста хоста OpenVR. Пайп гарантированно чист!
+        VR_CLEANUP_SERVER_DRIVER_CONTEXT();
     }
-
-    // 2. Уничтожаем девайсы только после того, как Rust полностью освободил контексты
-    this->left_hand_tracker.reset();
-    this->right_hand_tracker.reset();
-    this->left_controller.reset();
-    this->right_controller.reset();
-    this->hmd.reset();
-
-    // 3. Даем планировщику Windows (Thread Scheduler) 50 мс, чтобы завершить context switch
-    // фоновых системных потоков логирования, которые могли выполнять kernel-вызовы.
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-
-    // 4. Только теперь закрываем логгер драйвера
-    CleanupDriverLog();
-
-    // 5. Вызываем деструктор контекста хоста OpenVR. Пайп гарантированно чист!
-    VR_CLEANUP_SERVER_DRIVER_CONTEXT();
-}
     virtual const char* const* GetInterfaceVersions() override { return vr::k_InterfaceVersions; }
     virtual const char* GetTrackedDeviceDriverVersion() {
         return vr::ITrackedDeviceServerDriver_Version;

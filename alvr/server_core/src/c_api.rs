@@ -564,5 +564,13 @@ pub unsafe extern "C" fn alvr_duration_until_next_vsync(out_ns: *mut u64) -> boo
 
 #[unsafe(no_mangle)]
 pub extern "C" fn alvr_shutdown() {
+    // 1. Освобождаем контекст сервера (это запустит внутренний drop ядра)
     SERVER_CORE_CONTEXT.write().take();
+    
+    // 2. Принудительно уничтожаем приемник событий, чтобы закрыть канал
+    *EVENTS_RECEIVER.lock() = None;
+    
+    // 3. Очищаем очередь кнопок и конфигурацию
+    BUTTONS_QUEUE.lock().clear();
+    *NEGOTIATED_CONFIG.lock() = None;
 }

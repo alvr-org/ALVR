@@ -133,16 +133,26 @@ pub async fn web_server(connection_context: Arc<ConnectionContext>) -> Result<()
 async fn events_websocket(ws: WebSocketUpgrade) -> Response {
     ws.on_upgrade(async |mut ws| {
         let mut events_receiver = EVENTS_SENDER.subscribe();
+        
+        // Преаллоцируем буфер под байты JSON (1 КБ обычно хватает за глаза для одного Event)
+        let mut buffer = Vec::with_capacity(1024);
 
         loop {
             match events_receiver.recv().await {
                 Ok(event) => {
-                    if let Err(e) = ws
-                        .send(Message::Text(json::to_string(&event).unwrap().into()))
-                        .await
-                    {
-                        info!("Failed to send event with websocket: {e}");
-                        break;
+                    buffer.clear(); // Очищаем буфер, сохраняя его емкость (0 аллокаций!)
+                    
+                    // Сериализуем напрямую в буфер байт
+                    if json::to_writer(&mut buffer, &event).is_ok() {
+                        if let Ok(text_slice) = std::str::from_utf8(&buffer) {
+                            // Превращаем срез в строку ровно того размера, который получился
+                            let msg = Message::Text(text_slice.to_owned().into());
+                            
+                            if let Err(e) = ws.send(msg).await {
+                                info!("Failed to send event with websocket: {e}");
+                                break;
+                            }
+                        }
                     }
                 }
                 Err(RecvError::Lagged(_)) => (),

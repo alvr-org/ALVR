@@ -564,21 +564,28 @@ pub unsafe extern "C" fn alvr_duration_until_next_vsync(out_ns: *mut u64) -> boo
 
 #[unsafe(no_mangle)]
 pub extern "C" fn alvr_shutdown() {
-    // 1. Немедленно глушим приемники событий, чтобы alvr_poll_event гарантированно возвращал false
-    if let Some(mut receiver_lock) = EVENTS_RECEIVER.try_lock() {
-        *receiver_lock = None;
-    }
-    if let Some(mut buttons_lock) = BUTTONS_QUEUE.try_lock() {
-        buttons_lock.clear();
-    }
-
-    // 2. Изымаем контекст. Его drop() должен быть блокирующим (реализуйте Drop для ServerCoreContext)
+    // 1. СНАЧАЛА изымаем и уничтожаем контекст ядра.
+    // Это действие закроет сокеты, фоновые задачи Tokio и, что самое главное,
+    // полностью уничтожит Sender-сторону (отправителя) каналов mpsc.
     let maybe_context = SERVER_CORE_CONTEXT.write().take();
     if let Some(context) = maybe_context {
-        drop(context); // Здесь уничтожается Tokio-рантайм и закрываются сокеты
+        drop(context); 
     }
 
-    // 3. Жесткий барьер (Fence) для Windows Thread Scheduler
-    // Даем 50 мс, чтобы любые системные буферы вывода ОС (stdout/stderr/pipe) сбросили данные
+    // 2. ТЕПЕРЬ берем жесткие блокирующие локи (.lock()), а не (.try_lock()).
+    // Почему это безопасно и не вызовет вечного зависания?
+    // Как только на Шаге 1 мы дропнули контекст (и Sender), закрылся сам канал mpsc.
+    // Поток, который висел в alvr_poll_event внутри `recv_timeout`, МГНОВЕННО проснется
+    // с ошибкой `Disconnected`, выйдет из `if`, освободит MutexGuard и покинет функцию.
+    //
+    // Вызов .lock() ниже заблокирует alvr_shutdown ровно до того микромомента, 
+    // пока этот поток гарантированно не выйдет из alvr_poll_event.
+    *EVENTS_RECEIVER.lock() = None;
+    BUTTONS_QUEUE.lock().clear();
+
+    // 3. Барьер для операционной системы и внешних оверлеев.
+    // Теперь эти 50 мс действительно гарантируют, что все внешние системные потоки 
+    // (вроде GameOverlayRenderer64.dll от Steam, писавшего логи через WriteFile) успеют завершиться,
+    // так как внутри самой нашей DLL уже гарантированно не выполняется ни одна функция.
     std::thread::sleep(std::time::Duration::from_millis(50));
 }

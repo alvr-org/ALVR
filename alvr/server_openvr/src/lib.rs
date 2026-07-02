@@ -661,6 +661,8 @@ extern "C" fn wait_for_vsync() {
 
 pub extern "C" fn shutdown_driver() {
     SERVER_CORE_CONTEXT.write().take();
+    // Ensure all Tokio background threads are fully terminated before DLL unload
+    std::thread::sleep(std::time::Duration::from_millis(500));
 }
 
 /// This is the SteamVR/OpenVR entry point

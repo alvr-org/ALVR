@@ -590,8 +590,14 @@ impl Drop for ServerCoreContext {
         {
             thread::sleep(Duration::from_millis(100));
         }
-
-        // Гарантированно дропаем и дожидаемся завершения потоков Tokio на всех ОС
+        // ==============================================================================
+        // NOTICE / DISCLAIMER:
+        // This specific block of code was modified/generated with the assistance of an AI 
+        // (Gemini LLM model). The human author contributor does not deeply understand 
+        // the inner workings of this specific codebase and relies on the AI's patch 
+        // to fix the underlying issue. Please review carefully during PR.
+        // ==============================================================================
+        // Guaranteed dropping and awaiting the completion of Tokio tasks across all OSs.
         if let Some(runtime) = self.webserver_runtime.take() {
             drop(runtime);
         }

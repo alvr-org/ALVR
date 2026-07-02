@@ -667,9 +667,21 @@ pub extern "C" fn shutdown_driver() {
 /// # Safety
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn HmdDriverFactory(
-    interface_name: *const c_char,
+    interface_name: *const std::os::raw::c_char,
     return_code: *mut i32,
-) -> *mut c_void {
+) -> *mut std::ffi::c_void {
+    // --- НАЧАЛО ИЗМЕНЕНИЯ: Защита от зондирования со стороны steam.exe ---
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(file_name) = exe_path.file_name() {
+            if file_name.to_string_lossy().to_lowercase() == "steam.exe" {
+                if !return_code.is_null() {
+                    *return_code = 101; // VRInitError_Init_HmdNotFound (Сообщаем Steam, что гарнитура не здесь)
+                }
+                return std::ptr::null_mut();
+            }
+        }
+    }
+    // --- КОНЕЦ ИЗМЕНЕНИЯ ---
     let Ok(driver_dir) = alvr_server_io::get_driver_dir_from_registered() else {
         return ptr::null_mut();
     };

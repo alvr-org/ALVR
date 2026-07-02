@@ -591,9 +591,9 @@ impl Drop for ServerCoreContext {
             thread::sleep(Duration::from_millis(100));
         }
 
-        // Dropping the webserver runtime is bugged on linux and will prevent StemVR shutdown
-        if !cfg!(target_os = "linux") {
-            self.webserver_runtime.take();
+        // Гарантированно дропаем и дожидаемся завершения потоков Tokio на всех ОС
+        if let Some(runtime) = self.webserver_runtime.take() {
+            drop(runtime);
         }
     }
 }

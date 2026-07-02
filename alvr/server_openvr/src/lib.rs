@@ -31,7 +31,7 @@ use alvr_session::{
 };
 use std::{
     collections::VecDeque,
-    ffi::{CString, OsStr, c_char, c_void},
+    ffi::{CString, OsStr, c_void},
     ptr,
     sync::{Once, mpsc},
     thread,
@@ -671,15 +671,14 @@ pub unsafe extern "C" fn HmdDriverFactory(
     return_code: *mut i32,
 ) -> *mut std::ffi::c_void {
     // --- НАЧАЛО ИЗМЕНЕНИЯ: Защита от зондирования со стороны steam.exe ---
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(file_name) = exe_path.file_name() {
-            if file_name.to_string_lossy().to_lowercase() == "steam.exe" {
-                if !return_code.is_null() {
-                    *return_code = 101; // VRInitError_Init_HmdNotFound (Сообщаем Steam, что гарнитура не здесь)
-                }
-                return std::ptr::null_mut();
-            }
+    if let Ok(exe_path) = std::env::current_exe()
+        && let Some(file_name) = exe_path.file_name()
+        && file_name.to_string_lossy().to_lowercase() == "steam.exe"
+    {
+        if !return_code.is_null() {
+            unsafe { *return_code = 101; }
         }
+        return std::ptr::null_mut();
     }
     // --- КОНЕЦ ИЗМЕНЕНИЯ ---
     let Ok(driver_dir) = alvr_server_io::get_driver_dir_from_registered() else {

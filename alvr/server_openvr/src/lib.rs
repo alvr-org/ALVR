@@ -672,9 +672,9 @@ pub unsafe extern "C" fn HmdDriverFactory(
 ) -> *mut std::ffi::c_void {
     // ==============================================================================
     // NOTICE / DISCLAIMER:
-    // This specific block of code was modified/generated with the assistance of an AI 
-    // (Gemini LLM model). The human author contributor does not deeply understand 
-    // the inner workings of this specific codebase and relies on the AI's patch 
+    // This specific block of code was modified/generated with the assistance of an AI
+    // (Gemini LLM model). The human author contributor does not deeply understand
+    // the inner workings of this specific codebase and relies on the AI's patch
     // to fix the underlying issue. Please review carefully during PR.
     // ==============================================================================
     if let Ok(exe_path) = std::env::current_exe()

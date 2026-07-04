@@ -97,7 +97,7 @@ impl eframe::App for Window {
 
         let mut input = self.input.clone();
 
-        CentralPanel::default().show_inside(ui, |ui| {
+        CentralPanel::default().show(ui, |ui| {
             ui.vertical_centered(|ui| {
                 ui.heading(RichText::new(&self.output.hud_message));
             });

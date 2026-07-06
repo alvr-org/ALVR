@@ -217,6 +217,7 @@ extern "C" void (*WaitForVSync)();
 
 extern "C" void CppInit(bool earlyHmdInitialization, Settings settings);
 extern "C" void* CppOpenvrEntryPoint(const char* pInterfaceName, int* pReturnCode);
+extern "C" void initialize_runtime();
 extern "C" bool InitializeStreaming(Settings settings);
 extern "C" void DeinitializeStreaming();
 extern "C" void SendVSync();

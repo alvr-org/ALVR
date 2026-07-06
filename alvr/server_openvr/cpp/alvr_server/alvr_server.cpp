@@ -90,6 +90,7 @@ public:
     std::map<uint64_t, TrackedDevice*> tracked_devices;
 
     virtual vr::EVRInitError Init(vr::IVRDriverContext* pContext) override {
+        initialize_runtime(); // sets up rust logging/runtime, keep first
         Debug("DriverProvider::Init");
 
         VR_INIT_SERVER_DRIVER_CONTEXT(pContext);

@@ -41,6 +41,14 @@ use std::{
 static SERVER_CORE_CONTEXT: RwLock<Option<ServerCoreContext>> = RwLock::new(None);
 static LOCAL_VIEW_PARAMS: RwLock<[ViewParams; 2]> = RwLock::new([ViewParams::DUMMY; 2]);
 static HEAD_POSE_QUEUE: Mutex<VecDeque<(Duration, Pose)>> = Mutex::new(VecDeque::new());
+static EVENT_LOOP_HANDLE: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
+static IDLE_INIT_HANDLE: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
+static FACTORY_INIT_DATA: Mutex<Option<FactoryInitData>> = Mutex::new(None);
+
+struct FactoryInitData {
+    filesystem_layout: afs::Layout,
+    early_hmd_initialization: bool,
+}
 
 fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settings {
     let settings = alvr_server_core::settings();
@@ -239,7 +247,7 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
 }
 
 fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
-    thread::spawn(move || {
+    let handle = thread::spawn(move || {
         if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
             context.start_connection();
         }
@@ -500,10 +508,11 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
 
         unsafe { ShutdownOpenvrClient() };
     });
+    *EVENT_LOOP_HANDLE.lock() = Some(handle);
 }
 
 extern "C" fn driver_ready_idle(set_default_chap: bool) {
-    thread::spawn(move || {
+    let handle = thread::spawn(move || {
         unsafe { InitOpenvrClient() };
 
         if set_default_chap {
@@ -513,6 +522,7 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
             }
         }
     });
+    *IDLE_INIT_HANDLE.lock() = Some(handle);
 }
 
 /// # Safety
@@ -661,6 +671,14 @@ extern "C" fn wait_for_vsync() {
 
 pub extern "C" fn shutdown_driver() {
     SERVER_CORE_CONTEXT.write().take();
+
+    // join driver threads so the dll isn't unloaded while they're still running
+    if let Some(handle) = EVENT_LOOP_HANDLE.lock().take() {
+        handle.join().ok();
+    }
+    if let Some(handle) = IDLE_INIT_HANDLE.lock().take() {
+        handle.join().ok();
+    }
 }
 
 /// This is the SteamVR/OpenVR entry point
@@ -684,8 +702,28 @@ pub unsafe extern "C" fn HmdDriverFactory(
         .processes_by_name(OsStr::new(&afs::dashboard_fname()))
         .collect::<Vec<_>>();
 
+    // When there is already a ALVR dashboard running, initialize the HMD device early to
+    // avoid buggy SteamVR behavior
+    // defer heavy init to initialize_runtime() so a factory probe
+    // (e.g. steam.exe enumerating drivers) doesn't spawn threads
+    *FACTORY_INIT_DATA.lock() = Some(FactoryInitData {
+        filesystem_layout,
+        early_hmd_initialization: !dashboard_processes.is_empty(),
+    });
+
+    unsafe { CppOpenvrEntryPoint(interface_name, return_code) }
+}
+
+// called from DriverProvider::Init(), must run before C++ touches the Log* pointers
+#[unsafe(no_mangle)]
+pub extern "C" fn initialize_runtime() {
     static ONCE: Once = Once::new();
-    ONCE.call_once(move || {
+    ONCE.call_once(|| {
+        let Some(init_data) = FACTORY_INIT_DATA.lock().take() else {
+            return;
+        };
+        let filesystem_layout = init_data.filesystem_layout;
+
         alvr_server_core::initialize_environment(filesystem_layout.clone());
 
         let log_to_disk = alvr_server_core::settings().extra.logging.log_to_disk;
@@ -732,12 +770,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
             WaitForVSync = Some(wait_for_vsync);
             ShutdownRuntime = Some(shutdown_driver);
 
-            // When there is already a ALVR dashboard running, initialize the HMD device early to
-            // avoid buggy SteamVR behavior
-            // NB: we already bail out before if the dashboards don't belong to this streamer
-            let early_hmd_initialization = !dashboard_processes.is_empty();
-
-            CppInit(early_hmd_initialization, make_settings(None));
+            CppInit(init_data.early_hmd_initialization, make_settings(None));
         }
 
         let (context, events_receiver) = ServerCoreContext::new();
@@ -746,6 +779,4 @@ pub unsafe extern "C" fn HmdDriverFactory(
 
         spawn_event_loop(events_receiver);
     });
-
-    unsafe { CppOpenvrEntryPoint(interface_name, return_code) }
 }

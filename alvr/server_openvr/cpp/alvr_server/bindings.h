@@ -191,33 +191,31 @@ extern "C" unsigned int RGBTOYUV420_SHADER_COMP_SPV_LEN;
 extern "C" const char* g_sessionPath;
 extern "C" const char* g_driverRootDir;
 
-extern "C" void (*LogError)(const char* stringPtr);
-extern "C" void (*LogWarn)(const char* stringPtr);
-extern "C" void (*LogInfo)(const char* stringPtr);
-extern "C" void (*LogDebug)(const char* stringPtr);
-extern "C" void (*LogEncoder)(const char* stringPtr);
-extern "C" void (*LogPeriodically)(const char* tag, const char* stringPtr);
-extern "C" void (*DriverReadyIdle)(bool setDefaultChaprone);
-extern "C" void (*SetVideoConfigNals)(const unsigned char* configBuffer, int len, int codec);
-extern "C" void (*VideoSend)(
-    unsigned long long targetTimestampNs, unsigned char* buf, int len, bool isIdr
-);
-extern "C" void (*HapticsSend)(
-    unsigned long long path, float duration_s, float frequency, float amplitude
-);
-extern "C" void (*ShutdownRuntime)();
-extern "C" unsigned long long (*PathStringToHash)(const char* path);
-extern "C" void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset_ns);
-extern "C" void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
-extern "C" FfiDynamicEncoderParams (*GetDynamicEncoderParams)();
-extern "C" unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char* outString);
-extern "C" void (*SetOpenvrProps)(void* instancePtr, unsigned long long deviceID);
-extern "C" void (*RegisterButtons)(void* instancePtr, unsigned long long deviceID);
-extern "C" void (*WaitForVSync)();
+extern "C" void LogError(const char* stringPtr);
+extern "C" void LogWarn(const char* stringPtr);
+extern "C" void LogInfo(const char* stringPtr);
+extern "C" void LogDebug(const char* stringPtr);
+extern "C" void LogEncoder(const char* stringPtr);
+extern "C" void LogPeriodically(const char* tag, const char* stringPtr);
+extern "C" void DriverReadyIdle(bool setDefaultChaprone);
+extern "C" void SetVideoConfigNals(const unsigned char* configBuffer, int len, int codec);
+extern "C" void
+VideoSend(unsigned long long targetTimestampNs, unsigned char* buf, int len, bool isIdr);
+extern "C" void
+HapticsSend(unsigned long long path, float duration_s, float frequency, float amplitude);
+extern "C" void ShutdownRuntime();
+extern "C" unsigned long long PathStringToHash(const char* path);
+extern "C" void ReportPresent(unsigned long long timestamp_ns, unsigned long long offset_ns);
+extern "C" void ReportComposed(unsigned long long timestamp_ns, unsigned long long offset_ns);
+extern "C" FfiDynamicEncoderParams GetDynamicEncoderParams();
+extern "C" unsigned long long GetSerialNumber(unsigned long long deviceID, char* outString);
+extern "C" void SetOpenvrProps(void* instancePtr, unsigned long long deviceID);
+extern "C" void RegisterButtons(void* instancePtr, unsigned long long deviceID);
+extern "C" void WaitForVSync();
 
 extern "C" void CppInit(bool earlyHmdInitialization, Settings settings);
 extern "C" void* CppOpenvrEntryPoint(const char* pInterfaceName, int* pReturnCode);
-extern "C" void initialize_runtime();
+extern "C" void InitializeRuntime();
 extern "C" bool InitializeStreaming(Settings settings);
 extern "C" void DeinitializeStreaming();
 extern "C" void SendVSync();

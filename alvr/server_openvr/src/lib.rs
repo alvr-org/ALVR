@@ -511,6 +511,7 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
     *EVENT_LOOP_HANDLE.lock() = Some(handle);
 }
 
+#[unsafe(export_name = "DriverReadyIdle")]
 extern "C" fn driver_ready_idle(set_default_chap: bool) {
     let handle = thread::spawn(move || {
         unsafe { InitOpenvrClient() };
@@ -527,6 +528,7 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
 
 /// # Safety
 /// `instance_ptr` is a valid pointer to a `TrackedDevice` instance
+#[unsafe(export_name = "RegisterButtons")]
 pub unsafe extern "C" fn register_buttons(instance_ptr: *mut c_void, device_id: u64) {
     let mapped_device_id = if device_id == *HAND_TRACKER_LEFT_ID {
         *HAND_LEFT_ID
@@ -547,6 +549,7 @@ pub unsafe extern "C" fn register_buttons(instance_ptr: *mut c_void, device_id: 
     }
 }
 
+#[unsafe(export_name = "HapticsSend")]
 extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
     if let Ok(duration) = Duration::try_from_secs_f32(duration_s)
         && let Some(context) = &*SERVER_CORE_CONTEXT.read()
@@ -560,6 +563,7 @@ extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, ampl
     }
 }
 
+#[unsafe(export_name = "SetVideoConfigNals")]
 extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32) {
     let codec = if codec == 0 {
         CodecType::H264
@@ -578,6 +582,7 @@ extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32)
     }
 }
 
+#[unsafe(export_name = "VideoSend")]
 extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_idr: bool) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         let timestamp = Duration::from_nanos(timestamp_ns);
@@ -609,6 +614,7 @@ extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_id
     }
 }
 
+#[unsafe(export_name = "GetDynamicEncoderParams")]
 extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read()
         && let Some(params) = context.get_dynamic_encoder_params()
@@ -623,6 +629,7 @@ extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
     }
 }
 
+#[unsafe(export_name = "ReportComposed")]
 extern "C" fn report_composed(timestamp_ns: u64, offset_ns: u64) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         context.report_composed(
@@ -632,6 +639,7 @@ extern "C" fn report_composed(timestamp_ns: u64, offset_ns: u64) {
     }
 }
 
+#[unsafe(export_name = "ReportPresent")]
 extern "C" fn report_present(timestamp_ns: u64, offset_ns: u64) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         context.report_present(
@@ -641,6 +649,7 @@ extern "C" fn report_present(timestamp_ns: u64, offset_ns: u64) {
     }
 }
 
+#[unsafe(export_name = "WaitForVSync")]
 extern "C" fn wait_for_vsync() {
     // Default 120Hz-ish wait if StatisticsManager isn't up.
     // We use 120Hz-ish so that SteamVR doesn't accidentally get
@@ -669,6 +678,7 @@ extern "C" fn wait_for_vsync() {
     }
 }
 
+#[unsafe(export_name = "ShutdownRuntime")]
 pub extern "C" fn shutdown_driver() {
     SERVER_CORE_CONTEXT.write().take();
 
@@ -704,7 +714,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
 
     // When there is already a ALVR dashboard running, initialize the HMD device early to
     // avoid buggy SteamVR behavior
-    // defer heavy init to initialize_runtime() so a factory probe
+    // defer heavy init to InitializeRuntime() so a factory probe
     // (e.g. steam.exe enumerating drivers) doesn't spawn threads
     *FACTORY_INIT_DATA.lock() = Some(FactoryInitData {
         filesystem_layout,
@@ -714,8 +724,53 @@ pub unsafe extern "C" fn HmdDriverFactory(
     unsafe { CppOpenvrEntryPoint(interface_name, return_code) }
 }
 
-// called from DriverProvider::Init(), must run before C++ touches the Log* pointers
-#[unsafe(no_mangle)]
+#[unsafe(export_name = "LogError")]
+unsafe extern "C" fn log_error(string_ptr: *const c_char) {
+    unsafe { alvr_server_core::alvr_error(string_ptr) };
+}
+
+#[unsafe(export_name = "LogWarn")]
+unsafe extern "C" fn log_warn(string_ptr: *const c_char) {
+    unsafe { alvr_server_core::alvr_warn(string_ptr) };
+}
+
+#[unsafe(export_name = "LogInfo")]
+unsafe extern "C" fn log_info(string_ptr: *const c_char) {
+    unsafe { alvr_server_core::alvr_info(string_ptr) };
+}
+
+#[unsafe(export_name = "LogDebug")]
+unsafe extern "C" fn log_debug(string_ptr: *const c_char) {
+    unsafe { alvr_server_core::alvr_dbg_server_impl(string_ptr) };
+}
+
+#[unsafe(export_name = "LogEncoder")]
+unsafe extern "C" fn log_encoder(string_ptr: *const c_char) {
+    unsafe { alvr_server_core::alvr_dbg_encoder(string_ptr) };
+}
+
+#[unsafe(export_name = "LogPeriodically")]
+unsafe extern "C" fn log_periodically(tag_ptr: *const c_char, string_ptr: *const c_char) {
+    unsafe { alvr_server_core::alvr_log_periodically(tag_ptr, string_ptr) };
+}
+
+#[unsafe(export_name = "PathStringToHash")]
+unsafe extern "C" fn path_string_to_hash(path: *const c_char) -> u64 {
+    unsafe { alvr_server_core::alvr_path_to_id(path) }
+}
+
+#[unsafe(export_name = "GetSerialNumber")]
+extern "C" fn get_serial_number(device_id: u64, out_str: *mut c_char) -> u64 {
+    props::get_serial_number(device_id, out_str)
+}
+
+#[unsafe(export_name = "SetOpenvrProps")]
+extern "C" fn set_openvr_props(instance_ptr: *mut c_void, device_id: u64) {
+    props::set_device_openvr_props(instance_ptr, device_id)
+}
+
+// called from DriverProvider::Init()
+#[unsafe(export_name = "InitializeRuntime")]
 pub extern "C" fn initialize_runtime() {
     static ONCE: Once = Once::new();
     ONCE.call_once(|| {
@@ -750,26 +805,6 @@ pub extern "C" fn initialize_runtime() {
         graphics::initialize_shaders();
 
         unsafe {
-            LogError = Some(alvr_server_core::alvr_error);
-            LogWarn = Some(alvr_server_core::alvr_warn);
-            LogInfo = Some(alvr_server_core::alvr_info);
-            LogDebug = Some(alvr_server_core::alvr_dbg_server_impl);
-            LogEncoder = Some(alvr_server_core::alvr_dbg_encoder);
-            LogPeriodically = Some(alvr_server_core::alvr_log_periodically);
-            PathStringToHash = Some(alvr_server_core::alvr_path_to_id);
-            GetSerialNumber = Some(props::get_serial_number);
-            SetOpenvrProps = Some(props::set_device_openvr_props);
-            RegisterButtons = Some(register_buttons);
-            DriverReadyIdle = Some(driver_ready_idle);
-            HapticsSend = Some(send_haptics);
-            SetVideoConfigNals = Some(set_video_config_nals);
-            VideoSend = Some(send_video);
-            GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
-            ReportComposed = Some(report_composed);
-            ReportPresent = Some(report_present);
-            WaitForVSync = Some(wait_for_vsync);
-            ShutdownRuntime = Some(shutdown_driver);
-
             CppInit(init_data.early_hmd_initialization, make_settings(None));
         }
 

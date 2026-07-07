@@ -138,7 +138,7 @@ impl NotificationBar {
             TextWrapMode::Wrap
         };
 
-        bottom_bar.show_inside(ui, |ui| {
+        bottom_bar.show(ui, |ui| {
             ui.with_layout(Layout::right_to_left(alignment), |ui| {
                 if !self.expanded {
                     if ui.small_button("Expand").clicked() {

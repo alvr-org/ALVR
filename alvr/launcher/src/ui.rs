@@ -295,7 +295,7 @@ impl eframe::App for Launcher {
             }
         }
 
-        CentralPanel::default().show_inside(ui, |ui| match &self.state {
+        CentralPanel::default().show(ui, |ui| match &self.state {
             State::Default => {
                 ui.with_layout(Layout::top_down(Align::Center), |ui| {
                     ui.label(RichText::new("ALVR Launcher").size(25.0).strong());

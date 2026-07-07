@@ -195,7 +195,7 @@ impl eframe::App for Dashboard {
         }
 
         if *self.server_restarting.lock() {
-            CentralPanel::default().show_inside(ui, |ui| {
+            CentralPanel::default().show(ui, |ui| {
                 // todo: find a way to center both vertically and horizontally
                 ui.vertical_centered(|ui| {
                     ui.add_space(100.0);
@@ -209,7 +209,7 @@ impl eframe::App for Dashboard {
         self.notification_bar.ui(ui);
 
         if self.setup_wizard_open {
-            CentralPanel::default().show_inside(ui, |ui| {
+            CentralPanel::default().show(ui, |ui| {
                 if let Some(request) = self.setup_wizard.ui(ui) {
                     match request {
                         SetupWizardRequest::ServerRequest(request) => {
@@ -241,7 +241,7 @@ impl eframe::App for Dashboard {
                         .inner_margin(Margin::same(7)),
                 )
                 .exact_size(160.0)
-                .show_inside(ui, |ui| {
+                .show(ui, |ui| {
                     ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
                         ui.add_space(13.0);
                         ui.heading(RichText::new("ALVR").size(25.0).strong());
@@ -292,7 +292,7 @@ impl eframe::App for Dashboard {
 
             CentralPanel::default()
                 .frame(Frame::new().inner_margin(Margin::same(20)).fill(theme::BG))
-                .show_inside(ui, |ui| {
+                .show(ui, |ui| {
                     ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
                         ui.heading(RichText::new(self.tab_labels[&self.selected_tab]).size(25.0));
                         match self.selected_tab {

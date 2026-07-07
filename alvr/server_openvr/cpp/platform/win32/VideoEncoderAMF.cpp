@@ -687,9 +687,9 @@ void VideoEncoderAMF::Shutdown() {
     delete m_pipeline;
 
     for (auto& component : m_amfComponents) {
-        component->Release();
-        delete component;
+        component->Terminate();
     }
+    m_amfComponents.clear();
 
     m_amfContext->Terminate();
     m_amfContext = NULL;

@@ -45,7 +45,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
     -   See the OS compatibility table above.
     -   NVIDIA GPU with NVENC support (GTX 1000 series or newer), an AMD GPU with AMF VCE support, or an INTEL GPU with VPL support (Arc, Tiger Lake or newer), with the latest drivers.
     -   On laptops with both an integrated GPU (Intel HD, AMD iGPU) and a dedicated GPU (NVIDIA GTX/RTX, AMD HD/R5/R7), make sure to assign the dedicated GPU (or "high performance graphics adapter") to ALVR and SteamVR for the best performance and compatibility.  
-        (NVIDIA: Nvidia Control Panel → 3D Settings → Application Settings; AMD: similar method)
+        (NVIDIA: Nvidia App → Graphics Tab → Global Settings → GPU App Assignment; AMD: similar method)
 
 -   Network:
     -   802.11ac 5 GHz Wi-Fi for the headset, and wired Ethernet for the PC is recommended.

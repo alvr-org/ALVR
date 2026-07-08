@@ -31,7 +31,7 @@ use alvr_session::{
 };
 use std::{
     collections::VecDeque,
-    ffi::{CString, OsStr, c_char, c_void},
+    ffi::{CString, OsStr, c_void},
     ptr,
     sync::{Once, mpsc},
     thread,
@@ -695,9 +695,28 @@ pub extern "C" fn shutdown_driver() {
 /// # Safety
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn HmdDriverFactory(
-    interface_name: *const c_char,
+    interface_name: *const std::os::raw::c_char,
     return_code: *mut i32,
-) -> *mut c_void {
+) -> *mut std::ffi::c_void {
+    // ==============================================================================
+    // NOTICE / DISCLAIMER:
+    // This specific block of code was modified/generated with the assistance of an AI
+    // (Gemini LLM model). The human author contributor does not deeply understand
+    // the inner workings of this specific codebase and relies on the AI's patch
+    // to fix the underlying issue. Please review carefully during PR.
+    // ==============================================================================
+    if let Ok(exe_path) = std::env::current_exe()
+        && let Some(file_name) = exe_path.file_name()
+        && file_name.to_string_lossy().to_lowercase() == "steam.exe"
+    {
+        // If running inside Steam, set return code to 101 and return a null pointer
+        if !return_code.is_null() {
+            unsafe {
+                *return_code = 101;
+            }
+        }
+        return std::ptr::null_mut();
+    }
     let Ok(driver_dir) = alvr_server_io::get_driver_dir_from_registered() else {
         return ptr::null_mut();
     };

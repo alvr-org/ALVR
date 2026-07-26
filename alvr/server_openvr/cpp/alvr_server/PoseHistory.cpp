@@ -68,6 +68,14 @@ PoseHistory::GetBestPoseMatch(const vr::HmdMatrix34_t& pose) const {
     return {};
 }
 
+std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetLatestPose() const {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    if (m_poseBuffer.empty()) {
+        return {};
+    }
+    return m_poseBuffer.back();
+}
+
 std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetPoseAt(uint64_t timestampNs
 ) const {
     std::unique_lock<std::mutex> lock(m_mutex);

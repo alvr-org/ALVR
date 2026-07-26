@@ -228,7 +228,23 @@ void CEncoder::Run() {
 
             encode_pipeline->SetParams(GetDynamicEncoderParams());
 
-            auto pose = m_poseHistory->GetBestPoseMatch((const vr::HmdMatrix34_t&)frame_info.pose);
+            // The vulkan layer ships an all zero pose when it could not recover one
+            // from the compositor (see vulkan_layer/util/pose.cpp). Every rotation
+            // scores the same distance against zeros, so fall back to the newest
+            // pose instead of matching. Exact compare is safe, the source is a zero
+            // initialized static and a real pose is never all zeros.
+            const vr::HmdMatrix34_t& frame_pose = (const vr::HmdMatrix34_t&)frame_info.pose;
+            bool pose_is_zero = true;
+            for (int i = 0; i < 3 && pose_is_zero; ++i) {
+                for (int j = 0; j < 4; ++j) {
+                    if (frame_pose.m[i][j] != 0.0f) {
+                        pose_is_zero = false;
+                        break;
+                    }
+                }
+            }
+            auto pose = pose_is_zero ? m_poseHistory->GetLatestPose()
+                                     : m_poseHistory->GetBestPoseMatch(frame_pose);
             if (!pose) {
                 continue;
             }

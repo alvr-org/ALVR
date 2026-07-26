@@ -18,6 +18,8 @@ public:
     void OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion);
 
     std::optional<TrackingHistoryFrame> GetBestPoseMatch(const vr::HmdMatrix34_t& pose) const;
+    // Return the most recent pose in the buffer
+    std::optional<TrackingHistoryFrame> GetLatestPose() const;
     // Return the most recent pose known at the given timestamp
     std::optional<TrackingHistoryFrame> GetPoseAt(uint64_t timestampNs) const;
 

@@ -72,6 +72,19 @@ const TrackedDevicePose_t & find_pose_in_call_stack()
   if (res != nullptr)
     return *res;
   static TrackedDevicePose_t notfound;
+  // The walk below cannot succeed when the render thread symbol is not
+  // present in vrcompositor (true as of SteamVR 2.17.6), and a full unwind
+  // with symbol name lookup on every present is expensive. After enough
+  // consecutive misses only retry once in a while, so a vrcompositor that
+  // does have the symbol can still populate the cache.
+  constexpr unsigned failure_threshold = 300;
+  constexpr unsigned retry_interval = 1000;
+  static unsigned failures;
+  if (failures >= failure_threshold && failures % retry_interval != 0)
+  {
+    ++failures;
+    return notfound;
+  }
   unw_context_t ctx;
   unw_getcontext(&ctx);
   unw_cursor_t cursor;
@@ -96,8 +109,10 @@ const TrackedDevicePose_t & find_pose_in_call_stack()
           return *p;
         }
       }
+      ++failures;
       return notfound;
     }
   }
+  ++failures;
   return notfound;
 }

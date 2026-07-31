@@ -57,7 +57,7 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
     let amf = &video.encoder_config.amf;
     let hdr = &video.encoder_config.hdr;
 
-    let mut capture_frame_dir = [0i8; 1024];
+    let mut capture_frame_dir = [0u8; 1024];
     let cstr = CString::new(settings.extra.capture.capture_frame_dir.as_str()).unwrap_or_default();
     let bytes = cstr.as_bytes_with_nul();
     unsafe {

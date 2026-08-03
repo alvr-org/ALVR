@@ -40,17 +40,34 @@ pub fn maybe_wrap_vrcompositor_launcher() -> alvr_common::anyhow::Result<()> {
     };
 
     let launcher_path = steamvr_bin_dir.join("vrcompositor");
+    let compositor_path = alvr_filesystem::original_vrcompositor_path(&steamvr_bin_dir);
+    let alvr_dir = alvr_filesystem::original_vrcompositor_dir(&steamvr_bin_dir);
+
+    // Older installs have the binary at vrcompositor.real
+    let old_compositor_path = steamvr_bin_dir.join("vrcompositor.real");
+    if old_compositor_path.exists() && !compositor_path.exists() {
+        fs::create_dir_all(&alvr_dir)?;
+        fs::rename(&old_compositor_path, &compositor_path)?;
+        info!("Moved vrcompositor.real to {}", compositor_path.display());
+    }
+
     // In case of SteamVR update, vrcompositor will be restored
     if fs::read_link(&launcher_path).is_ok() {
         fs::remove_file(&launcher_path)?; // recreate the link
-    } else {
-        fs::rename(&launcher_path, steamvr_bin_dir.join("vrcompositor.real"))?;
+    } else if launcher_path.exists() {
+        fs::create_dir_all(&alvr_dir)?;
+        fs::rename(&launcher_path, &compositor_path)?;
     }
 
     std::os::unix::fs::symlink(
         crate::get_filesystem_layout().vrcompositor_wrapper(),
         &launcher_path,
     )?;
+
+    debug!(
+        "Wrapped vrcompositor, real binary at {}",
+        compositor_path.display()
+    );
 
     Ok(())
 }

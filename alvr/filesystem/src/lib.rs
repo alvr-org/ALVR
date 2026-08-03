@@ -80,6 +80,17 @@ pub fn dashboard_fname() -> &'static str {
     }
 }
 
+// SteamVR 2.16+ only accepts the compositor if the process is named
+// vrcompositor. A suffix does not work, exec takes the process name from
+// the basename and vrcompositor.real gets cut to vrcompositor.re.
+pub fn original_vrcompositor_dir(steamvr_bin_dir: &Path) -> PathBuf {
+    steamvr_bin_dir.join("alvr")
+}
+
+pub fn original_vrcompositor_path(steamvr_bin_dir: &Path) -> PathBuf {
+    original_vrcompositor_dir(steamvr_bin_dir).join("vrcompositor")
+}
+
 // Layout of the ALVR installation. All paths are absolute
 #[derive(Clone, Default, Debug)]
 pub struct Layout {

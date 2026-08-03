@@ -214,6 +214,10 @@ pub enum FaceExpressions {
         eye: Option<Vec<f32>>, // 14 values
         lip: Option<Vec<f32>>, // 37 values
     },
+    Phoenix {
+        eyes: Option<Vec<f32>>, // 10 values
+        lip: Option<Vec<f32>>,  // 52 values
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]

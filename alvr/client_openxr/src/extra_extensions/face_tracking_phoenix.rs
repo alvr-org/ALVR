@@ -90,16 +90,16 @@ impl FaceTrackerPhoenix {
         let get_eye_tracking_data = get_instance_proc(&session, "xrGetEyeTrackingDataPICO")?;
         let get_face_tracking_data = get_instance_proc(&session, "xrGetFaceTrackingDataPICO")?;
 
-        return Ok(Self {
+        Ok(Self {
             _session: session.into_any_graphics(),
 
-            start_eye_tracking: start_eye_tracking,
-            stop_eye_tracking: stop_eye_tracking,
-            set_tracking_mode: set_tracking_mode,
+            start_eye_tracking,
+            stop_eye_tracking,
+            set_tracking_mode,
 
-            get_eye_tracking_data: get_eye_tracking_data,
-            get_face_tracking_data: get_face_tracking_data,
-        });
+            get_eye_tracking_data,
+            get_face_tracking_data,
+        })
     }
 
     pub fn get_face_tracking_data(&self, time: xr::Time) -> xr::Result<Option<Vec<f32>>> {

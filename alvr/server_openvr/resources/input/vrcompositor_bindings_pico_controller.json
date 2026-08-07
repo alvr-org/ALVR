@@ -1,0 +1,261 @@
+{
+    "controller_type": "pico_controller",
+    "bindings": {
+        "/actions/lasermouse": {
+            "sources": [
+                {
+                    "path": "/user/hand/right/input/trigger",
+                    "mode": "button",
+                    "inputs": {
+                        "click": {
+                            "output": "/actions/lasermouse/in/LeftClick"
+                        }
+                    }
+                },
+                {
+                    "inputs": {
+                        "click": {
+                            "output": "/actions/lasermouse/in/LockMousePosition"
+                        }
+                    },
+                    "mode": "button",
+                    "parameters": {
+                        "click_activate_threshold": "0.1",
+                        "click_deactivate_threshold": "0.05",
+                        "haptic_amplitude": "0"
+                    },
+                    "path": "/user/hand/right/input/trigger"
+                },
+                {
+                    "path": "/user/hand/right/input/grip",
+                    "mode": "button",
+                    "inputs": {
+                        "click": {
+                            "output": "/actions/lasermouse/in/Back"
+                        }
+                    }
+                },
+                {
+                    "path": "/user/hand/right/input/application_menu",
+                    "mode": "button",
+                    "inputs": {
+                        "click": {
+                            "output": "/actions/lasermouse/in/Home"
+                        }
+                    }
+                },
+                {
+                    "path": "/user/hand/right/input/trackpad",
+                    "mode": "trackpad",
+                    "inputs": {
+                        "touch": {
+                            "output": "/actions/lasermouse/in/TrackpadTouch"
+                        },
+                        "position": {
+                            "output": "/actions/lasermouse/in/TrackpadValue"
+                        }
+                    }
+                },
+                {
+                    "path": "/user/hand/right/input/trackpad",
+                    "mode": "trackpad_scroll",
+                    "inputs": {
+                        "scroll": {
+                            "output": "/actions/lasermouse/in/TrackpadScroll"
+                        }
+                    }
+                },
+                {
+                    "path": "/user/hand/right/input/trackpad",
+                    "mode": "dpad_click",
+                    "inputs": {
+                        "east": {
+                            "output": "/actions/lasermouse/in/RightClick"
+                        }
+                    }
+                },
+                {
+                    "path": "/user/hand/left/input/trigger",
+                    "mode": "button",
+                    "inputs": {
+                        "click": {
+                            "output": "/actions/lasermouse/in/LeftClick"
+                        }
+                    }
+                },
+                {
+                    "inputs": {
+                        "click": {
+                            "output": "/actions/lasermouse/in/LockMousePosition"
+                        }
+                    },
+                    "mode": "button",
+                    "parameters": {
+                        "click_activate_threshold": "0.1",
+                        "click_deactivate_threshold": "0.05",
+                        "haptic_amplitude": "0"
+                    },
+                    "path": "/user/hand/left/input/trigger"
+                },
+                {
+                    "path": "/user/hand/left/input/grip",
+                    "mode": "button",
+                    "inputs": {
+                        "click": {
+                            "output": "/actions/lasermouse/in/Back"
+                        }
+                    }
+                },
+                {
+                    "path": "/user/hand/left/input/application_menu",
+                    "mode": "button",
+                    "inputs": {
+                        "click": {
+                            "output": "/actions/lasermouse/in/Home"
+                        }
+                    }
+                },
+                {
+                    "path": "/user/hand/left/input/trackpad",
+                    "mode": "trackpad",
+                    "inputs": {
+                        "touch": {
+                            "output": "/actions/lasermouse/in/TrackpadTouch"
+                        },
+                        "position": {
+                            "output": "/actions/lasermouse/in/TrackpadValue"
+                        }
+                    }
+                },
+                {
+                    "path": "/user/hand/left/input/trackpad",
+                    "mode": "trackpad_scroll",
+                    "inputs": {
+                        "scroll": {
+                            "output": "/actions/lasermouse/in/TrackpadScroll"
+                        }
+                    }
+                },
+                {
+                    "path": "/user/hand/left/input/trackpad",
+                    "mode": "dpad_click",
+                    "inputs": {
+                        "east": {
+                            "output": "/actions/lasermouse/in/RightClick"
+                        }
+                    }
+                }
+            ],
+            "poses": [
+                {
+                    "output": "/actions/lasermouse/in/Pointer",
+                    "path": "/user/hand/left/pose/tip"
+                },
+                {
+                    "output": "/actions/lasermouse/in/Pointer",
+                    "path": "/user/hand/right/pose/tip"
+                }
+            ]
+        },
+        "/actions/lasermouse_secondary": {
+            "sources": [
+                {
+                    "path": "/user/hand/left/input/trigger",
+                    "mode": "button",
+                    "inputs": {
+                        "click": {
+                            "output": "/actions/lasermouse_secondary/in/SwitchLaserHand"
+                        }
+                    }
+                },
+                {
+                    "path": "/user/hand/right/input/trigger",
+                    "mode": "button",
+                    "inputs": {
+                        "click": {
+                            "output": "/actions/lasermouse_secondary/in/SwitchLaserHand"
+                        }
+                    }
+                }
+            ],
+            "poses": []
+        },
+        "/actions/system": {
+            "chords": [
+                {
+                    "output": "/actions/system/in/TakeScreenshot",
+                    "inputs": [
+                        [
+                            "/user/hand/left/input/system",
+                            "held"
+                        ],
+                        [
+                            "/user/hand/left/input/trigger",
+                            "click"
+                        ]
+                    ]
+                },
+                {
+                    "output": "/actions/system/in/TakeScreenshot",
+                    "inputs": [
+                        [
+                            "/user/hand/right/input/system",
+                            "held"
+                        ],
+                        [
+                            "/user/hand/right/input/trigger",
+                            "click"
+                        ]
+                    ]
+                }
+            ],
+            "sources": [
+                {
+                    "path": "/user/hand/left/input/trigger",
+                    "parameters": {
+                        "haptic_amplitude": "0"
+                    },
+                    "mode": "button"
+                },
+                {
+                    "path": "/user/hand/right/input/trigger",
+                    "parameters": {
+                        "haptic_amplitude": "0"
+                    },
+                    "mode": "button"
+                },
+                {
+                    "path": "/user/hand/left/input/system",
+                    "mode": "button",
+                    "inputs": {
+                        "held": {
+                            "output": "/actions/system/in/SystemButtonChord"
+                        },
+                        "click": {
+                            "output": "/actions/system/in/ToggleDashboard"
+                        },
+                        "double": {
+                            "output": "/actions/system/in/ToggleRoomView"
+                        }
+                    }
+                },
+                {
+                    "path": "/user/hand/right/input/system",
+                    "mode": "button",
+                    "inputs": {
+                        "held": {
+                            "output": "/actions/system/in/SystemButtonChord"
+                        },
+                        "click": {
+                            "output": "/actions/system/in/ToggleDashboard"
+                        },
+                        "double": {
+                            "output": "/actions/system/in/ToggleRoomView"
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "name": "Default VR Dashboard bindings for Pico Controller"
+}

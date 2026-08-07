@@ -311,6 +311,7 @@ void swapchain::submit_image(uint32_t pending_index) {
         packet.frame = m_display.m_vsync_count;
         packet.semaphore_value = m_swapchain_images[pending_index].semaphore_value;
         memcpy(&packet.pose, pose, sizeof(packet.pose));
+        packet.present_time_ns = m_swapchain_images[pending_index].present_time_ns;
         ret = write(m_socket, &packet, sizeof(packet));
         if (ret == -1) {
             //FIXME: try to reconnect?

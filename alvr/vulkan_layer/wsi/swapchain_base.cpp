@@ -36,6 +36,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
+#include <chrono>
 
 #include <unistd.h>
 #include <vulkan/vulkan.h>
@@ -350,6 +351,9 @@ VkResult swapchain_base::acquire_next_image(uint64_t timeout, VkSemaphore semaph
             m_swapchain_images[i].status = swapchain_image::ACQUIRED;
             *image_index = i;
             m_last_acquired_image = i;
+            m_swapchain_images[i].acquire_time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now().time_since_epoch()
+            ).count();
             break;
         }
     }
@@ -416,6 +420,11 @@ VkResult swapchain_base::queue_present(VkQueue queue, const VkPresentInfoKHR *pr
 
     const auto & pose = find_pose_in_call_stack();
 
+    // Use the acquire timestamp as the present_time_ns — it's closer to when
+    // the compositor queried the pose (before rendering). The present timestamp
+    // would be ~5-11ms later (after rendering completes).
+    auto present_time_ns = m_swapchain_images[image_index].acquire_time_ns;
+
     if (m_descendant != VK_NULL_HANDLE) {
         auto *desc = reinterpret_cast<swapchain_base *>(m_descendant);
         for (auto &img : desc->m_swapchain_images) {
@@ -479,6 +488,7 @@ VkResult swapchain_base::queue_present(VkQueue queue, const VkPresentInfoKHR *pr
 
     m_swapchain_images[image_index].status = swapchain_image::PENDING;
     m_swapchain_images[image_index].pose = pose;
+    m_swapchain_images[image_index].present_time_ns = present_time_ns;
 
     m_pending_buffer_pool.ring[m_pending_buffer_pool.tail] = image_index;
     m_pending_buffer_pool.tail = (m_pending_buffer_pool.tail + 1) % m_pending_buffer_pool.size;

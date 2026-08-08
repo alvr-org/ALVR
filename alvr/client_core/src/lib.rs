@@ -41,7 +41,7 @@ use std::{
 };
 use storage::Config;
 
-pub use logging_backend::init_logging;
+pub use logging_backend::{alpha_debug_log, init_logging};
 
 pub enum ClientCoreEvent {
     UpdateHudMessage(String),
@@ -265,13 +265,20 @@ impl ClientCoreContext {
         }
     }
 
-    /// Sink for the companion alpha stream. Unlike the color callback this does not request an
-    /// IDR, since the color stream drives recovery and a request is already sent when its own
-    /// decoder is installed.
+    /// Sink for the companion alpha stream.
+    ///
+    /// This must request an IDR: the alpha encoder is created after the color one and therefore
+    /// misses the single keyframe emitted at stream start (IDRScheduler::CheckIDRInsertion is
+    /// one-shot). Without this, the alpha decoder never receives a keyframe, so it accepts every
+    /// NAL and emits no frames at all, leaving the alpha plane permanently blank.
     pub fn set_alpha_decoder_input_callback(&self, callback: Box<DecoderCallback>) {
         dbg_client_core!("set_alpha_decoder_input_callback");
 
         *self.connection_context.alpha_decoder_callback.lock() = Some(callback);
+
+        if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
+            sender.send(&ClientControlPacket::RequestIdr).ok();
+        }
     }
 
     pub fn report_frame_decoded(&self, timestamp: Duration) {

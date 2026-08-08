@@ -203,9 +203,21 @@ fn decoder_lifecycle(
     // 2x: keep the target buffering in the middle of the max amount of queuable frames
     let available_buffering_frames = (2. * config.max_buffering_frames).ceil() as usize;
 
+    let debug_alpha = config.release_frames_immediately;
+    let mut image_listener_count: u64 = 0;
+
     image_reader.set_image_listener(Box::new({
         let image_queue = Arc::clone(&image_queue);
         move |image_reader| {
+            if debug_alpha {
+                image_listener_count += 1;
+                if image_listener_count % 60 == 1 {
+                    crate::alpha_debug_log(&format!(
+                        "image_listener: fired={image_listener_count}"
+                    ));
+                }
+            }
+
             let mut image_queue_lock = image_queue.lock();
 
             if image_queue_lock.len() > available_buffering_frames {
@@ -215,7 +227,18 @@ fn decoder_lifecycle(
 
             match image_reader.acquire_next_image() {
                 Ok(AcquireResult::Image(image)) => {
-                    let timestamp = Duration::from_nanos(image.timestamp().unwrap() as u64);
+                    let raw_timestamp = image.timestamp().unwrap() as u64;
+
+                    // ALVR intentionally pushes nanoseconds into queue_input_buffer's microsecond
+                    // field (see push_frame_nal) to keep full precision. With scheduled release
+                    // that value survives untouched, but a surface render makes Android interpret
+                    // it as microseconds and scale it to real nanoseconds, inflating it 1000x.
+                    // Undo that here so the timestamp is comparable to the color stream's again.
+                    let timestamp = if config.release_frames_immediately {
+                        Duration::from_nanos(raw_timestamp / 1000)
+                    } else {
+                        Duration::from_nanos(raw_timestamp)
+                    };
 
                     if let Some(callback) = frame_result_callback.upgrade() {
                         callback(Ok(timestamp));
@@ -309,14 +332,33 @@ fn decoder_lifecycle(
     }
 
     let mut error_counter = 0;
+    let mut output_buffer_count: u64 = 0;
     while running.value() {
         match decoder.dequeue_output_buffer(Duration::from_millis(1)) {
             Ok(DequeuedOutputBufferInfoResult::Buffer(buffer)) => {
-                // The buffer timestamp is actually nanoseconds
-                let presentation_time_ns = buffer.info().presentation_time_us();
+                if config.release_frames_immediately {
+                    output_buffer_count += 1;
+                    if output_buffer_count % 60 == 1 {
+                        crate::alpha_debug_log(&format!(
+                            "codec_out: buffers={} pts_us={}",
+                            output_buffer_count,
+                            buffer.info().presentation_time_us(),
+                        ));
+                    }
+                }
 
-                if let Err(e) = decoder.release_output_buffer_at_time(buffer, presentation_time_ns)
-                {
+                let release_result = if config.release_frames_immediately {
+                    // Render as soon as the frame is decoded. Scheduling against a presentation
+                    // time only works for a stream paced by the compositor; the alpha companion
+                    // stream is not, so scheduling defers its frames forever.
+                    decoder.release_output_buffer(buffer, true)
+                } else {
+                    // The buffer timestamp is actually nanoseconds
+                    let presentation_time_ns = buffer.info().presentation_time_us();
+                    decoder.release_output_buffer_at_time(buffer, presentation_time_ns)
+                };
+
+                if let Err(e) = release_result {
                     error!("Decoder dequeue error: {e}");
                 }
             }

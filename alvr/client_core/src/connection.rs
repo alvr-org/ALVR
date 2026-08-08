@@ -56,6 +56,12 @@ const MAX_UNREAD_PACKETS: usize = 10; // Applies per stream
 
 pub type DecoderCallback = dyn FnMut(Duration, &[u8]) -> bool + Send;
 
+// Alpha stream debug counters.
+use std::sync::atomic::{AtomicU64, Ordering};
+
+pub static ALPHA_PACKETS_RECEIVED: AtomicU64 = AtomicU64::new(0);
+pub static ALPHA_PACKETS_DROPPED: AtomicU64 = AtomicU64::new(0);
+
 #[derive(Default)]
 pub struct ConnectionContext {
     pub state: RwLock<ConnectionState>,
@@ -353,12 +359,19 @@ fn connection_pipeline(
     });
 
     // The alpha stream is decoded independently and paired with the color frame by timestamp at
-    // render time, so this thread only feeds its decoder. Losses here degrade alpha for a frame
-    // but must never trigger an IDR request on the color stream.
+    // render time, so this thread only feeds its decoder.
+    //
+    // It does need to be able to ask for an IDR though: the alpha encoder starts after the color
+    // one and misses the single keyframe emitted at stream start, and an H.264 decoder produces
+    // nothing until it sees one. Requests are rate limited because the server's IDR insertion is
+    // shared with the color stream.
     let alpha_video_receive_thread = alpha_video_receiver.take().map(|mut receiver| {
         thread::spawn({
             let ctx = Arc::clone(&ctx);
             move || {
+                let mut got_idr = false;
+                let mut last_idr_request = Instant::now() - Duration::from_secs(10);
+
                 while is_streaming(&ctx) {
                     let data = match receiver.recv(STREAMING_RECV_TIMEOUT) {
                         Ok(data) => data,
@@ -369,10 +382,40 @@ fn connection_pipeline(
                         return;
                     };
 
-                    ctx.alpha_decoder_callback
+                    if header.is_idr {
+                        got_idr = true;
+                    } else if !got_idr
+                        && Instant::now() > last_idr_request + Duration::from_secs(1)
+                    {
+                        // No keyframe yet: the decoder cannot output anything until one arrives.
+                        last_idr_request = Instant::now();
+                        if let Some(sender) = &mut *ctx.control_sender.lock() {
+                            sender.send(&ClientControlPacket::RequestIdr).ok();
+                        }
+                    }
+
+                    // Alpha debug: report arrival and whether a decoder sink is installed.
+                    let submitted = ctx
+                        .alpha_decoder_callback
                         .lock()
                         .as_mut()
                         .map(|callback| callback(header.timestamp, nal));
+
+                    ALPHA_PACKETS_RECEIVED.fetch_add(1, Ordering::Relaxed);
+                    if submitted != Some(true) {
+                        ALPHA_PACKETS_DROPPED.fetch_add(1, Ordering::Relaxed);
+                    }
+                    let received = ALPHA_PACKETS_RECEIVED.load(Ordering::Relaxed);
+                    if received % 60 == 1 {
+                        crate::alpha_debug_log(&format!(
+                            "net: received={received} dropped={} sink_installed={} bytes={} ts_ns={} idr={}",
+                            ALPHA_PACKETS_DROPPED.load(Ordering::Relaxed),
+                            submitted.is_some(),
+                            nal.len(),
+                            header.timestamp.as_nanos(),
+                            header.is_idr,
+                        ));
+                    }
                 }
             }
         })

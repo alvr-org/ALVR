@@ -904,6 +904,8 @@ pub extern "C" fn alvr_create_decoder(config: AlvrDecoderConfig) {
         config_buffer: unsafe {
             slice::from_raw_parts(config.config_buffer, config.config_buffer_size as usize).to_vec()
         },
+        // The C API only drives the color stream, which is paced by the compositor.
+        release_frames_immediately: false,
     };
 
     let (mut sink, source) =

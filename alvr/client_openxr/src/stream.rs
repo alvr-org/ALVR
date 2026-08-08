@@ -112,6 +112,9 @@ pub struct StreamContext {
     /// Last alpha frame pulled from the alpha decoder, kept so it can be matched against a later
     /// color frame. Holds (timestamp, hardware buffer).
     pending_alpha_frame: Option<(Duration, *mut c_void)>,
+    // Alpha stream debug counters.
+    alpha_dequeue_calls: u64,
+    alpha_dequeue_hits: u64,
     use_custom_reprojection: bool,
 }
 
@@ -217,6 +220,13 @@ impl StreamContext {
             config.enable_alpha_stream,
         );
 
+        // Baseline marker: proves the unfiltered logcat path works and reports whether the alpha
+        // stream was negotiated at all.
+        alvr_client_core::alpha_debug_log(&format!(
+            "stream start: enable_alpha_stream={}",
+            config.enable_alpha_stream,
+        ));
+
         if config.enable_alpha_stream {
             alvr_graphics::texture_dump::set_dump_dir(alvr_client_core::debug_dump_dir());
         }
@@ -263,6 +273,8 @@ impl StreamContext {
             decoder: None,
             alpha_decoder: None,
             pending_alpha_frame: None,
+            alpha_dequeue_calls: 0,
+            alpha_dequeue_hits: 0,
         };
 
         this.update_reference_space();
@@ -334,6 +346,8 @@ impl StreamContext {
             buffering_history_weight: self.config.buffering_history_weight,
             options: self.config.decoder_options.clone(),
             config_buffer: config_nal,
+            // Only the alpha stream: it has no compositor pacing, so scheduled release stalls it.
+            release_frames_immediately: matches!(stream, VideoStreamKind::Alpha),
         };
 
         let existing = match stream {
@@ -367,12 +381,17 @@ impl StreamContext {
                 ));
             }
             VideoStreamKind::Alpha => {
+                alvr_client_core::alpha_debug_log(&format!(
+                    "decoder: creating alpha decoder, codec={:?} config_nal_len={}",
+                    config.codec,
+                    config.config_buffer.len(),
+                ));
                 // Alpha decode timings are not reported to statistics: the color stream defines
                 // frame pacing, and reporting both would double count every frame. A fatal error
                 // here degrades to opaque rather than tearing down the connection.
                 let (mut sink, source) = video_decoder::create_decoder(config.clone(), |res| {
                     if let Err(e) = res {
-                        error!("Alpha decoder error: {e}");
+                        error!("ALPHADBG decoder error: {e}");
                     }
                 });
                 self.alpha_decoder = Some((config, source));
@@ -403,23 +422,65 @@ impl StreamContext {
         // Bound the walk so a badly desynced stream cannot spin here.
         const MAX_ALPHA_FRAMES_PER_RENDER: usize = 8;
 
+        // Drain whatever the alpha decoder has produced and keep the newest frame at or before the
+        // color frame. Exact timestamp equality is deliberately NOT required: when the color
+        // decoder returns no frame, render() falls back to vsync_time, which never matches an
+        // encoded timestamp, and the two decoders can drift by a frame anyway. Insisting on
+        // equality left the alpha texture permanently unwritten (fully transparent output).
+        let mut newest: Option<(Duration, *mut c_void)> = self.pending_alpha_frame.take();
+
         for _ in 0..MAX_ALPHA_FRAMES_PER_RENDER {
-            match self.pending_alpha_frame {
-                Some((timestamp, buffer_ptr)) if timestamp == target_timestamp => {
-                    self.pending_alpha_frame = None;
-                    return buffer_ptr;
-                }
-                // Held frame is ahead of the color frame: keep it and render without new alpha.
-                Some((timestamp, _)) if timestamp > target_timestamp => return ptr::null_mut(),
-                // Held frame is stale (or nothing held): pull the next one.
-                _ => match source.get_frame() {
-                    Some(frame) => self.pending_alpha_frame = Some(frame),
-                    None => return ptr::null_mut(),
-                },
+            // Stop as soon as the held frame is genuinely ahead of the color frame; keep it for
+            // later. An implausibly large lead means a timestamp domain mismatch rather than a
+            // real lead, so keep draining instead of stalling forever.
+            if let Some((timestamp, _)) = newest
+                && timestamp > target_timestamp
+                && timestamp.saturating_sub(target_timestamp) < Duration::from_secs(1)
+            {
+                break;
+            }
+
+            match source.get_frame() {
+                Some(frame) => newest = Some(frame),
+                None => break,
             }
         }
 
-        ptr::null_mut()
+        // A frame more than a second ahead of the color stream cannot be a genuine lead; it means
+        // the two sides disagree about the timestamp domain. Use it rather than holding it
+        // forever, which would stall alpha permanently.
+        const MAX_ALPHA_LEAD: Duration = Duration::from_secs(1);
+
+        let result = match newest {
+            // Frame is newer than the color frame: hold it back for a subsequent render.
+            Some((timestamp, buffer_ptr))
+                if timestamp > target_timestamp
+                    && timestamp.saturating_sub(target_timestamp) < MAX_ALPHA_LEAD =>
+            {
+                self.pending_alpha_frame = Some((timestamp, buffer_ptr));
+                ptr::null_mut()
+            }
+            Some((_, buffer_ptr)) => buffer_ptr,
+            None => ptr::null_mut(),
+        };
+
+        // Alpha debug: is the decoder producing frames at all?
+        self.alpha_dequeue_calls += 1;
+        if !result.is_null() {
+            self.alpha_dequeue_hits += 1;
+        }
+        if self.alpha_dequeue_calls % 90 == 1 {
+            alvr_client_core::alpha_debug_log(&format!(
+                "dequeue: calls={} hits={} held={} target_ns={} held_ns={:?}",
+                self.alpha_dequeue_calls,
+                self.alpha_dequeue_hits,
+                self.pending_alpha_frame.is_some(),
+                target_timestamp.as_nanos(),
+                self.pending_alpha_frame.map(|(ts, _)| ts.as_nanos()),
+            ));
+        }
+
+        result
     }
 
     pub fn render(

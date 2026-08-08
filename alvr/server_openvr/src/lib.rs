@@ -27,7 +27,7 @@ use alvr_server_core::{
     HandType, ServerCoreContext, ServerCoreEvent, ServerNegotiatedStreamingConfig,
 };
 use alvr_session::{
-    BodyTrackingSinkConfig, CodecType, ControllersConfig, ControllersEmulationMode,
+    BodyTrackingSinkConfig, CodecType, ControllersConfig, ControllersEmulationMode, PassthroughMode,
 };
 use std::{
     collections::VecDeque,
@@ -80,6 +80,15 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
             )
         } else {
             (false, false, false)
+        };
+
+    // The alpha stream changes the encoder topology, so it is read once at driver init rather
+    // than through the real-time config path.
+    let (alpha_stream_enabled, alpha_stream_bitrate_mbps) =
+        if let Some(PassthroughMode::AlphaStream(config)) = settings.video.passthrough.as_option() {
+            (true, config.bitrate_mbps)
+        } else {
+            (false, 0)
         };
 
     let body_tracking_vive_enabled =
@@ -238,6 +247,8 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
         m_trackingRefOnly: settings.headset.tracking_ref_only,
         m_enableLinuxVulkanAsyncCompute: settings.extra.patches.linux_async_compute,
         m_enableLinuxAsyncReprojection: settings.extra.patches.linux_async_reprojection,
+        m_enableAlphaStream: alpha_stream_enabled,
+        m_alphaStreamBitrateMbps: alpha_stream_bitrate_mbps,
         m_enableControllers: controllers_enabled,
         m_controllerIsTracker: controller_is_tracker,
         m_enableBodyTrackingFakeVive: body_tracking_vive_enabled,
@@ -611,6 +622,37 @@ extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_id
         ];
 
         context.send_video_nal(timestamp, global_view_params, is_idr, buffer.to_vec());
+    }
+}
+
+#[unsafe(export_name = "SetAlphaVideoConfigNals")]
+extern "C" fn set_alpha_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32) {
+    let codec = if codec == 0 {
+        CodecType::H264
+    } else if codec == 1 {
+        CodecType::Hevc
+    } else {
+        CodecType::AV1
+    };
+
+    let mut config_buffer = vec![0; len as usize];
+
+    unsafe { ptr::copy_nonoverlapping(buffer_ptr, config_buffer.as_mut_ptr(), len as usize) };
+
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        context.set_alpha_video_config_nals(config_buffer, codec);
+    }
+}
+
+/// Unlike the color stream this does not need a head pose: the client renders the alpha plane
+/// with the view params of the color frame it is paired with.
+#[unsafe(export_name = "AlphaVideoSend")]
+extern "C" fn send_alpha_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_idr: bool) {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        let timestamp = Duration::from_nanos(timestamp_ns);
+        let buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
+
+        context.send_alpha_video_nal(timestamp, is_idr, buffer.to_vec());
     }
 }
 

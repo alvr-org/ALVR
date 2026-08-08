@@ -64,6 +64,10 @@ public:
 
     ComPtr<ID3D11Texture2D> GetTexture();
 
+    /// Luma-replicated copy of the composited frame's alpha channel, or null when the 8 bit alpha
+    /// passthrough mode is disabled. Must be called after RenderFrame.
+    ComPtr<ID3D11Texture2D> GetAlphaTexture();
+
 private:
     std::shared_ptr<CD3DRender> m_pD3DRender;
     ComPtr<ID3D11Texture2D> m_pStagingTexture;
@@ -110,6 +114,12 @@ private:
     bool enableFFE;
 
     std::unique_ptr<d3d_render_utils::RenderPipelineYUV> m_yuvPipeline;
+
+    // 8 bit alpha passthrough: extracts the composited alpha channel into its own texture so it
+    // can be fed to a second, monochrome encoder.
+    std::unique_ptr<d3d_render_utils::RenderPipeline> m_alphaExtractionPipeline;
+    ComPtr<ID3D11Texture2D> m_pAlphaTexture;
+    bool enableAlphaStream = false;
 
     static bool SetGpuPriority(ID3D11Device* device) {
         typedef enum _D3DKMT_SCHEDULINGPRIORITYCLASS {

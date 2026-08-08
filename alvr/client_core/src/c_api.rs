@@ -291,7 +291,10 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                 frequency,
                 amplitude,
             },
-            ClientCoreEvent::DecoderConfig { codec, config_nal } => {
+            // The C API has no alpha stream support, so only the color config is surfaced.
+            ClientCoreEvent::DecoderConfig {
+                codec, config_nal, ..
+            } => {
                 *DECODER_CONFIG_BUFFER.lock() = config_nal;
 
                 AlvrEvent::DecoderConfig {
@@ -709,6 +712,7 @@ pub extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
         false, // TODO: limited range fix config
         1.0,   // TODO: encoding gamma config
         upscaling,
+        false, // the C API does not support the alpha stream
     )));
 }
 
@@ -770,6 +774,7 @@ pub extern "C" fn alvr_render_stream_opengl(
             let right_params = unsafe { &*view_params.offset(1) };
             renderer.render(
                 hardware_buffer,
+                ptr::null_mut(),
                 [
                     StreamViewParams {
                         swapchain_index: left_params.swapchain_index,

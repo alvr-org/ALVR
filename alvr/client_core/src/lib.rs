@@ -25,6 +25,7 @@ use alvr_common::{
 };
 use alvr_packets::{
     BatteryInfo, ButtonEntry, ClientControlPacket, ClientStreamConfig, RealTimeConfig, TrackingData,
+    VideoStreamKind,
 };
 use alvr_session::CodecType;
 use alvr_system_info::Platform;
@@ -53,6 +54,7 @@ pub enum ClientCoreEvent {
     DecoderConfig {
         codec: CodecType,
         config_nal: Vec<u8>,
+        stream: VideoStreamKind,
     },
     RealTimeConfig(RealTimeConfig),
 }
@@ -258,6 +260,15 @@ impl ClientCoreContext {
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender.send(&ClientControlPacket::RequestIdr).ok();
         }
+    }
+
+    /// Sink for the companion alpha stream. Unlike the color callback this does not request an
+    /// IDR, since the color stream drives recovery and a request is already sent when its own
+    /// decoder is installed.
+    pub fn set_alpha_decoder_input_callback(&self, callback: Box<DecoderCallback>) {
+        dbg_client_core!("set_alpha_decoder_input_callback");
+
+        *self.connection_context.alpha_decoder_callback.lock() = Some(callback);
     }
 
     pub fn report_frame_decoded(&self, timestamp: Duration) {

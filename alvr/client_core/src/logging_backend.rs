@@ -33,29 +33,6 @@ static LAST_LOG_EVENT: LazyLock<Mutex<RepeatedLogEvent>> = LazyLock::new(|| {
     })
 });
 
-/// Writes a diagnostic line straight to logcat, bypassing the log channel, severity filter and
-/// debug-group filtering that `init_logging` applies. Used by the alpha stream instrumentation so
-/// the messages are guaranteed to be visible via `adb logcat` regardless of session settings.
-#[cfg(target_os = "android")]
-pub fn alpha_debug_log(message: &str) {
-    use std::ffi::CString;
-
-    unsafe extern "C" {
-        fn __android_log_write(prio: i32, tag: *const std::ffi::c_char, text: *const std::ffi::c_char) -> i32;
-    }
-
-    const ANDROID_LOG_INFO: i32 = 4;
-
-    if let (Ok(tag), Ok(text)) = (CString::new("ALPHADBG"), CString::new(message)) {
-        unsafe { __android_log_write(ANDROID_LOG_INFO, tag.as_ptr(), text.as_ptr()) };
-    }
-}
-
-#[cfg(not(target_os = "android"))]
-pub fn alpha_debug_log(message: &str) {
-    println!("ALPHADBG {message}");
-}
-
 pub fn init_logging() {
     fn send_log(record: &Record) -> bool {
         let Some(data) = &*LOG_CHANNEL_SENDER.lock() else {

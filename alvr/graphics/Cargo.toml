@@ -13,6 +13,5 @@ alvr_session.workspace = true
 glow = "0.16" # Needs to be update with wgpu
 glyph_brush_layout = "0.2"
 khronos-egl = { version = "6", features = ["dynamic"] }
-png = "0.17" # only used by the alpha stream debug texture dumps
 pollster = "0.4"
 wgpu = "25"

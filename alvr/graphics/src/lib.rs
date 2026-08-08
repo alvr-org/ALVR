@@ -1,7 +1,6 @@
 mod lobby;
 mod staging;
 mod stream;
-pub mod texture_dump;
 
 pub use lobby::*;
 pub use stream::*;

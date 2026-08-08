@@ -203,21 +203,9 @@ fn decoder_lifecycle(
     // 2x: keep the target buffering in the middle of the max amount of queuable frames
     let available_buffering_frames = (2. * config.max_buffering_frames).ceil() as usize;
 
-    let debug_alpha = config.release_frames_immediately;
-    let mut image_listener_count: u64 = 0;
-
     image_reader.set_image_listener(Box::new({
         let image_queue = Arc::clone(&image_queue);
         move |image_reader| {
-            if debug_alpha {
-                image_listener_count += 1;
-                if image_listener_count % 60 == 1 {
-                    crate::alpha_debug_log(&format!(
-                        "image_listener: fired={image_listener_count}"
-                    ));
-                }
-            }
-
             let mut image_queue_lock = image_queue.lock();
 
             if image_queue_lock.len() > available_buffering_frames {
@@ -332,21 +320,9 @@ fn decoder_lifecycle(
     }
 
     let mut error_counter = 0;
-    let mut output_buffer_count: u64 = 0;
     while running.value() {
         match decoder.dequeue_output_buffer(Duration::from_millis(1)) {
             Ok(DequeuedOutputBufferInfoResult::Buffer(buffer)) => {
-                if config.release_frames_immediately {
-                    output_buffer_count += 1;
-                    if output_buffer_count % 60 == 1 {
-                        crate::alpha_debug_log(&format!(
-                            "codec_out: buffers={} pts_us={}",
-                            output_buffer_count,
-                            buffer.info().presentation_time_us(),
-                        ));
-                    }
-                }
-
                 let release_result = if config.release_frames_immediately {
                     // Render as soon as the frame is decoded. Scheduling against a presentation
                     // time only works for a stream paced by the compositor; the alpha companion

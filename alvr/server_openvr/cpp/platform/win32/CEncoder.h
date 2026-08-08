@@ -79,8 +79,6 @@ private:
     uint64_t m_targetTimestampNs;
 
     std::shared_ptr<FrameRender> m_FrameRender;
-    /// Retained only for the alpha debug texture dumps.
-    std::shared_ptr<CD3DRender> m_pD3DRender;
 
     IDRScheduler m_scheduler;
 

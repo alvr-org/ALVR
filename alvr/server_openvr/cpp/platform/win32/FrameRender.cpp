@@ -393,7 +393,6 @@ bool FrameRender::Startup() {
     }
 
     m_pStagingTexture = compositionTexture;
-    m_pCompositionTexture = compositionTexture;
 
     std::vector<uint8_t> quadShaderCSO(
         QUAD_SHADER_CSO_PTR, QUAD_SHADER_CSO_PTR + QUAD_SHADER_CSO_LEN
@@ -973,8 +972,6 @@ bool FrameRender::RenderFrame(
 ComPtr<ID3D11Texture2D> FrameRender::GetTexture() { return m_pStagingTexture; }
 
 ComPtr<ID3D11Texture2D> FrameRender::GetAlphaTexture() { return m_pAlphaTexture; }
-
-ComPtr<ID3D11Texture2D> FrameRender::GetCompositionTexture() { return m_pCompositionTexture; }
 
 void FrameRender::GetEncodingResolution(uint32_t* width, uint32_t* height) {
     if (enableFFE) {

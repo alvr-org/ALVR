@@ -68,9 +68,6 @@ public:
     /// passthrough mode is disabled. Must be called after RenderFrame.
     ComPtr<ID3D11Texture2D> GetAlphaTexture();
 
-    /// The raw layer composition target, before color correction / FFR / YUV conversion. Used by
-    /// the alpha debug dumps to tell where in the chain alpha is lost.
-    ComPtr<ID3D11Texture2D> GetCompositionTexture();
 
 private:
     std::shared_ptr<CD3DRender> m_pD3DRender;
@@ -124,8 +121,6 @@ private:
     std::unique_ptr<d3d_render_utils::RenderPipeline> m_alphaExtractionPipeline;
     ComPtr<ID3D11Texture2D> m_pAlphaTexture;
     bool enableAlphaStream = false;
-    /// Kept alive for debugging; m_pStagingTexture is reassigned through the post chain.
-    ComPtr<ID3D11Texture2D> m_pCompositionTexture;
 
     static bool SetGpuPriority(ID3D11Device* device) {
         typedef enum _D3DKMT_SCHEDULINGPRIORITYCLASS {

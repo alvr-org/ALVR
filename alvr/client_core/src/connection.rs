@@ -56,12 +56,6 @@ const MAX_UNREAD_PACKETS: usize = 10; // Applies per stream
 
 pub type DecoderCallback = dyn FnMut(Duration, &[u8]) -> bool + Send;
 
-// Alpha stream debug counters.
-use std::sync::atomic::{AtomicU64, Ordering};
-
-pub static ALPHA_PACKETS_RECEIVED: AtomicU64 = AtomicU64::new(0);
-pub static ALPHA_PACKETS_DROPPED: AtomicU64 = AtomicU64::new(0);
-
 #[derive(Default)]
 pub struct ConnectionContext {
     pub state: RwLock<ConnectionState>,
@@ -394,28 +388,10 @@ fn connection_pipeline(
                         }
                     }
 
-                    // Alpha debug: report arrival and whether a decoder sink is installed.
-                    let submitted = ctx
-                        .alpha_decoder_callback
+                    ctx.alpha_decoder_callback
                         .lock()
                         .as_mut()
                         .map(|callback| callback(header.timestamp, nal));
-
-                    ALPHA_PACKETS_RECEIVED.fetch_add(1, Ordering::Relaxed);
-                    if submitted != Some(true) {
-                        ALPHA_PACKETS_DROPPED.fetch_add(1, Ordering::Relaxed);
-                    }
-                    let received = ALPHA_PACKETS_RECEIVED.load(Ordering::Relaxed);
-                    if received % 60 == 1 {
-                        crate::alpha_debug_log(&format!(
-                            "net: received={received} dropped={} sink_installed={} bytes={} ts_ns={} idr={}",
-                            ALPHA_PACKETS_DROPPED.load(Ordering::Relaxed),
-                            submitted.is_some(),
-                            nal.len(),
-                            header.timestamp.as_nanos(),
-                            header.is_idr,
-                        ));
-                    }
                 }
             }
         })

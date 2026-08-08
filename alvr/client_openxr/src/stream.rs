@@ -112,9 +112,6 @@ pub struct StreamContext {
     /// Last alpha frame pulled from the alpha decoder, kept so it can be matched against a later
     /// color frame. Holds (timestamp, hardware buffer).
     pending_alpha_frame: Option<(Duration, *mut c_void)>,
-    // Alpha stream debug counters.
-    alpha_dequeue_calls: u64,
-    alpha_dequeue_hits: u64,
     use_custom_reprojection: bool,
 }
 
@@ -220,17 +217,6 @@ impl StreamContext {
             config.enable_alpha_stream,
         );
 
-        // Baseline marker: proves the unfiltered logcat path works and reports whether the alpha
-        // stream was negotiated at all.
-        alvr_client_core::alpha_debug_log(&format!(
-            "stream start: enable_alpha_stream={}",
-            config.enable_alpha_stream,
-        ));
-
-        if config.enable_alpha_stream {
-            alvr_graphics::texture_dump::set_dump_dir(alvr_client_core::debug_dump_dir());
-        }
-
         {
             let int_ctx = interaction_ctx.read();
             core_ctx.send_active_interaction_profile(
@@ -273,8 +259,6 @@ impl StreamContext {
             decoder: None,
             alpha_decoder: None,
             pending_alpha_frame: None,
-            alpha_dequeue_calls: 0,
-            alpha_dequeue_hits: 0,
         };
 
         this.update_reference_space();
@@ -381,17 +365,12 @@ impl StreamContext {
                 ));
             }
             VideoStreamKind::Alpha => {
-                alvr_client_core::alpha_debug_log(&format!(
-                    "decoder: creating alpha decoder, codec={:?} config_nal_len={}",
-                    config.codec,
-                    config.config_buffer.len(),
-                ));
                 // Alpha decode timings are not reported to statistics: the color stream defines
                 // frame pacing, and reporting both would double count every frame. A fatal error
                 // here degrades to opaque rather than tearing down the connection.
                 let (mut sink, source) = video_decoder::create_decoder(config.clone(), |res| {
                     if let Err(e) = res {
-                        error!("ALPHADBG decoder error: {e}");
+                        error!("Alpha decoder error: {e}");
                     }
                 });
                 self.alpha_decoder = Some((config, source));
@@ -463,22 +442,6 @@ impl StreamContext {
             Some((_, buffer_ptr)) => buffer_ptr,
             None => ptr::null_mut(),
         };
-
-        // Alpha debug: is the decoder producing frames at all?
-        self.alpha_dequeue_calls += 1;
-        if !result.is_null() {
-            self.alpha_dequeue_hits += 1;
-        }
-        if self.alpha_dequeue_calls % 90 == 1 {
-            alvr_client_core::alpha_debug_log(&format!(
-                "dequeue: calls={} hits={} held={} target_ns={} held_ns={:?}",
-                self.alpha_dequeue_calls,
-                self.alpha_dequeue_hits,
-                self.pending_alpha_frame.is_some(),
-                target_timestamp.as_nanos(),
-                self.pending_alpha_frame.map(|(ts, _)| ts.as_nanos()),
-            ));
-        }
 
         result
     }

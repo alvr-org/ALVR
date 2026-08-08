@@ -217,6 +217,10 @@ impl StreamContext {
             config.enable_alpha_stream,
         );
 
+        if config.enable_alpha_stream {
+            alvr_graphics::texture_dump::set_dump_dir(alvr_client_core::debug_dump_dir());
+        }
+
         {
             let int_ctx = interaction_ctx.read();
             core_ctx.send_active_interaction_profile(

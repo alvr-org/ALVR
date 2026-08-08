@@ -4,7 +4,7 @@ use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 
-fn config_path() -> PathBuf {
+fn app_root() -> PathBuf {
     app_dirs2::app_root(
         AppDataType::UserConfig,
         &AppInfo {
@@ -13,7 +13,42 @@ fn config_path() -> PathBuf {
         },
     )
     .unwrap()
-    .join("session.json")
+}
+
+fn config_path() -> PathBuf {
+    app_root().join("session.json")
+}
+
+/// Directory for the alpha stream debug texture dumps.
+///
+/// On Android this deliberately uses the app-specific *external* files dir rather than the private
+/// data dir: release APKs are not debuggable, so `adb run-as` cannot read private storage, but
+/// `/sdcard/Android/data/<package>/files` is readable over adb and needs no runtime permission.
+#[cfg(target_os = "android")]
+pub fn debug_dump_dir() -> PathBuf {
+    // The process name is the package name on Android, which avoids hardcoding a build variant.
+    let package = fs::read("/proc/self/cmdline")
+        .ok()
+        .and_then(|raw| {
+            let end = raw.iter().position(|b| *b == 0).unwrap_or(raw.len());
+            String::from_utf8(raw[..end].to_vec()).ok()
+        })
+        .unwrap_or_else(|| alvr_system_info::PACKAGE_NAME_GITHUB_DEV.to_owned());
+
+    let dir = PathBuf::from(format!("/sdcard/Android/data/{package}/files/alpha_debug"));
+
+    // Fall back to private storage if external storage is unavailable for any reason.
+    if fs::create_dir_all(&dir).is_ok() {
+        dir
+    } else {
+        error!("Alpha debug: cannot use external storage, falling back to private dir");
+        app_root().join("alpha_debug")
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+pub fn debug_dump_dir() -> PathBuf {
+    app_root().join("alpha_debug")
 }
 
 #[derive(Serialize, Deserialize)]

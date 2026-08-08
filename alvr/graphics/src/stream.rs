@@ -4,7 +4,7 @@ use alvr_common::{
     glam::{self, Mat4, UVec2, Vec3, Vec4},
 };
 use alvr_session::{FoveatedEncodingConfig, PassthroughMode, UpscalingConfig};
-use std::{ffi::c_void, iter, mem, rc::Rc};
+use std::{ffi::c_void, iter, mem, rc::Rc, time::Duration};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, Color, ColorTargetState, ColorWrites,
@@ -54,6 +54,10 @@ pub struct StreamRenderer {
     alpha_staging_renderer: Option<StagingRenderer>,
     pipeline: RenderPipeline,
     views_objects: [ViewObjects; 2],
+    // Alpha stream debugging only.
+    debug_staging_textures_gl: Vec<glow::Texture>,
+    debug_alpha_staging_textures_gl: Vec<glow::Texture>,
+    debug_staging_resolution: UVec2,
 }
 
 impl StreamRenderer {
@@ -263,6 +267,10 @@ impl StreamRenderer {
             }
         }
 
+        // Kept for the alpha debug dumps; StagingRenderer takes the arrays by value.
+        let debug_staging_textures_gl = staging_textures_gl.clone();
+        let debug_alpha_staging_textures_gl = alpha_staging_textures_gl.clone();
+
         let staging_renderer = StagingRenderer::new(
             Rc::clone(&context),
             staging_textures_gl.try_into().unwrap(),
@@ -286,6 +294,9 @@ impl StreamRenderer {
             alpha_staging_renderer,
             pipeline,
             views_objects: view_objects.try_into().unwrap(),
+            debug_staging_textures_gl,
+            debug_alpha_staging_textures_gl,
+            debug_staging_resolution: staging_resolution,
         }
     }
 
@@ -310,6 +321,38 @@ impl StreamRenderer {
             && !alpha_hardware_buffer.is_null()
         {
             alpha_staging_renderer.render(alpha_hardware_buffer);
+        }
+
+        // Debug: once a second, read back what the decoders actually produced. The color dump
+        // shows whether the color stream arrived; the alpha dump shows whether the companion
+        // stream decoded and carries a meaningful plane.
+        if self.alpha_staging_renderer.is_some()
+            && crate::texture_dump::should_dump(Duration::from_secs(1))
+        {
+            let res = self.debug_staging_resolution;
+
+            if let Some(texture) = self.debug_staging_textures_gl.first() {
+                crate::texture_dump::dump_gl_texture(
+                    &self.context,
+                    *texture,
+                    res.x,
+                    res.y,
+                    "client_1_color",
+                    false,
+                );
+            }
+            if let Some(texture) = self.debug_alpha_staging_textures_gl.first() {
+                // The alpha plane arrives as luma, so dump it as plain color: the greyscale
+                // image IS the alpha value.
+                crate::texture_dump::dump_gl_texture(
+                    &self.context,
+                    *texture,
+                    res.x,
+                    res.y,
+                    "client_2_alpha",
+                    false,
+                );
+            }
         }
 
         let mut encoder = self

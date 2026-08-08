@@ -393,6 +393,7 @@ bool FrameRender::Startup() {
     }
 
     m_pStagingTexture = compositionTexture;
+    m_pCompositionTexture = compositionTexture;
 
     std::vector<uint8_t> quadShaderCSO(
         QUAD_SHADER_CSO_PTR, QUAD_SHADER_CSO_PTR + QUAD_SHADER_CSO_LEN
@@ -463,12 +464,21 @@ bool FrameRender::Startup() {
 
         // Replicated to RGB because the hardware encoders take RGBA/NV12 input, not R8. The
         // encoder collapses this to luma, which is what the client samples.
+        // Note: the sampler must be declared with an inline state block, not
+        // `register(s0)`. RenderPipeline::Render never calls PSSetSamplers, so a register-bound
+        // sampler is left unbound and every Sample() returns 0. The other post shaders
+        // (ColorCorrection, rgbtoyuv420) use this same inline form for that reason.
         static const char* kAlphaExtractionShader = R"(
-Texture2D<float4> sourceTexture : register(t0);
-SamplerState sourceSampler : register(s0);
+Texture2D<float4> sourceTexture;
 
-float4 main(float4 position : SV_POSITION, float2 uv : TEXCOORD0) : SV_TARGET {
-    float alpha = sourceTexture.Sample(sourceSampler, uv).a;
+SamplerState bilinearSampler {
+    Filter = MIN_MAG_LINEAR_MIP_POINT;
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+};
+
+float4 main(float2 uv : TEXCOORD0) : SV_Target {
+    float alpha = sourceTexture.Sample(bilinearSampler, uv).a;
     return float4(alpha, alpha, alpha, 1.0);
 }
 )";
@@ -963,6 +973,8 @@ bool FrameRender::RenderFrame(
 ComPtr<ID3D11Texture2D> FrameRender::GetTexture() { return m_pStagingTexture; }
 
 ComPtr<ID3D11Texture2D> FrameRender::GetAlphaTexture() { return m_pAlphaTexture; }
+
+ComPtr<ID3D11Texture2D> FrameRender::GetCompositionTexture() { return m_pCompositionTexture; }
 
 void FrameRender::GetEncodingResolution(uint32_t* width, uint32_t* height) {
     if (enableFFE) {

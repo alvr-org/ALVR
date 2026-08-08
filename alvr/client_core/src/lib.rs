@@ -17,6 +17,9 @@ mod audio;
 
 pub mod video_decoder;
 
+/// Directory used by the alpha stream debug texture dumps.
+pub use storage::debug_dump_dir;
+
 use alvr_common::{
     ConnectionState, LifecycleState, ViewParams, dbg_client_core, error,
     glam::{UVec2, Vec2},

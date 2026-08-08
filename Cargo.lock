@@ -343,6 +343,7 @@ dependencies = [
  "glow 0.16.0",
  "glyph_brush_layout",
  "khronos-egl",
+ "png 0.17.16",
  "pollster",
  "wgpu 25.0.2",
 ]

@@ -1,5 +1,7 @@
 #include "CEncoder.h"
 
+#include "TextureDump.h"
+
 CEncoder::CEncoder()
     : m_bExiting(false)
     , m_targetTimestampNs(0) {
@@ -63,6 +65,7 @@ std::shared_ptr<VideoEncoder> CEncoder::CreateAlphaEncoder(
 }
 
 void CEncoder::Initialize(std::shared_ptr<CD3DRender> d3dRender) {
+    m_pD3DRender = d3dRender;
     m_FrameRender = std::make_shared<FrameRender>(d3dRender);
     m_FrameRender->Startup();
     uint32_t encoderWidth, encoderHeight;
@@ -182,6 +185,49 @@ void CEncoder::Run() {
             break;
 
         if (m_FrameRender->GetTexture()) {
+            // Debug: dump the encoder input and the extracted alpha plane once a second, so it is
+            // possible to tell whether the application's alpha survived compositing.
+            if (Settings_Instance()->m_enableAlphaStream && texture_dump::ShouldDump(0)) {
+                auto dir = texture_dump::DumpDir();
+
+                // Earliest point: straight out of layer compositing, before color correction,
+                // FFR and the YUV conversion. If alpha is wrong here, the problem is upstream
+                // (the app, SteamVR, or the layer-0 blend state).
+                if (m_FrameRender->GetCompositionTexture()) {
+                    texture_dump::SaveTextureToPng(
+                        m_pD3DRender->GetDevice(),
+                        m_pD3DRender->GetContext(),
+                        m_FrameRender->GetCompositionTexture().Get(),
+                        dir + "/server_0_composition_alpha.png",
+                        true
+                    );
+                }
+
+                texture_dump::SaveTextureToPng(
+                    m_pD3DRender->GetDevice(),
+                    m_pD3DRender->GetContext(),
+                    m_FrameRender->GetTexture().Get(),
+                    dir + "/server_1_encoder_input_color.png"
+                );
+                // Same texture, alpha channel visualised as greyscale.
+                texture_dump::SaveTextureToPng(
+                    m_pD3DRender->GetDevice(),
+                    m_pD3DRender->GetContext(),
+                    m_FrameRender->GetTexture().Get(),
+                    dir + "/server_2_encoder_input_alpha.png",
+                    true
+                );
+                if (m_FrameRender->GetAlphaTexture()) {
+                    texture_dump::SaveTextureToPng(
+                        m_pD3DRender->GetDevice(),
+                        m_pD3DRender->GetContext(),
+                        m_FrameRender->GetAlphaTexture().Get(),
+                        dir + "/server_3_alpha_encoder_input.png"
+                    );
+                }
+                Info("Alpha debug: dumped server textures to %s\n", dir.c_str());
+            }
+
             // Sampled once so both streams agree: the client pairs frames by timestamp, and a
             // mismatched IDR decision would leave the alpha decoder unable to recover in step.
             bool insertIDR = m_scheduler.CheckIDRInsertion();

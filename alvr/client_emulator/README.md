@@ -62,7 +62,28 @@ ffmpeg comes from `cargo xtask prepare-deps`, the same copy the server uses; `FF
 `.cargo/config.toml` points at it and `build.rs` copies the DLLs next to the executable. Note that
 build is GPL licensed.
 
-Then start SteamVR with ALVR and click **Trust** next to the device entry that appears.
+Then start SteamVR — via the **ALVR dashboard**, which owns the driver lifecycle — and click
+**Trust** next to the device entry that appears.
+
+A few things that will otherwise cost you time:
+
+- **Kill any stray `alvr_client_emulator` before rebuilding.** The linker cannot replace a running
+  exe, and a stale instance also holds the control port, which silently breaks the next run's
+  discovery.
+- **Do not force-kill `vrserver`.** It orphans SteamVR's IPC port 27062 and the next launch fails with
+  "Port 27062 in use". Close SteamVR normally instead.
+- **`cargo xtask package-streamer` regenerates the server's `session.json` with defaults**, losing
+  client trust and any settings. Trust can be restored without restarting:
+  ```sh
+  curl -H "X-ALVR: true" -H "Content-Type: application/json" \
+    -X POST -d '["<hostname>","Trust"]' \
+    http://127.0.0.1:8082/api/session/client-connections
+  ```
+- The server's `passthrough` `variant` must be one this branch knows. A stale `AlphaStream` value left
+  by the `ar_mode` branch breaks stream negotiation.
+
+See [`HANDOVER.md`](HANDOVER.md) for the design reasoning, the freeze diagnosis, and the dead ends
+worth not repeating.
 
 ## Controls
 
@@ -110,11 +131,17 @@ Localhost only, and unauthenticated: it is a debugging interface and must not be
 
 `hud_message` carries the client core's own status text, which is where connection errors surface.
 
+`codec` becomes the negotiated codec once the server announces it. Decoded frame count and frame
+layout are shown in the toolbar but are not yet exposed here.
+
 ### `GET /api/view/color`
 
 Both eyes side by side as a PNG (left eye first). Rendered offscreen at the negotiated stream
 resolution when streaming, so captures do not change with window size, and at 960x916 per eye
 otherwise.
+
+**Renders the local glTF scene, not the decoded video**, whatever the toolbar is showing. Capturing
+the video stream is not implemented.
 
 ### `GET /api/view/depth`
 

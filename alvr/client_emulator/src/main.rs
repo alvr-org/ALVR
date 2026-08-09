@@ -8,13 +8,16 @@
 //! environment from a first person camera, and exposes an HTTP API so the emulated headset can be
 //! inspected and driven programmatically.
 //!
-//! This iteration renders its own scene only: the video stream from the server is not decoded.
+//! The window shows either the decoded video stream from the server or a locally rendered glTF
+//! scene, selectable from the toolbar. The scene is also what the capture endpoints render.
 
 mod api;
 mod camera;
 mod client;
+mod decoder;
 mod render;
 mod scene;
+mod video;
 
 use crate::{
     api::{CaptureRequestKind, SharedState, StateResponse},
@@ -22,8 +25,9 @@ use crate::{
     client::{ClientStatus, EmulatedClient},
     render::{CaptureKind, SceneRenderer, capture_stereo},
     scene::Scene,
+    video::{FrameLayout, VideoRenderer},
 };
-use alvr_common::{error, glam::Vec3, info};
+use alvr_common::{error, glam::Vec3, info, parking_lot::Mutex};
 use eframe::{
     App, CreationContext, Frame, NativeOptions,
     egui::{self, Color32, Key, PointerButton, RichText, Sense, Ui, ViewportBuilder},
@@ -67,6 +71,11 @@ struct EmulatorApp {
     scene_error: Option<String>,
     environment_path: PathBuf,
     view_mode: ViewMode,
+    /// Show the streamed video rather than the local scene, when a stream is available.
+    prefer_video: bool,
+    /// Decoded frame count and layout, mirrored out of the video renderer for the toolbar.
+    video_frames: u64,
+    video_layout: FrameLayout,
     /// Latched look mode: left-click the view to enter, Escape to leave.
     look_latched: bool,
     /// Momentary look mode: active only while the right button is held.
@@ -92,6 +101,14 @@ impl EmulatorApp {
                 // Build the GPU resources on eframe's own device, so no second device or any
                 // cross-device texture sharing is involved.
                 if let Some(state) = context.wgpu_render_state.as_ref() {
+                    // Worth logging: the backend decides what GPU interop is possible later, and
+                    // wgpu picks it at runtime rather than at build time.
+                    let info = state.adapter.get_info();
+                    info!(
+                        "Rendering on {:?} via {:?} ({})",
+                        info.device_type, info.backend, info.name
+                    );
+
                     let renderer = SceneRenderer::new(
                         &state.device,
                         &state.queue,
@@ -134,6 +151,9 @@ impl EmulatorApp {
             scene_error,
             environment_path,
             view_mode: ViewMode::Stereo,
+            prefer_video: true,
+            video_frames: 0,
+            video_layout: FrameLayout::Single,
             look_latched: false,
             look_held: false,
             cursor_grabbed: false,
@@ -233,6 +253,54 @@ impl EmulatorApp {
                 self.camera.roll = roll;
             }
         }
+    }
+
+    /// Uploads the newest decoded video frame, if any, and reports which frame is now on screen.
+    ///
+    /// Runs on the UI thread because the wgpu queue lives here. Returns the timestamp so the caller
+    /// can tell the server which frame was actually presented, and records the frame count and
+    /// layout for the toolbar.
+    fn upload_decoded_frame(&mut self, frame: &Frame) -> Option<Duration> {
+        let decoded = self.client().take_latest_frame();
+
+        let state = frame.wgpu_render_state()?;
+
+        // Created lazily so the video pipeline is only built once a stream exists.
+        let renderer = state
+            .renderer
+            .read()
+            .callback_resources
+            .get::<Arc<Mutex<VideoRenderer>>>()
+            .cloned();
+
+        let renderer = match renderer {
+            Some(renderer) => renderer,
+            None => {
+                let created = Arc::new(Mutex::new(VideoRenderer::new(
+                    &state.device,
+                    state.target_format,
+                )));
+
+                state
+                    .renderer
+                    .write()
+                    .callback_resources
+                    .insert(Arc::clone(&created));
+
+                created
+            }
+        };
+
+        let mut renderer = renderer.lock();
+
+        if let Some(decoded) = &decoded {
+            renderer.upload(&state.device, &state.queue, decoded);
+        }
+
+        self.video_frames = renderer.frames_shown();
+        self.video_layout = renderer.layout();
+
+        renderer.has_frame().then(|| renderer.current_timestamp())
     }
 
     /// Renders and answers any queued capture requests.
@@ -335,6 +403,14 @@ impl EmulatorApp {
 
                 ui.separator();
 
+                // Switching to the scene while streaming is useful for telling a decode problem
+                // apart from a rendering one.
+                ui.label("Source:");
+                ui.selectable_value(&mut self.prefer_video, true, "Video");
+                ui.selectable_value(&mut self.prefer_video, false, "Scene");
+
+                ui.separator();
+
                 let status = self.status();
                 if status.streaming {
                     ui.label(
@@ -351,6 +427,15 @@ impl EmulatorApp {
                 }
 
                 ui.separator();
+
+                if self.video_frames > 0 {
+                    ui.label(format!(
+                        "video {} frames, {:?}",
+                        self.video_frames, self.video_layout
+                    ));
+                    ui.separator();
+                }
+
                 ui.label(format!(
                     "x {:.2}  y {:.2}  z {:.2}",
                     self.camera.position.x, self.camera.position.y, self.camera.position.z
@@ -386,7 +471,13 @@ impl App for EmulatorApp {
         let camera = self.camera;
         self.client().set_pose(&camera);
 
+        let displayed_frame = self.upload_decoded_frame(frame);
+
         self.draw_toolbar(ui);
+
+        // Falls back to the scene until the first frame arrives, so the window is never blank while
+        // the stream is negotiating.
+        let show_video = self.prefer_video && displayed_frame.is_some();
 
         let scene_error = self.scene_error.clone();
         let view_mode = self.view_mode;
@@ -433,6 +524,7 @@ impl App for EmulatorApp {
                         camera: camera_snapshot,
                         view_mode,
                         viewport: response.rect,
+                        show_video,
                     },
                 ));
             });
@@ -472,7 +564,7 @@ impl App for EmulatorApp {
         } else {
             Duration::from_millis(16)
         };
-        self.client().report_frame(interval);
+        self.client().report_frame(displayed_frame, interval);
 
         // The scene is continuously interactive, so keep painting.
         ui_context.request_repaint();
@@ -527,6 +619,8 @@ struct ViewportCallback {
     /// ratio, which the screen size alone would get wrong because the toolbar takes part of the
     /// window.
     viewport: egui::Rect,
+    /// Draw the streamed video rather than the local scene.
+    show_video: bool,
 }
 
 impl egui_wgpu::CallbackTrait for ViewportCallback {
@@ -538,6 +632,14 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
         _encoder: &mut wgpu::CommandEncoder,
         resources: &mut egui_wgpu::CallbackResources,
     ) -> Vec<wgpu::CommandBuffer> {
+        if self.show_video {
+            if let Some(renderer) = resources.get::<Arc<Mutex<VideoRenderer>>>() {
+                renderer.lock().set_regions(queue);
+            }
+
+            return Vec::new();
+        }
+
         if let Some(renderer) = resources.get::<Arc<SceneRenderer>>() {
             let camera = self.camera.to_camera();
 
@@ -570,45 +672,64 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
         pass: &mut wgpu::RenderPass<'static>,
         resources: &egui_wgpu::CallbackResources,
     ) {
-        if let Some(renderer) = resources.get::<Arc<SceneRenderer>>() {
-            let viewport = info.viewport_in_pixels();
-            let left = viewport.left_px as f32;
-            let top = viewport.top_px as f32;
-            let width = viewport.width_px as f32;
-            let height = viewport.height_px as f32;
+        let viewport = info.viewport_in_pixels();
+        let left = viewport.left_px as f32;
+        let top = viewport.top_px as f32;
+        let width = viewport.width_px as f32;
+        let height = viewport.height_px as f32;
 
-            match self.view_mode {
-                ViewMode::Left => {
-                    pass.set_viewport(left, top, width, height, 0.0, 1.0);
-                    renderer.draw(pass, Eye::Left);
-                }
-                ViewMode::Right => {
-                    pass.set_viewport(left, top, width, height, 0.0, 1.0);
-                    renderer.draw(pass, Eye::Right);
-                }
-                ViewMode::Stereo => {
-                    // Side by side, each eye in its own half of the viewport.
-                    let half = width / 2.0;
+        // The video and the scene are laid out identically, so the eye splitting is shared and only
+        // the draw call differs.
+        let video = self
+            .show_video
+            .then(|| resources.get::<Arc<Mutex<VideoRenderer>>>())
+            .flatten();
+        let scene = resources.get::<Arc<SceneRenderer>>();
 
-                    pass.set_viewport(left, top, half, height, 0.0, 1.0);
-                    renderer.draw(pass, Eye::Left);
+        if video.is_none() && scene.is_none() {
+            return;
+        }
 
-                    pass.set_viewport(left + half, top, half, height, 0.0, 1.0);
-                    renderer.draw(pass, Eye::Right);
+        let draw_eye = |pass: &mut wgpu::RenderPass<'static>, eye: Eye| match &video {
+            Some(video) => video.lock().draw(pass, eye),
+            None => {
+                if let Some(scene) = scene {
+                    scene.draw(pass, eye);
                 }
             }
+        };
 
-            // egui draws the rest of the UI in this same pass, so the viewport must be restored or
-            // everything painted afterwards lands in the last eye's half.
-            pass.set_viewport(
-                0.0,
-                0.0,
-                info.screen_size_px[0] as f32,
-                info.screen_size_px[1] as f32,
-                0.0,
-                1.0,
-            );
+        match self.view_mode {
+            ViewMode::Left => {
+                pass.set_viewport(left, top, width, height, 0.0, 1.0);
+                draw_eye(pass, Eye::Left);
+            }
+            ViewMode::Right => {
+                pass.set_viewport(left, top, width, height, 0.0, 1.0);
+                draw_eye(pass, Eye::Right);
+            }
+            ViewMode::Stereo => {
+                // Side by side, each eye in its own half of the viewport.
+                let half = width / 2.0;
+
+                pass.set_viewport(left, top, half, height, 0.0, 1.0);
+                draw_eye(pass, Eye::Left);
+
+                pass.set_viewport(left + half, top, half, height, 0.0, 1.0);
+                draw_eye(pass, Eye::Right);
+            }
         }
+
+        // egui draws the rest of the UI in this same pass, so the viewport must be restored or
+        // everything painted afterwards lands in the last eye's half.
+        pass.set_viewport(
+            0.0,
+            0.0,
+            info.screen_size_px[0] as f32,
+            info.screen_size_px[1] as f32,
+            0.0,
+            1.0,
+        );
     }
 }
 
@@ -630,6 +751,54 @@ fn encode_png(
         .map_err(|e| format!("Cannot encode PNG: {e}"))?;
 
     Ok(png)
+}
+
+/// Chooses which wgpu backends to consider, in preference order.
+///
+/// On Windows the DirectX backend is preferred over Vulkan. Both render the scene equally well, but
+/// hardware video decode is what makes the difference: ffmpeg's working Windows decoder produces
+/// D3D11 textures, and importing those into a D3D12 device is a shared-handle away, while importing
+/// them into a Vulkan device needs external-memory interop. Vulkan Video would avoid the question
+/// entirely, but it currently fails on the driver here.
+///
+/// Elsewhere the default order is kept, which prefers Vulkan on Linux and Metal on macOS.
+fn preferred_wgpu_setup() -> egui_wgpu::WgpuSetup {
+    // eframe fills in the display handle itself, so the simpler constructor is fine here.
+    let mut create_new = egui_wgpu::WgpuSetupCreateNew::without_display_handle();
+
+    // `Backends` is a filter, not a priority order, so preferring a backend means choosing the
+    // adapter explicitly. WGPU_BACKEND still takes precedence, since it narrows what is enumerated.
+    if cfg!(windows) {
+        create_new.native_adapter_selector = Some(Arc::new(|adapters, _surface| {
+            // Highest score wins: DirectX first for the video-decode reason above, then discrete
+            // over integrated so a laptop does not pick the iGPU.
+            let score = |adapter: &wgpu::Adapter| {
+                let info = adapter.get_info();
+
+                let backend = match info.backend {
+                    wgpu::Backend::Dx12 => 2,
+                    wgpu::Backend::Vulkan => 1,
+                    _ => 0,
+                };
+                let device = match info.device_type {
+                    wgpu::DeviceType::DiscreteGpu => 2,
+                    wgpu::DeviceType::IntegratedGpu => 1,
+                    _ => 0,
+                };
+
+                // Backend dominates, device type breaks ties.
+                backend * 10 + device
+            };
+
+            adapters
+                .iter()
+                .max_by_key(|adapter| score(adapter))
+                .cloned()
+                .ok_or_else(|| "No suitable wgpu adapter found".to_owned())
+        }));
+    }
+
+    egui_wgpu::WgpuSetup::CreateNew(create_new)
 }
 
 fn main() {
@@ -666,6 +835,10 @@ fn main() {
         NativeOptions {
             viewport: ViewportBuilder::default().with_inner_size((1280.0, 720.0)),
             renderer: eframe::Renderer::Wgpu,
+            wgpu_options: egui_wgpu::WgpuConfiguration {
+                wgpu_setup: preferred_wgpu_setup(),
+                ..Default::default()
+            },
             // egui needs no depth buffer, so it creates none by default and its render pass has no
             // depth attachment. The scene pipeline requires one, and a pipeline whose depth format
             // does not match the pass fails validation. 32 bits maps to Depth32Float, matching

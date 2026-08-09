@@ -1,16 +1,20 @@
-//! ALVR connection. Wraps `ClientCoreContext` and feeds it head poses from the emulator camera.
+//! ALVR connection. Wraps `ClientCoreContext`, feeds it head poses from the emulator camera, and
+//! routes the incoming video stream into a decoder.
 //!
-//! No video is decoded in this iteration: the emulator renders its own scene, and the connection
-//! exists to exercise the protocol, tracking and connection state. Because `set_decoder_input_callback`
-//! is never registered, the server's video packets are simply dropped by the client core.
+//! The decoder is created when the server announces the codec, and registering its input callback
+//! is also what asks the server for the first keyframe.
 
-use crate::camera::{Camera, IPD};
+use crate::{
+    camera::{Camera, IPD},
+    decoder::{self, DecodedFrame, DecoderKind, VideoDecoder},
+};
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
     DeviceMotion, HEAD_ID, Pose, RelaxedAtomic, ViewParams,
+    error,
     glam::{UVec2, Vec3},
     info,
-    parking_lot::RwLock,
+    parking_lot::{Mutex, RwLock},
 };
 use alvr_packets::{FaceData, TrackingData};
 use alvr_session::CodecType;
@@ -71,6 +75,9 @@ pub struct EmulatedClient {
     tracking_thread: Option<JoinHandle<()>>,
     /// Timestamp of the frame currently being "presented", for the timing reports.
     current_frame: Duration,
+    /// Created once the codec is known. Shared because the client core pushes NAL units from its
+    /// own thread while the render thread drains decoded frames.
+    decoder: Arc<Mutex<Option<Box<dyn VideoDecoder>>>>,
 }
 
 impl EmulatedClient {
@@ -99,6 +106,7 @@ impl EmulatedClient {
             streaming: Arc::new(RelaxedAtomic::new(false)),
             tracking_thread: None,
             current_frame: Duration::ZERO,
+            decoder: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -140,27 +148,89 @@ impl EmulatedClient {
 
                     self.stop_tracking();
                 }
-                ClientCoreEvent::DecoderConfig { codec, .. } => {
-                    // Recorded for display only. No decoder is created in this iteration, so the
-                    // video stream is received and discarded by the client core.
+                ClientCoreEvent::DecoderConfig { codec, config_nal } => {
+                    // Only the first one counts: the client core repeats this event and later ones
+                    // are documented as ignorable until reconnection.
+                    if self.decoder.lock().is_some() {
+                        continue;
+                    }
+
                     self.status.codec = Some(codec);
+
+                    match decoder::create(DecoderKind::preferred(), codec, &config_nal) {
+                        Ok(decoder) => {
+                            *self.decoder.lock() = Some(decoder);
+
+                            // Registering the callback also asks the server for an IDR frame, which
+                            // is required: without a keyframe the decoder has nothing to start from
+                            // and the stream silently stays black.
+                            let decoder_slot = Arc::clone(&self.decoder);
+                            self.context
+                                .set_decoder_input_callback(Box::new(move |timestamp, nal| {
+                                    let mut lock = decoder_slot.lock();
+
+                                    // Returning false tells the client core the frame was not
+                                    // queued, so it can account for the drop.
+                                    lock.as_mut()
+                                        .is_some_and(|decoder| decoder.push_nal(timestamp, nal))
+                                }));
+                        }
+                        Err(e) => error!("Cannot create video decoder: {e}"),
+                    }
                 }
                 ClientCoreEvent::Haptics { .. } | ClientCoreEvent::RealTimeConfig(_) => (),
             }
         }
     }
 
+    /// Takes the most recent decoded frame, discarding any older ones still queued.
+    ///
+    /// Showing the newest frame rather than the oldest keeps the view current when rendering falls
+    /// behind decoding, which matters more for a debugging view than displaying every frame.
+    pub fn take_latest_frame(&mut self) -> Option<DecodedFrame> {
+        let mut latest = None;
+
+        {
+            let mut lock = self.decoder.lock();
+            let decoder = lock.as_mut()?;
+
+            while let Some(frame) = decoder.poll_frame() {
+                latest = Some(frame);
+            }
+        }
+
+        // Feeds the server's latency estimate, which drives its adaptive bitrate.
+        if let Some(frame) = &latest {
+            self.context.report_frame_decoded(frame.timestamp());
+        }
+
+        latest
+    }
+
     /// Reports frame pacing to the server so its latency estimate and adaptive bitrate behave as
     /// they would with a real client. Without these the server has no pipeline latency to work with.
-    pub fn report_frame(&mut self, frame_interval: Duration) {
+    ///
+    /// `displayed_frame` is the timestamp of the frame actually on screen. It must be a timestamp
+    /// the server sent, or the reported latency is measured against a frame that never existed;
+    /// before any video arrives there is nothing meaningful to report.
+    pub fn report_frame(&mut self, displayed_frame: Option<Duration>, frame_interval: Duration) {
         if !self.status.streaming {
             return;
         }
 
-        self.context.report_compositor_start(self.current_frame);
-        self.context.report_submit(self.current_frame, frame_interval);
+        let Some(timestamp) = displayed_frame else {
+            return;
+        };
 
-        self.current_frame += frame_interval;
+        // Only report each frame once: repeating a timestamp would make the statistics count the
+        // same frame several times when rendering outpaces decoding.
+        if timestamp == self.current_frame {
+            return;
+        }
+        self.current_frame = timestamp;
+
+        self.context.report_compositor_start(timestamp);
+        self.context.report_submit(timestamp, frame_interval);
     }
 
     fn start_tracking(&mut self, refresh_rate: f32) {

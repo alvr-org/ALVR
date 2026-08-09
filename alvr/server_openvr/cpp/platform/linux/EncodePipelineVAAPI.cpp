@@ -1,5 +1,6 @@
 #include "EncodePipelineVAAPI.h"
 #include "ALVR-common/packet_types.h"
+#include "VkContext.hpp"
 #include "alvr_server/Logger.h"
 #include "alvr_server/bindings.h"
 #include "ffmpeg_helper.h"
@@ -15,6 +16,8 @@ extern "C" {
 }
 
 namespace {
+
+using alvr::Vendor;
 
 const char* encoder(ALVR_CODEC codec) {
     switch (codec) {
@@ -98,7 +101,7 @@ map_frame(AVBufferRef* hw_frames_ref, AVBufferRef* drm_device_ctx, alvr::VkFrame
 }
 
 // Import VA surface
-AVFrame* import_frame(AVBufferRef* hw_frames_ref, DrmImage& drm) {
+AVFrame* import_frame(AVBufferRef* hw_frames_ref, alvr::DrmImage& drm) {
     AVFrame* va_frame = av_frame_alloc();
     int err = av_hwframe_get_buffer(hw_frames_ref, va_frame, 0);
     if (err < 0) {
@@ -128,9 +131,13 @@ AVFrame* import_frame(AVBufferRef* hw_frames_ref, DrmImage& drm) {
 }
 
 alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
-    Renderer* render, VkContext& vk_ctx, VkFrame& input_frame, uint32_t width, uint32_t height
-)
-    : r(render) {
+    alvr::HWContext& vk_ctx,
+    std::string devicePath,
+    alvr::Vendor vendor,
+    VkFrame& input_frame,
+    uint32_t width,
+    uint32_t height
+) {
     /* VAAPI Encoding pipeline
      * The encoding pipeline has 3 frame types:
      * - input vulkan frames, only used to initialize the mapped frames
@@ -141,9 +148,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
      * The pipeline is simply made of a scale_vaapi object, that does the conversion between formats
      * and the encoder that takes the converted frame and produces packets.
      */
-    int err = av_hwdevice_ctx_create(
-        &hw_ctx, AV_HWDEVICE_TYPE_VAAPI, vk_ctx.devicePath.c_str(), NULL, 0
-    );
+    int err = av_hwdevice_ctx_create(&hw_ctx, AV_HWDEVICE_TYPE_VAAPI, devicePath.c_str(), NULL, 0);
     if (err < 0) {
         throw alvr::AvException("Failed to create a VAAPI device:", err);
     }
@@ -241,30 +246,30 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
                               // quality by allocating more bits to smooth areas
     switch (settings->m_encoderQualityPreset) {
     case ALVR_QUALITY:
-        if (vk_ctx.amd) {
+        if (vendor == Vendor::Amd) {
             quality.preset_mode = PRESET_MODE_QUALITY;
             encoder_ctx->compression_level
                 = quality.quality; // (QUALITY preset, no pre-encoding, vbaq)
-        } else if (vk_ctx.intel) {
+        } else if (vendor == Vendor::Intel) {
             encoder_ctx->compression_level = 1;
         }
         break;
     case ALVR_BALANCED:
-        if (vk_ctx.amd) {
+        if (vendor == Vendor::Amd) {
             quality.preset_mode = PRESET_MODE_BALANCE;
             encoder_ctx->compression_level
                 = quality.quality; // (BALANCE preset, no pre-encoding, vbaq)
-        } else if (vk_ctx.intel) {
+        } else if (vendor == Vendor::Intel) {
             encoder_ctx->compression_level = 4;
         }
         break;
     case ALVR_SPEED:
     default:
-        if (vk_ctx.amd) {
+        if (vendor == Vendor::Amd) {
             quality.preset_mode = PRESET_MODE_SPEED;
             encoder_ctx->compression_level
                 = quality.quality; // (speed preset, no pre-encoding, vbaq)
-        } else if (vk_ctx.intel) {
+        } else if (vendor == Vendor::Intel) {
             encoder_ctx->compression_level = 7;
         }
         break;
@@ -272,17 +277,11 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
 
     av_opt_set_int(encoder_ctx->priv_data, "async_depth", 1, 0);
 
-    set_hwframe_ctx(encoder_ctx, hw_ctx);
-
-    err = avcodec_open2(encoder_ctx, codec, NULL);
-    if (err < 0) {
-        throw alvr::AvException("Cannot open video encoder codec:", err);
-    }
-
     AVBufferRef* hw_frames_ref;
     if (!(hw_frames_ref = av_hwframe_ctx_alloc(hw_ctx))) {
         throw std::runtime_error("Failed to create VAAPI frame context.");
     }
+
     auto frames_ctx = (AVHWFramesContext*)(hw_frames_ref->data);
     frames_ctx->format = AV_PIX_FMT_VAAPI;
     frames_ctx->sw_format = input_frame.avFormat();
@@ -295,13 +294,15 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
     }
 
     encoder_frame = av_frame_alloc();
-    if (vk_ctx.intel || getenv("ALVR_VAAPI_IMPORT_SURFACE")) {
+    if (vendor == Vendor::Intel || getenv("ALVR_VAAPI_IMPORT_SURFACE")) {
+        // TODO: Fix output import
         Info("Importing VA surface");
         DrmImage drm;
         mapped_frame = import_frame(hw_frames_ref, drm);
-        r->ImportOutput(drm);
+        // r->ImportOutput(drm);
     } else {
         mapped_frame = map_frame(hw_frames_ref, drm_ctx, input_frame);
+        // std::cout << "mapped frame" << std::endl;
     }
 
     filter_graph = avfilter_graph_alloc();
@@ -309,6 +310,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
     AVFilterInOut* outputs = avfilter_inout_alloc();
     AVFilterInOut* inputs = avfilter_inout_alloc();
 
+    // TODO: Respect colorspace
     std::stringstream buffer_filter_args;
     buffer_filter_args << "video_size=" << mapped_frame->width << "x" << mapped_frame->height;
     buffer_filter_args << ":time_base=" << encoder_ctx->time_base.num << "/"
@@ -342,7 +344,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
     inputs->pad_idx = 0;
     inputs->next = NULL;
 
-    std::string filters = "scale_vaapi=out_range=full:format=";
+    std::string filters = "scale_vaapi=w=" + std::to_string(width) + ":h=" + std::to_string(height) + ":out_range=full:format=";
     if ((Settings_Instance()->m_codec == ALVR_CODEC_HEVC
          || Settings_Instance()->m_codec == ALVR_CODEC_AV1)
         && Settings_Instance()->m_use10bitEncoder) {
@@ -365,6 +367,18 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
     if ((err = avfilter_graph_config(filter_graph, NULL))) {
         throw alvr::AvException("avfilter_graph_config failed:", err);
     }
+
+    AVBufferRef* out_hw_frames = av_buffersink_get_hw_frames_ctx(filter_out);
+    if (!out_hw_frames) {
+        throw std::runtime_error("Failed to get hw_frames_ctx from buffersink. scale_vaapi failed to output a hardware frame.");
+    }
+    
+    encoder_ctx->hw_frames_ctx = av_buffer_ref(out_hw_frames);
+
+    err = avcodec_open2(encoder_ctx, codec, NULL);
+    if (err < 0) {
+        throw alvr::AvException("Cannot open video encoder codec:", err);
+    }
 }
 
 alvr::EncodePipelineVAAPI::~EncodePipelineVAAPI() {
@@ -378,7 +392,6 @@ alvr::EncodePipelineVAAPI::~EncodePipelineVAAPI() {
 }
 
 void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr) {
-    r->Sync();
     timestamp.cpu = std::chrono::duration_cast<std::chrono::nanoseconds>(
                         std::chrono::steady_clock::now().time_since_epoch()
     )

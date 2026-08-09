@@ -2,8 +2,8 @@
 #include "alvr_server/bindings.h"
 #include <cstdint>
 #include <memory>
-#include <vector>
-#include <vulkan/vulkan_core.h>
+
+#include "VkContext.hpp"
 
 extern "C" struct AVCodecContext;
 extern "C" struct AVPacket;
@@ -39,11 +39,10 @@ public:
 
     virtual void SetParams(FfiDynamicEncoderParams params);
     static std::unique_ptr<EncodePipeline> Create(
-        Renderer* render,
-        VkContext& vk_ctx,
+        alvr::VkContext& vk_ctx,
+        std::string devicePath,
         VkFrame& input_frame,
-        VkImageCreateInfo& image_create_info,
-        uint32_t width,
+        /* VkFrameCtx &vk_frame_ctx,  */ uint32_t width,
         uint32_t height
     );
 

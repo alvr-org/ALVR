@@ -3,8 +3,6 @@
 #include <windows.h>
 #elif __APPLE__
 #include "platform/macos/CEncoder.h"
-#else
-#include "platform/linux/CEncoder.h"
 #endif
 #include "Controller.h"
 #include "FakeViveTracker.h"
@@ -143,6 +141,8 @@ public:
 
                 HapticsSend(id, haptics.fDurationSeconds, haptics.fFrequency, haptics.fAmplitude);
             }
+
+// remove?
 #ifdef __linux__
             else if (event.eventType == vr::VREvent_ChaperoneUniverseHasChanged
                      || event.eventType == vr::VREvent_ChaperoneRoomSetupCommitted
@@ -228,6 +228,12 @@ void* CppOpenvrEntryPoint(const char* interface_name, int* return_code) {
 
 bool InitializeStreaming(Settings settings) {
     g_settings = settings;
+
+#ifdef __linux__
+    if (g_driver_provider.hmd && g_driver_provider.hmd->m_directModeComponent) {
+        g_driver_provider.hmd->m_directModeComponent->RequestEncoderReset();
+    }
+#endif
 
     if (!g_driver_provider.devices_initialized) {
         if (!g_driver_provider.early_hmd_initialization) {
@@ -354,6 +360,12 @@ bool InitializeStreaming(Settings settings) {
 }
 
 void DeinitializeStreaming() {
+#ifdef __linux__
+    if (g_driver_provider.hmd && g_driver_provider.hmd->m_directModeComponent) {
+        g_driver_provider.hmd->m_directModeComponent->RequestEncoderShutdown();
+    }
+#endif
+
     if (g_driver_provider.hmd) {
         g_driver_provider.hmd->StopStreaming();
     }
@@ -362,9 +374,15 @@ void DeinitializeStreaming() {
 void SendVSync() { vr::VRServerDriverHost()->VsyncEvent(0.0); }
 
 void RequestIDR() {
+#ifdef _WIN32
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_encoder) {
         g_driver_provider.hmd->m_encoder->InsertIDR();
     }
+#elif __linux__
+    if (g_driver_provider.hmd && g_driver_provider.hmd->m_directModeComponent) {
+        g_driver_provider.hmd->m_directModeComponent->RequestIdr();
+    }
+#endif
 }
 
 void SetTracking(
@@ -506,9 +524,9 @@ void SetChaperoneArea(float areaWidth, float areaHeight) {
 }
 
 void CaptureFrame() {
-#ifndef __APPLE__
-    if (g_driver_provider.hmd && g_driver_provider.hmd->m_encoder) {
-        g_driver_provider.hmd->m_encoder->CaptureFrame();
-    }
+#if _WIN32
+    // if (g_driver_provider.hmd && g_driver_provider.hmd->m_encoder) {
+    //     g_driver_provider.hmd->m_encoder->CaptureFrame();
+    // }
 #endif
 }

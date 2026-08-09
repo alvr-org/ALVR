@@ -2,8 +2,10 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use alvr_common::anyhow::bail;
-use alvr_common::{debug, error, info, warn};
+use alvr_common::{
+    anyhow::{bail, Result},
+    debug, error, info, warn,
+};
 use sysinfo::Process;
 
 pub fn launch_steamvr_with_steam() {
@@ -17,43 +19,47 @@ pub fn terminate_process(process: &Process) {
     process.kill_with(sysinfo::Signal::Term);
 }
 
-pub fn maybe_wrap_vrcompositor_launcher() -> alvr_common::anyhow::Result<()> {
+// Release ALVR wraps SteamVR's vrcompositor to inject its capture layer, and
+// nothing removes that wrap when switching to this build. Direct mode drives
+// the display itself and must not run behind the wrapper, with it in place
+// SteamVR finds no HMD and fails with errors like 108. Undo it on every
+// launch so a stale wrap from a previous install cannot break this one.
+pub fn maybe_unwrap_vrcompositor_launcher() -> Result<()> {
     let steamvr_bin_dir = alvr_server_io::steamvr_root_dir()?
         .join("bin")
         .join("linux64");
-    let steamvr_vrserver_path = steamvr_bin_dir.join("vrserver");
-    debug!(
-        "File path used to check for linux files: {}",
-        steamvr_vrserver_path.display()
-    );
-    match steamvr_vrserver_path.try_exists() {
-        Ok(exists) => {
-            if !exists {
-                bail!(
-                    "SteamVR Linux files missing, aborting startup, please re-check compatibility tools for SteamVR, verify integrity of files for SteamVR and make sure you're not using Flatpak Steam with non-Flatpak ALVR."
-                );
-            }
-        }
-        Err(e) => {
-            return Err(e.into());
-        }
-    };
-
     let launcher_path = steamvr_bin_dir.join("vrcompositor");
-    // In case of SteamVR update, vrcompositor will be restored
-    if fs::read_link(&launcher_path).is_ok() {
-        fs::remove_file(&launcher_path)?; // recreate the link
-    } else {
-        fs::rename(&launcher_path, steamvr_bin_dir.join("vrcompositor.real"))?;
+
+    // Not a symlink means nothing wrapped it, so there is nothing to undo.
+    if fs::read_link(&launcher_path).is_err() {
+        debug!("vrcompositor is not wrapped, nothing to undo");
+        return Ok(());
     }
 
-    std::os::unix::fs::symlink(
-        crate::get_filesystem_layout().vrcompositor_wrapper(),
-        &launcher_path,
-    )?;
+    // Newer builds move the real binary into an alvr subdirectory, older ones
+    // rename it in place. Handle both so any install can be recovered.
+    let candidates = [
+        steamvr_bin_dir.join("alvr").join("vrcompositor"),
+        steamvr_bin_dir.join("vrcompositor.real"),
+    ];
+    let Some(real_path) = candidates.into_iter().find(|path| path.is_file()) else {
+        bail!(
+            "vrcompositor is a symlink but Valve's binary could not be found next to it. \
+            Verify integrity of SteamVR files to restore it."
+        );
+    };
+
+    fs::remove_file(&launcher_path)?;
+    fs::rename(&real_path, &launcher_path)?;
+
+    info!(
+        "Removed a leftover vrcompositor wrapper and restored {}",
+        launcher_path.display()
+    );
 
     Ok(())
 }
+
 #[derive(PartialEq)]
 enum DeviceInfo {
     Nvidia,

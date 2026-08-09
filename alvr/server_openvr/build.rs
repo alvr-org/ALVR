@@ -73,6 +73,8 @@ fn main() {
         .cpp(true)
         .std("c++17")
         .files(source_files_paths)
+        .flag_if_supported("-std=c++20")
+        .flag_if_supported("-fdiagnostics-color=always")
         .include(alvr_filesystem::workspace_dir().join("openvr/headers"))
         .include("cpp");
 

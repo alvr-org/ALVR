@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EncodePipeline.h"
+#include "ffmpeg_helper.h"
 
 extern "C" struct AVBufferRef;
 extern "C" struct AVCodecContext;
@@ -22,14 +23,20 @@ class EncodePipelineVAAPI : public EncodePipeline {
 public:
     ~EncodePipelineVAAPI();
     EncodePipelineVAAPI(
-        Renderer* render, VkContext& vk_ctx, VkFrame& input_frame, uint32_t width, uint32_t height
+        HWContext& vk_ctx,
+        std::string devicePath,
+        alvr::Vendor vendor,
+        VkFrame& input_frame,
+        uint32_t width,
+        uint32_t height
     );
 
+    // TODO: Don't pass the timestamp here we're literally just passing it through (or does it help
+    // with dumped videos?)
     void PushFrame(uint64_t targetTimestampNs, bool idr) override;
     void SetParams(FfiDynamicEncoderParams params) override;
 
 private:
-    Renderer* r = nullptr;
     AVBufferRef* hw_ctx = nullptr;
     AVBufferRef* drm_ctx = nullptr;
     AVFrame* mapped_frame = nullptr;

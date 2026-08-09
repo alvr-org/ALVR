@@ -1,20 +1,34 @@
 #pragma once
-#include "CEncoder.h"
 #include "alvr_server/PoseHistory.h"
 #include "alvr_server/Utils.h"
-#include "alvr_server/openvr_driver_wrap.h"
+#include "openvr_driver.h"
 
-#include "alvr_server/bindings.h"
+#include "alvr_server/Settings.h"
 
+#include <map>
+#include <atomic>
 #include <mutex>
+
+#include <vulkan/vulkan.h>
+
+#include "Encoder.hpp"
 
 class OvrDirectModeComponent : public vr::IVRDriverDirectModeComponent {
 public:
     OvrDirectModeComponent(
-        std::shared_ptr<CD3DRender> pD3DRender, std::shared_ptr<PoseHistory> poseHistory
+        /* std::shared_ptr<Renderer> pVKRender,  */ std::shared_ptr<PoseHistory> poseHistory
     );
 
-    void SetEncoder(std::shared_ptr<CEncoder> pEncoder);
+    void RequestIdr() { enc.requestIdr(); }
+
+    // Called from the event loop thread when negotiated settings arrive.
+    // The state change itself is applied on the compositor thread inside
+    // Present, which then builds the encoder from the new settings.
+    void RequestEncoderReset() { m_encoderState = EncoderState::RebuildRequested; }
+
+    // Called from the event loop thread when the client disconnects. Present
+    // tears the encoder down and goes idle until the next connect.
+    void RequestEncoderShutdown() { m_encoderState = EncoderState::ShutdownRequested; }
 
     /** Specific to Oculus compositor support, textures supplied must be created using this method.
      */
@@ -46,23 +60,20 @@ public:
 
     /** Called after Present to allow driver to take more time until vsync after they've
      * successfully acquired the sync texture in Present.*/
-    virtual void PostPresent(const vr::IVRDriverDirectModeComponent::Throttling_t* pThrottling);
-
-    void CopyTexture(uint32_t layerCount);
+    virtual void PostPresent(const Throttling_t* pThrottling);
 
 private:
-    std::shared_ptr<CD3DRender> m_pD3DRender;
-    std::shared_ptr<CEncoder> m_pEncoder;
     std::shared_ptr<PoseHistory> m_poseHistory;
 
     // Resource for each process
     struct ProcessResource {
-        ComPtr<ID3D11Texture2D> textures[3];
-        HANDLE sharedHandles[3];
+        vr::SharedTextureHandle_t sharedHandles[3];
+        int fds[3];
+        SwapTextureSetDesc_t textDesc;
         uint32_t pid;
     };
-    std::map<HANDLE, std::pair<ProcessResource*, int>> m_handleMap;
-    std::map<ProcessResource*, uint32_t> m_swapchainIndices;
+    std::map<vr::SharedTextureHandle_t, std::pair<ProcessResource*, int>> m_handleMap;
+    void CleanupProcessResource(ProcessResource* processResource);
 
     static const int MAX_LAYERS = 10;
     int m_submitLayer;
@@ -71,7 +82,17 @@ private:
     vr::HmdQuaternion_t m_framePoseRotation;
     uint64_t m_targetTimestampNs;
     uint64_t m_prevTargetTimestampNs;
+    // Track current texture index for each eye to avoid UB with uninitialized data
+    std::map<ProcessResource*, uint32_t> m_swapchainIndices;
 
+    std::array<vr::SharedTextureHandle_t, 6> layer0Texts {};
+
+    alvr::Encoder enc;
+
+    // Written by the event loop thread, applied and advanced by the
+    // compositor thread at the top of Present.
+    enum class EncoderState { Idle, RebuildRequested, Streaming, ShutdownRequested };
+    std::atomic<EncoderState> m_encoderState { EncoderState::Idle };
 
     std::mutex m_presentMutex;
 };

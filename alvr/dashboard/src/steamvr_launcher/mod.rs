@@ -122,7 +122,12 @@ impl Launcher {
         }
 
         #[cfg(target_os = "linux")]
-        linux_steamvr::linux_hardware_checks();
+        {
+            if let Err(e) = linux_steamvr::maybe_unwrap_vrcompositor_launcher() {
+                error!("Could not remove a leftover vrcompositor wrapper: {e}");
+            }
+            linux_steamvr::linux_hardware_checks();
+        }
 
         let alvr_driver_dir = crate::get_filesystem_layout().openvr_driver_root_dir;
 
@@ -140,15 +145,6 @@ impl Launcher {
 
         if let Err(err) = unblock_alvr_driver() {
             warn!("Failed to unblock ALVR driver: {:?}", err);
-        }
-
-        #[cfg(target_os = "linux")]
-        {
-            let vrcompositor_wrap_result = linux_steamvr::maybe_wrap_vrcompositor_launcher();
-            alvr_common::show_err(linux_steamvr::maybe_wrap_vrcompositor_launcher());
-            if vrcompositor_wrap_result.is_err() {
-                return;
-            }
         }
 
         if is_steamvr_running() {

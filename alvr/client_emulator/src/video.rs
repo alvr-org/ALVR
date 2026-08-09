@@ -276,6 +276,7 @@ impl VideoRenderer {
 
         let planes = self.planes.as_ref().unwrap();
 
+
         write_plane(queue, &planes.y, *width, *height, y, *y_stride);
         write_plane(queue, &planes.u, chroma_width, chroma_height, u, *uv_stride);
         write_plane(queue, &planes.v, chroma_width, chroma_height, v, *uv_stride);
@@ -379,33 +380,70 @@ fn create_plane(device: &Device, width: u32, height: u32, label: &str) -> Textur
 
 /// Uploads one plane, honouring the decoder's row stride.
 fn write_plane(queue: &Queue, texture: &Texture, width: u32, height: u32, data: &[u8], stride: u32) {
-    // ffmpeg pads rows for alignment, so the source stride is usually larger than the width. Passing
-    // it through avoids a CPU repack; a mismatch here shows up as a skewed image.
-    let expected = (stride * height) as usize;
-    let data = if data.len() >= expected {
-        &data[..expected]
-    } else {
-        // Short buffer: upload nothing rather than read out of bounds.
-        return;
-    };
+    // ffmpeg pads rows for alignment, so the source stride is usually larger than the width.
+    //
+    // The buffer is not required to include padding after the final row, so a full
+    // `stride * height` is often one row's padding too long. Uploading only whole rows and letting
+    // the last one be written separately keeps every row aligned without reading past the end.
+    // Skipping the upload instead, as an earlier version did, left the previous frame's texture in
+    // place, which looked exactly like corruption that never repaired itself.
+    let stride_usize = stride as usize;
+    let row_bytes = width.max(1) as usize;
+    let height = height.max(1);
 
-    queue.write_texture(
-        TexelCopyTextureInfo {
-            texture,
-            mip_level: 0,
-            origin: Origin3d::ZERO,
-            aspect: TextureAspect::All,
-        },
-        data,
-        TexelCopyBufferLayout {
-            offset: 0,
-            bytes_per_row: Some(stride),
-            rows_per_image: Some(height),
-        },
-        Extent3d {
-            width: width.max(1),
-            height: height.max(1),
-            depth_or_array_layers: 1,
-        },
-    );
+    let full_rows = (data.len() / stride_usize).min(height as usize) as u32;
+
+    if full_rows > 0 {
+        queue.write_texture(
+            TexelCopyTextureInfo {
+                texture,
+                mip_level: 0,
+                origin: Origin3d::ZERO,
+                aspect: TextureAspect::All,
+            },
+            &data[..(full_rows as usize * stride_usize)],
+            TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(stride),
+                rows_per_image: Some(full_rows),
+            },
+            Extent3d {
+                width: width.max(1),
+                height: full_rows,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+
+    // The trailing partial row, if the buffer ends before a full stride.
+    if full_rows < height {
+        let start = full_rows as usize * stride_usize;
+        let available = data.len().saturating_sub(start);
+
+        if available >= row_bytes {
+            queue.write_texture(
+                TexelCopyTextureInfo {
+                    texture,
+                    mip_level: 0,
+                    origin: Origin3d {
+                        x: 0,
+                        y: full_rows,
+                        z: 0,
+                    },
+                    aspect: TextureAspect::All,
+                },
+                &data[start..start + row_bytes],
+                TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(row_bytes as u32),
+                    rows_per_image: Some(1),
+                },
+                Extent3d {
+                    width: width.max(1),
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+            );
+        }
+    }
 }

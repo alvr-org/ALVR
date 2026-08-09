@@ -47,6 +47,7 @@ pub enum DecodedFrame {
 }
 
 impl DecodedFrame {
+    #[allow(dead_code)] // Part of the frame's public shape, useful to callers of the trait.
     pub fn timestamp(&self) -> Duration {
         match self {
             DecodedFrame::Yuv420 { timestamp, .. } => *timestamp,
@@ -67,6 +68,12 @@ pub trait VideoDecoder: Send {
 
     /// Takes the next decoded frame, if one is ready.
     fn poll_frame(&mut self) -> Option<DecodedFrame>;
+
+    /// Replaces the codec parameter sets.
+    ///
+    /// ALVR repeats these whenever it is asked for a recovery keyframe, so the decoder can be
+    /// re-primed if the previous ones were lost.
+    fn set_config_nal(&mut self, config_nal: &[u8]);
 }
 
 /// Which decoder implementation to use.
@@ -87,6 +94,15 @@ impl DecoderKind {
     }
 }
 
+/// Called as each frame finishes decoding, with the timestamp it was submitted under.
+///
+/// The real client reports this from the decoder's own callback thread, at the moment the frame is
+/// enqueued rather than when it is displayed. That ordering is what the statistics depend on: decode
+/// time is measured from packet arrival to this call, and the queue and render times from here
+/// onwards. Reporting once per displayed frame instead leaves those measurements incomplete, and a
+/// server pacing itself on them stops sending video.
+pub type FrameDecodedCallback = Box<dyn Fn(Duration) + Send>;
+
 /// Creates a decoder for a stream.
 ///
 /// `config_nal` is the codec configuration (SPS/PPS or equivalent) that ALVR delivers separately
@@ -95,10 +111,13 @@ pub fn create(
     kind: DecoderKind,
     codec: CodecType,
     config_nal: &[u8],
+    on_frame_decoded: FrameDecodedCallback,
 ) -> Result<Box<dyn VideoDecoder>> {
     match kind {
         DecoderKind::Software => Ok(Box::new(software::SoftwareDecoder::new(
-            codec, config_nal,
+            codec,
+            config_nal,
+            on_frame_decoded,
         )?)),
     }
 }

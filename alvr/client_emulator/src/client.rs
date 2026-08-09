@@ -149,15 +149,30 @@ impl EmulatedClient {
                     self.stop_tracking();
                 }
                 ClientCoreEvent::DecoderConfig { codec, config_nal } => {
-                    // Only the first one counts: the client core repeats this event and later ones
-                    // are documented as ignorable until reconnection.
-                    if self.decoder.lock().is_some() {
+                    // The decoder is created once, but the parameter sets are refreshed every time.
+                    // The server repeats them whenever it is asked for a recovery keyframe, and that
+                    // keyframe cannot be decoded without them: dropping the repeat is what makes
+                    // corruption look permanent rather than clearing on the next keyframe.
+                    if let Some(decoder) = self.decoder.lock().as_mut() {
+                        decoder.set_config_nal(&config_nal);
                         continue;
                     }
 
                     self.status.codec = Some(codec);
 
-                    match decoder::create(DecoderKind::preferred(), codec, &config_nal) {
+                    // Reported straight through from the decoder, so decode timing is measured
+                    // where it actually happens rather than when a frame reaches the screen.
+                    let stats_context = Arc::clone(&self.context);
+                    let on_frame_decoded = Box::new(move |timestamp| {
+                        stats_context.report_frame_decoded(timestamp);
+                    });
+
+                    match decoder::create(
+                        DecoderKind::preferred(),
+                        codec,
+                        &config_nal,
+                        on_frame_decoded,
+                    ) {
                         Ok(decoder) => {
                             *self.decoder.lock() = Some(decoder);
 
@@ -199,21 +214,20 @@ impl EmulatedClient {
             }
         }
 
-        // Feeds the server's latency estimate, which drives its adaptive bitrate.
-        if let Some(frame) = &latest {
-            self.context.report_frame_decoded(frame.timestamp());
-        }
-
         latest
     }
 
-    /// Reports frame pacing to the server so its latency estimate and adaptive bitrate behave as
-    /// they would with a real client. Without these the server has no pipeline latency to work with.
+    /// Reports frame pacing to the server, once per newly decoded frame.
     ///
-    /// `displayed_frame` is the timestamp of the frame actually on screen. It must be a timestamp
-    /// the server sent, or the reported latency is measured against a frame that never existed;
-    /// before any video arrives there is nothing meaningful to report.
-    pub fn report_frame(&mut self, displayed_frame: Option<Duration>, frame_interval: Duration) {
+    /// This mirrors `client_openxr`: `report_compositor_start` and `report_submit` are called only
+    /// when a new frame was obtained from the decoder, never with a repeated timestamp, because the
+    /// statistics are keyed by that timestamp and a repeat matches an entry that has already been
+    /// accounted for.
+    ///
+    /// These reports feed the server's bitrate adaptation and the dashboard graphs. They do not gate
+    /// frame production: the server paces itself on a fixed timer derived from the negotiated
+    /// framerate, so missing reports degrade adaptation rather than stopping the video.
+    pub fn report_frame(&mut self, displayed_frame: Option<Duration>) {
         if !self.status.streaming {
             return;
         }
@@ -222,15 +236,21 @@ impl EmulatedClient {
             return;
         };
 
-        // Only report each frame once: repeating a timestamp would make the statistics count the
-        // same frame several times when rendering outpaces decoding.
         if timestamp == self.current_frame {
             return;
         }
         self.current_frame = timestamp;
 
+        let interval = if self.status.refresh_rate > 0.0 {
+            Duration::from_secs_f32(1.0 / self.status.refresh_rate)
+        } else {
+            Duration::from_millis(16)
+        };
+
         self.context.report_compositor_start(timestamp);
-        self.context.report_submit(timestamp, frame_interval);
+        // Stands in for the wait until the next vsync, which a real compositor measures and this
+        // emulator cannot know.
+        self.context.report_submit(timestamp, interval);
     }
 
     fn start_tracking(&mut self, refresh_rate: f32) {

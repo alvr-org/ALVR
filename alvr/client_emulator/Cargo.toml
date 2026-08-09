@@ -25,6 +25,7 @@ env_logger = "0.11"
 ffmpeg-next = "9"
 image = { version = "0.25", default-features = false, features = ["png"] }
 pollster = "0.4"
+rand = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tiny_http = "0.12"

@@ -5,14 +5,14 @@
 //! CPU-to-GPU upload per frame, about 5 MB of planar YUV, which the renderer converts to RGB in a
 //! shader rather than on the CPU.
 
-use super::{ColorRange, DecodedFrame, VideoDecoder};
+use super::{ColorRange, DecodedFrame, FrameDecodedCallback, VideoDecoder};
 use alvr_common::{
     anyhow::{Result, anyhow},
     info, warn,
 };
 use alvr_session::CodecType;
 use ffmpeg_next as ffmpeg;
-use std::time::Duration;
+use std::{collections::VecDeque, time::Duration};
 
 /// Timestamps are carried through ffmpeg as microseconds.
 ///
@@ -22,12 +22,20 @@ use std::time::Duration;
 #[cfg_attr(not(test), allow(dead_code))]
 const TIMESTAMP_SCALE: u32 = 1_000_000;
 
+/// Upper bound on outstanding submitted timestamps.
+///
+/// A decoder holds only a few frames, so anything beyond this means frames were dropped internally
+/// and the oldest entries are stale.
+const MAX_TRACKED_TIMESTAMPS: usize = 16;
+
 pub struct SoftwareDecoder {
     decoder: ffmpeg::decoder::Video,
-    /// Prepended to the first frame. H.264 and HEVC accept in-band parameter sets, so the
-    /// configuration ALVR sends separately is simply spliced in front of the first NAL rather than
+    /// Codec parameter sets, prepended to every keyframe. H.264 and HEVC accept in-band parameter
+    /// sets, so the configuration ALVR sends separately is spliced in front of the NAL rather than
     /// poked into the codec's extradata.
-    pending_config: Option<Vec<u8>>,
+    config_nal: Vec<u8>,
+    /// Which codec is being decoded, needed to recognise a keyframe.
+    codec: CodecType,
     /// Logged for the first few frames only. Timestamp scaling and parameter-set handling both fail
     /// silently when wrong, so a little evidence at startup is worth the noise.
     frames_logged: u32,
@@ -35,13 +43,52 @@ pub struct SoftwareDecoder {
     reported_bad_format: bool,
     /// Holds a frame drained to make room for new input, until the renderer collects it.
     pending_frame: Option<DecodedFrame>,
+    /// True while a keyframe is needed to repair the picture.
+    ///
+    /// Inter-frames are differences against earlier pictures, so one decoded without its reference
+    /// is wrong, and every later frame predicted from it inherits the damage. Frames are still
+    /// decoded and displayed while this is set — a glitchy image beats a frozen one — but reporting
+    /// it is what makes ALVR ask the server for a keyframe, and the decoder is reset when that
+    /// keyframe arrives so no damaged reference survives it.
+    awaiting_keyframe: bool,
+    /// Timestamps of packets submitted but not yet returned as frames, oldest first.
+    submitted_timestamps: VecDeque<Duration>,
+    /// Reported as each frame finishes decoding. The statistics depend on this firing per decoded
+    /// frame, at decode time, rather than once per frame displayed.
+    on_frame_decoded: FrameDecodedCallback,
 }
 
 impl SoftwareDecoder {
-    pub fn new(codec: CodecType, config_nal: &[u8]) -> Result<Self> {
+    pub fn new(
+        codec: CodecType,
+        config_nal: &[u8],
+        on_frame_decoded: FrameDecodedCallback,
+    ) -> Result<Self> {
         // Idempotent, and cheap enough to call per decoder.
         ffmpeg::init().map_err(|e| anyhow!("Cannot initialise ffmpeg: {e}"))?;
 
+        let decoder = Self::open_codec(codec)?;
+
+        info!(
+            "Software {codec:?} decoder ready ({} bytes of codec config)",
+            config_nal.len()
+        );
+
+        Ok(Self {
+            decoder,
+            config_nal: config_nal.to_vec(),
+            codec,
+            frames_logged: 0,
+            reported_bad_format: false,
+            pending_frame: None,
+            awaiting_keyframe: true,
+            submitted_timestamps: VecDeque::new(),
+            on_frame_decoded,
+        })
+    }
+
+    /// Builds a fresh ffmpeg decoder for a codec.
+    fn open_codec(codec: CodecType) -> Result<ffmpeg::decoder::Video> {
         let codec_id = match codec {
             CodecType::H264 => ffmpeg::codec::Id::H264,
             CodecType::Hevc => ffmpeg::codec::Id::HEVC,
@@ -51,37 +98,74 @@ impl SoftwareDecoder {
         let ffmpeg_codec = ffmpeg::decoder::find(codec_id)
             .ok_or_else(|| anyhow!("No {codec:?} decoder available in this ffmpeg build"))?;
 
-        let context = ffmpeg::codec::Context::new_with_codec(ffmpeg_codec);
-        let decoder = context
+        ffmpeg::codec::Context::new_with_codec(ffmpeg_codec)
             .decoder()
             .video()
-            .map_err(|e| anyhow!("Cannot open {codec:?} decoder: {e}"))?;
-
-        info!(
-            "Software {codec:?} decoder ready ({} bytes of codec config)",
-            config_nal.len()
-        );
-
-        Ok(Self {
-            decoder,
-            pending_config: (!config_nal.is_empty()).then(|| config_nal.to_vec()),
-            frames_logged: 0,
-            reported_bad_format: false,
-            pending_frame: None,
-        })
+            .map_err(|e| anyhow!("Cannot open {codec:?} decoder: {e}"))
     }
 
-    fn decode_packet(&mut self, timestamp: Duration, nal: &[u8]) -> Result<()> {
-        // The parameter sets have to precede the first frame, or the decoder rejects it for having
-        // no sequence header.
-        let payload = match self.pending_config.take() {
-            Some(config) => {
-                let mut combined = config;
-                combined.extend_from_slice(nal);
-                combined
-            }
-            None => nal.to_vec(),
+    /// Throws away all decoder state, including every reference picture it is holding.
+    ///
+    /// Flushing alone is not always enough after concealed errors, so the codec is reopened. Any
+    /// frames still queued inside are lost, which is fine: they are the damaged ones.
+    fn reset_codec(&mut self) -> Result<()> {
+        self.decoder = Self::open_codec(self.codec)?;
+        self.pending_frame = None;
+        self.submitted_timestamps.clear();
+
+        Ok(())
+    }
+
+    /// Whether this access unit contains a keyframe, and can therefore be decoded on its own.
+    ///
+    /// ALVR delivers Annex-B, so NAL units are separated by `00 00 01` start codes and the type is
+    /// in the byte that follows. Only the coded-slice types matter here; parameter sets and other
+    /// non-VCL units are skipped over.
+    fn contains_keyframe(codec: CodecType, nal: &[u8]) -> bool {
+        nal.windows(3)
+            .enumerate()
+            .filter(|(_, window)| *window == [0, 0, 1])
+            .filter_map(|(index, _)| nal.get(index + 3))
+            .any(|&header| match codec {
+                // H.264: type is the low 5 bits; 5 is an IDR slice.
+                CodecType::H264 => header & 0x1f == 5,
+                // HEVC: type is bits 1-6; 16-23 are the IRAP range, which includes IDR and CRA.
+                CodecType::Hevc => matches!((header >> 1) & 0x3f, 16..=23),
+                // AV1 is not Annex-B framed, so this parse does not apply. Treated as always
+                // decodable rather than discarding everything.
+                CodecType::AV1 => true,
+            })
+    }
+
+    fn decode_packet(&mut self, timestamp: Duration, nal: &[u8], is_keyframe: bool) -> Result<()> {
+        // The parameter sets are prepended to every keyframe, not just the first.
+        //
+        // ALVR sends them out of band and repeats them each time it is asked for a recovery
+        // keyframe, precisely so the decoder can be re-primed. Consuming them once would leave every
+        // later keyframe without a sequence header: it then fails to decode, the picture never
+        // repairs itself, and the corruption looks permanent.
+        //
+        // Repeating them on a keyframe that already carries its own is harmless, because a decoder
+        // is required to accept a redundant parameter set.
+        let payload = if is_keyframe && !self.config_nal.is_empty() {
+            let mut combined = self.config_nal.clone();
+            combined.extend_from_slice(nal);
+            combined
+        } else {
+            nal.to_vec()
         };
+
+        // The timestamp is remembered here rather than recovered from the decoded frame.
+        //
+        // ALVR identifies a frame by the tracking timestamp it was rendered from, and its statistics
+        // are keyed by exactly that value: report a different one and the lookup silently finds
+        // nothing, no statistics reach the server, and a server pacing itself on them stops sending
+        // video. Round-tripping through ffmpeg does not preserve it — the value that came back was
+        // microseconds where the input was seconds — so the queue below keeps the original.
+        self.submitted_timestamps.push_back(timestamp);
+        while self.submitted_timestamps.len() > MAX_TRACKED_TIMESTAMPS {
+            self.submitted_timestamps.pop_front();
+        }
 
         let mut packet = ffmpeg::codec::packet::Packet::copy(&payload);
         packet.set_pts(Some(duration_to_pts(timestamp)));
@@ -123,11 +207,33 @@ impl SoftwareDecoder {
 
     /// Copies an ffmpeg frame into the representation the renderer consumes.
     fn convert(&mut self, frame: &ffmpeg::frame::Video) -> Option<DecodedFrame> {
+        // Concealed frames are still displayed. They look wrong, but a glitchy picture is more
+        // usable than a frozen one, and flagging here is what asks the server for the keyframe that
+        // clears the artefacts.
+        if frame.is_corrupt() || frame.has_decode_errors() {
+            if !self.awaiting_keyframe {
+                warn!("Concealed frame from decoder, requesting a keyframe");
+                self.awaiting_keyframe = true;
+            }
+        } else if self.awaiting_keyframe && frame.is_key() {
+            // A clean keyframe is the point at which the picture is trustworthy again.
+            self.awaiting_keyframe = false;
+        }
+
+        // The timestamp must come back out exactly as ALVR passed it in: its statistics are keyed by
+        // that value, and a mismatch means no statistics ever reach the server. ffmpeg preserves the
+        // packet PTS onto the frame, and the queue is the fallback for a frame that arrives without
+        // one.
         let timestamp = frame
             .pts()
-            .or_else(|| frame.timestamp())
             .map(pts_to_duration)
+            .or_else(|| self.submitted_timestamps.pop_front())
             .unwrap_or_default();
+
+        // Keep the queue from growing when PTS is present and the fallback is unused.
+        if frame.pts().is_some() {
+            self.submitted_timestamps.pop_front();
+        }
 
         // Both layouts are planar 8-bit YUV 4:2:0 and differ only in sample range. YUVJ is
         // deprecated in ffmpeg but still what its H.264 decoder reports for full-range streams,
@@ -137,6 +243,13 @@ impl SoftwareDecoder {
             ffmpeg::format::Pixel::YUVJ420P => Some(ColorRange::Full),
             _ => None,
         };
+
+        // Reported here, as the frame finishes decoding, matching where the real client reports it
+        // from its decoder callback. The statistics measure decode time from packet arrival to this
+        // point, so reporting later — once per displayed frame — leaves them incomplete.
+        if range.is_some() {
+            (self.on_frame_decoded)(timestamp);
+        }
 
         match range {
             Some(range) => Some(DecodedFrame::Yuv420 {
@@ -171,9 +284,11 @@ impl SoftwareDecoder {
 
 impl VideoDecoder for SoftwareDecoder {
     fn push_nal(&mut self, timestamp: Duration, nal: &[u8]) -> bool {
+        let is_keyframe = Self::contains_keyframe(self.codec, nal);
+
         if self.frames_logged < 3 {
             info!(
-                "Video frame {}: timestamp {:?}, {} bytes",
+                "Video frame {}: timestamp {:?}, {} bytes, keyframe {is_keyframe}",
                 self.frames_logged,
                 timestamp,
                 nal.len()
@@ -181,12 +296,50 @@ impl VideoDecoder for SoftwareDecoder {
             self.frames_logged += 1;
         }
 
-        match self.decode_packet(timestamp, nal) {
-            Ok(()) => true,
+        // Frames are decoded even while a keyframe is outstanding. They may be predicted from a
+        // picture that was never received and so look wrong, but a briefly glitchy image is easier
+        // to work with than a frozen one, and the artefacts clear as soon as the keyframe lands.
+        //
+        // The decoder is reset on the keyframe itself, below, so nothing damaged survives it.
+        let was_awaiting = self.awaiting_keyframe;
+
+        if is_keyframe && was_awaiting {
+            // Starting the codec from scratch discards every reference picture the concealed frames
+            // left behind. Without this the keyframe decodes correctly but later frames can still
+            // predict from stale, damaged references, which is what makes corruption look permanent.
+            if let Err(e) = self.reset_codec() {
+                warn!("Could not reset decoder before keyframe: {e}");
+            }
+        }
+
+        match self.decode_packet(timestamp, nal, is_keyframe) {
+            Ok(()) => {
+                // Collected here rather than left for the render thread so that a concealed frame
+                // is noticed while this call can still report it. `convert` inspects each frame and
+                // re-arms the keyframe wait if the decoder had to conceal errors.
+                self.drain_into_pending();
+
+                if was_awaiting && !self.awaiting_keyframe {
+                    info!("Keyframe decoded, video recovered");
+                }
+
+                // Reporting failure is what makes ALVR request the keyframe needed to recover.
+                !self.awaiting_keyframe
+            }
             Err(e) => {
                 warn!("{e}");
+
+                // Whatever the decoder had is now unreliable, so wait for a keyframe before showing
+                // anything again. Returning false makes ALVR request one.
+                self.awaiting_keyframe = true;
                 false
             }
+        }
+    }
+
+    fn set_config_nal(&mut self, config_nal: &[u8]) {
+        if !config_nal.is_empty() {
+            self.config_nal = config_nal.to_vec();
         }
     }
 
@@ -226,6 +379,49 @@ mod tests {
             let original = Duration::from_micros(micros);
             assert_eq!(pts_to_duration(duration_to_pts(original)), original);
         }
+    }
+
+    #[test]
+    fn detects_h264_keyframes() {
+        // nal_unit_type 5 is an IDR slice, 1 a non-IDR slice.
+        let idr = [0, 0, 1, 0x65, 0x88];
+        let non_idr = [0, 0, 1, 0x41, 0x9a];
+
+        assert!(SoftwareDecoder::contains_keyframe(CodecType::H264, &idr));
+        assert!(!SoftwareDecoder::contains_keyframe(
+            CodecType::H264,
+            &non_idr
+        ));
+
+        // A keyframe preceded by its parameter sets, which is how ALVR delivers one: SPS (7) and
+        // PPS (8) are not keyframes themselves, so the scan has to continue past them.
+        let with_parameter_sets = [
+            0, 0, 1, 0x67, 0x42, // SPS
+            0, 0, 1, 0x68, 0xce, // PPS
+            0, 0, 1, 0x65, 0x88, // IDR
+        ];
+        assert!(SoftwareDecoder::contains_keyframe(
+            CodecType::H264,
+            &with_parameter_sets
+        ));
+
+        // Parameter sets alone must not count, or the stream would be declared recovered before any
+        // picture had actually been decoded.
+        let parameter_sets_only = [0, 0, 1, 0x67, 0x42, 0, 0, 1, 0x68, 0xce];
+        assert!(!SoftwareDecoder::contains_keyframe(
+            CodecType::H264,
+            &parameter_sets_only
+        ));
+    }
+
+    #[test]
+    fn detects_hevc_keyframes() {
+        // HEVC puts the type in bits 1-6; 19 (IDR_W_RADL) is in the IRAP range, 1 (TRAIL_R) is not.
+        let idr = [0, 0, 1, 19 << 1, 0x01];
+        let trail = [0, 0, 1, 1 << 1, 0x01];
+
+        assert!(SoftwareDecoder::contains_keyframe(CodecType::Hevc, &idr));
+        assert!(!SoftwareDecoder::contains_keyframe(CodecType::Hevc, &trail));
     }
 
     #[test]

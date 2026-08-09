@@ -556,15 +556,8 @@ impl App for EmulatorApp {
         self.service_captures(frame);
         self.publish_state();
 
-        // Frame pacing reports keep the server's latency estimate sane. Use the negotiated refresh
-        // rate when streaming so the reported interval matches what the server expects.
-        let status_rate = self.status().refresh_rate;
-        let interval = if status_rate > 0.0 {
-            Duration::from_secs_f32(1.0 / status_rate)
-        } else {
-            Duration::from_millis(16)
-        };
-        self.client().report_frame(displayed_frame, interval);
+        // Paces itself at the stream rate; safe to call every repaint.
+        self.client().report_frame(displayed_frame);
 
         // The scene is continuously interactive, so keep painting.
         ui_context.request_repaint();

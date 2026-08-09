@@ -41,7 +41,12 @@ fn main() {
         }
     }
 
-    let err = exec::execvp(argv0 + ".real", std::env::args());
+    // argv0 is the symlink in SteamVR's bin dir, not the wrapper's own
+    // location, so its parent is where the real compositor sits
+    let steamvr_bin_dir = std::path::Path::new(&argv0).parent().unwrap();
+    let compositor_path = alvr_filesystem::original_vrcompositor_path(steamvr_bin_dir);
+
+    let err = exec::execvp(compositor_path, std::env::args());
     println!("Failed to run vrcompositor {err}");
 }
 

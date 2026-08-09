@@ -43,7 +43,7 @@ pub enum OpenvrPropKey {",
             mappings_fn_string,
             r"
     {} = {},",
-            &info.name, &info.code
+            info.name, info.code
         )
         .unwrap();
     }
@@ -62,7 +62,7 @@ pub fn openvr_prop_key_to_type(key: OpenvrPropKey) -> OpenvrPropType {
             mappings_fn_string,
             r"
         OpenvrPropKey::{} => OpenvrPropType::{},",
-            &info.name, info.ty
+            info.name, info.ty
         )
         .unwrap();
     }

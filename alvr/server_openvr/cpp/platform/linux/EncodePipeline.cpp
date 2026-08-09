@@ -1,16 +1,17 @@
 #include "EncodePipeline.h"
 
-#include "EncodePipelineNvEnc.h"
-#include "EncodePipelineSW.h"
-#include "EncodePipelineVAAPI.h"
 #include "alvr_server/Logger.h"
 #include "alvr_server/bindings.h"
+// #include "EncodePipelineSW.h"
+#include "EncodePipelineNvEnc.h"
+#include "EncodePipelineVAAPI.h"
 #include "ffmpeg_helper.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
 }
 
+// TODO: Uninheritance this
 void alvr::EncodePipeline::SetParams(FfiDynamicEncoderParams params) {
     if (params.updated) {
         encoder_ctx->bit_rate = params.bitrate_bps / params.framerate * 60.0;
@@ -22,21 +23,20 @@ void alvr::EncodePipeline::SetParams(FfiDynamicEncoderParams params) {
 }
 
 std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(
-    Renderer* render,
-    VkContext& vk_ctx,
+    alvr::VkContext& vk_ctx,
+    std::string devicePath,
     VkFrame& input_frame,
-    VkImageCreateInfo& image_create_info,
-    uint32_t width,
+    /* VkFrameCtx &vk_frame_ctx,  */ uint32_t width,
     uint32_t height
 ) {
-    if (!Settings_Instance()->m_forceSwEncoding) {
-        if (vk_ctx.nvidia) {
+    using alvr::Vendor;
+    if (Settings_Instance()->m_forceSwEncoding == false) {
+        alvr::HWContext hwCtx(vk_ctx);
+        if (vk_ctx.meta.vendor == Vendor::Nvidia) {
             try {
-                auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(
-                    render, vk_ctx, input_frame, image_create_info, width, height
-                );
-                Info("Using NvEnc encoder");
-                return nvenc;
+                // auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(render, vk_ctx,
+                // input_frame, vk_frame_ctx, width, height); Info("Using NvEnc encoder"); return
+                // nvenc;
             } catch (std::exception& e) {
                 Error(
                     "Failed to create NvEnc encoder: %s\nPlease make sure you have installed CUDA "
@@ -47,7 +47,7 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(
         } else {
             try {
                 auto vaapi = std::make_unique<alvr::EncodePipelineVAAPI>(
-                    render, vk_ctx, input_frame, width, height
+                    hwCtx, devicePath, vk_ctx.meta.vendor, input_frame, width, height
                 );
                 Info("Using VAAPI encoder");
                 return vaapi;
@@ -60,9 +60,10 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(
             }
         }
     }
-    auto sw = std::make_unique<alvr::EncodePipelineSW>(render, width, height);
-    Info("Using SW encoder");
-    return sw;
+    // auto sw = std::make_unique<alvr::EncodePipelineSW>(render, width, height);
+    // Info("Using SW encoder");
+    // return sw;
+    return nullptr;
 }
 
 alvr::EncodePipeline::~EncodePipeline() { avcodec_free_context(&encoder_ctx); }

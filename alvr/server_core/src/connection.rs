@@ -347,7 +347,8 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
             }
 
             let client_ip = IpAddr::V4(Ipv4Addr::LOCALHOST);
-            wired_client_ips.insert(client_ip, WIRED_CLIENT_HOSTNAME.to_owned());
+            // Wired clients are reached over an ADB forward on the well-known port.
+            wired_client_ips.insert(client_ip, (WIRED_CLIENT_HOSTNAME.to_owned(), CONTROL_PORT));
         }
 
         if !wired_client_ips.is_empty()
@@ -377,7 +378,9 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                     })
             {
                 for ip in &connection_info.manual_ips {
-                    manual_client_ips.insert(*ip, hostname.clone());
+                    // Manually configured clients are not discovered, so there is nowhere to learn
+                    // a custom port from: the well-known one is the only possible guess.
+                    manual_client_ips.insert(*ip, (hostname.clone(), CONTROL_PORT));
                 }
             }
             manual_client_ips
@@ -419,7 +422,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                 continue;
             }
 
-            for (client_hostname, client_ip) in clients {
+            for (client_hostname, (client_ip, client_control_port)) in clients {
                 let trusted = {
                     let mut session_manager = SESSION_MANAGER.write();
 
@@ -454,7 +457,12 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                     && let Err(e) = try_connect(
                         Arc::clone(&ctx),
                         Arc::clone(&lifecycle_state),
-                        [(client_ip, client_hostname.clone())].into_iter().collect(),
+                        [(
+                            client_ip,
+                            (client_hostname.clone(), client_control_port),
+                        )]
+                        .into_iter()
+                        .collect(),
                     )
                 {
                     error!("Could not initiate connection for {client_hostname}: {e}");
@@ -477,19 +485,26 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
     alvr_common::dbg_connection!("handshake_loop: End");
 }
 
+/// `clients` maps each candidate client address to its hostname and the control port to dial.
+///
+/// The port is per client because clients sharing a machine cannot all listen on the well-known
+/// [`CONTROL_PORT`]; discovery supplies that port for every client that does not advertise its own.
 fn try_connect(
     ctx: Arc<ConnectionContext>,
     lifecycle_state: Arc<RwLock<LifecycleState>>,
-    mut client_ips: HashMap<IpAddr, String>,
+    mut clients: HashMap<IpAddr, (String, u16)>,
 ) -> ConResult {
     dbg_connection!("try_connect: Finding client and creating control socket");
 
     let (socket, client_ip, connection_result) = alvr_sockets::connect_to_client(
-        client_ips.keys().cloned().collect(),
+        clients
+            .iter()
+            .map(|(ip, (_, port))| (*ip, *port))
+            .collect(),
         Duration::from_secs(1),
     )?;
 
-    let Some(client_hostname) = client_ips.remove(&client_ip) else {
+    let Some((client_hostname, _)) = clients.remove(&client_ip) else {
         con_bail!("unreachable");
     };
 
@@ -1293,7 +1308,11 @@ fn connection_pipeline(
                     ClientControlPacket::Log { level, message } => {
                         info!("Client {client_hostname}: [{level:?}] {message}")
                     }
-                    ClientControlPacket::KeepAlive | ClientControlPacket::StreamReady => (),
+                    // Both stream-ready variants are consumed during the handshake; reaching the
+                    // streaming loop means a duplicate, which is harmless.
+                    ClientControlPacket::KeepAlive
+                    | ClientControlPacket::StreamReady
+                    | ClientControlPacket::StreamReadyOnPort(_) => (),
                     ClientControlPacket::ProximityState(headset_is_worn) => {
                         ctx.events_sender
                             .send(ServerCoreEvent::ProximityState(headset_is_worn))

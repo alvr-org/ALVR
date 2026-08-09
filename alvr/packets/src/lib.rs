@@ -204,6 +204,14 @@ pub enum ClientControlPacket {
     ProximityState(bool),
     Reserved(String),
     ReservedBuffer(Vec<u8>),
+    /// Same meaning as [`ClientControlPacket::StreamReady`], but also reports the UDP port the
+    /// client bound, for clients that could not use the configured `stream_port`.
+    ///
+    /// A separate variant rather than a field on `StreamReady`, because these packets are bincode
+    /// encoded by variant index: appending a variant leaves the existing indices untouched, while
+    /// changing `StreamReady` itself would reinterpret every old client's packet. Old clients keep
+    /// sending `StreamReady` and old servers never see this variant.
+    StreamReadyOnPort(u16),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -203,31 +203,20 @@ impl EmulatedClient {
         }
     }
 
-    /// Shuts the connection down as far as is possible without hanging, and reports whether the
-    /// client core can be dropped safely.
+    /// Shuts the connection down, and reports whether the client core can then be dropped safely.
     ///
-    /// Returns `false` when dropping the context would block forever, in which case the caller must
-    /// leak it rather than run its destructor.
-    ///
-    /// Closing the window used to hang here, and the cause is upstream. `AnnouncerSocket` in
-    /// `alvr_client_core` creates an mdns-sd `ServiceDaemon` for service discovery and never calls
-    /// its `shutdown()`; the daemon owns a thread parked in a blocking `recv()` with no timeout, so
-    /// it never exits. `ClientCoreContext::drop` joins the connection thread, which owns that
-    /// announcer, so the join waits on a thread that can never finish. Verified with a native stack
-    /// dump: the main thread sits in `WaitForSingleObject` under `ClientCoreContext::drop` while the
-    /// daemon thread sits in `mpsc::Receiver::recv`.
-    ///
-    /// `pause()` is still worth calling — it stops streaming cleanly and lets the server observe the
-    /// disconnect instead of timing the client out — and it returns promptly. Only the subsequent
-    /// destructor is unsafe to run.
+    /// `pause()` stops streaming and lets the server observe the disconnect rather than timing the
+    /// client out. It returns promptly, and the context is now safe to drop: `AnnouncerSocket` shuts
+    /// its mdns-sd daemon down on drop, so the connection thread that owns it can finish and the
+    /// join inside `ClientCoreContext::drop` completes. Before that fix this returned `false` and
+    /// the caller had to leak the context, because the daemon left a thread parked forever in a
+    /// blocking receive and the join never returned.
     #[must_use = "the caller must leak the context when this returns false"]
     pub fn shutdown(&mut self) -> bool {
         self.stop_tracking();
         self.context.pause();
 
-        // Always false while the upstream daemon leak stands. Kept as a return value rather than
-        // hardcoded at the call site so that fixing `client_core` is a one-line change here.
-        false
+        true
     }
 }
 

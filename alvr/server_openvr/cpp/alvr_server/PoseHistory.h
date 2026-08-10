@@ -3,6 +3,7 @@
 #include "ALVR-common/packet_types.h"
 #include "openvr_driver_wrap.h"
 
+#include <chrono>
 #include <list>
 #include <mutex>
 #include <optional>
@@ -13,13 +14,15 @@ public:
         uint64_t targetTimestampNs;
         FfiDeviceMotion motion;
         vr::HmdMatrix34_t rotationMatrix;
+        uint64_t serverReceiveTimeNs;
     };
 
     void OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion);
 
     std::optional<TrackingHistoryFrame> GetBestPoseMatch(const vr::HmdMatrix34_t& pose) const;
-    // Return the most recent pose known at the given timestamp
+    std::optional<TrackingHistoryFrame> GetLatestPose() const;
     std::optional<TrackingHistoryFrame> GetPoseAt(uint64_t timestampNs) const;
+    std::optional<TrackingHistoryFrame> GetPoseByPresentTime(uint64_t presentTimeNs) const;
 
     void SetTransform(const vr::HmdMatrix34_t& transform);
 

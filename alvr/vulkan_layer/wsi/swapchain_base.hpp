@@ -61,6 +61,8 @@ struct swapchain_image {
     uint64_t semaphore_value = 0;
 
     TrackedDevicePose_t pose;
+    uint64_t present_time_ns = 0;
+    uint64_t acquire_time_ns = 0;
 };
 
 /**

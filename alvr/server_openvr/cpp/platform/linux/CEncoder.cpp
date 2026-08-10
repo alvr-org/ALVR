@@ -228,7 +228,26 @@ void CEncoder::Run() {
 
             encode_pipeline->SetParams(GetDynamicEncoderParams());
 
-            auto pose = m_poseHistory->GetBestPoseMatch((const vr::HmdMatrix34_t&)frame_info.pose);
+            const vr::HmdMatrix34_t& frame_pose = (const vr::HmdMatrix34_t&)frame_info.pose;
+            bool pose_is_zero = true;
+            for (int i = 0; i < 3 && pose_is_zero; ++i) {
+                for (int j = 0; j < 4; ++j) {
+                    if (frame_pose.m[i][j] != 0.0f) {
+                        pose_is_zero = false;
+                        break;
+                    }
+                }
+            }
+            std::optional<PoseHistory::TrackingHistoryFrame> pose;
+            if (!pose_is_zero) {
+                pose = m_poseHistory->GetBestPoseMatch(frame_pose);
+            }
+            if (!pose && frame_info.present_time_ns != 0) {
+                pose = m_poseHistory->GetPoseByPresentTime(frame_info.present_time_ns);
+            }
+            if (!pose) {
+                pose = m_poseHistory->GetLatestPose();
+            }
             if (!pose) {
                 continue;
             }

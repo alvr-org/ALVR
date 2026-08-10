@@ -219,6 +219,12 @@ fn main() {
         .unwrap();
 
     if platform_name == "linux" {
+        // On aarch64, OpenVR does not ship a prebuilt library; the build
+        // script looks for libopenvr_api.so in openvr/lib/linux64 (the
+        // conventional OpenVR layout). Build OpenVR from source for ARM64:
+        //   git clone https://github.com/ValveSoftware/openvr
+        //   cmake -B build -DBUILD_SHARED=ON && cmake --build build
+        //   cp build/bin/linux64/libopenvr_api.so openvr/lib/linux64/
         println!(
             "cargo:rustc-link-search=native={}",
             alvr_filesystem::workspace_dir()

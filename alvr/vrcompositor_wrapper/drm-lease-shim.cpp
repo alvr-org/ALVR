@@ -211,16 +211,20 @@ extern "C" drmModeConnectorPtr drmModeGetConnector(int fd, uint32_t connectorId)
 
     auto con = real_drmModeGetConnector(fd, connectorId);
     if (con) {
-        auto sessionFile = std::ifstream(getenv("ALVR_SESSION_JSON"));
-        auto json = std::string(std::istreambuf_iterator<char>(sessionFile), std::istreambuf_iterator<char>());
-        picojson::value v;
-        picojson::parse(v, json);
-        auto config = v.get("steamvr_hmd_init_config");
+        try {
+            auto sessionFile = std::ifstream(getenv("ALVR_SESSION_JSON"));
+            auto json = std::string(std::istreambuf_iterator<char>(sessionFile), std::istreambuf_iterator<char>());
+            picojson::value v;
+            picojson::parse(v, json);
+            auto config = v.get("steamvr_hmd_init_config");
 
-        con->count_modes = 1;
-        con->modes = (drmModeModeInfo*)calloc(1, sizeof(drmModeModeInfo));
-        con->modes->hdisplay = config.get("eye_resolution_width").get<int64_t>() * 2;
-        con->modes->vdisplay = config.get("eye_resolution_height").get<int64_t>();
+            con->count_modes = 1;
+            con->modes = (drmModeModeInfo*)calloc(1, sizeof(drmModeModeInfo));
+            con->modes->hdisplay = config.get("eye_resolution_width").get<int64_t>() * 2;
+            con->modes->vdisplay = config.get("eye_resolution_height").get<int64_t>();
+        } catch (std::exception &e) {
+            ERR("ALVR: failed to parse session config: %s", e.what());
+        }
     }
     return con;
 }

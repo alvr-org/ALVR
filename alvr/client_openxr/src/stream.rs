@@ -15,7 +15,7 @@ use alvr_common::{
     parking_lot::RwLock,
 };
 use alvr_graphics::{GraphicsContext, StreamRenderer, StreamViewParams};
-use alvr_packets::{ClientStreamConfig, RealTimeConfig, TrackingData};
+use alvr_packets::{ClientStreamConfig, RealTimeConfig, TrackingData, VideoStreamKind};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, ClientsidePostProcessingConfig, CodecType,
     FoveatedEncodingConfig, MediacodecProperty, PassthroughMode, UpscalingConfig,
@@ -23,6 +23,7 @@ use alvr_session::{
 use alvr_system_info::Platform;
 use openxr as xr;
 use std::{
+    ffi::c_void,
     ptr,
     rc::Rc,
     sync::Arc,
@@ -47,6 +48,8 @@ pub struct ParsedStreamConfig {
     pub buffering_history_weight: f32,
     pub decoder_options: Vec<(String, MediacodecProperty)>,
     pub interaction_sources: InteractionSourcesConfig,
+    /// Negotiated with the server: a second monochrome stream carrying 8 bit alpha is incoming.
+    pub enable_alpha_stream: bool,
 }
 
 impl ParsedStreamConfig {
@@ -80,6 +83,11 @@ impl ParsedStreamConfig {
             buffering_history_weight: config.settings.video.buffering_history_weight,
             decoder_options: config.settings.video.mediacodec_extra_options.clone(),
             interaction_sources: InteractionSourcesConfig::new(config),
+            enable_alpha_stream: config
+                .negotiated_config
+                .ext()
+                .map(|ext| ext.enable_alpha_stream)
+                .unwrap_or(false),
         }
     }
 }
@@ -98,6 +106,12 @@ pub struct StreamContext {
     target_view_resolution: UVec2,
     renderer: StreamRenderer,
     decoder: Option<(VideoDecoderConfig, VideoDecoderSource)>,
+    /// Companion decoder for the monochrome alpha stream. Only created when the 8 bit alpha
+    /// passthrough mode negotiated successfully.
+    alpha_decoder: Option<(VideoDecoderConfig, VideoDecoderSource)>,
+    /// Last alpha frame pulled from the alpha decoder, kept so it can be matched against a later
+    /// color frame. Holds (timestamp, hardware buffer).
+    pending_alpha_frame: Option<(Duration, *mut c_void)>,
     use_custom_reprojection: bool,
 }
 
@@ -200,6 +214,7 @@ impl StreamContext {
             core_ctx.platform() != Platform::SamsungGalaxyXR && !config.enable_hdr,
             config.encoding_gamma,
             config.upscaling.clone(),
+            config.enable_alpha_stream,
         );
 
         {
@@ -242,6 +257,8 @@ impl StreamContext {
             target_view_resolution,
             renderer,
             decoder: None,
+            alpha_decoder: None,
+            pending_alpha_frame: None,
         };
 
         this.update_reference_space();
@@ -300,7 +317,12 @@ impl StreamContext {
         }));
     }
 
-    pub fn maybe_initialize_decoder(&mut self, codec: CodecType, config_nal: Vec<u8>) {
+    pub fn maybe_initialize_decoder(
+        &mut self,
+        codec: CodecType,
+        config_nal: Vec<u8>,
+        stream: VideoStreamKind,
+    ) {
         let new_config = VideoDecoderConfig {
             codec,
             force_software_decoder: self.config.force_software_decoder,
@@ -308,33 +330,120 @@ impl StreamContext {
             buffering_history_weight: self.config.buffering_history_weight,
             options: self.config.decoder_options.clone(),
             config_buffer: config_nal,
+            // Only the alpha stream: it has no compositor pacing, so scheduled release stalls it.
+            release_frames_immediately: matches!(stream, VideoStreamKind::Alpha),
         };
 
-        let maybe_config = if let Some((config, _)) = &self.decoder {
+        let existing = match stream {
+            VideoStreamKind::Color => &self.decoder,
+            VideoStreamKind::Alpha => &self.alpha_decoder,
+        };
+
+        let maybe_config = if let Some((config, _)) = existing {
             (new_config != *config).then_some(new_config)
         } else {
             Some(new_config)
         };
 
-        if let Some(config) = maybe_config {
-            let (mut sink, source) = video_decoder::create_decoder(config.clone(), {
-                let ctx = Arc::clone(&self.core_context);
-                move |maybe_timestamp: Result<Duration>| match maybe_timestamp {
-                    Ok(timestamp) => ctx.report_frame_decoded(timestamp),
-                    Err(e) => ctx.report_fatal_decoder_error(&e.to_string()),
-                }
-            });
-            self.decoder = Some((config, source));
+        let Some(config) = maybe_config else {
+            return;
+        };
 
-            self.core_context.set_decoder_input_callback(Box::new(
-                move |timestamp, buffer| -> bool { sink.push_nal(timestamp, buffer) },
-            ));
+        match stream {
+            VideoStreamKind::Color => {
+                let (mut sink, source) = video_decoder::create_decoder(config.clone(), {
+                    let ctx = Arc::clone(&self.core_context);
+                    move |maybe_timestamp: Result<Duration>| match maybe_timestamp {
+                        Ok(timestamp) => ctx.report_frame_decoded(timestamp),
+                        Err(e) => ctx.report_fatal_decoder_error(&e.to_string()),
+                    }
+                });
+                self.decoder = Some((config, source));
+
+                self.core_context.set_decoder_input_callback(Box::new(
+                    move |timestamp, buffer| -> bool { sink.push_nal(timestamp, buffer) },
+                ));
+            }
+            VideoStreamKind::Alpha => {
+                // Alpha decode timings are not reported to statistics: the color stream defines
+                // frame pacing, and reporting both would double count every frame. A fatal error
+                // here degrades to opaque rather than tearing down the connection.
+                let (mut sink, source) = video_decoder::create_decoder(config.clone(), |res| {
+                    if let Err(e) = res {
+                        error!("Alpha decoder error: {e}");
+                    }
+                });
+                self.alpha_decoder = Some((config, source));
+
+                self.core_context.set_alpha_decoder_input_callback(Box::new(
+                    move |timestamp, buffer| -> bool { sink.push_nal(timestamp, buffer) },
+                ));
+            }
         }
     }
 
     pub fn update_real_time_config(&mut self, config: &RealTimeConfig) {
         self.config.passthrough = config.passthrough.clone();
         self.config.clientside_post_processing = config.clientside_post_processing.clone();
+    }
+
+    /// Returns the alpha hardware buffer matching `target_timestamp`, or null if none is available.
+    ///
+    /// Both decoders emit frames independently, so the queues can drift. This walks the alpha
+    /// queue forward, dropping frames that are older than the color frame (they can never be
+    /// matched again) and stopping as soon as it reaches one that is newer, which is retained for
+    /// a future call. It is deliberately non-blocking: alpha must never stall color presentation.
+    fn dequeue_alpha_frame(&mut self, target_timestamp: Duration) -> *mut c_void {
+        let Some((_, source)) = &mut self.alpha_decoder else {
+            return ptr::null_mut();
+        };
+
+        // Bound the walk so a badly desynced stream cannot spin here.
+        const MAX_ALPHA_FRAMES_PER_RENDER: usize = 8;
+
+        // Drain whatever the alpha decoder has produced and keep the newest frame at or before the
+        // color frame. Exact timestamp equality is deliberately NOT required: when the color
+        // decoder returns no frame, render() falls back to vsync_time, which never matches an
+        // encoded timestamp, and the two decoders can drift by a frame anyway. Insisting on
+        // equality left the alpha texture permanently unwritten (fully transparent output).
+        let mut newest: Option<(Duration, *mut c_void)> = self.pending_alpha_frame.take();
+
+        for _ in 0..MAX_ALPHA_FRAMES_PER_RENDER {
+            // Stop as soon as the held frame is genuinely ahead of the color frame; keep it for
+            // later. An implausibly large lead means a timestamp domain mismatch rather than a
+            // real lead, so keep draining instead of stalling forever.
+            if let Some((timestamp, _)) = newest
+                && timestamp > target_timestamp
+                && timestamp.saturating_sub(target_timestamp) < Duration::from_secs(1)
+            {
+                break;
+            }
+
+            match source.get_frame() {
+                Some(frame) => newest = Some(frame),
+                None => break,
+            }
+        }
+
+        // A frame more than a second ahead of the color stream cannot be a genuine lead; it means
+        // the two sides disagree about the timestamp domain. Use it rather than holding it
+        // forever, which would stall alpha permanently.
+        const MAX_ALPHA_LEAD: Duration = Duration::from_secs(1);
+
+        let result = match newest {
+            // Frame is newer than the color frame: hold it back for a subsequent render.
+            Some((timestamp, buffer_ptr))
+                if timestamp > target_timestamp
+                    && timestamp.saturating_sub(target_timestamp) < MAX_ALPHA_LEAD =>
+            {
+                self.pending_alpha_frame = Some((timestamp, buffer_ptr));
+                ptr::null_mut()
+            }
+            Some((_, buffer_ptr)) => buffer_ptr,
+            None => ptr::null_mut(),
+        };
+
+        result
     }
 
     pub fn render(
@@ -365,6 +474,12 @@ impl StreamContext {
             } else {
                 (vsync_time, self.last_good_view_params, ptr::null_mut())
             };
+
+        // Pair the alpha frame with the color frame by timestamp. The color stream drives pacing,
+        // so this never blocks: it only discards alpha frames older than the color frame and holds
+        // back newer ones until their color frame arrives. A null result keeps the previously
+        // uploaded alpha, which is better than flashing opaque on a single dropped frame.
+        let alpha_buffer_ptr = self.dequeue_alpha_frame(timestamp);
 
         let left_swapchain_idx = self.swapchains[0].acquire_image().unwrap();
         let right_swapchain_idx = self.swapchains[1].acquire_image().unwrap();
@@ -422,6 +537,7 @@ impl StreamContext {
 
         self.renderer.render(
             buffer_ptr,
+            alpha_buffer_ptr,
             [
                 StreamViewParams {
                     swapchain_index: left_swapchain_idx,
@@ -490,14 +606,16 @@ impl StreamContext {
                 .passthrough
                 .clone()
                 .map(|mode| ProjectionLayerAlphaConfig {
-                    premultiplied: matches!(
-                        mode,
+                    premultiplied: match mode {
+                        // The alpha stream carries the application's own alpha, so whether color
+                        // is premultiplied is a property of that application, not of ALVR.
+                        PassthroughMode::AlphaStream(config) => config.premultiplied_alpha,
                         PassthroughMode::Blend {
-                            premultiplied_alpha: true,
+                            premultiplied_alpha,
                             ..
-                        } | PassthroughMode::RgbChromaKey(_)
-                            | PassthroughMode::HsvChromaKey(_)
-                    ),
+                        } => premultiplied_alpha,
+                        PassthroughMode::RgbChromaKey(_) | PassthroughMode::HsvChromaKey(_) => true,
+                    },
                 }),
             clientside_post_processing,
         );

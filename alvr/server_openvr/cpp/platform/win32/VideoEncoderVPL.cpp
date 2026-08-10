@@ -112,7 +112,8 @@ void VideoEncoderVPL::Transmit(
                             ),
                             m_vplBitstream.DataLength,
                             targetTimestampNs,
-                            insertIDR
+                            insertIDR,
+                            m_isAlphaStream
                         );
                         m_vplBitstream.DataLength = 0;
                     }

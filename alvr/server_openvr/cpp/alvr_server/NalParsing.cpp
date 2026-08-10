@@ -29,7 +29,7 @@ Sends the (VPS + )SPS + PPS video configuration headers from H.264 or H.265 stre
 NALs. (VPS + )SPS + PPS have short size (8bytes + 28bytes in some environment), so we can assume
 SPS + PPS is contained in first fragment.
 */
-void sendHeaders(int codec, unsigned char*& buf, int& len, int nalNum) {
+void sendHeaders(int codec, unsigned char*& buf, int& len, int nalNum, bool isAlpha) {
     unsigned char* cursor = buf;
     int headersLen = 0;
     int foundHeaders = -1; // Offset by 1 header to find the length until the next header
@@ -58,14 +58,18 @@ void sendHeaders(int codec, unsigned char*& buf, int& len, int nalNum) {
         return;
     }
 
-    SetVideoConfigNals((const unsigned char*)buf, headersLen, codec);
+    if (isAlpha) {
+        SetAlphaVideoConfigNals((const unsigned char*)buf, headersLen, codec);
+    } else {
+        SetVideoConfigNals((const unsigned char*)buf, headersLen, codec);
+    }
 
     // move the cursor forward excluding config NALs
     buf = cursor;
     len -= headersLen;
 }
 
-void processH264Nals(unsigned char*& buf, int& len) {
+void processH264Nals(unsigned char*& buf, int& len, bool isAlpha) {
     unsigned char prefixSize = getNalPrefixSize(buf);
     unsigned char nalType = buf[prefixSize] & 0x1F;
 
@@ -76,11 +80,11 @@ void processH264Nals(unsigned char*& buf, int& len) {
         nalType = buf[prefixSize] & 0x1F;
     }
     if (nalType == H264_NAL_TYPE_SPS) {
-        sendHeaders(ALVR_CODEC_H264, buf, len, 2); // 2 headers SPS and PPS
+        sendHeaders(ALVR_CODEC_H264, buf, len, 2, isAlpha); // 2 headers SPS and PPS
     }
 }
 
-void processHevcNals(unsigned char*& buf, int& len) {
+void processHevcNals(unsigned char*& buf, int& len, bool isAlpha) {
     unsigned char prefixSize = getNalPrefixSize(buf);
     unsigned char nalType = (buf[prefixSize] >> 1) & 0x3F;
 
@@ -91,27 +95,41 @@ void processHevcNals(unsigned char*& buf, int& len) {
         nalType = (buf[prefixSize] >> 1) & 0x3F;
     }
     if (nalType == HEVC_NAL_TYPE_VPS) {
-        sendHeaders(ALVR_CODEC_HEVC, buf, len, 3); // 3 headers VPS, SPS and PPS
+        sendHeaders(ALVR_CODEC_HEVC, buf, len, 3, isAlpha); // 3 headers VPS, SPS and PPS
     }
 }
 
 void ParseFrameNals(
-    int codec, unsigned char* buf, int len, unsigned long long targetTimestampNs, bool isIdr
+    int codec,
+    unsigned char* buf,
+    int len,
+    unsigned long long targetTimestampNs,
+    bool isIdr,
+    bool isAlpha
 ) {
-    static bool av1GotFrame = false;
+    // Tracked per stream: the color and alpha streams each need their own AV1 config NAL.
+    static bool av1GotFrame[2] = { false, false };
 
     if ((unsigned)len < sizeof(NAL_PREFIX_4B)) {
         return;
     }
 
     if (codec == ALVR_CODEC_H264) {
-        processH264Nals(buf, len);
+        processH264Nals(buf, len, isAlpha);
     } else if (codec == ALVR_CODEC_HEVC) {
-        processHevcNals(buf, len);
-    } else if (codec == ALVR_CODEC_AV1 && !av1GotFrame) {
-        av1GotFrame = true;
-        SetVideoConfigNals(0, 0, codec);
+        processHevcNals(buf, len, isAlpha);
+    } else if (codec == ALVR_CODEC_AV1 && !av1GotFrame[isAlpha ? 1 : 0]) {
+        av1GotFrame[isAlpha ? 1 : 0] = true;
+        if (isAlpha) {
+            SetAlphaVideoConfigNals(0, 0, codec);
+        } else {
+            SetVideoConfigNals(0, 0, codec);
+        }
     }
 
-    VideoSend(targetTimestampNs, buf, len, isIdr);
+    if (isAlpha) {
+        AlphaVideoSend(targetTimestampNs, buf, len, isIdr);
+    } else {
+        VideoSend(targetTimestampNs, buf, len, isIdr);
+    }
 }

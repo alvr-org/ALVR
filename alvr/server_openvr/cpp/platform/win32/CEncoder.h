@@ -11,6 +11,7 @@
 #include "alvr_server/Utils.h"
 #include <d3d11.h>
 #include <d3d11_1.h>
+#include <functional>
 #include <map>
 #include <wincodec.h>
 #include <wincodecsdk.h>
@@ -70,6 +71,9 @@ public:
 private:
     CThreadEvent m_newFrameReady, m_encodeFinished;
     std::shared_ptr<VideoEncoder> m_videoEncoder;
+    /// Second encoder for the monochrome alpha stream, only created for the 8 bit alpha
+    /// passthrough mode.
+    std::shared_ptr<VideoEncoder> m_alphaVideoEncoder;
     bool m_bExiting;
     uint64_t m_presentationTime;
     uint64_t m_targetTimestampNs;
@@ -77,4 +81,11 @@ private:
     std::shared_ptr<FrameRender> m_FrameRender;
 
     IDRScheduler m_scheduler;
+
+    /// Builds an encoder using the same AMD -> NVIDIA -> Intel -> software cascade as the main
+    /// one. Returns null if every backend fails, which for the alpha stream degrades to no alpha
+    /// rather than killing the session.
+    std::shared_ptr<VideoEncoder> CreateAlphaEncoder(
+        std::shared_ptr<CD3DRender> d3dRender, uint32_t width, uint32_t height
+    );
 };

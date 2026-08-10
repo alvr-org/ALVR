@@ -2,7 +2,7 @@ use crate::{
     Platform,
     extra_extensions::{
         self, BodyTrackerBD, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB, FaceTrackerBD,
-        FacialTrackerHTC, MotionTrackerBD, MultimodalMeta,
+        FaceTrackerPhoenix, FacialTrackerHTC, MotionTrackerBD, MultimodalMeta,
     },
 };
 use alvr_common::{
@@ -121,6 +121,10 @@ pub enum FaceExpressionsTracker {
     Htc {
         eye: Option<FacialTrackerHTC>,
         lip: Option<FacialTrackerHTC>,
+    },
+    Phoenix {
+        eyes: Option<FaceTrackerPhoenix>,
+        lip: Option<FaceTrackerPhoenix>,
     },
 }
 
@@ -583,6 +587,37 @@ impl InteractionContext {
                 // For vive, face trackers are always created at startup regardless of settings, and
                 // also cannot be destroyed early.
             }
+
+            if matches!(
+                self.platform,
+                Platform::Pico4Pro | Platform::Pico4Enterprise
+            ) {
+                let eyes_tracker = check_ext_object(
+                    "EyeTrackerPhoenix",
+                    FaceTrackerPhoenix::new(self.xr_session.clone(), self.xr_system),
+                );
+
+                let lip_tracker =
+                    if matches!(config, FaceTrackingSourcesConfig::PreferFullFaceTracking) {
+                        check_ext_object(
+                            "FaceTrackerPhoenix",
+                            FaceTrackerPhoenix::new(self.xr_session.clone(), self.xr_system),
+                        )
+                    } else {
+                        None
+                    };
+
+                if let Some(eyes) = &eyes_tracker {
+                    eyes.stop_tracking().ok();
+                    eyes.start_tracking().ok();
+                }
+
+                self.face_sources.face_expressions_tracker =
+                    Some(FaceExpressionsTracker::Phoenix {
+                        eyes: eyes_tracker,
+                        lip: lip_tracker,
+                    });
+            }
         }
 
         if let Some(config) = &config.body_tracking {
@@ -1008,6 +1043,16 @@ pub fn get_face_data(
                 .ok()
                 .flatten()
                 .map(FaceExpressions::Bd),
+            FaceExpressionsTracker::Phoenix { eyes, lip } => {
+                let eyes = eyes.as_ref().and_then(|eye_tracker| {
+                    eye_tracker.get_eye_tracking_data(xr_time).ok().flatten()
+                });
+                let lip = lip.as_ref().and_then(|face_tracker| {
+                    face_tracker.get_face_tracking_data(xr_time).ok().flatten()
+                });
+
+                Some(FaceExpressions::Phoenix { eyes, lip })
+            }
             FaceExpressionsTracker::Htc { eye, lip } => {
                 let eye = eye
                     .as_ref()

@@ -115,6 +115,7 @@ struct instance_dispatch_table {
     OPTIONAL(GetSwapchainImagesKHR)                                                                \
     OPTIONAL(AcquireNextImageKHR)                                                                  \
     OPTIONAL(QueuePresentKHR)                                                                      \
+    OPTIONAL(WaitForPresentKHR)                                                                    \
     OPTIONAL(GetSwapchainCounterEXT)                                                               \
     OPTIONAL(RegisterDisplayEventEXT)                                                              \
     OPTIONAL(GetFenceStatus)                                                                       \

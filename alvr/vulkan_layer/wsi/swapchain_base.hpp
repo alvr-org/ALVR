@@ -30,6 +30,8 @@
 
 #pragma once
 
+#include <condition_variable>
+#include <mutex>
 #include <pthread.h>
 #include <semaphore.h>
 #include <thread>
@@ -134,7 +136,29 @@ class swapchain_base {
     VkResult queue_present(VkQueue queue, const VkPresentInfoKHR *present_info,
                            const uint32_t image_index);
 
+    /**
+     * @brief Record the presentId a queued present was tagged with, releasing
+     * any wait_for_present() blocked on it or on an earlier id.
+     */
+    void set_present_id(uint64_t present_id);
+
+    /**
+     * @brief Block until a present tagged with @p present_id has been queued.
+     *
+     * @param timeout Nanoseconds to wait, UINT64_MAX to wait indefinitely.
+     *
+     * @return VK_SUCCESS once the id has been reached, VK_TIMEOUT otherwise.
+     */
+    VkResult wait_for_present(uint64_t present_id, uint64_t timeout);
+
   protected:
+    /**
+     * @brief Highest presentId queued so far, with its wait plumbing.
+     */
+    std::mutex m_present_id_mutex;
+    std::condition_variable m_present_id_cv;
+    uint64_t m_present_id = 0;
+
     layer::device_private_data &m_device_data;
 
     /**

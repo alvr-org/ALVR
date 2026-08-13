@@ -52,6 +52,9 @@ VKAPI_ATTR VkResult wsi_layer_vkAcquireNextImageKHR(VkDevice device, VkSwapchain
 VKAPI_ATTR VkResult wsi_layer_vkQueuePresentKHR(VkQueue queue,
                                                 const VkPresentInfoKHR *pPresentInfo);
 
+VKAPI_ATTR VkResult wsi_layer_vkWaitForPresentKHR(VkDevice device, VkSwapchainKHR swapc,
+                                                  uint64_t presentId, uint64_t timeout);
+
 VKAPI_ATTR VkResult wsi_layer_vkGetSwapchainCounterEXT(VkDevice device, VkSwapchainKHR swapchain,
                                                        VkSurfaceCounterFlagBitsEXT counter,
                                                        uint64_t *pCounterValue);

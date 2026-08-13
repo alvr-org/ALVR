@@ -34,6 +34,7 @@
 #include <array>
 #include <cassert>
 #include <cerrno>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 
@@ -542,6 +543,33 @@ VkResult swapchain_base::wait_for_free_buffer(uint64_t timeout) {
     }
 
     return retval;
+}
+
+void swapchain_base::set_present_id(uint64_t present_id) {
+    {
+        std::lock_guard<std::mutex> lock(m_present_id_mutex);
+        if (present_id <= m_present_id) {
+            return;
+        }
+        m_present_id = present_id;
+    }
+    m_present_id_cv.notify_all();
+}
+
+VkResult swapchain_base::wait_for_present(uint64_t present_id, uint64_t timeout) {
+    std::unique_lock<std::mutex> lock(m_present_id_mutex);
+
+    auto reached = [this, present_id]() { return m_present_id >= present_id; };
+
+    if (timeout == UINT64_MAX) {
+        m_present_id_cv.wait(lock, reached);
+        return VK_SUCCESS;
+    }
+
+    if (m_present_id_cv.wait_for(lock, std::chrono::nanoseconds(timeout), reached)) {
+        return VK_SUCCESS;
+    }
+    return VK_TIMEOUT;
 }
 
 #undef WSI_PRINT_ERROR

@@ -22,11 +22,13 @@
  * SOFTWARE.
  */
 
+#include <algorithm>
 #include <cassert>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <vector>
 
 #include <vulkan/vk_layer.h>
 
@@ -54,6 +56,32 @@ static const VkExtensionProperties device_extension[] = {
     {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_SWAPCHAIN_SPEC_VERSION}};
 static const VkExtensionProperties instance_extension[] = {
     {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_SURFACE_SPEC_VERSION}};
+
+/* Swapchain-scoped extensions this layer does not implement. The layer owns the
+ * swapchain: a VkSwapchainKHR handed to the application is a wsi::swapchain_base,
+ * not the driver's object. Any entrypoint of these extensions that reached the
+ * driver would dereference our object as the driver's own swapchain type, so they
+ * are hidden from the application instead.
+ *
+ * VK_KHR_present_id and VK_KHR_present_wait are deliberately absent: SteamVR
+ * resolves vkWaitForPresentKHR only when they are advertised, but calls the
+ * result unconditionally, and it never initialises that member. Hiding them
+ * leaves it calling into whatever the heap left behind, so the layer implements
+ * them instead. */
+static const char *const unowned_swapchain_extensions[] = {
+    "VK_KHR_present_id2",
+    "VK_KHR_present_wait2",
+    "VK_EXT_swapchain_maintenance1",
+};
+
+bool is_unowned_swapchain_extension(const char *name) {
+    for (const char *extension : unowned_swapchain_extensions) {
+        if (!strcmp(name, extension)) {
+            return true;
+        }
+    }
+    return false;
+}
 
 VKAPI_ATTR VkResult extension_properties(const uint32_t count,
                                          const VkExtensionProperties *layer_ext, uint32_t *pCount,
@@ -253,6 +281,13 @@ VKAPI_ATTR VkResult create_device(VkPhysicalDevice physicalDevice,
         return VK_ERROR_OUT_OF_HOST_MEMORY;
     }
 
+    /* An application that enables one of these anyway must not reach the driver's
+     * implementation with our swapchain handles. */
+    modified_enabled_extensions.erase(
+        std::remove_if(modified_enabled_extensions.begin(), modified_enabled_extensions.end(),
+                       [](const char *name) { return is_unowned_swapchain_extension(name); }),
+        modified_enabled_extensions.end());
+
     /* Now call create device on the chain further down the list. */
     VkDeviceCreateInfo modified_info = *pCreateInfo;
     modified_info.ppEnabledExtensionNames = modified_enabled_extensions.data();
@@ -344,8 +379,41 @@ VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkEnumerateDeviceExtensionProperties(
         return layer::extension_properties(1, layer::device_extension, pCount, pProperties);
 
     assert(physicalDevice);
-    return layer::instance_private_data::get(physicalDevice)
-        .disp.EnumerateDeviceExtensionProperties(physicalDevice, pLayerName, pCount, pProperties);
+    auto &disp = layer::instance_private_data::get(physicalDevice).disp;
+
+    uint32_t driver_count = 0;
+    VkResult result =
+        disp.EnumerateDeviceExtensionProperties(physicalDevice, pLayerName, &driver_count, nullptr);
+    if (result != VK_SUCCESS) {
+        return result;
+    }
+
+    std::vector<VkExtensionProperties> properties(driver_count);
+    if (driver_count != 0) {
+        result = disp.EnumerateDeviceExtensionProperties(physicalDevice, pLayerName, &driver_count,
+                                                         properties.data());
+        if (result != VK_SUCCESS) {
+            return result;
+        }
+        properties.resize(driver_count);
+    }
+
+    properties.erase(std::remove_if(properties.begin(), properties.end(),
+                                    [](const VkExtensionProperties &extension) {
+                                        return layer::is_unowned_swapchain_extension(
+                                            extension.extensionName);
+                                    }),
+                     properties.end());
+
+    if (pProperties == nullptr) {
+        *pCount = properties.size();
+        return VK_SUCCESS;
+    }
+
+    uint32_t copied = std::min<uint32_t>(*pCount, properties.size());
+    memcpy(pProperties, properties.data(), copied * sizeof(VkExtensionProperties));
+    *pCount = copied;
+    return copied < properties.size() ? VK_INCOMPLETE : VK_SUCCESS;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkEnumerateInstanceExtensionProperties(
@@ -373,11 +441,20 @@ PFN_vkVoidFunction VKAPI_CALL wsi_layer_vkGetDeviceProcAddr(VkDevice device,
     GET_PROC_ADDR(vkGetSwapchainImagesKHR);
     GET_PROC_ADDR(vkAcquireNextImageKHR);
     GET_PROC_ADDR(vkQueuePresentKHR);
+    GET_PROC_ADDR(vkWaitForPresentKHR);
     GET_PROC_ADDR(vkGetSwapchainCounterEXT);
     GET_PROC_ADDR(vkRegisterDisplayEventEXT);
     GET_PROC_ADDR(vkDestroyFence);
     GET_PROC_ADDR(vkWaitForFences);
     GET_PROC_ADDR(vkGetFenceStatus);
+
+    /* Swapchain entrypoints the layer does not implement. Returning the driver's
+     * pointer would let it read our wsi::swapchain_base as its own swapchain
+     * struct, which faults on the first dispatch through it. */
+    if (!strcmp(funcName, "vkWaitForPresent2KHR")
+        || !strcmp(funcName, "vkReleaseSwapchainImagesEXT")) {
+        return nullptr;
+    }
 
     return layer::device_private_data::get(device).disp.GetDeviceProcAddr(device, funcName);
 }

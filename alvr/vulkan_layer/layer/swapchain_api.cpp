@@ -138,6 +138,24 @@ VKAPI_ATTR VkResult wsi_layer_vkQueuePresentKHR(VkQueue queue,
 
         VkResult res = sc->queue_present(queue, pPresentInfo, pPresentInfo->pImageIndices[i]);
 
+        /* Record the presentId this frame was tagged with, so a caller blocked in
+         * vkWaitForPresentKHR can be released. */
+        if (res == VK_SUCCESS) {
+            for (const VkBaseInStructure *next =
+                     reinterpret_cast<const VkBaseInStructure *>(pPresentInfo->pNext);
+                 next != nullptr; next = next->pNext) {
+                if (next->sType != VK_STRUCTURE_TYPE_PRESENT_ID_KHR) {
+                    continue;
+                }
+                const VkPresentIdKHR *present_id =
+                    reinterpret_cast<const VkPresentIdKHR *>(next);
+                if (present_id->pPresentIds != nullptr && i < present_id->swapchainCount) {
+                    sc->set_present_id(present_id->pPresentIds[i]);
+                }
+                break;
+            }
+        }
+
         if (pPresentInfo->pResults != nullptr) {
             pPresentInfo->pResults[i] = res;
         }
@@ -148,6 +166,19 @@ VKAPI_ATTR VkResult wsi_layer_vkQueuePresentKHR(VkQueue queue,
     }
 
     return ret;
+}
+
+VKAPI_ATTR VkResult wsi_layer_vkWaitForPresentKHR(VkDevice device, VkSwapchainKHR swapc,
+                                                  uint64_t presentId, uint64_t timeout) {
+    layer::device_private_data &device_data = layer::device_private_data::get(device);
+
+    if (!device_data.layer_owns_swapchain(swapc)) {
+        return device_data.disp.WaitForPresentKHR(device_data.device, swapc, presentId, timeout);
+    }
+
+    assert(swapc != VK_NULL_HANDLE);
+    wsi::swapchain_base *sc = reinterpret_cast<wsi::swapchain_base *>(swapc);
+    return sc->wait_for_present(presentId, timeout);
 }
 
 VKAPI_ATTR VkResult wsi_layer_vkGetSwapchainCounterEXT(VkDevice device, VkSwapchainKHR swapchain,

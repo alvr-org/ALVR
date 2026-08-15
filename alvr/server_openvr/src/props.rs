@@ -666,3 +666,41 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
         }
     }
 }
+
+/// Initialize critical OpenVR properties for HMD device BEFORE device activation.
+/// This prevents race conditions with SteamVR property queries.
+#[unsafe(no_mangle)]
+pub extern "C" fn initialize_critical_hmd_properties(
+    instance_ptr: *mut c_void,
+    is_wireless: bool,
+) {
+    #[expect(clippy::enum_glob_use)]
+    use OpenvrPropKey::*;
+
+    let set_prop = |key, value: &str| {
+        set_openvr_prop(
+            Some(instance_ptr),
+            *HEAD_ID,
+            OpenvrProperty {
+                key,
+                value: value.into(),
+            },
+        );
+    };
+
+    // Set critical wireless detection properties
+    // These MUST be set before SteamVR queries them during device activation
+    if is_wireless {
+        set_prop(ExpectWirelessHeadsetBool, "true");
+        set_prop(DeviceIsWirelessBool, "true");
+        set_prop(ConnectedWirelessDongleString, "D0000BE000");
+    } else {
+        set_prop(ExpectWirelessHeadsetBool, "false");
+        set_prop(DeviceIsWirelessBool, "false");
+    }
+
+    debug!(
+        "Initialized critical HMD properties: is_wireless={}",
+        is_wireless
+    );
+}

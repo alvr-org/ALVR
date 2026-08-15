@@ -243,10 +243,17 @@ impl BitrateManager {
 
         bitrate_directives.requested_bitrate_bps = bitrate_bps;
 
+        let mut framerate = 1.0 / f32::min(frame_interval.as_secs_f32(), 1.0);
+
+        // Apply FPS limiter if configured
+        if config.max_framerate_limiter > 0 {
+            framerate = f32::min(framerate, config.max_framerate_limiter as f32);
+        }
+
         Some((
             DynamicEncoderParams {
                 bitrate_bps,
-                framerate: 1.0 / f32::min(frame_interval.as_secs_f32(), 1.0),
+                framerate,
             },
             bitrate_directives,
         ))

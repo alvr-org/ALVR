@@ -902,14 +902,80 @@ fn connection_pipeline(
             #[cfg(not(target_os = "linux"))]
             while is_streaming(&client_hostname) {
                 {
-                    let device = match alvr_audio::new_output(config.device.as_ref()) {
-                        Ok(data) => data,
-                        Err(e) => {
-                            warn!("New audio device failed: {e:?}");
-                            thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-                            continue;
+                    // Try to select audio device with better fallback logic
+                    let device = if let Some(custom_config) = &config.device {
+                        // User configured a specific device
+                        match alvr_audio::new_output(Some(custom_config)) {
+                            Ok(d) => d,
+                            Err(e) => {
+                                warn!("Could not open configured audio device: {e:?}");
+                                warn!("Attempting to find virtual audio device automatically...");
+                                
+                                // Fallback: try to find a virtual device
+                                #[cfg(windows)]
+                                match alvr_audio::find_virtual_audio_device() {
+                                    Ok(d) => {
+                                        info!("Found virtual audio device: {}", 
+                                              d.name().unwrap_or("Unknown".to_string()));
+                                        d
+                                    }
+                                    Err(_) => {
+                                        error!("No audio device available. Audio streaming disabled.");
+                                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                                        continue;
+                                    }
+                                }
+                                #[cfg(not(windows))]
+                                {
+                                    thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                                    continue;
+                                }
+                            }
+                        }
+                    } else {
+                        // No custom device specified, find virtual device or fallback to default
+                        #[cfg(windows)]
+                        match alvr_audio::find_virtual_audio_device() {
+                            Ok(d) => {
+                                info!("Using virtual audio device: {}", 
+                                      d.name().unwrap_or("Unknown".to_string()));
+                                d
+                            }
+                            Err(_) => {
+                                warn!("No virtual audio device found. Using default output device.");
+                                warn!("To prevent audio from playing on both headset and speakers,");
+                                warn!("please install VB-Cable or similar virtual audio device.");
+                                
+                                // Use system default as last resort
+                                match alvr_audio::new_output(None) {
+                                    Ok(d) => d,
+                                    Err(e) => {
+                                        error!("No audio device found: {e:?}");
+                                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+                        #[cfg(not(windows))]
+                        match alvr_audio::new_output(None) {
+                            Ok(d) => d,
+                            Err(e) => {
+                                warn!("New audio device failed: {e:?}");
+                                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                                continue;
+                            }
                         }
                     };
+
+                    // Validate device is appropriate for audio capture
+                    #[cfg(windows)]
+                    if let Ok(is_virtual) = alvr_audio::is_virtual_audio_device(&device) {
+                        if !is_virtual {
+                            warn!("Warning: Audio device is not a virtual device.");
+                            warn!("Audio may play from both headset and speakers.");
+                        }
+                    }
 
                     #[cfg(windows)]
                     if let Ok(id) = alvr_audio::get_windows_device_id(&device) {

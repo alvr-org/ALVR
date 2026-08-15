@@ -79,3 +79,53 @@ pub fn is_same_device(device1: &Device, device2: &Device) -> bool {
 
     dev1 == dev2
 }
+
+/// Check if a device is a virtual audio device (for capturing game audio, not system speakers)
+pub fn is_virtual_audio_device(device: &Device) -> Result<bool> {
+    let name = device.name()?;
+    let name_lower = name.to_lowercase();
+
+    // List of known virtual audio device names
+    let virtual_device_names = [
+        "alvr",
+        "vb-cable",
+        "vb-audio",
+        "voicemeeter",
+        "loopback",
+        "stereo mix",
+        "what u hear",
+        "wave out mix",
+        "virtual",
+        "audio repeater",
+    ];
+
+    Ok(virtual_device_names.iter().any(|vd| name_lower.contains(vd)))
+}
+
+/// Find an appropriate virtual audio device on the system
+pub fn find_virtual_audio_device() -> Result<Device> {
+    use cpal::traits::HostTrait;
+    
+    let host = cpal::default_host();
+    let mut devices: Vec<_> = host
+        .output_devices()?
+        .filter(|d| is_virtual_audio_device(d).unwrap_or(false))
+        .collect();
+
+    // Sort by name for consistent selection
+    devices.sort_by(|a, b| {
+        a.name()
+            .unwrap_or_default()
+            .cmp(&b.name().unwrap_or_default())
+    });
+
+    devices
+        .into_iter()
+        .next()
+        .ok_or_else(|| {
+            alvr_common::anyhow::anyhow!(
+                "No virtual audio device found. Please install VB-Cable or Voicemeeter."
+            )
+        })
+}
+}

@@ -429,6 +429,14 @@ This has an effect only on AMD GPUs."
     ))]
     #[schema(flag = "steamvr-restart")]
     pub image_corruption_fix: bool,
+
+    #[schema(strings(
+        display_name = "Maximum framerate limiter",
+        help = "Limit the maximum framerate to reduce latency and improve stability. Set to 0 to disable (unlimited)."
+    ))]
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0, max = 120, step = 1)), suffix = "fps")]
+    pub max_framerate_limiter: u32,
 }
 
 #[repr(u8)]

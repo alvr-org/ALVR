@@ -14,8 +14,9 @@ existing clients working unchanged; see "ALVR changes" below.
 
 - Connects to the server, sends head tracking, and reports frame pacing so the server's latency
   estimate and adaptive bitrate behave normally.
-- **Decodes and displays the video stream.** The toolbar switches between the decoded video and the
-  local glTF scene, which is useful for telling a decode problem apart from a rendering one.
+- **Decodes and displays the video stream.** The toolbar switches between the decoded video
+  (**Virtual**) and the local glTF scene (**Real**), which is useful for telling a decode problem
+  apart from a rendering one.
 - Renders a glTF scene from a first person camera. This is also what the capture endpoints return —
   they render the scene offscreen, not the video.
 - **Emulates motion controllers.** Either controller can be enabled independently, posed in 6DoF,
@@ -103,9 +104,14 @@ worth not repeating.
 
 There is no collision: walking through walls is expected.
 
-The toolbar selects which eye the window shows — **Left**, **Right** or **Stereo** — and whether the
-source is the decoded **Video** or the local **Scene**. It also shows the connection state, stream
-resolution, decoded frame count and current position.
+The toolbar selects which eye the window shows — **Left**, **Right** or **Stereo** — and which
+source it draws. **Virtual** is the decoded video, the content the VR server renders; **Real** is
+the local glTF scene, which stands in for what the headset's cameras would see. It also shows the
+connection state, stream resolution and current position.
+
+**Stats**, shown while streaming, toggles a readout over the top of the view: the refresh rate,
+frame pacing, head speed and decoded frame count. The same numbers are in `GET /api/state`; see
+[`frame_timing`](#frame_timing).
 
 ## Controller emulation
 
@@ -236,13 +242,13 @@ Localhost only, and unauthenticated: it is a debugging interface and must not be
 `hud_message` carries the client core's own status text, which is where connection errors surface.
 
 `codec` becomes the negotiated codec once the server announces it. Decoded frame count and frame
-layout are shown in the toolbar but are not yet exposed here.
+layout are shown in the stats overlay but are not yet exposed here.
 
 #### `frame_timing`
 
-How evenly the streamed world is advancing, averaged over the last ~150 displayed frames and also
-shown on the toolbar while streaming. Each entry is a `mean` with its mean absolute `deviation`,
-and the deviations are the interesting half — they say *where* judder is coming from.
+How evenly the streamed world is advancing, averaged over the last ~150 displayed frames. The
+**Stats** overlay shows a subset of the same numbers. Each entry is a `mean` with its mean absolute
+`deviation`, and the deviations are the interesting half — they say *where* judder is coming from.
 
 | Field | Measures | A large deviation means |
 |---|---|---|

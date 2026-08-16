@@ -572,13 +572,18 @@ pub fn toolbar_row(
             }
         }
 
+        // Right aligned, matching the hint on the row above.
         if controllers.iter().any(|state| state.enabled) {
-            ui.separator();
-            ui.label(
-                eframe::egui::RichText::new(
-                    "Hover a controller icon to move it; use the corner panels for buttons",
-                )
-                .weak(),
+            ui.with_layout(
+                eframe::egui::Layout::right_to_left(eframe::egui::Align::Center),
+                |ui| {
+                    ui.label(
+                        eframe::egui::RichText::new(
+                            "Hover a controller icon to move it; use the corner panels for buttons",
+                        )
+                        .weak(),
+                    );
+                },
             );
         }
     });

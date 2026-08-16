@@ -88,8 +88,13 @@ struct EmulatorApp {
     environment_path: PathBuf,
     view_mode: ViewMode,
     /// Show the streamed video rather than the local scene, when a stream is available.
+    ///
+    /// The stream is the *virtual* source: it is the VR content the server renders. The local
+    /// glTF scene stands in for what the headset's cameras would see, so it is the *real* one.
     prefer_video: bool,
-    /// Decoded frame count and layout, mirrored out of the video renderer for the toolbar.
+    /// Show the frame pacing overlay over the view.
+    show_stats: bool,
+    /// Decoded frame count and layout, mirrored out of the video renderer for the stats overlay.
     video_frames: u64,
     video_layout: FrameLayout,
     /// Pixel aspect ratio of one eye of the video, mirrored out for the letterboxed display.
@@ -186,6 +191,7 @@ impl EmulatorApp {
             environment_path,
             view_mode: ViewMode::Stereo,
             prefer_video: true,
+            show_stats: true,
             video_frames: 0,
             video_layout: FrameLayout::Single,
             video_eye_aspect: None,
@@ -753,6 +759,58 @@ impl EmulatorApp {
         };
     }
 
+    /// Label and value pairs for the stats overlay, in display order.
+    ///
+    /// The head motion is reported as a speed rather than the per-frame step it is measured as:
+    /// degrees and metres per second are quantities you can compare against how fast you are
+    /// actually turning or walking, whereas a per-frame step only means something once you have
+    /// divided it by the frame interval yourself. The deviation carries over unchanged, and it is
+    /// the number that matters — under steady motion the speed should be constant, so whatever it
+    /// varies by is scene movement with nothing behind it.
+    fn stats_entries(&mut self) -> Vec<(String, String)> {
+        let refresh_rate = self.status().refresh_rate;
+        let timing = self.client().frame_timing();
+
+        let frames_per_second = if timing.world_ms.mean > 0.0 {
+            1000.0 / timing.world_ms.mean
+        } else {
+            0.0
+        };
+
+        vec![
+            ("refresh".into(), format!("{refresh_rate:.0} Hz")),
+            (
+                "world".into(),
+                format!(
+                    "{:.1}±{:.1} ms",
+                    timing.world_ms.mean, timing.world_ms.deviation
+                ),
+            ),
+            (
+                "screen".into(),
+                format!(
+                    "{:.1}±{:.1} ms",
+                    timing.screen_ms.mean, timing.screen_ms.deviation
+                ),
+            ),
+            (
+                "speed".into(),
+                format!(
+                    "{:.1}±{:.1} °/s   {:.2}±{:.2} m/s",
+                    timing.step_deg.mean * frames_per_second,
+                    timing.step_deg.deviation * frames_per_second,
+                    // Millimetres per frame times frames per second is millimetres per second.
+                    timing.step_mm.mean * frames_per_second / 1000.0,
+                    timing.step_mm.deviation * frames_per_second / 1000.0,
+                ),
+            ),
+            (
+                "frames".into(),
+                format!("{} {:?}", self.video_frames, self.video_layout),
+            ),
+        ]
+    }
+
     fn draw_toolbar(&mut self, ui: &mut Ui) {
         egui::Panel::top(egui::Id::new("toolbar")).show(ui, |ui| {
             ui.horizontal(|ui| {
@@ -763,11 +821,12 @@ impl EmulatorApp {
 
                 ui.separator();
 
-                // Switching to the scene while streaming is useful for telling a decode problem
-                // apart from a rendering one.
+                // The stream is the virtual content, the local scene stands in for what the
+                // headset's cameras would see. Switching to the latter while streaming is also how
+                // to tell a decode problem apart from a rendering one.
                 ui.label("Source:");
-                ui.selectable_value(&mut self.prefer_video, true, "Video");
-                ui.selectable_value(&mut self.prefer_video, false, "Scene");
+                ui.selectable_value(&mut self.prefer_video, true, "Virtual");
+                ui.selectable_value(&mut self.prefer_video, false, "Real");
 
                 ui.separator();
 
@@ -775,35 +834,15 @@ impl EmulatorApp {
                 if status.streaming {
                     ui.label(
                         RichText::new(format!(
-                            "Streaming  {}x{} @ {:.0} Hz",
-                            status.view_resolution.x, status.view_resolution.y, status.refresh_rate
+                            "Streaming  {}x{}",
+                            status.view_resolution.x, status.view_resolution.y
                         ))
                         .color(Color32::LIGHT_GREEN),
                     );
 
-                    ui.separator();
-
-                    // The judder readout. `world` is how much world time each displayed frame
-                    // advanced by and `screen` how long it was on screen for; both should sit at
-                    // the stream interval with a deviation near zero. World deviation means the
-                    // tracking the server rendered from was unevenly spaced, screen deviation
-                    // means this window presented the frames unevenly. Head-locked content — the
-                    // controllers — stands still against both, which is what makes them visible.
-                    let timing = self.client().frame_timing();
-                    ui.label(
-                        RichText::new(format!(
-                            "world {:.1}±{:.1} ms   screen {:.1}±{:.1} ms   step {:.3}±{:.3}°  {:.1}±{:.1} mm",
-                            timing.world_ms.mean,
-                            timing.world_ms.deviation,
-                            timing.screen_ms.mean,
-                            timing.screen_ms.deviation,
-                            timing.step_deg.mean,
-                            timing.step_deg.deviation,
-                            timing.step_mm.mean,
-                            timing.step_mm.deviation,
-                        ))
-                        .weak(),
-                    );
+                    // The numbers themselves go in an overlay over the view, where there is room
+                    // to label them; see [`draw_stats_overlay`].
+                    ui.toggle_value(&mut self.show_stats, "Stats");
                 } else {
                     ui.label(
                         RichText::new("Not connected to ALVR server").color(Color32::LIGHT_RED),
@@ -812,14 +851,7 @@ impl EmulatorApp {
 
                 ui.separator();
 
-                if self.video_frames > 0 {
-                    ui.label(format!(
-                        "video {} frames, {:?}",
-                        self.video_frames, self.video_layout
-                    ));
-                    ui.separator();
-                }
-
+                ui.label("Position:");
                 ui.label(format!(
                     "x {:.2}  y {:.2}  z {:.2}",
                     self.camera.position.x, self.camera.position.y, self.camera.position.z
@@ -964,6 +996,14 @@ impl App for EmulatorApp {
         // suppressed while the mouse drives the camera, so the release click cannot land on a
         // control the hidden cursor happens to be over.
         let interactive = !self.look_active();
+
+        if let Some(view_rect) = view_rect
+            && self.show_stats
+            && self.status().streaming
+        {
+            let entries = self.stats_entries();
+            draw_stats_overlay(&ui_context, view_rect, &entries);
+        }
 
         if let Some(view_rect) = view_rect {
             let views =
@@ -1255,6 +1295,85 @@ fn fit_viewport(left: f32, top: f32, width: f32, height: f32, aspect: f32) -> (f
         fitted_width,
         fitted_height,
     )
+}
+
+/// Gap between a stat's label and its value, and between one stat and the next.
+const STATS_LABEL_GAP: f32 = 5.0;
+const STATS_ENTRY_GAP: f32 = 18.0;
+
+/// Frame pacing readout, drawn as a rounded strip over the top of the view.
+///
+/// Painted rather than built from widgets: it is a pure readout with no interaction, and painting
+/// it means the strip is centred correctly on the very first frame. An `Area` would have to be
+/// measured once before it could be placed, which is the same trap the controller panels avoid by
+/// positioning themselves from explicit coordinates.
+///
+/// Labels are dimmed and values are not, so the numbers read at a glance and the words stay out of
+/// the way.
+fn draw_stats_overlay(ctx: &egui::Context, view_rect: egui::Rect, entries: &[(String, String)]) {
+    if entries.is_empty() {
+        return;
+    }
+
+    let painter = ctx.layer_painter(egui::LayerId::new(
+        egui::Order::Middle,
+        egui::Id::new("stats overlay"),
+    ));
+
+    let label_font = egui::FontId::proportional(12.0);
+    let value_font = egui::FontId::monospace(12.0);
+    let label_color = Color32::from_rgb(150, 155, 165);
+
+    // Laid out before anything is drawn, so the strip can be sized and centred to fit.
+    let galleys = entries
+        .iter()
+        .map(|(label, value)| {
+            (
+                painter.layout_no_wrap(label.clone(), label_font.clone(), label_color),
+                painter.layout_no_wrap(value.clone(), value_font.clone(), Color32::WHITE),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let content_width = galleys
+        .iter()
+        .map(|(label, value)| label.size().x + STATS_LABEL_GAP + value.size().x)
+        .sum::<f32>()
+        + STATS_ENTRY_GAP * (galleys.len() - 1) as f32;
+    let content_height = galleys
+        .iter()
+        .map(|(label, value)| label.size().y.max(value.size().y))
+        .fold(0.0, f32::max);
+
+    let margin = egui::vec2(12.0, 6.0);
+    let strip = egui::Rect::from_center_size(
+        egui::pos2(
+            view_rect.center().x,
+            view_rect.top() + 10.0 + content_height / 2.0 + margin.y,
+        ),
+        egui::vec2(content_width, content_height) + margin * 2.0,
+    );
+
+    painter.rect_filled(
+        strip,
+        egui::CornerRadius::same(8),
+        Color32::from_black_alpha(170),
+    );
+
+    let mut cursor = strip.left_top() + margin;
+    for (label, value) in galleys {
+        let label_width = label.size().x;
+        let value_width = value.size().x;
+
+        painter.galley(cursor, label, label_color);
+        painter.galley(
+            cursor + egui::vec2(label_width + STATS_LABEL_GAP, 0.0),
+            value,
+            Color32::WHITE,
+        );
+
+        cursor.x += label_width + STATS_LABEL_GAP + value_width + STATS_ENTRY_GAP;
+    }
 }
 
 /// View matrix of one eye, from the world-space eye pose the server reported for a video frame.

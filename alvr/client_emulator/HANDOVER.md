@@ -260,7 +260,10 @@ measure, entirely from the client side:
 | `screen` | real time each frame was on screen | uneven presentation by this window |
 | `repeat` | frames that came back with the previous frame's pose | view parameter lookups are missing |
 
-It is on the toolbar while streaming and in `GET /api/state` under `frame_timing`. `POST /api/drive`
+It is behind the toolbar's **Stats** toggle while streaming, and in `GET /api/state` under
+`frame_timing`. The overlay reports the head motion as a *speed* rather than the per-frame step it
+is measured as, since °/s and m/s can be compared against how fast you are actually moving.
+`POST /api/drive`
 holds a camera input — a *rate*, not a pose — so a scripted sweep runs down the same code path the
 keyboard does. Posting individual poses instead makes the caller's own scheduling part of the
 measurement, which is fatal here: an HTTP client cannot pace itself to anywhere near a frame.

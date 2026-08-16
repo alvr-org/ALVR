@@ -24,6 +24,12 @@ pub const KEEPALIVE_TIMEOUT: Duration = Duration::from_secs(2);
 pub const MDNS_SERVICE_TYPE: &str = "_alvr._tcp.local.";
 pub const MDNS_PROTOCOL_KEY: &str = "protocol";
 pub const MDNS_DEVICE_ID_KEY: &str = "device_id";
+/// Control port the client is listening on, when it is not the well-known [`CONTROL_PORT`].
+///
+/// Clients that omit this advertise nothing new and the server falls back to [`CONTROL_PORT`], so
+/// older clients keep working unchanged. It exists so several clients can run on one machine, where
+/// only one of them could own the well-known port.
+pub const MDNS_CONTROL_PORT_KEY: &str = "control_port";
 
 pub const WIRED_CLIENT_HOSTNAME: &str = "client.wired";
 
@@ -97,11 +103,11 @@ fn set_dscp(socket: &Socket, dscp: Option<DscpTos>) {
 // is non-standard
 // todo: convert to class when storing a TcpListener
 pub fn connect_to_client<T: DeserializeOwned>(
-    client_ips: Vec<IpAddr>,
+    client_addresses: Vec<(IpAddr, u16)>,
     timeout: Duration,
 ) -> ConResult<(ProtoControlSocket, IpAddr, T)> {
     let (mut control_socket, client_ip) =
-        ProtoControlSocket::connect_to(timeout, PeerType::AnyClient(client_ips))?;
+        ProtoControlSocket::connect_to(timeout, PeerType::AnyClient(client_addresses))?;
 
     let res = control_socket.recv(timeout)?;
 
@@ -169,15 +175,19 @@ impl SocketConnection {
             .send(&ServerControlPacket::StartStream)
             .to_con()?;
 
-        let signal = control_socket.recv(timeout)?;
-        if !matches!(signal, ClientControlPacket::StreamReady) {
-            con_bail!("Got unexpected packet waiting for stream ack");
-        }
+        // Older clients send `StreamReady` and are reached on the configured port, exactly as
+        // before. Clients that had to bind elsewhere report where, so they can share a machine.
+        let client_stream_port = match control_socket.recv(timeout)? {
+            ClientControlPacket::StreamReady => socket_config.port,
+            ClientControlPacket::StreamReadyOnPort(port) => port,
+            _ => con_bail!("Got unexpected packet waiting for stream ack"),
+        };
 
         let stream_socket = StreamSocketBuilder::connect_to_client(
             timeout,
             client_ip,
             socket_config.port,
+            client_stream_port,
             socket_config.protocol,
             socket_config.dscp,
             socket_config.buffer_config,

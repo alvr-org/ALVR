@@ -220,20 +220,15 @@ impl SoftwareDecoder {
             self.awaiting_keyframe = false;
         }
 
-        // The timestamp must come back out exactly as ALVR passed it in: its statistics are keyed by
-        // that value, and a mismatch means no statistics ever reach the server. ffmpeg preserves the
-        // packet PTS onto the frame, and the queue is the fallback for a frame that arrives without
-        // one.
+        // The timestamp must come back out exactly as ALVR passed it in, to the nanosecond. The PTS
+        // identifies which submitted frame this is; the value handed on is the original, because a
+        // PTS only carries microseconds. See [`take_submitted_timestamp`]. A frame that arrives
+        // without a usable PTS falls back to submission order.
         let timestamp = frame
             .pts()
-            .map(pts_to_duration)
+            .and_then(|pts| take_submitted_timestamp(&mut self.submitted_timestamps, pts))
             .or_else(|| self.submitted_timestamps.pop_front())
             .unwrap_or_default();
-
-        // Keep the queue from growing when PTS is present and the fallback is unused.
-        if frame.pts().is_some() {
-            self.submitted_timestamps.pop_front();
-        }
 
         // Both layouts are planar 8-bit YUV 4:2:0 and differ only in sample range. YUVJ is
         // deprecated in ffmpeg but still what its H.264 decoder reports for full-range streams,
@@ -364,21 +359,61 @@ fn duration_to_pts(timestamp: Duration) -> i64 {
     timestamp.as_micros() as i64
 }
 
-fn pts_to_duration(pts: i64) -> Duration {
-    Duration::from_micros(pts.max(0) as u64)
+/// Recovers the exact `Duration` that produced `pts`, and drops everything ahead of it.
+///
+/// A PTS carries microseconds, and ALVR's frame timestamps do not fit in microseconds: they are
+/// `Instant` elapsed times, which on Windows come from the performance counter at 100 ns
+/// resolution. Converting the PTS back therefore lands within a microsecond of the original rather
+/// than on it, and every lookup keyed by the timestamp then misses — the statistics chain finds
+/// nothing, and `report_compositor_start` hands back the *previous* frame's view parameters
+/// instead of this frame's, so anything drawn from them lags the video by however long the last
+/// exact match was ago. Measured before this: 91% of displayed frames came back with a stale pose.
+///
+/// Entries in front of the match are dropped rather than kept. The decoder emits frames in
+/// submission order, so anything still queued ahead of the match went in and never came out.
+fn take_submitted_timestamp(queue: &mut VecDeque<Duration>, pts: i64) -> Option<Duration> {
+    let index = queue
+        .iter()
+        .position(|timestamp| duration_to_pts(*timestamp) == pts)?;
+
+    queue.drain(..index);
+    queue.pop_front()
 }
 
-/// Guards the assumption that microseconds round-trip exactly.
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn timestamps_round_trip() {
-        for micros in [0u64, 1, 999, 1_000_000, 16_666, 72_000_000_000] {
-            let original = Duration::from_micros(micros);
-            assert_eq!(pts_to_duration(duration_to_pts(original)), original);
-        }
+    fn recovers_full_precision_timestamps() {
+        // Sub-microsecond digits, as a real frame timestamp has. Truncating the PTS and converting
+        // it back would lose them, and every lookup keyed by the timestamp would miss.
+        let submitted = [
+            Duration::new(3, 16_666_400),
+            Duration::new(3, 30_555_100),
+            Duration::new(3, 44_443_900),
+        ];
+        let mut queue = VecDeque::from(submitted.to_vec());
+
+        assert_eq!(
+            take_submitted_timestamp(&mut queue, duration_to_pts(submitted[1])),
+            Some(submitted[1])
+        );
+        // The skipped frame is gone, so the next match cannot resolve backwards onto it.
+        assert_eq!(queue.len(), 1);
+        assert_eq!(
+            take_submitted_timestamp(&mut queue, duration_to_pts(submitted[2])),
+            Some(submitted[2])
+        );
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn unknown_pts_leaves_the_queue_alone() {
+        let mut queue = VecDeque::from(vec![Duration::new(1, 500)]);
+
+        assert_eq!(take_submitted_timestamp(&mut queue, 999_999_999), None);
+        assert_eq!(queue.len(), 1);
     }
 
     #[test]

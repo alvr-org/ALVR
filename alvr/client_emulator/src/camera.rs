@@ -70,16 +70,24 @@ pub struct CameraInput {
     pub height: f32,
     /// Mouse motion in pixels, applied to yaw and pitch. Only set while look is captured.
     pub mouse_delta: (f32, f32),
+    /// Look rates in radians per second, integrated against the frame time. This is how
+    /// `/api/drive` turns the head: a rate is a smooth function of time, whereas replaying poses
+    /// from an external caller carries that caller's scheduling into the tracking signal.
+    pub yaw_rate: f32,
+    pub pitch_rate: f32,
+    pub roll_rate: f32,
     pub fast: bool,
 }
 
 impl Camera {
     pub fn apply_input(&mut self, input: &CameraInput, delta_seconds: f32) {
         self.yaw -= input.mouse_delta.0 * MOUSE_SENSITIVITY;
-        self.pitch = (self.pitch - input.mouse_delta.1 * MOUSE_SENSITIVITY)
+        self.yaw += input.yaw_rate * delta_seconds;
+        self.pitch = (self.pitch - input.mouse_delta.1 * MOUSE_SENSITIVITY
+            + input.pitch_rate * delta_seconds)
             .clamp(-std::f32::consts::FRAC_PI_2, std::f32::consts::FRAC_PI_2);
 
-        self.roll += input.roll * ROLL_SPEED * delta_seconds;
+        self.roll += (input.roll * ROLL_SPEED + input.roll_rate) * delta_seconds;
         self.yaw = self.yaw.rem_euclid(std::f32::consts::TAU);
         self.roll = self.roll.rem_euclid(std::f32::consts::TAU);
 

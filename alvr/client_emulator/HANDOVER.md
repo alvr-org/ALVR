@@ -61,10 +61,63 @@ Added after the freeze work; see README.md for usage. Implementation points wort
   are published by the UI thread as **one atomic snapshot** (`TrackedState`) — with separate slots,
   packets sometimes paired a fresh head pose with last frame's controllers, and head-relative
   controllers visibly flickered against the view while the camera moved.
-- **Controller velocities are zero, like the head's.** Derived velocities (even low-pass filtered)
-  made the controllers swim relative to the view while walking, because the server extrapolates
-  poses by velocity and the head reports none. Both unpredicted keeps them locked together; revisit
-  only together with head velocities.
+- **All velocities are zero, deliberately, and the driver's own asymmetry is why.** `Hmd.cpp`
+  submits a pose with no velocity and no `poseTimeOffset` (both left at the `DriverPose_t{}`
+  zeroes), so **SteamVR can never extrapolate the head** — it renders with whatever pose ALVR
+  submitted last. `Controller.cpp` submits velocity *and* `poseTimeOffset = steamvr_pipeline_frames
+  × frame_interval`, so SteamVR *does* extrapolate the controllers, by an amount that depends on
+  its own fluctuating time-to-photon estimate. Any nonzero controller velocity therefore makes them
+  swim against a head that is physically unable to follow, which is exactly what the first
+  experiment saw. Velocities on both made the view itself jitter, because the server's
+  `motion.predict` then rides a motion-to-photon average against velocities derived by
+  differencing a noisy signal. With every velocity zero, `DeviceMotion::predict` is a no-op
+  everywhere and the rig is exactly the sent poses — measured perfectly rigid at the OpenVR API
+  level (0.0 mm head-relative wander, with and without prediction). Reintroducing velocities means
+  fixing the driver's head path first.
+- **Tracking packets are interpolated, not resent.** The UI publishes poses at frame rate while the
+  tracking thread sends at 3× the stream refresh rate, so forwarding the latest pose verbatim put a
+  stair-step signal on the wire. The tracking thread reads a *history* of published states back at
+  a lag (`TrackingWindow` in `client.rs`), making the signal continuous like a real headset's. The
+  history matters: the UI frame interval measures 8.3 ms with 4.4 ms of mean deviation, so with
+  only the last two samples the evaluation point falls outside them constantly and the
+  reconstruction clamps — freeze, then jump, at the UI frame rate. The lag is sized from the
+  measured jitter (`mean + 2 × deviation`), not fixed, because every millisecond of it is latency.
+- **The controllers were never the thing that jittered.** They are attached to the head at a fixed
+  head-relative pose, so they belong at a fixed *screen* position. Everything else in the frame
+  moves with the head pose the frame was rendered from. So they are the one stationary reference in
+  the picture, and every timing error in the head pose trajectory shows up as the scene sliding
+  against them. Chasing the controllers was chasing the ruler, not the thing being measured. See
+  "the judder" below for what it actually was.
+- **The teal ghost controllers in the video lag, and that is SteamVR's compositing, not tracking.**
+  Turn on the emulator's own controller models (`Display`) and turn the camera: two renderings
+  separate. The solid ones are the emulator's, drawn from the displayed frame's own eye poses, and
+  they stay locked to the pixel. The translucent teal ones are SteamVR's, and they swing away. Hide
+  the emulator's models and only the teal ones remain, which is how to tell them apart.
+
+  The displacement is **proportional to turn rate** — clearly separated at 120 °/s, a thin fringe at
+  30 °/s — so it is a fixed time offset of roughly 20 ms, about 1.5 frames, not jitter. SteamVR
+  draws those controllers into a *separate compositor layer*, and `FrameRender.cpp` composites extra
+  layers by reprojecting them onto the scene layer with `HmdMatrix_AsDxMatOrientOnly` — orientation
+  only, onto a quad at 700 m (lines 605 and 702). That cannot correct a controller-versus-head
+  timing difference inside the layer, so the offset survives into the encoded frame. Nothing the
+  client sends changes it.
+
+  Getting the *application* to draw the controllers instead is the real fix; the emulator's own
+  models are the accurate reference in the meantime, which is what the `Display` toggle is for.
+  Related: `start_pitch_degrees` in `controllers.json` exists because resting the laser on SteamVR's
+  status panel hands the system UI input focus, which is one way to end up with the ghosts.
+- **Overlays follow the displayed video frame, not the live camera.** Measured with a pyopenvr
+  background app while walking: SteamVR's device poses are perfectly rigid relative to each other
+  (0.0 mm controller-vs-head wobble, even sampled with 42 ms prediction) — the tracking data is
+  clean end to end. What looked like "SteamVR controllers jittering along the walk direction" was
+  video frame *timing* wobble: the whole frame (scene and controllers together) lurches a little
+  against real time, and a live-camera-anchored overlay is a stationary reference that makes it
+  visible on the controllers. In video mode the icons and models are therefore drawn with the
+  displayed frame's own eye poses, which `report_compositor_start` returns (the same data a real
+  client uses for reprojection) — overlay and video move in lockstep and cannot jitter relative to
+  each other. Note this makes the overlay only as good as `report_compositor_start`, which is how
+  the microsecond timestamp truncation in "the judder" below became so visible: the call was
+  returning the *previous* frame's poses nine times out of ten.
 - **Buttons are change-driven.** `EmulatedClient::sync_buttons` mirrors what was last sent and
   transmits diffs, like the real client; releases are sent for inputs that disappear from the
   desired set. Derived inputs (touch from press, click from full pull) are computed in
@@ -190,6 +243,89 @@ Recorded because each looked convincing and cost real time.
 implementation and the server's frame path, instead of continuing to reason from symptoms. Do that
 earlier next time.
 
+## The judder, and how it was finally measured
+
+Several sessions were spent guessing at this from how it looked. What broke it open was building a
+number for it instead. Do that first next time.
+
+**The metric.** Every displayed frame carries the timestamp of the tracking sample the server
+rendered it from, and `report_compositor_start` returns that frame's head pose. So the emulator can
+measure, entirely from the client side:
+
+| Readout | What it is | What a bad number means |
+|---|---|---|
+| `publish` | interval at which the UI hands poses to the tracking thread | uneven UI frame times, which the reconstruction has to absorb |
+| `sent` | interval between tracking packets, and the rotation between consecutive ones | an uneven step here means the emulator built a bad signal |
+| `world` | tracking time between consecutive displayed frames, and the head rotation between them | **this is the visible judder** |
+| `screen` | real time each frame was on screen | uneven presentation by this window |
+| `repeat` | frames that came back with the previous frame's pose | view parameter lookups are missing |
+
+It is on the toolbar while streaming and in `GET /api/state` under `frame_timing`. `POST /api/drive`
+holds a camera input — a *rate*, not a pose — so a scripted sweep runs down the same code path the
+keyboard does. Posting individual poses instead makes the caller's own scheduling part of the
+measurement, which is fatal here: an HTTP client cannot pace itself to anywhere near a frame.
+
+Under a steady 60 °/s turn each frame should advance by exactly 60 °/s × 13.889 ms = 0.833°.
+Deviation from that is scene movement with nothing behind it.
+
+**What it found, in order of size.**
+
+1. **The decoder truncated frame timestamps to microseconds, and 91% of view parameter lookups
+   missed.** `duration_to_pts`/`pts_to_duration` in `decoder/software.rs` round-tripped the
+   timestamp through a PTS, which carries microseconds. ALVR's frame timestamps are `Instant`
+   elapsed times, which on Windows come from the performance counter at 100 ns resolution — so
+   roughly nine in ten came back a few hundred nanoseconds off the value everything upstream is
+   keyed by. `report_compositor_start` then failed to find the frame's view parameters and returned
+   *the previous frame's*, so anything drawn from them lagged the video by however long ago the last
+   exact match was. Per-frame rotation jitter: **1.67° against a 0.83° mean — twice the frame's own
+   motion.** The decoder already kept the exact timestamps for a fallback path; the fix is to use
+   the PTS only as a key to find the original. This also silently broke the statistics chain, which
+   is keyed by the same timestamp — the `Statistics summary not ready!` flood this document
+   previously called expected was this, not something inherent.
+   → jitter 1.67° → **0.41°**, repeats 91% → **0%**.
+
+2. **The pose reconstruction clamped on uneven UI frames.** Fixed by keeping a history; see the
+   controller notes above. → **0.41° → 0.175°**, and the send-side step jitter roughly halved.
+
+3. **`GetBestPoseMatch` cannot resolve a frame while the head is not rotating.** It picks the
+   nearest-rotation entry from a 360-sample buffer, ignoring position, and keeps the *oldest* on
+   ties (`minDiff > distance`, iterating oldest to newest). Walking in a straight line holds the
+   orientation bit-constant, so nothing distinguishes the candidates and the choice falls to
+   floating-point noise. Measured directly, walking at 2 m/s:
+
+   | | frame timestamp spacing | per-frame step |
+   |---|---|---|
+   | walk only, orientation constant | 14.17 ± **4.24** ms | 28.35 ± 8.93 mm |
+   | walk while turning | 13.89 ± **0.10** ms | 27.75 ± 6.10 mm |
+
+   A 42× difference in how evenly the world advances, from nothing but whether the head happened to
+   be rotating. This is the remaining third of the walking judder and it is **not fixed**. A real
+   headset never hits it because its orientation always carries sensor noise. Two ways out, neither
+   taken here: a tiny monotonic orientation dither on the client (needs roughly 0.1° of amplitude
+   over a period longer than the 1.67 s buffer to beat the float noise, and it must be monotonic
+   across the whole buffer or the aliases tie instead), or `minDiff >= distance` in
+   `PoseHistory.cpp` so ties keep the newest sample rather than the oldest — one character, and
+   arguably a fix for real headsets too, since a user holding still currently resolves to a
+   1.67-second-old timestamp.
+
+**Measured dead end: sending tracking faster.** It looks like it must help — ALVR's driver never
+submits an HMD velocity, so SteamVR cannot extrapolate the head and the send interval *is* the time
+quantum of the rendered world. Raising it from `refresh_rate * 3` (216 Hz) to 500 Hz made things
+**worse**: jitter 0.155° → 0.205°, consistently across every sampling window, and the frame
+timestamps spread from ±0.10 ms to ±0.31 ms. The server runs its entire tracking path per received
+packet, and the extra load costs more than the finer quantum buys. The rate stays at the real
+client's.
+
+**Measured dead end: pacing the send loop more precisely.** Sleeping to 300 µs short of each
+deadline and spinning the rest genuinely tightens the send interval — deviation 0.155 ms → 0.086 ms
+— and the judder that reaches the screen does not improve, coming out marginally worse (0.155° →
+0.174°). Same lesson as the rate: precision on the send side is not what the picture is limited by.
+Plain `thread::sleep` it is; a busy-wait would buy nothing.
+
+**Where it ended up.** Under a 60 °/s turn: 0.833° ± 0.175° per frame, from 0.93° ± 1.67° — the
+error went from twice the frame's own motion to a fifth of it, about 3 pixels at this FOV and
+resolution. Walking at 2 m/s: 28.1 ± 8.9 mm, with roughly a third of what remains being item 3.
+
 ## Known limitations
 
 - **Single instance only.** The port collisions are solved, but `alvr_client_core` stores its hostname
@@ -204,7 +340,9 @@ earlier next time.
 - **Depth values are not comparable between captures** — normalised across the range present in each
   image, because a small room occupies a tiny fraction of the 0.02–100 m frustum.
 - **Statistics warnings may still appear.** `report_submit` fires only on new frames while the UI runs
-  faster, so some are expected. If the freeze ever returns under load, look here first.
+  faster, so some are expected. A *flood* of them is not: that was the microsecond timestamp
+  truncation in "the judder" above, which broke every lookup keyed by the frame timestamp. If the
+  freeze ever returns under load, look here first.
 - **Only H.264 verified.** HEVC and AV1 paths exist in the decoder but are untested. AV1's keyframe
   detection is stubbed to always-true, since it is not Annex-B framed.
 - Linux is intended but unverified; nothing in the crate is Windows-specific by design.
@@ -243,14 +381,17 @@ Note `cargo xtask package-streamer` currently fails at the license-generation st
 
 ## Suggested next steps
 
-1. **Multiple instances.** Take the `storage.rs` identity patch; the port work is already done.
-2. **Capture the decoded video** through the API, so the emulator is useful to an automated harness
+1. **Finish the walking judder** — item 3 under "the judder". Decide between the client-side
+   orientation dither and the one-character `GetBestPoseMatch` tie-break, then measure it with
+   `/api/drive` + `frame_timing` rather than by eye.
+2. **Multiple instances.** Take the `storage.rs` identity patch; the port work is already done.
+3. **Capture the decoded video** through the API, so the emulator is useful to an automated harness
    rather than only to a human watching the window.
-3. **MCP or richer control surface** over the existing HTTP API.
-4. **3D Gaussian splat scenes** for realistic AR environments. The `Scene` type is deliberately a
+4. **MCP or richer control surface** over the existing HTTP API.
+5. **3D Gaussian splat scenes** for realistic AR environments. The `Scene` type is deliberately a
    geometry container rather than a renderer so an alternative source can slot in.
-5. **Zero-copy decode**, only if profiling demands it. ffmpeg's Vulkan decoder currently fails with
+6. **Zero-copy decode**, only if profiling demands it. ffmpeg's Vulkan decoder currently fails with
    `VK_ERROR_DEVICE_LOST` on the RTX 5090 tested, so the portable GPU path is not viable yet; d3d11va
    works but was slower than CPU for a single stream.
-6. **Upstream the three ALVR changes** — they are useful beyond this emulator, particularly the
+7. **Upstream the three ALVR changes** — they are useful beyond this emulator, particularly the
    announcer shutdown, which is a real leak.

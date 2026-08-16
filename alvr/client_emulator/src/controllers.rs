@@ -180,6 +180,8 @@ pub struct ControllerSettings {
     pub rotation_sensitivity: f32,
     /// Head-relative starting position per hand. Left is index 0.
     pub start_positions: [Vec3; 2],
+    /// Head-relative starting orientation, from the configured starting pitch.
+    pub start_orientation: Quat,
     pub profiles: Vec<Profile>,
 }
 
@@ -189,7 +191,17 @@ struct SettingsFile {
     rotation_sensitivity: f32,
     left_start_position: [f32; 3],
     right_start_position: [f32; 3],
+    /// Upward pitch of the resting pose, in degrees. Aimed above the horizon on purpose: pointed
+    /// level or below, the controllers' laser rests on SteamVR's status panel, whose system UI
+    /// then captures input focus and replaces the application's controller rendering with the
+    /// laggy web-based ghost silhouettes.
+    #[serde(default = "default_start_pitch")]
+    start_pitch_degrees: f32,
     profiles: Vec<ProfileEntry>,
+}
+
+fn default_start_pitch() -> f32 {
+    30.0
 }
 
 #[derive(Serialize, Deserialize)]
@@ -292,6 +304,7 @@ fn default_file() -> SettingsFile {
         rotation_sensitivity: 0.005,
         left_start_position: [-0.15, -0.25, -0.35],
         right_start_position: [0.15, -0.25, -0.35],
+        start_pitch_degrees: default_start_pitch(),
         profiles,
     }
 }
@@ -348,6 +361,7 @@ fn resolve(file: SettingsFile, directory: &Path) -> ControllerSettings {
             Vec3::from_array(file.left_start_position),
             Vec3::from_array(file.right_start_position),
         ],
+        start_orientation: Quat::from_rotation_x(file.start_pitch_degrees.to_radians()),
         profiles,
     }
 }
@@ -375,7 +389,7 @@ impl ControllerState {
             profile_index: 0,
             model_visible: false,
             position: settings.start_positions[hand.index()],
-            orientation: Quat::IDENTITY,
+            orientation: settings.start_orientation,
             inputs: HashMap::new(),
         }
     }
@@ -384,7 +398,7 @@ impl ControllerState {
     /// selection is kept, since those are configuration rather than state.
     pub fn reset(&mut self, settings: &ControllerSettings, hand: Hand) {
         self.position = settings.start_positions[hand.index()];
-        self.orientation = Quat::IDENTITY;
+        self.orientation = settings.start_orientation;
         self.inputs.clear();
     }
 

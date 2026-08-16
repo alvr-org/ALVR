@@ -27,7 +27,9 @@ use crate::{
         ProfileSummary, SharedState, StateResponse,
     },
     camera::{Camera, CameraInput, Eye},
-    client::{ClientStatus, EmulatedClient, TrackedController, TrackedPose, TrackedState},
+    client::{
+        ClientStatus, EmulatedClient, FrameTiming, TrackedController, TrackedPose, TrackedState,
+    },
     controller_ui::ControllerUi,
     controllers::{ControllerSettings, ControllerState, Hand},
     render::{CaptureKind, ControllerRenderer, SceneRenderer, capture_stereo},
@@ -35,8 +37,8 @@ use crate::{
     video::{FrameLayout, VideoRenderer},
 };
 use alvr_common::{
-    DeviceMotion, Pose, error,
-    glam::{Mat4, Vec3},
+    Pose, error,
+    glam::{Mat4, Quat, Vec3},
     info,
     parking_lot::Mutex,
 };
@@ -272,6 +274,17 @@ impl EmulatorApp {
             }
         });
 
+        // Held API input on top of the keyboard and mouse, so a scripted run drives the camera
+        // down the same path a person would; see [`DriveRequest`].
+        let drive = *self.shared.drive.lock();
+        input.forward += drive.forward;
+        input.right += drive.right;
+        input.height += drive.height;
+        input.roll_rate += drive.roll_rate.to_radians();
+        input.yaw_rate += drive.yaw_rate.to_radians();
+        input.pitch_rate += drive.pitch_rate.to_radians();
+        input.fast |= drive.fast;
+
         self.camera.apply_input(&input, delta_seconds);
     }
 
@@ -402,19 +415,13 @@ impl EmulatorApp {
                 continue;
             }
 
+            // Head-relative: the tracking thread composes this with the head pose it sends in the
+            // same packet, which is what keeps the controllers rigid against the view.
             tracked[index] = TrackedController {
                 enabled: true,
-                motion: DeviceMotion {
-                    pose: Pose {
-                        orientation: (head_orientation * state.orientation).normalize(),
-                        position: head_position + head_orientation * state.position,
-                    },
-                    // Zero, like the head: the server extrapolates poses by their velocity, and
-                    // predicting the controllers while the head goes unpredicted makes them swim
-                    // against the view whenever the camera moves. Unpredicted together, they stay
-                    // locked together.
-                    linear_velocity: Vec3::ZERO,
-                    angular_velocity: Vec3::ZERO,
+                pose: Pose {
+                    orientation: state.orientation.normalize(),
+                    position: state.position,
                 },
             };
 
@@ -445,10 +452,13 @@ impl EmulatorApp {
         }
     }
 
-    /// World-space model matrices of the controllers whose 3D model should be drawn.
-    fn controller_model_matrices(&self) -> [Option<Mat4>; 2] {
-        let head_orientation = self.camera.orientation();
-
+    /// World-space model matrices of the controllers whose 3D model should be drawn, composed
+    /// with the given head pose (the live camera, or the displayed video frame's pose).
+    fn controller_model_matrices(
+        &self,
+        head_position: Vec3,
+        head_orientation: Quat,
+    ) -> [Option<Mat4>; 2] {
         std::array::from_fn(|index| {
             let state = &self.controllers[index];
 
@@ -456,7 +466,7 @@ impl EmulatorApp {
                 || {
                     Mat4::from_rotation_translation(
                         (head_orientation * state.orientation).normalize(),
-                        self.camera.position + head_orientation * state.position,
+                        head_position + head_orientation * state.position,
                     )
                 },
             )
@@ -675,7 +685,9 @@ impl EmulatorApp {
             .callback_resources
             .get::<Arc<Mutex<ControllerRenderer>>>()
             .cloned();
-        let controller_models = self.controller_model_matrices();
+        // Captures render the scene live, so the live camera is the right head pose here.
+        let controller_models =
+            self.controller_model_matrices(self.camera.position, self.camera.orientation());
 
         // Capture at the negotiated stream resolution when streaming, so captures are deterministic
         // and independent of the window size.
@@ -718,8 +730,9 @@ impl EmulatorApp {
     }
 
     /// Publishes the current state for `GET /api/state`.
-    fn publish_state(&self) {
+    fn publish_state(&mut self) {
         let status = self.status();
+        let timing = self.client().frame_timing();
 
         *self.shared.state.lock() = StateResponse {
             // The client core reports a HUD message while not streaming; treat streaming as the
@@ -736,6 +749,7 @@ impl EmulatorApp {
             view_resolution: [status.view_resolution.x, status.view_resolution.y],
             refresh_rate: status.refresh_rate,
             codec: status.codec.map(|codec| format!("{codec:?}")),
+            frame_timing: timing,
         };
     }
 
@@ -765,6 +779,30 @@ impl EmulatorApp {
                             status.view_resolution.x, status.view_resolution.y, status.refresh_rate
                         ))
                         .color(Color32::LIGHT_GREEN),
+                    );
+
+                    ui.separator();
+
+                    // The judder readout. `world` is how much world time each displayed frame
+                    // advanced by and `screen` how long it was on screen for; both should sit at
+                    // the stream interval with a deviation near zero. World deviation means the
+                    // tracking the server rendered from was unevenly spaced, screen deviation
+                    // means this window presented the frames unevenly. Head-locked content — the
+                    // controllers — stands still against both, which is what makes them visible.
+                    let timing = self.client().frame_timing();
+                    ui.label(
+                        RichText::new(format!(
+                            "world {:.1}±{:.1} ms   screen {:.1}±{:.1} ms   step {:.3}±{:.3}°  {:.1}±{:.1} mm",
+                            timing.world_ms.mean,
+                            timing.world_ms.deviation,
+                            timing.screen_ms.mean,
+                            timing.screen_ms.deviation,
+                            timing.step_deg.mean,
+                            timing.step_deg.deviation,
+                            timing.step_mm.mean,
+                            timing.step_mm.deviation,
+                        ))
+                        .weak(),
                     );
                 } else {
                     ui.label(
@@ -825,6 +863,9 @@ impl App for EmulatorApp {
 
         self.ensure_controller_models(frame);
         let displayed_frame = self.upload_decoded_frame(frame);
+        // The world-space eye poses the displayed frame was rendered with. Also reports the
+        // compositor start for the frame pacing statistics.
+        let video_views = self.client().displayed_frame_views(displayed_frame);
 
         self.draw_toolbar(ui);
 
@@ -834,6 +875,25 @@ impl App for EmulatorApp {
         // The video displays letterboxed at its own aspect ratio; the scene adapts to the window.
         let video_eye_aspect = show_video.then_some(self.video_eye_aspect).flatten();
 
+        // What the overlays (icons, controller models) are aligned with. Over the video they
+        // follow the pose the displayed frame was rendered with, so they move in lockstep with the
+        // video content — anchoring them to the live camera made every wobble of video timing
+        // visible as the in-video controllers jittering against them. Over the scene, which is
+        // rendered live, they follow the live camera.
+        let (overlay_position, overlay_orientation, overlay_eye_views) =
+            match (show_video, video_views) {
+                (true, Some(views)) => (
+                    (views[0].pose.position + views[1].pose.position) / 2.0,
+                    views[0].pose.orientation,
+                    [eye_view_matrix(&views[0]), eye_view_matrix(&views[1])],
+                ),
+                _ => (
+                    camera.position,
+                    camera.orientation(),
+                    [camera.view_matrix(Eye::Left), camera.view_matrix(Eye::Right)],
+                ),
+            };
+
         let scene_error = self.scene_error.clone();
         let view_mode = self.view_mode;
         let camera_snapshot = CameraSnapshot {
@@ -842,7 +902,8 @@ impl App for EmulatorApp {
             pitch: self.camera.pitch,
             roll: self.camera.roll,
         };
-        let controller_models = self.controller_model_matrices();
+        let controller_models =
+            self.controller_model_matrices(overlay_position, overlay_orientation);
         let mut look_requested = LookRequest::None;
 
         let view_rect = egui::CentralPanel::default()
@@ -883,6 +944,7 @@ impl App for EmulatorApp {
                         show_video,
                         video_eye_aspect,
                         controller_models,
+                        controller_eye_views: overlay_eye_views,
                     },
                 ));
 
@@ -904,12 +966,13 @@ impl App for EmulatorApp {
         let interactive = !self.look_active();
 
         if let Some(view_rect) = view_rect {
-            let views = view_sub_rects(view_mode, view_rect, video_eye_aspect);
+            let views =
+                view_sub_rects(view_mode, view_rect, video_eye_aspect, overlay_eye_views);
 
             self.controller_ui.view_overlays(
                 &ui_context,
                 &views,
-                &camera,
+                (overlay_position, overlay_orientation),
                 &mut self.controllers,
                 &self.controller_settings,
                 interactive,
@@ -949,8 +1012,8 @@ impl App for EmulatorApp {
         self.publish_state();
         self.publish_controllers();
 
-        // Paces itself at the stream rate; safe to call every repaint.
-        self.client().report_frame(displayed_frame);
+        // Completes the pacing report for the frame shown this repaint.
+        self.client().finish_frame();
 
         // The scene is continuously interactive, so keep painting.
         ui_context.request_repaint();
@@ -1014,6 +1077,9 @@ struct ViewportCallback {
     /// VR application renders its own controllers, but the local models show what the emulator is
     /// actually sending, which is the point of the display toggle.
     controller_models: [Option<Mat4>; 2],
+    /// Per-eye view matrices the controller models are drawn with: the displayed video frame's
+    /// eye poses in video mode, the live camera's in scene mode. Left is index 0.
+    controller_eye_views: [Mat4; 2],
 }
 
 impl egui_wgpu::CallbackTrait for ViewportCallback {
@@ -1065,9 +1131,9 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
                 aspect_ratio
             };
 
-            for eye in [Eye::Left, Eye::Right] {
-                let view_proj =
-                    Camera::projection_matrix(controller_aspect) * camera.view_matrix(eye);
+            for (index, eye) in [Eye::Left, Eye::Right].into_iter().enumerate() {
+                let view_proj = Camera::projection_matrix(controller_aspect)
+                    * self.controller_eye_views[index];
 
                 for (hand, model) in self.controller_models.iter().enumerate() {
                     if let Some(model) = model {
@@ -1138,7 +1204,7 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
         // The video keeps its own aspect ratio, displayed inner-fit within the eye's part of the
         // viewport; stretching it also mismatched the controller overlays. The scene has no fixed
         // aspect and fills the viewport.
-        let mut draw_view = |pass: &mut wgpu::RenderPass<'static>,
+        let draw_view = |pass: &mut wgpu::RenderPass<'static>,
                              eye: Eye,
                              left: f32,
                              top: f32,
@@ -1191,8 +1257,13 @@ fn fit_viewport(left: f32, top: f32, width: f32, height: f32, aspect: f32) -> (f
     )
 }
 
-/// The sub-rectangles the view is split into, which eye each shows, and the aspect ratio of the
-/// projection that maps world space onto each rectangle.
+/// View matrix of one eye, from the world-space eye pose the server reported for a video frame.
+fn eye_view_matrix(params: &alvr_common::ViewParams) -> Mat4 {
+    Mat4::from_rotation_translation(params.pose.orientation, params.pose.position).inverse()
+}
+
+/// The sub-rectangles the view is split into, with the projection aspect ratio and the eye view
+/// matrix that map world space onto each rectangle.
 ///
 /// With the video shown (`video_eye_aspect` set), each rectangle is the letterboxed video area,
 /// and the projection is the advertised FOV's — the one the server rendered the video with. The
@@ -1201,7 +1272,8 @@ fn view_sub_rects(
     view_mode: ViewMode,
     rect: egui::Rect,
     video_eye_aspect: Option<f32>,
-) -> Vec<(Eye, egui::Rect, f32)> {
+    eye_views: [Mat4; 2],
+) -> Vec<(egui::Rect, f32, Mat4)> {
     let outer: Vec<(Eye, egui::Rect)> = match view_mode {
         ViewMode::Left => vec![(Eye::Left, rect)],
         ViewMode::Right => vec![(Eye::Right, rect)],
@@ -1222,18 +1294,28 @@ fn view_sub_rects(
 
     outer
         .into_iter()
-        .map(|(eye, rect)| match video_eye_aspect {
-            Some(aspect) => {
-                let (left, top, width, height) =
-                    fit_viewport(rect.left(), rect.top(), rect.width(), rect.height(), aspect);
+        .map(|(eye, rect)| {
+            let view = eye_views[match eye {
+                Eye::Left => 0,
+                Eye::Right => 1,
+            }];
 
-                (
-                    eye,
-                    egui::Rect::from_min_size(egui::pos2(left, top), egui::vec2(width, height)),
-                    Camera::fov_aspect_ratio(),
-                )
+            match video_eye_aspect {
+                Some(aspect) => {
+                    let (left, top, width, height) =
+                        fit_viewport(rect.left(), rect.top(), rect.width(), rect.height(), aspect);
+
+                    (
+                        egui::Rect::from_min_size(
+                            egui::pos2(left, top),
+                            egui::vec2(width, height),
+                        ),
+                        Camera::fov_aspect_ratio(),
+                        view,
+                    )
+                }
+                None => (rect, rect.width() / rect.height().max(1.0), view),
             }
-            None => (eye, rect, rect.width() / rect.height().max(1.0)),
         })
         .collect()
 }
@@ -1334,6 +1416,7 @@ fn main() {
         view_resolution: [0, 0],
         refresh_rate: 0.0,
         codec: None,
+        frame_timing: FrameTiming::default(),
     }));
 
     if let Err(e) = api::spawn(Arc::clone(&shared), port) {

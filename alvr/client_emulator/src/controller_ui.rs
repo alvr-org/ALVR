@@ -8,11 +8,11 @@
 //! values set through the API are never overwritten by mere mouse hovering.
 
 use crate::{
-    camera::{Camera, Eye},
+    camera::Camera,
     client::HapticsEvent,
     controllers::{ControllerSettings, ControllerState, Hand, Profile},
 };
-use alvr_common::glam::{EulerRot, Quat, Vec3};
+use alvr_common::glam::{EulerRot, Mat4, Quat, Vec3};
 use alvr_packets::ButtonValue;
 use eframe::egui::{
     Align2, Color32, ComboBox, Context, CornerRadius, FontId, Id, Order, PointerButton, Pos2,
@@ -219,15 +219,16 @@ impl ControllerUi {
 
     /// Draws the controller icons over the 3D view and runs the pose movement panels.
     ///
-    /// `views` lists the sub-rectangles the view is split into, which eye each shows, and the
-    /// aspect ratio of the projection mapping world space onto that rectangle (the window's over
-    /// the scene, the advertised FOV's over the letterboxed video). `interactive` is false while
+    /// `views` lists the sub-rectangles the view is split into, with the projection aspect ratio
+    /// and eye view matrix mapping world space onto each (the live camera's over the scene, the
+    /// displayed frame's over the letterboxed video). `head` is the pose the controllers' local
+    /// poses are composed with, from the same source as the views. `interactive` is false while
     /// the mouse drives the camera, in which case only the icons are drawn.
     pub fn view_overlays(
         &mut self,
         ctx: &Context,
-        views: &[(Eye, Rect, f32)],
-        camera: &Camera,
+        views: &[(Rect, f32, Mat4)],
+        head: (Vec3, Quat),
         controllers: &mut [ControllerState; 2],
         settings: &ControllerSettings,
         interactive: bool,
@@ -255,13 +256,12 @@ impl ControllerUi {
                 continue;
             }
 
-            let world =
-                camera.position + camera.orientation() * state.position;
+            let world = head.0 + head.1 * state.position;
 
             let mut hover_anchor = None;
 
-            for (eye, rect, projection_aspect) in views {
-                let projected = project_to_view(camera, *eye, *rect, *projection_aspect, world);
+            for (rect, projection_aspect, view) in views {
+                let projected = project_to_view(*view, *rect, *projection_aspect, world);
                 draw_icon(&painter, hand, &projected);
 
                 // Edge-clamped icons open the panel too — that is how an off-screen controller is
@@ -599,15 +599,9 @@ struct ProjectedIcon {
 ///
 /// `projection_aspect` is the aspect ratio of the projection that produced the rectangle's
 /// content, which over the letterboxed video differs from the rectangle's own shape.
-fn project_to_view(
-    camera: &Camera,
-    eye: Eye,
-    rect: Rect,
-    projection_aspect: f32,
-    world: Vec3,
-) -> ProjectedIcon {
+fn project_to_view(view: Mat4, rect: Rect, projection_aspect: f32, world: Vec3) -> ProjectedIcon {
     let inner = rect.shrink(EDGE_MARGIN);
-    let view_pos = camera.view_matrix(eye).transform_point3(world);
+    let view_pos = view.transform_point3(world);
     let depth = -view_pos.z;
 
     // Behind the camera there is no projection; point from the view centre towards where the

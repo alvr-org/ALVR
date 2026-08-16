@@ -4,7 +4,7 @@
 //! shared state plus a request channel for anything needing the GPU. Rendering must happen on the
 //! thread owning the wgpu device, so capture requests are queued and answered by the UI thread.
 
-use crate::controllers::Hand;
+use crate::{client::FrameTiming, controllers::Hand};
 use alvr_common::{
     glam::{Quat, Vec3},
     info,
@@ -40,6 +40,8 @@ pub struct StateResponse {
     pub view_resolution: [u32; 2],
     pub refresh_rate: f32,
     pub codec: Option<String>,
+    /// How evenly the streamed world has been advancing; see [`FrameTiming`].
+    pub frame_timing: FrameTiming,
 }
 
 /// Body of `POST /api/move`. Every field is optional so a caller can change only what it cares
@@ -58,6 +60,36 @@ pub struct PendingMove {
     pub yaw: Option<f32>,
     pub pitch: Option<f32>,
     pub roll: Option<f32>,
+}
+
+/// Body of `POST /api/drive`, and the state it sets.
+///
+/// A held input rather than a pose: the UI thread merges it into the same [`CameraInput`] the
+/// keyboard and mouse produce, integrated against the real frame time, so it drives the camera
+/// down exactly the path a person would. Posting individual poses instead makes the caller's own
+/// scheduling part of the measurement, which for a jitter investigation is the whole problem —
+/// an HTTP client cannot pace itself anywhere near a frame accurately enough to be a reference.
+///
+/// Omitted fields reset to zero, so `{}` stops the motion.
+///
+/// [`CameraInput`]: crate::camera::CameraInput
+#[derive(Deserialize, Serialize, Clone, Copy, Default)]
+#[serde(default)]
+pub struct DriveRequest {
+    /// Positive is the direction the camera faces, flattened to horizontal. Unit is one full
+    /// press of the movement key, not metres per second.
+    pub forward: f32,
+    /// Positive is right.
+    pub right: f32,
+    /// Positive moves up.
+    pub height: f32,
+    /// Turn rate in degrees per second. Positive turns left, the way the yaw angle grows.
+    pub yaw_rate: f32,
+    /// Pitch rate in degrees per second. Positive looks up.
+    pub pitch_rate: f32,
+    /// Roll rate in degrees per second.
+    pub roll_rate: f32,
+    pub fast: bool,
 }
 
 /// Snapshot of both emulated controllers, published by the UI thread every frame and serialised
@@ -217,6 +249,8 @@ pub struct SharedState {
     pub controllers: Mutex<ControllersResponse>,
     /// Pose changes queued by `/api/move`.
     pub moves: Mutex<VecDeque<PendingMove>>,
+    /// Held camera input set by `/api/drive`, merged into every frame's input until changed.
+    pub drive: Mutex<DriveRequest>,
     /// Controller changes queued by the controller endpoints.
     pub controller_commands: Mutex<VecDeque<ControllerCommand>>,
     /// Capture requests queued by the view endpoints.
@@ -229,6 +263,7 @@ impl SharedState {
             state: Mutex::new(initial),
             controllers: Mutex::new(ControllersResponse::default()),
             moves: Mutex::new(VecDeque::new()),
+            drive: Mutex::new(DriveRequest::default()),
             controller_commands: Mutex::new(VecDeque::new()),
             captures: Mutex::new(VecDeque::new()),
         }
@@ -309,6 +344,28 @@ fn route(shared: &SharedState, request: &mut tiny_http::Request) -> Reply {
                         pitch: parsed.pitch,
                         roll: parsed.roll,
                     });
+
+                    Reply::Json("{\"ok\":true}".into())
+                }
+                Err(e) => Reply::Error(400, format!("Invalid JSON: {e}")),
+            }
+        }
+
+        (tiny_http::Method::Get, "/api/drive") => match serde_json::to_string(&*shared.drive.lock())
+        {
+            Ok(body) => Reply::Json(body),
+            Err(e) => Reply::Error(500, format!("Cannot serialise drive state: {e}")),
+        },
+
+        (tiny_http::Method::Post, "/api/drive") => {
+            let mut body = String::new();
+            if let Err(e) = request.as_reader().read_to_string(&mut body) {
+                return Reply::Error(400, format!("Cannot read request body: {e}"));
+            }
+
+            match serde_json::from_str::<DriveRequest>(&body) {
+                Ok(parsed) => {
+                    *shared.drive.lock() = parsed;
 
                     Reply::Json("{\"ok\":true}".into())
                 }

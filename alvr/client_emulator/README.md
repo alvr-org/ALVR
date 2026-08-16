@@ -164,6 +164,10 @@ documented by its own content. It holds:
 
 - `rotation_sensitivity` — radians of controller rotation per pixel of drag on the rotation pads.
 - `left_start_position` / `right_start_position` — head-relative default positions.
+- `start_pitch_degrees` — upward pitch of the resting pose (default 30). Deliberately above the
+  horizon: resting the controllers' laser on SteamVR's status panel makes the system UI capture
+  input focus, which replaces the application's solid controller rendering with SteamVR's own
+  laggy teal ghost silhouettes.
 - `profiles` — the controller types offered for emulation. Each entry has a display `name`, the
   interaction profile `path`, the input path suffixes each hand supports (`left_inputs` /
   `right_inputs`, e.g. `"trigger/value"`), and optionally `left_model` / `right_model`, glTF files
@@ -215,7 +219,17 @@ Localhost only, and unauthenticated: it is a debugging interface and must not be
   "environment_loaded": true,
   "view_resolution": [0, 0],
   "refresh_rate": 0.0,
-  "codec": null
+  "codec": null,
+  "frame_timing": {
+    "publish_ms":    { "mean": 8.35,  "deviation": 4.34 },
+    "sent_ms":       { "mean": 4.63,  "deviation": 0.16 },
+    "sent_step_deg": { "mean": 0.277, "deviation": 0.156 },
+    "world_ms":      { "mean": 13.89, "deviation": 0.21 },
+    "step_deg":      { "mean": 0.833, "deviation": 0.155 },
+    "step_mm":       { "mean": 0.0,   "deviation": 0.0 },
+    "screen_ms":     { "mean": 13.89, "deviation": 0.72 },
+    "repeated_view_ratio": 0.0
+  }
 }
 ```
 
@@ -223,6 +237,45 @@ Localhost only, and unauthenticated: it is a debugging interface and must not be
 
 `codec` becomes the negotiated codec once the server announces it. Decoded frame count and frame
 layout are shown in the toolbar but are not yet exposed here.
+
+#### `frame_timing`
+
+How evenly the streamed world is advancing, averaged over the last ~150 displayed frames and also
+shown on the toolbar while streaming. Each entry is a `mean` with its mean absolute `deviation`,
+and the deviations are the interesting half — they say *where* judder is coming from.
+
+| Field | Measures | A large deviation means |
+|---|---|---|
+| `publish_ms` | UI thread handing poses to the tracking thread | uneven UI frame times |
+| `sent_ms`, `sent_step_deg` | tracking packets leaving, and the head rotation between them | the emulator built an uneven signal |
+| `world_ms`, `step_deg`, `step_mm` | tracking time and head movement between consecutive displayed frames | **the judder you can see** |
+| `screen_ms` | real time each frame was on screen | this window presented them unevenly |
+| `repeated_view_ratio` | frames that came back with the previous frame's pose | view parameter lookups are missing; should be `0` while moving |
+
+The `sent_*` / `step_*` pair is the useful split: an even step going out with an uneven one coming
+back means the signal left clean and something downstream resampled it.
+
+Under steady motion `step_deg.mean` should equal the turn rate times `world_ms.mean`, with
+`step_deg.deviation` near zero. Drive the camera with `POST /api/drive` and compare.
+
+### `POST /api/drive`
+
+Holds a camera input until changed, as if keys were held down. Omitted fields reset to zero, so
+`{}` stops.
+
+```sh
+curl -X POST http://127.0.0.1:8080/api/drive \
+  -H "Content-Type: application/json" \
+  -d '{"forward": 1, "yaw_rate": 60}'
+```
+
+`forward`, `right` and `height` are key-press amounts, not speeds; `yaw_rate`, `pitch_rate` and
+`roll_rate` are degrees per second; `fast` is the shift modifier. `GET` returns the current value.
+
+Use this rather than repeated `POST /api/move` calls whenever motion smoothness is what is being
+measured. A rate is integrated against the real frame time down the same path the keyboard uses,
+whereas posting individual poses puts the calling script's own scheduling into the tracking signal —
+and no HTTP client paces itself to anywhere near a frame.
 
 ### `GET /api/view/color`
 

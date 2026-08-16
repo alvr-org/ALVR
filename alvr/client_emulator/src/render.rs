@@ -8,6 +8,7 @@ use crate::{
     camera::{Camera, Eye},
     scene::Scene,
 };
+use alvr_common::glam::Mat4;
 use bytemuck::{Pod, Zeroable};
 use std::num::NonZeroU32;
 use wgpu::{
@@ -52,27 +53,25 @@ struct GpuPrimitive {
     bind_group: BindGroup,
 }
 
-pub struct SceneRenderer {
+/// The unlit textured-mesh pipeline and the shared resources every mesh's bind groups reference.
+///
+/// The scene and the controller models render identically, so they share this one definition; only
+/// the geometry and the matrices differ.
+struct MeshPipeline {
     pipeline: RenderPipeline,
-    vertex_buffer: Buffer,
-    uniform_buffer: Buffer,
-    primitives: Vec<GpuPrimitive>,
-    /// Kept alive because the primitives' bind groups reference them. Never read directly: a 1x1
-    /// white texture stands in for materials without a base colour texture, so every primitive can
-    /// share one bind group layout.
-    _placeholder_view: TextureView,
-    _sampler: wgpu::Sampler,
-    /// Colour format this pipeline was built for. Offscreen capture targets must use the same
-    /// format, or the pipeline fails render pass validation.
-    color_format: TextureFormat,
+    bind_group_layout: wgpu::BindGroupLayout,
+    sampler: wgpu::Sampler,
+    /// A 1x1 white texture standing in for materials without a base colour texture, so every
+    /// primitive can share one bind group layout.
+    placeholder_view: TextureView,
 }
 
-impl SceneRenderer {
-    pub fn new(device: &Device, queue: &Queue, scene: &Scene, output_format: TextureFormat) -> Self {
+impl MeshPipeline {
+    fn new(device: &Device, queue: &Queue, output_format: TextureFormat) -> Self {
         let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("scene bind group layout"),
+            label: Some("mesh bind group layout"),
             entries: &[
                 BindGroupLayoutEntry {
                     binding: 0,
@@ -107,13 +106,13 @@ impl SceneRenderer {
         });
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("scene pipeline layout"),
+            label: Some("mesh pipeline layout"),
             bind_group_layouts: &[Some(&bind_group_layout)],
             immediate_size: 0,
         });
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("scene pipeline"),
+            label: Some("mesh pipeline"),
             layout: Some(&pipeline_layout),
             vertex: VertexState {
                 module: &shader,
@@ -174,22 +173,6 @@ impl SceneRenderer {
             cache: None,
         });
 
-        let vertex_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("scene vertices"),
-            size: (scene.vertices.len() * std::mem::size_of::<crate::scene::Vertex>()) as u64,
-            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        queue.write_buffer(&vertex_buffer, 0, bytemuck::cast_slice(&scene.vertices));
-
-        // Two slots, one per eye, so a stereo pass can draw both without rewriting between them.
-        let uniform_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("scene uniforms"),
-            size: UNIFORM_STRIDE * 2,
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
         let sampler = device.create_sampler(&SamplerDescriptor {
             label: Some("base colour sampler"),
             address_mode_u: AddressMode::Repeat,
@@ -203,10 +186,44 @@ impl SceneRenderer {
 
         let placeholder_view = create_placeholder_texture(device, queue);
 
+        Self {
+            pipeline,
+            bind_group_layout,
+            sampler,
+            placeholder_view,
+        }
+    }
+}
+
+/// GPU form of a [`Scene`]: vertex and index buffers plus one uniform slot per eye.
+struct Mesh {
+    vertex_buffer: Buffer,
+    uniform_buffer: Buffer,
+    primitives: Vec<GpuPrimitive>,
+}
+
+impl Mesh {
+    fn new(device: &Device, queue: &Queue, pipeline: &MeshPipeline, scene: &Scene) -> Self {
+        let vertex_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("mesh vertices"),
+            size: (scene.vertices.len() * std::mem::size_of::<crate::scene::Vertex>()) as u64,
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        queue.write_buffer(&vertex_buffer, 0, bytemuck::cast_slice(&scene.vertices));
+
+        // Two slots, one per eye, so a stereo pass can draw both without rewriting between them.
+        let uniform_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("mesh uniforms"),
+            size: UNIFORM_STRIDE * 2,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         let mut primitives = Vec::new();
         for primitive in &scene.primitives {
             let index_buffer = device.create_buffer(&BufferDescriptor {
-                label: Some("scene indices"),
+                label: Some("mesh indices"),
                 size: (primitive.indices.len() * std::mem::size_of::<u32>()) as u64,
                 usage: BufferUsages::INDEX | BufferUsages::COPY_DST,
                 mapped_at_creation: false,
@@ -219,8 +236,8 @@ impl SceneRenderer {
                 .map(|texture| upload_texture(device, queue, texture));
 
             let bind_group = device.create_bind_group(&BindGroupDescriptor {
-                label: Some("scene bind group"),
-                layout: &bind_group_layout,
+                label: Some("mesh bind group"),
+                layout: &pipeline.bind_group_layout,
                 entries: &[
                     BindGroupEntry {
                         binding: 0,
@@ -234,12 +251,12 @@ impl SceneRenderer {
                     BindGroupEntry {
                         binding: 1,
                         resource: BindingResource::TextureView(
-                            texture_view.as_ref().unwrap_or(&placeholder_view),
+                            texture_view.as_ref().unwrap_or(&pipeline.placeholder_view),
                         ),
                     },
                     BindGroupEntry {
                         binding: 2,
-                        resource: BindingResource::Sampler(&sampler),
+                        resource: BindingResource::Sampler(&pipeline.sampler),
                     },
                 ],
             });
@@ -252,12 +269,57 @@ impl SceneRenderer {
         }
 
         Self {
-            pipeline,
             vertex_buffer,
             uniform_buffer,
             primitives,
-            _placeholder_view: placeholder_view,
-            _sampler: sampler,
+        }
+    }
+
+    /// Uploads a combined matrix into the given eye's uniform slot.
+    ///
+    /// Both eyes can be written before a pass begins, which is what lets a stereo pass draw them
+    /// both without an intervening buffer write.
+    fn set_view(&self, queue: &Queue, eye: Eye, matrix: Mat4) {
+        queue.write_buffer(
+            &self.uniform_buffer,
+            eye_offset(eye),
+            bytemuck::bytes_of(&Uniforms {
+                view_proj: matrix.to_cols_array_2d(),
+            }),
+        );
+    }
+
+    /// Records draw commands for one eye into an existing render pass. The pipeline must already
+    /// be set.
+    fn draw(&self, pass: &mut wgpu::RenderPass<'_>, eye: Eye) {
+        pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+
+        let offset = eye_offset(eye) as u32;
+
+        for primitive in &self.primitives {
+            pass.set_bind_group(0, &primitive.bind_group, &[offset]);
+            pass.set_index_buffer(primitive.index_buffer.slice(..), IndexFormat::Uint32);
+            pass.draw_indexed(0..primitive.index_count, 0, 0..1);
+        }
+    }
+}
+
+pub struct SceneRenderer {
+    pipeline: MeshPipeline,
+    mesh: Mesh,
+    /// Colour format this pipeline was built for. Offscreen capture targets must use the same
+    /// format, or the pipeline fails render pass validation.
+    color_format: TextureFormat,
+}
+
+impl SceneRenderer {
+    pub fn new(device: &Device, queue: &Queue, scene: &Scene, output_format: TextureFormat) -> Self {
+        let pipeline = MeshPipeline::new(device, queue, output_format);
+        let mesh = Mesh::new(device, queue, &pipeline, scene);
+
+        Self {
+            pipeline,
+            mesh,
             color_format: output_format,
         }
     }
@@ -271,32 +333,53 @@ impl SceneRenderer {
     /// ref-counted resource handles rather than borrows, so tying the two together would force
     /// egui's `CallbackResources` borrow to outlive the paint callback.
     pub fn draw<'pass>(&self, pass: &mut wgpu::RenderPass<'pass>, eye: Eye) {
-        pass.set_pipeline(&self.pipeline);
-        pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-
-        let offset = eye_offset(eye) as u32;
-
-        for primitive in &self.primitives {
-            pass.set_bind_group(0, &primitive.bind_group, &[offset]);
-            pass.set_index_buffer(primitive.index_buffer.slice(..), IndexFormat::Uint32);
-            pass.draw_indexed(0..primitive.index_count, 0, 0..1);
-        }
+        pass.set_pipeline(&self.pipeline.pipeline);
+        self.mesh.draw(pass, eye);
     }
 
     /// Uploads the view-projection matrix into the given eye's uniform slot.
-    ///
-    /// Both eyes can be written before a pass begins, which is what lets a stereo pass draw them
-    /// both without an intervening buffer write.
     pub fn set_view(&self, queue: &Queue, camera: &Camera, eye: Eye, aspect_ratio: f32) {
         let view_proj = Camera::projection_matrix(aspect_ratio) * camera.view_matrix(eye);
+        self.mesh.set_view(queue, eye, view_proj);
+    }
+}
 
-        queue.write_buffer(
-            &self.uniform_buffer,
-            eye_offset(eye),
-            bytemuck::bytes_of(&Uniforms {
-                view_proj: view_proj.to_cols_array_2d(),
-            }),
-        );
+/// Renders the emulated controllers' 3D models into the scene view.
+///
+/// Independent of [`SceneRenderer`] so controllers can be shown even while the environment failed
+/// to load. Each hand has its own mesh, swapped at runtime when the selected profile changes.
+pub struct ControllerRenderer {
+    pipeline: MeshPipeline,
+    models: [Option<Mesh>; 2],
+}
+
+impl ControllerRenderer {
+    pub fn new(device: &Device, queue: &Queue, output_format: TextureFormat) -> Self {
+        Self {
+            pipeline: MeshPipeline::new(device, queue, output_format),
+            models: [None, None],
+        }
+    }
+
+    /// Uploads a controller model for one hand, replacing the previous one.
+    pub fn set_model(&mut self, device: &Device, queue: &Queue, hand: usize, scene: &Scene) {
+        self.models[hand] = Some(Mesh::new(device, queue, &self.pipeline, scene));
+    }
+
+    /// Uploads the combined matrix (projection * view * model) for one hand and eye.
+    pub fn set_view(&self, queue: &Queue, hand: usize, eye: Eye, matrix: Mat4) {
+        if let Some(mesh) = &self.models[hand] {
+            mesh.set_view(queue, eye, matrix);
+        }
+    }
+
+    /// Records draw commands for one hand and eye into an existing render pass. Nothing is drawn
+    /// until a model was uploaded.
+    pub fn draw(&self, pass: &mut wgpu::RenderPass<'_>, hand: usize, eye: Eye) {
+        if let Some(mesh) = &self.models[hand] {
+            pass.set_pipeline(&self.pipeline.pipeline);
+            mesh.draw(pass, eye);
+        }
     }
 }
 
@@ -447,11 +530,16 @@ pub enum CaptureKind {
 
 /// Renders both eyes side by side into an offscreen target and reads the result back.
 ///
+/// Visible controller models are drawn into the capture as well, so the endpoints show the same
+/// scene as the window. Each entry of the pose array is a controller's world-space model matrix.
+///
 /// Returns tightly packed pixels: RGBA8 for colour, or 8-bit greyscale for depth.
+#[expect(clippy::too_many_arguments)]
 pub fn capture_stereo(
     device: &Device,
     queue: &Queue,
     renderer: &SceneRenderer,
+    controllers: Option<(&ControllerRenderer, [Option<Mat4>; 2])>,
     camera: &Camera,
     eye_width: u32,
     eye_height: u32,
@@ -463,6 +551,18 @@ pub fn capture_stereo(
     // Both eyes have their own uniform slot, so a single pass can draw them into two viewports.
     renderer.set_view(queue, camera, Eye::Left, aspect_ratio);
     renderer.set_view(queue, camera, Eye::Right, aspect_ratio);
+
+    if let Some((controller_renderer, models)) = &controllers {
+        for eye in [Eye::Left, Eye::Right] {
+            let view_proj = Camera::projection_matrix(aspect_ratio) * camera.view_matrix(eye);
+
+            for (hand, model) in models.iter().enumerate() {
+                if let Some(model) = model {
+                    controller_renderer.set_view(queue, hand, eye, view_proj * *model);
+                }
+            }
+        }
+    }
 
     let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
         label: Some("capture encoder"),
@@ -509,6 +609,14 @@ pub fn capture_stereo(
             );
 
             renderer.draw(&mut pass, eye);
+
+            if let Some((controller_renderer, models)) = &controllers {
+                for (hand, model) in models.iter().enumerate() {
+                    if model.is_some() {
+                        controller_renderer.draw(&mut pass, hand, eye);
+                    }
+                }
+            }
         }
     }
 

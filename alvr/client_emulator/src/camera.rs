@@ -140,4 +140,13 @@ impl Camera {
             down: -FOV_HALF_ANGLE,
         }
     }
+
+    /// Aspect ratio of the advertised FOV frustum (tangent width over tangent height).
+    ///
+    /// This is the projection the server renders the video with, whatever the video's pixel
+    /// aspect ratio — so it is the aspect ratio to project with when overlaying onto the video.
+    pub fn fov_aspect_ratio() -> f32 {
+        let fov = Self::fov();
+        (fov.right.tan() - fov.left.tan()) / (fov.up.tan() - fov.down.tan())
+    }
 }

@@ -4,14 +4,16 @@
 //! shared state plus a request channel for anything needing the GPU. Rendering must happen on the
 //! thread owning the wgpu device, so capture requests are queued and answered by the UI thread.
 
+use crate::controllers::Hand;
 use alvr_common::{
-    glam::Vec3,
+    glam::{Quat, Vec3},
     info,
     parking_lot::{Condvar, Mutex},
 };
+use alvr_packets::ButtonValue;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::VecDeque,
+    collections::{BTreeMap, HashMap, VecDeque},
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -20,6 +22,9 @@ pub const DEFAULT_PORT: u16 = 8080;
 
 /// How long a capture request waits for the UI thread before giving up.
 const CAPTURE_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// How long a convenience click holds the input down when the request does not say.
+const DEFAULT_CLICK_DURATION: Duration = Duration::from_millis(100);
 
 #[derive(Serialize)]
 pub struct StateResponse {
@@ -53,6 +58,115 @@ pub struct PendingMove {
     pub yaw: Option<f32>,
     pub pitch: Option<f32>,
     pub roll: Option<f32>,
+}
+
+/// Snapshot of both emulated controllers, published by the UI thread every frame and serialised
+/// straight out to `GET /api/controllers`. Also what requests are validated against, so errors are
+/// reported to the caller instead of being dropped on the UI thread.
+#[derive(Serialize, Clone, Default)]
+pub struct ControllersResponse {
+    /// The profiles available for emulation, in selection order.
+    pub profiles: Vec<ProfileSummary>,
+    pub left: ControllerSnapshot,
+    pub right: ControllerSnapshot,
+}
+
+impl ControllersResponse {
+    fn hand(&self, hand: Hand) -> &ControllerSnapshot {
+        match hand {
+            Hand::Left => &self.left,
+            Hand::Right => &self.right,
+        }
+    }
+}
+
+#[derive(Serialize, Clone)]
+pub struct ProfileSummary {
+    pub name: String,
+    pub path: String,
+}
+
+#[derive(Serialize, Clone)]
+pub struct ControllerSnapshot {
+    pub enabled: bool,
+    pub profile: String,
+    pub visible: bool,
+    /// Head-relative position: X right, Y up, -Z forward.
+    pub position: [f32; 3],
+    /// Head-relative orientation quaternion, XYZW.
+    pub orientation: [f32; 4],
+    /// Inputs currently held, keyed by input path suffix such as `trigger/value`.
+    pub inputs: BTreeMap<String, serde_json::Value>,
+    /// Inputs the selected profile supports for this hand.
+    pub supported_inputs: Vec<String>,
+}
+
+impl Default for ControllerSnapshot {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            profile: String::new(),
+            visible: false,
+            position: [0.0; 3],
+            orientation: [0.0, 0.0, 0.0, 1.0],
+            inputs: BTreeMap::new(),
+            supported_inputs: Vec::new(),
+        }
+    }
+}
+
+/// A pending controller change, applied by the UI thread on the next frame. User interface input
+/// and API input merge by mutating the same state there.
+pub enum ControllerCommand {
+    Configure {
+        hand: Hand,
+        enabled: Option<bool>,
+        profile: Option<String>,
+        visible: Option<bool>,
+    },
+    SetPose {
+        hand: Hand,
+        position: Option<Vec3>,
+        orientation: Option<Quat>,
+    },
+    SetInputs {
+        hand: Hand,
+        inputs: Vec<(&'static str, ButtonValue)>,
+    },
+    /// Press an input now and release it after `duration`.
+    Click {
+        hand: Hand,
+        input: &'static str,
+        duration: Duration,
+    },
+    Reset {
+        hand: Hand,
+    },
+}
+
+/// Body of `POST /api/controllers/{hand}`. Omitted fields keep their current value.
+#[derive(Deserialize)]
+struct ControllerConfigRequest {
+    enabled: Option<bool>,
+    profile: Option<String>,
+    visible: Option<bool>,
+}
+
+/// Body of `POST /api/controllers/{hand}/pose`. Omitted fields keep their current value.
+#[derive(Deserialize)]
+struct ControllerPoseRequest {
+    /// Head-relative position: X right, Y up, -Z forward.
+    position: Option<[f32; 3]>,
+    /// Head-relative orientation quaternion, XYZW. Normalised on apply.
+    orientation: Option<[f32; 4]>,
+}
+
+/// Body of `POST /api/controllers/{hand}/inputs/click`.
+#[derive(Deserialize)]
+struct ControllerClickRequest {
+    input: String,
+    /// Hold time in seconds. Defaults to a brief tap.
+    duration: Option<f32>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -99,8 +213,12 @@ impl CaptureSlot {
 pub struct SharedState {
     /// Latest snapshot published by the UI thread, serialised straight out to `/api/state`.
     pub state: Mutex<StateResponse>,
+    /// Latest controller snapshot published by the UI thread, for `/api/controllers`.
+    pub controllers: Mutex<ControllersResponse>,
     /// Pose changes queued by `/api/move`.
     pub moves: Mutex<VecDeque<PendingMove>>,
+    /// Controller changes queued by the controller endpoints.
+    pub controller_commands: Mutex<VecDeque<ControllerCommand>>,
     /// Capture requests queued by the view endpoints.
     pub captures: Mutex<VecDeque<CaptureRequest>>,
 }
@@ -109,7 +227,9 @@ impl SharedState {
     pub fn new(initial: StateResponse) -> Self {
         Self {
             state: Mutex::new(initial),
+            controllers: Mutex::new(ControllersResponse::default()),
             moves: Mutex::new(VecDeque::new()),
+            controller_commands: Mutex::new(VecDeque::new()),
             captures: Mutex::new(VecDeque::new()),
         }
     }
@@ -155,6 +275,23 @@ fn route(shared: &SharedState, request: &mut tiny_http::Request) -> Reply {
             Err(e) => Reply::Error(500, format!("Cannot serialise state: {e}")),
         },
 
+        (tiny_http::Method::Get, "/api/controllers") => {
+            match serde_json::to_string_pretty(&*shared.controllers.lock()) {
+                Ok(json) => Reply::Json(json),
+                Err(e) => Reply::Error(500, format!("Cannot serialise controllers: {e}")),
+            }
+        }
+
+        (tiny_http::Method::Post, path) if path.starts_with("/api/controllers/") => {
+            let mut body = String::new();
+            if let Err(e) = request.as_reader().read_to_string(&mut body) {
+                return Reply::Error(400, format!("Cannot read request body: {e}"));
+            }
+
+            let rest = &path["/api/controllers/".len()..];
+            controller_route(shared, rest, &body)
+        }
+
         (tiny_http::Method::Get, "/api/view/color") => capture(shared, CaptureRequestKind::Color),
         (tiny_http::Method::Get, "/api/view/depth") => capture(shared, CaptureRequestKind::Depth),
 
@@ -181,6 +318,166 @@ fn route(shared: &SharedState, request: &mut tiny_http::Request) -> Reply {
 
         _ => Reply::Error(404, format!("No such endpoint: {method} {url}")),
     }
+}
+
+/// Dispatches `POST /api/controllers/{hand}[/...]` requests.
+///
+/// Requests are validated here, against the snapshot the UI thread published last frame, so the
+/// caller gets a proper error instead of the command being dropped silently. The commands
+/// themselves are applied by the UI thread on its next frame.
+fn controller_route(shared: &SharedState, rest: &str, body: &str) -> Reply {
+    let (side, action) = match rest.split_once('/') {
+        Some((side, action)) => (side, action),
+        None => (rest, ""),
+    };
+
+    let Some(hand) = Hand::from_side(side) else {
+        return Reply::Error(404, format!("No such controller: {side} (use left or right)"));
+    };
+
+    // An empty body means "change nothing", which keeps `curl -X POST` without a payload usable.
+    let body = if body.trim().is_empty() { "{}" } else { body };
+
+    let command = match action {
+        "" => parse_configure(shared, hand, body),
+        "pose" => parse_pose(hand, body),
+        "inputs" => parse_inputs(shared, hand, body),
+        "inputs/click" => parse_click(shared, hand, body),
+        "reset" => Ok(ControllerCommand::Reset { hand }),
+        _ => {
+            return Reply::Error(404, format!("No such controller endpoint: {action}"));
+        }
+    };
+
+    match command {
+        Ok(command) => {
+            shared.controller_commands.lock().push_back(command);
+            Reply::Json("{\"ok\":true}".into())
+        }
+        Err(message) => Reply::Error(400, message),
+    }
+}
+
+fn parse_configure(shared: &SharedState, hand: Hand, body: &str) -> Result<ControllerCommand, String> {
+    let parsed: ControllerConfigRequest =
+        serde_json::from_str(body).map_err(|e| format!("Invalid JSON: {e}"))?;
+
+    if let Some(profile) = &parsed.profile {
+        let known = shared.controllers.lock().profiles.iter().any(|summary| {
+            summary.name.eq_ignore_ascii_case(profile) || summary.path == *profile
+        });
+
+        if !known {
+            let names = shared
+                .controllers
+                .lock()
+                .profiles
+                .iter()
+                .map(|summary| summary.name.clone())
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            return Err(format!("Unknown profile '{profile}'. Available: {names}"));
+        }
+    }
+
+    Ok(ControllerCommand::Configure {
+        hand,
+        enabled: parsed.enabled,
+        profile: parsed.profile,
+        visible: parsed.visible,
+    })
+}
+
+fn parse_pose(hand: Hand, body: &str) -> Result<ControllerCommand, String> {
+    let parsed: ControllerPoseRequest =
+        serde_json::from_str(body).map_err(|e| format!("Invalid JSON: {e}"))?;
+
+    let orientation = match parsed.orientation {
+        Some(values) => {
+            let quat = Quat::from_array(values);
+            if quat.length_squared() < f32::EPSILON {
+                return Err("Orientation quaternion must not be zero".into());
+            }
+            Some(quat.normalize())
+        }
+        None => None,
+    };
+
+    Ok(ControllerCommand::SetPose {
+        hand,
+        position: parsed.position.map(Vec3::from_array),
+        orientation,
+    })
+}
+
+fn parse_inputs(shared: &SharedState, hand: Hand, body: &str) -> Result<ControllerCommand, String> {
+    let parsed: HashMap<String, serde_json::Value> =
+        serde_json::from_str(body).map_err(|e| format!("Invalid JSON: {e}"))?;
+
+    let inputs = parsed
+        .iter()
+        .map(|(suffix, value)| {
+            let suffix = validate_input(shared, hand, suffix)?;
+
+            let value = match value {
+                serde_json::Value::Bool(pressed) => ButtonValue::Binary(*pressed),
+                serde_json::Value::Number(number) => {
+                    ButtonValue::Scalar(number.as_f64().unwrap_or(0.0) as f32)
+                }
+                other => {
+                    return Err(format!(
+                        "Input '{suffix}' must be a boolean or a number, got: {other}"
+                    ));
+                }
+            };
+
+            Ok((suffix, value))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+
+    Ok(ControllerCommand::SetInputs { hand, inputs })
+}
+
+fn parse_click(shared: &SharedState, hand: Hand, body: &str) -> Result<ControllerCommand, String> {
+    let parsed: ControllerClickRequest =
+        serde_json::from_str(body).map_err(|e| format!("Invalid JSON: {e}"))?;
+
+    let input = validate_input(shared, hand, &parsed.input)?;
+
+    let duration = match parsed.duration {
+        Some(seconds) if !(0.0..=10.0).contains(&seconds) => {
+            return Err("Click duration must be between 0 and 10 seconds".into());
+        }
+        Some(seconds) => Duration::from_secs_f32(seconds),
+        None => DEFAULT_CLICK_DURATION,
+    };
+
+    Ok(ControllerCommand::Click {
+        hand,
+        input,
+        duration,
+    })
+}
+
+/// Checks an input path suffix against what the hand's current profile supports, and interns it.
+fn validate_input(shared: &SharedState, hand: Hand, suffix: &str) -> Result<&'static str, String> {
+    let snapshot = shared.controllers.lock();
+    let supported = &snapshot.hand(hand).supported_inputs;
+
+    if !supported.iter().any(|known| known == suffix) {
+        return Err(format!(
+            "Input '{suffix}' is not available on the current profile. Available: {}",
+            supported.join(", ")
+        ));
+    }
+
+    // The suffix passed profile validation, so it is one of the known canonical strings.
+    crate::controllers::INPUT_SUFFIXES
+        .iter()
+        .copied()
+        .find(|known| *known == suffix)
+        .ok_or_else(|| format!("Input '{suffix}' is not an ALVR input"))
 }
 
 /// Queues a capture for the UI thread and blocks until it comes back.

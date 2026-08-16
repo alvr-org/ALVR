@@ -226,6 +226,19 @@ impl VideoRenderer {
         self.layout
     }
 
+    /// Pixel aspect ratio of one eye's image, once a frame has arrived. This is what the video
+    /// must be displayed at to appear unstretched.
+    pub fn eye_aspect_ratio(&self) -> Option<f32> {
+        self.planes.as_ref().map(|planes| {
+            let width = match self.layout {
+                FrameLayout::SideBySide => planes.width / 2,
+                FrameLayout::Single => planes.width,
+            };
+
+            width as f32 / planes.height.max(1) as f32
+        })
+    }
+
     /// Uploads a decoded frame, replacing whatever was shown before.
     pub fn upload(&mut self, device: &Device, queue: &Queue, frame: &DecodedFrame) {
         let DecodedFrame::Yuv420 {

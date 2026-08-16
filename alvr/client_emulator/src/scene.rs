@@ -44,6 +44,57 @@ pub struct Scene {
     pub primitives: Vec<Primitive>,
 }
 
+/// Appends an axis-aligned box with per-face brightness, faking depth cues under unlit shading.
+fn push_box(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>,
+    center: Vec3,
+    half: Vec3,
+    color: [f32; 3],
+) {
+    // (normal axis, sign, brightness): top lit, bottom shadowed, sides in between.
+    const FACES: [(usize, f32, f32); 6] = [
+        (1, 1.0, 1.15),
+        (1, -1.0, 0.7),
+        (0, 1.0, 0.9),
+        (0, -1.0, 0.9),
+        (2, 1.0, 1.0),
+        (2, -1.0, 0.8),
+    ];
+
+    for (axis, sign, brightness) in FACES {
+        let u_axis = (axis + 1) % 3;
+        let v_axis = (axis + 2) % 3;
+
+        let mut normal = Vec3::ZERO;
+        normal[axis] = sign * half[axis];
+
+        let mut u = Vec3::ZERO;
+        u[u_axis] = half[u_axis];
+        let mut v = Vec3::ZERO;
+        v[v_axis] = half[v_axis];
+
+        let face_color = [
+            (color[0] * brightness).min(1.0),
+            (color[1] * brightness).min(1.0),
+            (color[2] * brightness).min(1.0),
+        ];
+
+        let base = vertices.len() as u32;
+        for corner in [-u - v, u - v, u + v, -u + v] {
+            vertices.push(Vertex {
+                position: (center + normal + corner).to_array(),
+                uv: [0.0, 0.0],
+                color: face_color,
+            });
+        }
+
+        // Culling is disabled, so consistent winding is not required and one order serves both
+        // face signs.
+        indices.extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+    }
+}
+
 /// Resolves the environment file next to the executable, which is where the emulator expects it.
 pub fn default_environment_path() -> Result<PathBuf> {
     let exe = std::env::current_exe().context("Cannot determine executable path")?;
@@ -128,7 +179,7 @@ impl Scene {
         }
 
         info!(
-            "Loaded environment {} ({} vertices, {} primitives)",
+            "Loaded {} ({} vertices, {} primitives)",
             path.display(),
             vertices.len(),
             primitives.len()
@@ -138,6 +189,47 @@ impl Scene {
             vertices,
             primitives,
         })
+    }
+
+    /// A procedural stand-in controller model, used when a profile does not name a glTF file.
+    ///
+    /// A grip-sized handle with a flat head and a bright nose marker on the forward (-Z) side, so
+    /// position and orientation can be judged without a real model. The shading is unlit, so each
+    /// face gets its own brightness to keep the silhouette readable.
+    pub fn placeholder_controller() -> Self {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+
+        // Handle below and slightly behind the grip origin, head plate above it, nose in front.
+        push_box(
+            &mut vertices,
+            &mut indices,
+            Vec3::new(0.0, -0.04, 0.03),
+            Vec3::new(0.016, 0.05, 0.016),
+            [0.35, 0.35, 0.38],
+        );
+        push_box(
+            &mut vertices,
+            &mut indices,
+            Vec3::new(0.0, 0.01, -0.02),
+            Vec3::new(0.035, 0.012, 0.03),
+            [0.55, 0.55, 0.58],
+        );
+        push_box(
+            &mut vertices,
+            &mut indices,
+            Vec3::new(0.0, 0.01, -0.06),
+            Vec3::new(0.008, 0.008, 0.012),
+            [0.9, 0.55, 0.2],
+        );
+
+        Self {
+            vertices,
+            primitives: vec![Primitive {
+                indices,
+                texture: None,
+            }],
+        }
     }
 
     /// Axis-aligned bounds, used to pick a sensible starting position when the scene loads.

@@ -18,6 +18,9 @@ existing clients working unchanged; see "ALVR changes" below.
   local glTF scene, which is useful for telling a decode problem apart from a rendering one.
 - Renders a glTF scene from a first person camera. This is also what the capture endpoints return —
   they render the scene offscreen, not the video.
+- **Emulates motion controllers.** Either controller can be enabled independently, posed in 6DoF,
+  and driven through every button and axis the selected controller type has, from the mouse or from
+  the HTTP API. The server treats them as real controllers; SteamVR renders and reacts to them.
 
 ### Video decoding
 
@@ -89,7 +92,7 @@ worth not repeating.
 
 | Input | Action |
 |---|---|
-| Left-click the view | Capture the mouse for look control until `Esc` (cursor hidden and confined) |
+| Left-click the view | Capture the mouse for look control (cursor hidden and confined); click again or press `Esc` to release |
 | Hold right button | Look around only while held; releasing the button ends it |
 | `Esc` | Release a left-click capture |
 | `W` / `A` / `S` / `D` | Move horizontally (never vertically, regardless of pitch) |
@@ -103,6 +106,93 @@ There is no collision: walking through walls is expected.
 The toolbar selects which eye the window shows — **Left**, **Right** or **Stereo** — and whether the
 source is the decoded **Video** or the local **Scene**. It also shows the connection state, stream
 resolution, decoded frame count and current position.
+
+## Controller emulation
+
+The **Inputs** toolbar row controls the emulated controllers: **L** and **R** enable each hand
+independently, the dropdown selects which controller type to emulate, **Display** shows the 3D
+models in the scene view, and **Reset** returns poses and inputs to their defaults.
+
+Enabled controllers appear as **L**/**R** icons projected over the 3D view at their position; when
+the controller is outside the view the icon sticks to the edge with an arrow pointing towards it.
+Hovering an icon — including an edge-clamped one, which is how an off-screen controller is brought
+back — opens the movement panel underneath, four drag pads that pose the controller:
+
+| Pad | Drag | Effect |
+|---|---|---|
+| Move | 2D | Translate on the vertical plane facing the head (drag maps 1:1 to on-screen motion) |
+| Depth | vertical | Move towards / away from the head |
+| Roll | horizontal | Roll around the controller's own forward axis |
+| Aim | 2D | Yaw and pitch in head space, with configurable sensitivity |
+
+Poses are head-relative, so controllers ride along as the camera moves and turns. The axes follow
+ALVR's convention: X right, Y up, -Z forward, origin at the head.
+
+While a controller is enabled, a panel mimicking its physical layout sits in the matching bottom
+corner: trigger on top filling downwards as it is pulled, the grip as a bar on the inner edge
+filling from the screen centre outwards, thumbstick or trackpad in the middle, menu / face buttons
+/ system / thumbrest along the bottom. The right panel mirrors the left, rows a profile lacks
+collapse away, face buttons take the traditional gamepad colours, and the border matches the hand's
+icon colour. The buttons follow one scheme so held inputs can be combined with moving the
+controller or the headset: the left button is momentary, a middle-button drag or click sets state
+that persists, and a right click toggles the press until clicked again.
+
+| Control | Left button | Middle button | Right button |
+|---|---|---|---|
+| Trigger / grip | Hold a full pull | Drag: analog value, kept on release | Click: toggle full pull |
+| Thumbstick | Drag to deflect (springs back); click: recentre a held deflection | Click: toggle touch | Drag: deflect, kept; click: toggle stick click |
+| Face / menu / system buttons | Hold the press | Click: toggle touch | Click: toggle press |
+| Trackpad | Place the contact point | Drag: force (kept); click: toggle touch | Click: toggle pad click |
+| Thumbrest | Hold the touch | Click: toggle touch | Click: toggle touch |
+
+Every control shows a tooltip naming the input paths it drives and its mouse actions.
+
+Inputs are kept consistent the way a physical controller would report them: pulling a trigger also
+reports its touch, a full pull reports the click, deflecting a stick reports its touch, and so on.
+Values set through the API are held until changed and show up in the panels; interacting with a
+control in the UI overrides it. Haptic feedback from the server shows on the indicator in the
+panel's top corner — brightness follows the amplitude and the blink hints at the frequency — and as
+a flashing trackpad border.
+
+Emulation works alongside streaming: SteamVR sees the controllers as real devices and applications
+render and react to them.
+
+### Controller profiles and settings
+
+`controllers.json` next to the executable is created on first run and can be edited freely; it is
+documented by its own content. It holds:
+
+- `rotation_sensitivity` — radians of controller rotation per pixel of drag on the rotation pads.
+- `left_start_position` / `right_start_position` — head-relative default positions.
+- `profiles` — the controller types offered for emulation. Each entry has a display `name`, the
+  interaction profile `path`, the input path suffixes each hand supports (`left_inputs` /
+  `right_inputs`, e.g. `"trigger/value"`), and optionally `left_model` / `right_model`, glTF files
+  (relative to the executable's directory) shown when the controller is visible. Without a model a
+  small procedural placeholder is drawn instead.
+
+Real controller models cannot be redistributed, but SteamVR ships them locally and
+[`tools/convert_rendermodel.py`](tools/convert_rendermodel.py) converts one into a glTF the
+emulator loads:
+
+```sh
+python alvr/client_emulator/tools/convert_rendermodel.py \
+  "C:/Program Files (x86)/Steam/steamapps/common/SteamVR/resources/rendermodels/oculus_quest2_controller_left" \
+  target/debug/models/quest_left.gltf
+```
+
+Run it once per hand and point the profile's `left_model` / `right_model` at the outputs. Render
+models are authored around the SteamVR device pose while the emulator poses the grip, so the
+converter bakes in ALVR's default grip-to-device translation (`0, 0, -0.11`); pass `--offset` if
+the server's controller position offset was customised. The models display in both the scene and
+the video view — over the video they overlap the application's own controller rendering, which is
+exactly the comparison the display toggle is for.
+
+The default file is generated from ALVR's own interaction profile definitions, so the predefined
+profiles emulate exactly the inputs ALVR accepts from each real controller: Quest, Index, Vive
+Wand, Pico Neo3 / 4 / 4S / G3, PSVR2 Sense, Vive Focus 3 and YVR. New profiles can be added as long
+as they use inputs from that set — unknown inputs are ignored with a warning. Note the emulator
+reports inputs exactly as the real controller would; any remapping to the server's configured
+emulation mode happens on the server, as with real hardware.
 
 ## HTTP API
 
@@ -165,6 +255,82 @@ curl -X POST http://127.0.0.1:8080/api/move \
 
 Angles are radians. Applied on the next frame.
 
+### `GET /api/controllers`
+
+Both controllers' full state, plus the available profiles:
+
+```json
+{
+  "profiles": [{ "name": "Quest", "path": "/interaction_profiles/oculus/touch_controller" }, ...],
+  "left": {
+    "enabled": true,
+    "profile": "Quest",
+    "visible": false,
+    "position": [-0.15, -0.25, -0.35],
+    "orientation": [0.0, 0.0, 0.0, 1.0],
+    "inputs": { "trigger/value": 0.6 },
+    "supported_inputs": ["menu/click", "x/click", ...]
+  },
+  "right": { ... }
+}
+```
+
+`position` is head-relative (X right, Y up, -Z forward), `orientation` is an XYZW quaternion.
+`inputs` lists the explicitly held inputs; derived ones (touch from a press, and so on) are added
+when sending. `supported_inputs` is what the current profile accepts for that hand, which is also
+what input requests are validated against.
+
+### `POST /api/controllers/{left|right}`
+
+Configures one controller. Every field is optional:
+
+```sh
+curl -X POST http://127.0.0.1:8080/api/controllers/left \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": true, "profile": "Index", "visible": true}'
+```
+
+`profile` takes a display name (case-insensitive) or an interaction profile path.
+
+### `POST /api/controllers/{left|right}/pose`
+
+Sets the head-relative pose. Both fields optional; the quaternion is normalised on apply:
+
+```sh
+curl -X POST http://127.0.0.1:8080/api/controllers/left/pose \
+  -H "Content-Type: application/json" \
+  -d '{"position": [0.1, -0.2, -0.4], "orientation": [0.0, 0.383, 0.0, 0.924]}'
+```
+
+### `POST /api/controllers/{left|right}/inputs`
+
+Sets button and axis states, held until changed or reset. Keys are input path suffixes, values are
+booleans or numbers; inputs the current profile does not support are rejected with a 400 listing
+what is available:
+
+```sh
+curl -X POST http://127.0.0.1:8080/api/controllers/right/inputs \
+  -H "Content-Type: application/json" \
+  -d '{"trigger/value": 0.7, "a/click": true, "thumbstick/x": -0.5}'
+```
+
+Setting a value to `0` / `false` releases it.
+
+### `POST /api/controllers/{left|right}/inputs/click`
+
+Presses an input and releases it after `duration` seconds (default 0.1):
+
+```sh
+curl -X POST http://127.0.0.1:8080/api/controllers/right/inputs/click \
+  -H "Content-Type: application/json" \
+  -d '{"input": "a/click", "duration": 0.25}'
+```
+
+### `POST /api/controllers/{left|right}/reset`
+
+Returns the pose and all inputs to their defaults. Emulation stays enabled and the profile
+selection is kept.
+
 ## Notes and limitations
 
 - **Shared client identity.** `alvr_client_core` stores its hostname in a per-user config file
@@ -194,11 +360,14 @@ Angles are radians. Applied on the next frame.
 | `src/main.rs` | eframe app, toolbar, input handling, API request servicing |
 | `src/camera.rs` | First person camera and eye/projection matrices |
 | `src/scene.rs` | glTF loading into a plain geometry container |
-| `src/render.rs` | wgpu pipeline, on-screen views, offscreen capture |
-| `src/client.rs` | `ClientCoreContext` lifecycle and the tracking thread |
+| `src/render.rs` | wgpu pipeline, on-screen views, offscreen capture, controller models |
+| `src/client.rs` | `ClientCoreContext` lifecycle, tracking thread, button sync |
+| `src/controllers.rs` | Controller state, profiles and the settings file |
+| `src/controller_ui.rs` | Controller icons, movement panel and the corner input panels |
 | `src/api.rs` | HTTP server and shared state |
 | `src/shader.wgsl` | Unlit vertex/fragment shader |
 | `tools/make_environment.py` | Generates a test environment |
+| `tools/convert_rendermodel.py` | Converts a local SteamVR render model into a loadable glTF |
 
 `Scene` is deliberately a geometry container rather than a renderer, so an alternative source such as
 a Gaussian splat capture can be added without changing the code that consumes it.

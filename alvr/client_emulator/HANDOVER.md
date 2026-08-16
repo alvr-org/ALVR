@@ -39,15 +39,50 @@ These were settled deliberately; re-opening them needs a reason.
 ## Architecture
 
 ```
-main.rs      eframe app: toolbar, input, paint callback, services API requests
-camera.rs    first person camera, per-eye view and projection matrices
-client.rs    ClientCoreContext lifecycle, tracking thread, decoder wiring, statistics reporting
-decoder/     VideoDecoder trait + DecodedFrame enum; software.rs is the ffmpeg CPU implementation
-video.rs     decoded frames to GPU, YUV to RGB in video.wgsl, per-eye region sampling
-render.rs    glTF scene pipeline, on-screen views and offscreen capture for the API
-scene.rs     glTF loading into a plain geometry container
-api.rs       HTTP control server
+main.rs           eframe app: toolbar, input, paint callback, services API requests
+camera.rs         first person camera, per-eye view and projection matrices
+client.rs         ClientCoreContext lifecycle, tracking thread, decoder wiring, statistics,
+                  controller motion / button / interaction-profile sync
+controllers.rs    emulated controller state, profiles, controllers.json settings file
+controller_ui.rs  controller icons over the view, movement panel, corner input panels
+decoder/          VideoDecoder trait + DecodedFrame enum; software.rs is the ffmpeg CPU implementation
+video.rs          decoded frames to GPU, YUV to RGB in video.wgsl, per-eye region sampling
+render.rs         glTF scene pipeline, controller models, on-screen views and offscreen capture
+scene.rs          glTF loading into a plain geometry container
+api.rs            HTTP control server
 ```
+
+## Controller emulation notes
+
+Added after the freeze work; see README.md for usage. Implementation points worth knowing:
+
+- **Poses ride the existing tracking channel.** Controllers are extra `device_motions` entries in
+  the same `TrackingData` as the head, at the same 3× refresh cadence. The head and the controllers
+  are published by the UI thread as **one atomic snapshot** (`TrackedState`) — with separate slots,
+  packets sometimes paired a fresh head pose with last frame's controllers, and head-relative
+  controllers visibly flickered against the view while the camera moved.
+- **Controller velocities are zero, like the head's.** Derived velocities (even low-pass filtered)
+  made the controllers swim relative to the view while walking, because the server extrapolates
+  poses by velocity and the head reports none. Both unpredicted keeps them locked together; revisit
+  only together with head velocities.
+- **Buttons are change-driven.** `EmulatedClient::sync_buttons` mirrors what was last sent and
+  transmits diffs, like the real client; releases are sent for inputs that disappear from the
+  desired set. Derived inputs (touch from press, click from full pull) are computed in
+  `ControllerState::effective_entries`, filtered by the active profile.
+- **One interaction profile announcement for both hands.** The server rebuilds its button mapping
+  manager from every `ActiveInteractionProfile` packet and keeps only the last, so the emulator
+  sends the union of both hands' input ids as one announcement rather than one per hand.
+- **Profiles are generated from `alvr_common::CONTROLLER_PROFILE_INFO`** into `controllers.json` on
+  first run, which keeps the emulated input sets identical to what ALVR accepts from real hardware.
+- **egui Areas and DPI.** The corner panels are positioned with explicit coordinates from
+  `ctx.content_rect()`; `Area::anchor`/`pivot` place by the area's remembered size, which is wrong
+  on the first frame. When verifying the UI with `PrintWindow` screenshots, the capturing process
+  must be DPI-aware or the capture is silently cropped to the top-left corner — this cost a long
+  false hunt for a rendering bug that did not exist.
+
+Verified end-to-end against SteamVR Home: SteamVR renders the emulated Quest controllers at the
+emulated poses, and button presses arrive server-side (watched via the `/api/events` WebSocket with
+`log_button_presses` enabled) including the derived touch inputs and timed click releases.
 
 The decoder is behind a trait with a `DecoderKind::preferred()` selector so a platform-specific
 zero-copy implementation can be added later without touching the renderer. `DecodedFrame` is an enum

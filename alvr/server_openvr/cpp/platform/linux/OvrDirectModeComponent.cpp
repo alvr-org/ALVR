@@ -21,6 +21,12 @@
 // slot is close to its next writer.
 constexpr double JobAgeLimitFrames = 1.5;
 
+// The declared vsync grid leads the real frame deadline by this much. Sleeping
+// to the tick and declaring a zero offset advertises no headroom, which
+// measured as heavy applications locked to half rate; 2 ms measured as a full
+// 72.
+constexpr auto RunningStart = std::chrono::microseconds(2000);
+
 // The negotiated refresh rate expressed as a frame period.
 static std::chrono::nanoseconds frameInterval() {
     return std::chrono::nanoseconds((int64_t)(1e9 / Settings_Instance()->m_refreshRate));
@@ -535,8 +541,91 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
     m_jobCv.notify_one();
 }
 
-void OvrDirectModeComponent::PostPresent(const Throttling_t* pThrottling) {  
-    vr::VRServerDriverHost()->VsyncEvent(0.0);
-    //Calls VsyncEnvent somewhere
-    //WaitForVSync();
-  }
+void OvrDirectModeComponent::PostPresent(const Throttling_t* pThrottling) {
+    // Prop_Hmd_SupportsAppThrottling_Bool is set, so SteamVR sends throttle
+    // hints here and predicts poses assuming we honor them. Ignoring them
+    // while it throttles an app predicts poses for a cadence we are not
+    // keeping, which reprojects the world against head motion.
+    uint32_t throttleFrames = 0;
+    if (pThrottling != nullptr) {
+        throttleFrames = pThrottling->nFramesToThrottle;
+        if (pThrottling->nFramesToThrottle != m_lastThrottleFrames
+            || pThrottling->nAdditionalFramesToPredict != m_lastPredictFrames) {
+            m_lastThrottleFrames = pThrottling->nFramesToThrottle;
+            m_lastPredictFrames = pThrottling->nAdditionalFramesToPredict;
+            Info(
+                "Throttling: framesToThrottle=%u additionalFramesToPredict=%u\n",
+                pThrottling->nFramesToThrottle,
+                pThrottling->nAdditionalFramesToPredict
+            );
+        }
+    }
+
+    // A direct mode driver paces the compositor: vrserver starts the next
+    // frame when we send VsyncEvent. Firing it immediately lets the compositor
+    // free-run as fast as encoding completes, which floods the client decoder
+    // and starves the rest of the desktop. PostPresent exists so the driver
+    // can hold this thread until vsync, so pace it to the negotiated rate.
+    using std::chrono::nanoseconds;
+    using std::chrono::steady_clock;
+
+    auto const interval = frameInterval();
+    auto const now = steady_clock::now();
+
+    if (m_nextVsync == steady_clock::time_point {}) {
+        // First frame. The default-constructed epoch would otherwise fall into
+        // the catch-up loop and iterate once per frame interval of uptime.
+        m_nextVsync = now + interval;
+    } else if (m_nextVsync > now + interval) {
+        // Clock went backwards: resynchronize.
+        m_nextVsync = now + interval;
+    } else {
+        // Advance along the grid, losing whole ticks that were missed. A loop
+        // slightly over budget every frame has to shed ticks cleanly rather
+        // than accumulate debt and then snap, which reads as a burst-pause
+        // cadence with tens of milliseconds of queueing.
+        m_nextVsync += interval;
+        while (m_nextVsync <= now) {
+            m_nextVsync += interval;
+            m_skippedVsyncs++;
+        }
+    }
+
+    // Hold the next tick for the frames SteamVR asked us to throttle, so the
+    // cadence we signal matches the one its pose prediction assumes.
+    m_nextVsync += interval * throttleFrames;
+
+    // Wake a phase lead before the tick and declare the vsync at that announce
+    // point. VsyncEvent takes a time offset in seconds, so declaring early
+    // gives WaitGetPoses release and pose prediction a head start on the real
+    // deadline. The offset self-corrects wake jitter: it goes slightly
+    // negative when we oversleep, which reads as the vsync having just passed.
+    auto const announce = m_nextVsync - RunningStart;
+    std::this_thread::sleep_until(announce);
+
+    double offset
+        = std::chrono::duration_cast<std::chrono::duration<double>>(announce - steady_clock::now())
+              .count();
+    vr::VRServerDriverHost()->VsyncEvent(offset);
+}
+
+void OvrDirectModeComponent::GetFrameTiming(vr::DriverDirectMode_FrameTiming* pFrameTiming) {
+    if (pFrameTiming == nullptr
+        || pFrameTiming->m_nSize < sizeof(vr::DriverDirectMode_FrameTiming)) {
+        return;
+    }
+
+    // Reporting skipped ticks as dropped frames looks like honest cadence
+    // feedback, but the compositor reads it as GPU overload and turns on
+    // interleaved reprojection: half rate, so the grid then skips a tick every
+    // frame, so we report another drop, throttled forever. Measured as Home
+    // locked to 35 with the report in and 72 without. Consume the counter
+    // without reporting it until there is a channel that does not throttle.
+    (void)m_skippedVsyncs.exchange(0);
+    pFrameTiming->m_nNumFramePresents = 1;
+    pFrameTiming->m_nNumMisPresented = 0;
+    pFrameTiming->m_nNumDroppedFrames = 0;
+    // These bits overlap the throttle mask and must not be echoed back
+    // unhandled, per the interface header.
+    pFrameTiming->m_nReprojectionFlags = 0;
+}

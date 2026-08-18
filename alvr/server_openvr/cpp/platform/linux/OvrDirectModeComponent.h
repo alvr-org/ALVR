@@ -71,6 +71,9 @@ public:
      * successfully acquired the sync texture in Present.*/
     virtual void PostPresent(const Throttling_t* pThrottling);
 
+    /** Called to get additional frame timing stats from driver. */
+    virtual void GetFrameTiming(vr::DriverDirectMode_FrameTiming* pFrameTiming);
+
 private:
     std::shared_ptr<PoseHistory> m_poseHistory;
 
@@ -104,6 +107,14 @@ private:
     std::atomic<EncoderState> m_encoderState { EncoderState::Idle };
 
     std::mutex m_presentMutex;
+
+    // Next tick on the pacing grid. Compositor thread only.
+    std::chrono::steady_clock::time_point m_nextVsync {};
+    // Ticks the grid skipped since the last GetFrameTiming.
+    std::atomic<uint32_t> m_skippedVsyncs { 0 };
+    // Last throttle hints, for change logging only.
+    uint32_t m_lastThrottleFrames = 0;
+    uint32_t m_lastPredictFrames = 0;
 
     // Single-slot latest-wins mailbox: at steady state the worker drains
     // faster than frames arrive, and if it falls behind, the newest frame

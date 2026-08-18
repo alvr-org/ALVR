@@ -199,17 +199,26 @@ void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
             vr::Prop_DisplayFrequency_Float,
             static_cast<float>(Settings_Instance()->m_refreshRate)
         );
+        // One frame period. A streamed display has no measured panel latency
+        // to put here, so one frame is the honest placeholder, and setting it
+        // explicitly rather than leaving it unset keeps pose prediction
+        // deterministic. ALVR compensates streaming latency in its own
+        // tracking path, so link latency deliberately is not folded in here.
+        vr::VRProperties()->SetFloatProperty(
+            this->prop_container,
+            vr::Prop_SecondsFromVsyncToPhotons_Float,
+            1.0f / static_cast<float>(Settings_Instance()->m_refreshRate)
+        );
     }
-    //TODO: make this linux only
-    //DEBUG: Linux Direct Mode driver needs this to be set to true, otherwise it will not work.
-    //This feels like a hacky solution, should be enalbed by default for drivers implementing DMC.
+    // True = SteamVR uses the timing of our VsyncEvent calls instead of its
+    // hardcoded 2.8 ms vsync-offset model (openvr v1.0.8 release notes). The
+    // driver fires VsyncEvent from PostPresent at running-start time with the
+    // seconds remaining until the tick.
     vr::VRProperties()->SetBoolProperty( this->prop_container, vr::Prop_DriverDirectModeSendsVsyncEvents_Bool, true );
-    //TODO: DO we truely need this? I think we do, but it is not clear. This is a hacky solution, but it works for now.
+    // Enables the per-app throttling UI and the Throttling_t hints delivered
+    // to PostPresent, which the pacing grid honors.
     vr::VRProperties()->SetBoolProperty( this->prop_container, vr::Prop_Hmd_SupportsAppThrottling_Bool, true );
-    //TODO: Same as Prop_DriverDirectModeSendsVsyncEvents_Bool Property
     vr::VRProperties()->SetBoolProperty( this->prop_container, vr::Prop_SupportsXrTextureSets_Bool, true );
-    
-    //TODO: ????
     vr::VRProperties()->SetBoolProperty( this->prop_container, vr::Prop_Hmd_AllowsClientToControlTextureIndex, true );
 
 #endif

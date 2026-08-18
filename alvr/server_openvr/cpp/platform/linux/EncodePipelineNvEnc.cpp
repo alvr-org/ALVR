@@ -25,7 +25,29 @@ const char* encoder(ALVR_CODEC codec) {
     throw std::runtime_error("invalid codec " + std::to_string(codec));
 }
 
-void set_hwframe_ctx(AVCodecContext* ctx, AVBufferRef* hw_device_ctx) {
+// NvEnc takes an opaque-alpha format, so drop the alpha channel while keeping
+// the channel order of the source. Picking the wrong one here is silent: the
+// encode succeeds and ships swapped red and blue.
+AVPixelFormat nvenc_surface_format(AVPixelFormat inputFormat) {
+    switch (inputFormat) {
+    case AV_PIX_FMT_BGRA:
+        return AV_PIX_FMT_BGR0;
+    case AV_PIX_FMT_RGBA:
+        return AV_PIX_FMT_RGB0;
+    case AV_PIX_FMT_BGR0:
+    case AV_PIX_FMT_RGB0:
+        return inputFormat;
+    default:
+        throw std::runtime_error(
+            std::string("no NvEnc surface format for input pixel format ")
+            + std::to_string((int)inputFormat)
+        );
+    }
+}
+
+void set_hwframe_ctx(
+    AVCodecContext* ctx, AVBufferRef* hw_device_ctx, AVPixelFormat surfaceFormat
+) {
     AVBufferRef* hw_frames_ref;
     AVHWFramesContext* frames_ctx = NULL;
     int err = 0;
@@ -35,17 +57,7 @@ void set_hwframe_ctx(AVCodecContext* ctx, AVBufferRef* hw_device_ctx) {
     }
     frames_ctx = (AVHWFramesContext*)(hw_frames_ref->data);
     frames_ctx->format = AV_PIX_FMT_CUDA;
-    /**
-     * We will recieve a frame from HW as AV_PIX_FMT_VULKAN which will converted to AV_PIX_FMT_BGRA
-     * as SW format when we get it from HW.
-     * But NVEnc support only BGR0 format and we easy can just to force it
-     * Because:
-     * AV_PIX_FMT_BGRA - 28  ///< packed BGRA 8:8:8:8, 32bpp, BGRABGRA...
-     * AV_PIX_FMT_BGR0 - 123 ///< packed BGR 8:8:8,    32bpp, BGRXBGRX...   X=unused/undefined
-     *
-     * We just to ignore the alpha channel and it's done
-     */
-    frames_ctx->sw_format = AV_PIX_FMT_BGR0;
+    frames_ctx->sw_format = surfaceFormat;
     frames_ctx->width = ctx->width;
     frames_ctx->height = ctx->height;
     if ((err = av_hwframe_ctx_init(hw_frames_ref)) < 0) {
@@ -59,22 +71,22 @@ void set_hwframe_ctx(AVCodecContext* ctx, AVBufferRef* hw_device_ctx) {
     av_buffer_unref(&hw_frames_ref);
 }
 
+// Last target the bitrate manager delivered; see initEncoding.
+int64_t last_known_bitrate_bps = 0;
+
 } // namespace
 alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
-    Renderer* render,
-    HWContext& vk_ctx,
-    VkContext& v_ctx,
-    VkFrame& input_frame,
-    VkFrameCtx& vk_frame_ctx,
-    uint32_t width,
-    uint32_t height
+    HWContext& vk_ctx, VkContext& v_ctx, VkFrame& input_frame, uint32_t width, uint32_t height
 )
-    : v_ctx(v_ctx) {
-    auto input_frame_ctx = (AVHWFramesContext*)vk_frame_ctx.ctx->data;
-    assert(input_frame_ctx->sw_format == AV_PIX_FMT_BGRA);
+    : v_ctx(v_ctx)
+    , frame_ctx(vk_ctx.avCtx, input_frame.imageInfo()) {
+    // The surface format has to follow the output image's channel order. A
+    // mismatch still encodes successfully, with red and blue swapped.
+    auto input_frame_ctx = (AVHWFramesContext*)frame_ctx.ctx->data;
+    auto surface_format = nvenc_surface_format(input_frame_ctx->sw_format);
 
     int err;
-    vk_frame = input_frame.make_av_frame(vk_frame_ctx);
+    vk_frame = input_frame.make_av_frame(frame_ctx);
 
     err = av_hwdevice_ctx_create_derived(&hw_ctx, AV_HWDEVICE_TYPE_CUDA, vk_ctx.avCtx, 0);
     if (err < 0) {
@@ -168,13 +180,18 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
     encoder_ctx->max_b_frames = 0;
     encoder_ctx->gop_size = INT16_MAX;
     encoder_ctx->color_range = AVCOL_RANGE_JPEG;
-    auto params = FfiDynamicEncoderParams {};
+    // The manager reports a target only once per change, so a rebuild mid
+    // session has to reuse the last one.
+    auto params = GetDynamicEncoderParams();
+    if (!params.updated || params.bitrate_bps <= 0) {
+        params.bitrate_bps = last_known_bitrate_bps > 0 ? last_known_bitrate_bps : 30'000'000;
+    }
     params.updated = true;
-    params.bitrate_bps = 30'000'000;
-    params.framerate = 60.0;
+    params.framerate = settings->m_refreshRate;
+    Info("NvEnc init bitrate: %.1f Mbps\n", params.bitrate_bps / 1e6);
     SetParams(params);
 
-    set_hwframe_ctx(encoder_ctx, hw_ctx);
+    set_hwframe_ctx(encoder_ctx, hw_ctx, surface_format);
 
     err = avcodec_open2(encoder_ctx, codec, NULL);
     if (err < 0) {
@@ -187,6 +204,19 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
 alvr::EncodePipelineNvEnc::~EncodePipelineNvEnc() {
     av_buffer_unref(&hw_ctx);
     av_frame_free(&hw_frame);
+}
+
+void alvr::EncodePipelineNvEnc::SetParams(FfiDynamicEncoderParams params) {
+    if (!params.updated) {
+        return;
+    }
+    // Survives encoder rebuilds; see the note on the variable.
+    last_known_bitrate_bps = params.bitrate_bps;
+    encoder_ctx->bit_rate = params.bitrate_bps;
+    encoder_ctx->framerate = AVRational { int(params.framerate * 1000), 1000 };
+    encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / params.framerate;
+    encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
+    encoder_ctx->rc_initial_buffer_occupancy = encoder_ctx->rc_buffer_size;
 }
 
 void alvr::EncodePipelineNvEnc::PushFrame(uint64_t targetTimestampNs, bool idr) {

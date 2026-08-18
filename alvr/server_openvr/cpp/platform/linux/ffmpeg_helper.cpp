@@ -38,30 +38,25 @@ std::string alvr::AvException::makemsg(const std::string& msg, int averror) {
     return msg + " " + av_msg;
 }
 
-// alvr::VkFrameCtx::VkFrameCtx(VkContext & vkContext, vk::ImageCreateInfo image_create_info)
-// {
-//   AVHWFramesContext *frames_ctx = NULL;
-//   int err = 0;
+alvr::VkFrameCtx::VkFrameCtx(AVBufferRef* vulkanDevice, VkImageCreateInfo imageCI) {
+    if (!(ctx = av_hwframe_ctx_alloc(vulkanDevice))) {
+        throw std::runtime_error("Failed to create vulkan frame context.");
+    }
 
-//   if (!(ctx = av_hwframe_ctx_alloc(vkContext.ctx))) {
-//     throw std::runtime_error("Failed to create vulkan frame context.");
-//   }
-//   frames_ctx = (AVHWFramesContext *)(ctx->data);
-//   frames_ctx->format = AV_PIX_FMT_VULKAN;
-//   frames_ctx->sw_format = vk_format_to_av_format(image_create_info.format);
-//   frames_ctx->width = image_create_info.extent.width;
-//   frames_ctx->height = image_create_info.extent.height;
-//   frames_ctx->initial_pool_size = 0;
-//   if ((err = av_hwframe_ctx_init(ctx)) < 0) {
-//     av_buffer_unref(&ctx);
-//     throw alvr::AvException("Failed to initialize vulkan frame context:", err);
-//   }
-// }
+    auto* framesCtx = (AVHWFramesContext*)ctx->data;
+    framesCtx->format = AV_PIX_FMT_VULKAN;
+    framesCtx->sw_format = vk_format_to_av_format(vk::Format(imageCI.format));
+    framesCtx->width = imageCI.extent.width;
+    framesCtx->height = imageCI.extent.height;
+    // The image is ours already; ffmpeg allocates nothing for this context.
+    framesCtx->initial_pool_size = 0;
 
-// alvr::VkFrameCtx::~VkFrameCtx()
-// {
-//   av_buffer_unref(&ctx);
-// }
+    int err = av_hwframe_ctx_init(ctx);
+    if (err < 0) {
+        av_buffer_unref(&ctx);
+        throw alvr::AvException("Failed to initialize vulkan frame context:", err);
+    }
+}
 
 alvr::VkFrameCtx::~VkFrameCtx() { av_buffer_unref(&ctx); }
 
@@ -78,18 +73,22 @@ alvr::VkFrame::VkFrame(
     device = vk_ctx.dev;
     avformat = vk_format_to_av_format(vk::Format(image_info.format));
 
-    av_drmframe = (AVDRMFrameDescriptor*)malloc(sizeof(AVDRMFrameDescriptor));
-    av_drmframe->nb_objects = 1;
-    av_drmframe->objects[0].fd = drm.fd;
-    av_drmframe->objects[0].size = size;
-    av_drmframe->objects[0].format_modifier = drm.modifier;
-    av_drmframe->nb_layers = 1;
-    av_drmframe->layers[0].format = drm.format;
-    av_drmframe->layers[0].nb_planes = drm.planes;
-    for (uint32_t i = 0; i < drm.planes; ++i) {
-        av_drmframe->layers[0].planes[i].object_index = 0;
-        av_drmframe->layers[0].planes[i].pitch = drm.strides[i];
-        av_drmframe->layers[0].planes[i].offset = drm.offsets[i];
+    // An opaque-fd export leaves drm zeroed, and a descriptor built from that
+    // would claim fd 0 with a zero size.
+    if (drm.planes > 0) {
+        av_drmframe = (AVDRMFrameDescriptor*)malloc(sizeof(AVDRMFrameDescriptor));
+        av_drmframe->nb_objects = 1;
+        av_drmframe->objects[0].fd = drm.fd;
+        av_drmframe->objects[0].size = size;
+        av_drmframe->objects[0].format_modifier = drm.modifier;
+        av_drmframe->nb_layers = 1;
+        av_drmframe->layers[0].format = drm.format;
+        av_drmframe->layers[0].nb_planes = drm.planes;
+        for (uint32_t i = 0; i < drm.planes; ++i) {
+            av_drmframe->layers[0].planes[i].object_index = 0;
+            av_drmframe->layers[0].planes[i].pitch = drm.strides[i];
+            av_drmframe->layers[0].planes[i].offset = drm.offsets[i];
+        }
     }
 
     av_vkframe = av_vk_frame_alloc();

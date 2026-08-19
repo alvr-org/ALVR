@@ -18,14 +18,22 @@ extern "C" {
 
 namespace {
 
-// TODO: I don't think this selects the optimal format actually
-// Seeing as we don't want any re-encoding here yet
-// We just want it to make the drm image 1:1
+// Scanning the pixel formats for one whose Vulkan mapping matches returns the
+// wrong answer: ffmpeg lists YUYV422's per-plane format as R8G8B8A8_UNORM, and
+// YUYV422 comes before RGBA in the enum, so a scan from the bottom never
+// reaches the right entry. Map the formats the swap textures actually arrive
+// in. sRGB is included because the renderer substitutes the UNORM view for
+// storage, which happens after this in some paths.
 AVPixelFormat vk_format_to_av_format(vk::Format vk_fmt) {
-    for (int f = AV_PIX_FMT_NONE; f < AV_PIX_FMT_NB; ++f) {
-        auto current_fmt = av_vkfmt_from_pixfmt(AVPixelFormat(f));
-        if (current_fmt and *current_fmt == (VkFormat)vk_fmt)
-            return AVPixelFormat(f);
+    switch (vk_fmt) {
+    case vk::Format::eR8G8B8A8Unorm:
+    case vk::Format::eR8G8B8A8Srgb:
+        return AV_PIX_FMT_RGBA;
+    case vk::Format::eB8G8R8A8Unorm:
+    case vk::Format::eB8G8R8A8Srgb:
+        return AV_PIX_FMT_BGRA;
+    default:
+        break;
     }
 
     throw std::runtime_error("unsupported vulkan pixel format " + std::to_string((VkFormat)vk_fmt));

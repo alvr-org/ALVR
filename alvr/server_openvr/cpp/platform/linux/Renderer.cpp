@@ -351,7 +351,9 @@ Output createOutputImage(
     };
     ctx.dev.bindImageMemory2(bindImgInfo);
 
-    if (haveDmaBuf) {
+    // Only the dma-buf export produces a DRM descriptor; the opaque-fd path
+    // leaves out.drm zeroed.
+    if (handleType == HandleType::DmaBuf) {
         vk::MemoryGetFdInfoKHR memFdInfo {
             .memory = img.memory,
             .handleType = vk::ExternalMemoryHandleTypeFlagBits::eDmaBufEXT,
@@ -465,8 +467,13 @@ Renderer::Renderer(
         img = createImage(vkCtx, stagingImgCI);
     }
 
+    // VAAPI imports through DRM-PRIME and wants a dma-buf; NvEnc imports
+    // through CUDA interop and wants an opaque fd.
     output = createOutputImage(
-        vkCtx, createInfo.outputExtent, stagingImgCI.format, HandleType::DmaBuf
+        vkCtx,
+        createInfo.outputExtent,
+        stagingImgCI.format,
+        vkCtx.meta.vendor == Vendor::Nvidia ? HandleType::OpaqueFd : HandleType::DmaBuf
     );
 
     vk::QueryPoolCreateInfo poolCI {

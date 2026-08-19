@@ -257,6 +257,20 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
     let mut wired_connection = None;
 
     while *lifecycle_state.read() != LifecycleState::ShuttingDown {
+        // Only one client can stream at a time. In particular, do not also try the wireless
+        // discovery entry for a headset that is already connecting or streaming over USB. Besides
+        // producing misleading timeout errors, the redundant control connection can make the
+        // headset appear to disconnect and reconnect.
+        if SESSION_MANAGER
+            .read()
+            .client_list()
+            .values()
+            .any(|info| info.connection_state != ConnectionState::Disconnected)
+        {
+            thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+            continue;
+        }
+
         dbg_connection!("handshake_loop: Try connect to wired device");
 
         let mut wired_client_ips = HashMap::new();

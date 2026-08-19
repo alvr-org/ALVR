@@ -92,12 +92,17 @@ public:
     ~HWContext() { av_buffer_unref(&avCtx); }
 };
 
+// vulkanDevice is the ffmpeg Vulkan device, HWContext::avCtx. The frames
+// context takes its own reference, so the HWContext may be a temporary.
 class VkFrameCtx {
 public:
-    VkFrameCtx(VkContext& vkContext, vk::ImageCreateInfo image_create_info);
+    VkFrameCtx(AVBufferRef* vulkanDevice, VkImageCreateInfo imageCI);
     ~VkFrameCtx();
 
-    AVBufferRef* ctx;
+    VkFrameCtx(VkFrameCtx const&) = delete;
+    VkFrameCtx& operator=(VkFrameCtx const&) = delete;
+
+    AVBufferRef* ctx = nullptr;
 };
 
 class VkFrame {

@@ -34,9 +34,11 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(
         alvr::HWContext hwCtx(vk_ctx);
         if (vk_ctx.meta.vendor == Vendor::Nvidia) {
             try {
-                // auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(render, vk_ctx,
-                // input_frame, vk_frame_ctx, width, height); Info("Using NvEnc encoder"); return
-                // nvenc;
+                auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(
+                    hwCtx, vk_ctx, input_frame, width, height
+                );
+                Info("Using NvEnc encoder");
+                return nvenc;
             } catch (std::exception& e) {
                 Error(
                     "Failed to create NvEnc encoder: %s\nPlease make sure you have installed CUDA "

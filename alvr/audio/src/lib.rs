@@ -86,6 +86,23 @@ fn microphone_pair_from_sink_name(host: &Host, sink_name: &str) -> Result<(Devic
     }
 }
 
+fn virtual_microphone_pair_names(
+    config: &MicrophoneDevicesConfig,
+) -> Option<(&'static str, &'static str)> {
+    match config {
+        MicrophoneDevicesConfig::VAC => Some(("Line 1", "Line 1")),
+        MicrophoneDevicesConfig::VBCable => Some(("CABLE Input", "CABLE Output")),
+        MicrophoneDevicesConfig::VoiceMeeter => Some(("VoiceMeeter Input", "VoiceMeeter Output")),
+        MicrophoneDevicesConfig::VoiceMeeterAux => {
+            Some(("VoiceMeeter Aux Input", "VoiceMeeter Aux Output"))
+        }
+        MicrophoneDevicesConfig::VoiceMeeterVaio3 => {
+            Some(("VoiceMeeter VAIO3 Input", "VoiceMeeter VAIO3 Output"))
+        }
+        MicrophoneDevicesConfig::Automatic | MicrophoneDevicesConfig::Custom { .. } => None,
+    }
+}
+
 #[allow(dead_code)]
 pub struct AudioDevice {
     inner: Device,
@@ -189,6 +206,46 @@ pub fn is_same_device(device1: &AudioDevice, device2: &AudioDevice) -> bool {
         name1 == name2 && device1.is_output == device2.is_output
     } else {
         false
+    }
+}
+
+/// Check the configured virtual microphone endpoint names without enumerating audio devices.
+///
+/// Device enumeration can take multiple seconds on Windows. This helper is used during connection
+/// setup so enabling game audio and microphone together cannot delay the handshake response.
+pub fn is_virtual_microphone_device(
+    device: &AudioDevice,
+    config: &MicrophoneDevicesConfig,
+) -> bool {
+    let Some((sink_name, source_name)) = virtual_microphone_pair_names(config) else {
+        return false;
+    };
+
+    device
+        .inner
+        .name()
+        .map(|name| name.contains(sink_name) || name.contains(source_name))
+        .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn virtual_microphone_endpoint_names_match_search_names() {
+        assert_eq!(
+            virtual_microphone_pair_names(&MicrophoneDevicesConfig::VAC),
+            Some(("Line 1", "Line 1"))
+        );
+        assert_eq!(
+            virtual_microphone_pair_names(&MicrophoneDevicesConfig::VBCable),
+            Some(("CABLE Input", "CABLE Output"))
+        );
+        assert_eq!(
+            virtual_microphone_pair_names(&MicrophoneDevicesConfig::Automatic),
+            None
+        );
     }
 }
 

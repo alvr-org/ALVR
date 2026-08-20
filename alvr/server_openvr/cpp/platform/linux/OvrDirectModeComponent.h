@@ -132,6 +132,10 @@ private:
         // discards the job if the generation moved (rebuild, shutdown, set
         // switch) between enqueue and processing.
         uint64_t generation;
+        // sync_file fds exported from the eye textures' write fences in
+        // Present. Owned by the job: every path that drops the job without
+        // presenting it must close them.
+        int waitFds[2] = { -1, -1 };
         std::chrono::steady_clock::time_point enqueueTime;
     };
     void EncodeWorkerLoop();
@@ -153,6 +157,16 @@ private:
     // mutates encoder state. A job whose generation is stale gets dropped
     // instead of presenting old indices against rebuilt state.
     uint64_t m_encGeneration = 0;
+
+    // A second dup of each imported texture fd, kept for exporting the
+    // writer's fences at Present. Replaced wholesale on every texture-set
+    // switch, so stale sets never accumulate.
+    int m_syncFds[6] = { -1, -1, -1, -1, -1, -1 };
+    // Consecutive writer-fence poll timeouts; at the threshold the GPU wait
+    // disarms for the session so a wedged writer degrades the stream once
+    // instead of taxing every frame.
+    uint32_t m_gpuWaitConsecTimeouts = 0;
+    bool m_gpuWaitPollDisarmed = false;
 
     // Written by the event loop thread in SetViewParams, read by the worker.
     // Invalid until the client's projection arrives, and the reprojection

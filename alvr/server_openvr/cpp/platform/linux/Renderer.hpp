@@ -132,7 +132,11 @@ public:
 
     // NOTE: Use the output immediately afterwards, as this synchronizes to the end of gpu
     // operations
-    void render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx);
+    // waitFds, when given, are sync_file fds imported as temporary semaphores
+    // the submission waits on before the eye copies. Ownership transfers to
+    // this call: a successful import hands the fd to Vulkan, a failed one is
+    // closed here.
+    void render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx, int const waitFds[2] = nullptr);
 
     WarpParams warpParams {};
 

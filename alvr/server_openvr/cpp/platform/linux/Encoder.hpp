@@ -11,6 +11,7 @@
 #include "alvr_server/IDRScheduler.h"
 #include "alvr_server/Settings.h"
 #include "alvr_server/bindings.h"
+#include <unistd.h>
 
 namespace alvr {
 
@@ -265,10 +266,21 @@ public:
         encoderMissingLogged = false;
     }
 
+    // waitFds are sync_file fds the render submission must wait on before
+    // sampling the eye textures; ownership transfers here on every path.
     void present(
-        u32 leftIdx, u32 rightIdx, u64 targetTimestampNs, render::WarpParams const& warp
+        u32 leftIdx,
+        u32 rightIdx,
+        u64 targetTimestampNs,
+        render::WarpParams const& warp,
+        int const waitFds[2]
     ) {
         if (!encoder) {
+            for (int e = 0; e < 2; ++e) {
+                if (waitFds[e] >= 0) {
+                    close(waitFds[e]);
+                }
+            }
             // Say it once instead of at frame rate.
             if (!encoderMissingLogged) {
                 Error("Encoder not initialized, skipping frames until it is rebuilt.\n");
@@ -278,7 +290,7 @@ public:
         }
         renderer.get().warpParams = warp;
         ReportPresent(targetTimestampNs, 0);
-        renderer.get().render(vkCtx, leftIdx, rightIdx);
+        renderer.get().render(vkCtx, leftIdx, rightIdx, waitFds);
         ReportComposed(targetTimestampNs, 0);
 
         encoder->PushFrame(0, idrScheduler.CheckIDRInsertion());

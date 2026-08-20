@@ -3,7 +3,7 @@ use std::path::Path;
 use std::process::Command;
 
 use alvr_common::{
-    anyhow::{bail, Result},
+    anyhow::{Result, bail},
     debug, error, info, warn,
 };
 use sysinfo::Process;

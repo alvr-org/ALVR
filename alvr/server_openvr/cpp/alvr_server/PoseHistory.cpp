@@ -80,6 +80,14 @@ std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetPoseAt(uint64_t
     return {};
 }
 
+std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetLatestPose() const {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    if (m_poseBuffer.empty()) {
+        return {};
+    }
+    return m_poseBuffer.back();
+}
+
 void PoseHistory::SetTransform(const vr::HmdMatrix34_t& transform) {
     std::unique_lock<std::mutex> lock(m_mutex);
     m_transform = transform;

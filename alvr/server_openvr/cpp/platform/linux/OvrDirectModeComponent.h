@@ -108,8 +108,18 @@ private:
 
     std::mutex m_presentMutex;
 
-    // Next tick on the pacing grid. Compositor thread only.
-    std::chrono::steady_clock::time_point m_nextVsync {};
+    // The vsync announcer: fires VsyncEvent on every tick of the wall-clock
+    // grid, independent of the Present loop. A display's vsync does not stop
+    // when an application stalls; announcing only from PostPresent tied the
+    // declared rate to the frame loop, and one slow revolution then halved
+    // the schedule the compositor hands the app, a self-sustaining orbit
+    // that only ratchets downward.
+    void VsyncAnnouncerLoop();
+    std::thread m_vsyncAnnouncer;
+    std::atomic<bool> m_announcerExit { false };
+    // The most recent announced tick, nanoseconds on the steady clock.
+    // Written by the announcer, read by PostPresent to pace Present.
+    std::atomic<int64_t> m_lastTickNs { 0 };
     // Ticks the grid skipped since the last GetFrameTiming.
     std::atomic<uint32_t> m_skippedVsyncs { 0 };
     // Last throttle hints, for change logging only.

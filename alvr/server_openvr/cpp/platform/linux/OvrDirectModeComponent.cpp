@@ -155,9 +155,14 @@ OvrDirectModeComponent::OvrDirectModeComponent(std::shared_ptr<PoseHistory> pose
     : m_poseHistory(poseHistory)
     , m_submitLayer(0) {
     m_encodeWorker = std::thread(&OvrDirectModeComponent::EncodeWorkerLoop, this);
+    m_vsyncAnnouncer = std::thread(&OvrDirectModeComponent::VsyncAnnouncerLoop, this);
 }
 
 OvrDirectModeComponent::~OvrDirectModeComponent() {
+    m_announcerExit = true;
+    if (m_vsyncAnnouncer.joinable()) {
+        m_vsyncAnnouncer.join();
+    }
     {
         std::lock_guard<std::mutex> lock(m_jobMutex);
         m_workerExit = true;
@@ -695,6 +700,42 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
     m_jobCv.notify_one();
 }
 
+void OvrDirectModeComponent::VsyncAnnouncerLoop() {
+    using std::chrono::steady_clock;
+
+    auto next = steady_clock::now() + frameInterval();
+    while (!m_announcerExit) {
+        auto const interval = frameInterval();
+        // Wake a phase lead before the tick and declare the vsync at that
+        // announce point. VsyncEvent takes a time offset in seconds, so
+        // declaring early gives WaitGetPoses release and pose prediction a
+        // head start on the real deadline. The offset self-corrects wake
+        // jitter: it goes slightly negative on oversleep, which reads as the
+        // vsync having just passed.
+        auto const announce = next - RunningStart;
+        std::this_thread::sleep_until(announce);
+        if (m_announcerExit) {
+            break;
+        }
+
+        double offset = std::chrono::duration_cast<std::chrono::duration<double>>(
+                            announce - steady_clock::now()
+        )
+                            .count();
+        vr::VRServerDriverHost()->VsyncEvent(offset);
+        m_lastTickNs = next.time_since_epoch().count();
+
+        // Advance along the grid, losing whole ticks that were missed rather
+        // than accumulating debt and snapping.
+        next += interval;
+        auto const now = steady_clock::now();
+        while (next <= now) {
+            next += interval;
+            m_skippedVsyncs++;
+        }
+    }
+}
+
 void OvrDirectModeComponent::PostPresent(const Throttling_t* pThrottling) {
     // Prop_Hmd_SupportsAppThrottling_Bool is set, so SteamVR sends throttle
     // hints here and predicts poses assuming we honor them. Ignoring them
@@ -715,52 +756,25 @@ void OvrDirectModeComponent::PostPresent(const Throttling_t* pThrottling) {
         }
     }
 
-    // A direct mode driver paces the compositor: vrserver starts the next
-    // frame when we send VsyncEvent. Firing it immediately lets the compositor
-    // free-run as fast as encoding completes, which floods the client decoder
-    // and starves the rest of the desktop. PostPresent exists so the driver
-    // can hold this thread until vsync, so pace it to the negotiated rate.
+    // Pace Present without owning the vsync declaration: the announcer fires
+    // events on the wall-clock grid whatever happens here, so a slow frame
+    // costs one frame instead of slowing the schedule the compositor hands
+    // the application. Holding this thread until the next tick keeps the
+    // compositor from free-running at encode speed, which floods the client
+    // decoder; adding the throttle hint holds it the extra frames SteamVR
+    // asked for.
     using std::chrono::nanoseconds;
     using std::chrono::steady_clock;
 
     auto const interval = frameInterval();
-    auto const now = steady_clock::now();
-
-    if (m_nextVsync == steady_clock::time_point {}) {
-        // First frame. The default-constructed epoch would otherwise fall into
-        // the catch-up loop and iterate once per frame interval of uptime.
-        m_nextVsync = now + interval;
-    } else if (m_nextVsync > now + interval) {
-        // Clock went backwards: resynchronize.
-        m_nextVsync = now + interval;
-    } else {
-        // Advance along the grid, losing whole ticks that were missed. A loop
-        // slightly over budget every frame has to shed ticks cleanly rather
-        // than accumulate debt and then snap, which reads as a burst-pause
-        // cadence with tens of milliseconds of queueing.
-        m_nextVsync += interval;
-        while (m_nextVsync <= now) {
-            m_nextVsync += interval;
-            m_skippedVsyncs++;
-        }
+    int64_t const lastTickNs = m_lastTickNs;
+    if (lastTickNs == 0) {
+        std::this_thread::sleep_for(interval);
+        return;
     }
 
-    // Hold the next tick for the frames SteamVR asked us to throttle, so the
-    // cadence we signal matches the one its pose prediction assumes.
-    m_nextVsync += interval * throttleFrames;
-
-    // Wake a phase lead before the tick and declare the vsync at that announce
-    // point. VsyncEvent takes a time offset in seconds, so declaring early
-    // gives WaitGetPoses release and pose prediction a head start on the real
-    // deadline. The offset self-corrects wake jitter: it goes slightly
-    // negative when we oversleep, which reads as the vsync having just passed.
-    auto const announce = m_nextVsync - RunningStart;
-    std::this_thread::sleep_until(announce);
-
-    double offset
-        = std::chrono::duration_cast<std::chrono::duration<double>>(announce - steady_clock::now())
-              .count();
-    vr::VRServerDriverHost()->VsyncEvent(offset);
+    auto const lastTick = steady_clock::time_point(nanoseconds(lastTickNs));
+    std::this_thread::sleep_until(lastTick + interval * (1 + throttleFrames));
 }
 
 void OvrDirectModeComponent::GetFrameTiming(vr::DriverDirectMode_FrameTiming* pFrameTiming) {

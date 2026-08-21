@@ -25,6 +25,20 @@ use std::{
 use sysinfo::{ProcessesToUpdate, System};
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
+
+// Dropping a Child does not reap it, and a zombie's pid still passes
+// kill(pid, 0), which vrmonitor's single-instance check runs on the last holder
+// of its semaphore. An unreaped child blocks every later launch until this
+// process exits.
+pub(super) fn spawn_and_reap(command: &mut Command) -> Result<()> {
+    let mut child = command.spawn()?;
+
+    thread::spawn(move || {
+        child.wait().ok();
+    });
+
+    Ok(())
+}
 const DRIVER_KEY: &str = "driver_alvr_server";
 const BLOCKED_KEY: &str = "blocked_by_safe_mode";
 
@@ -164,7 +178,7 @@ impl Launcher {
             if start_script.exists() {
                 debug!("Running VR server start script: {}", start_script.display());
 
-                if let Err(e) = Command::new(&start_script).spawn() {
+                if let Err(e) = spawn_and_reap(&mut Command::new(&start_script)) {
                     error!("Failed to run VR server start script: {e}");
                 }
             } else if let Ok(steamvr_bin_dir) =
@@ -178,7 +192,7 @@ impl Launcher {
 
                 debug!("Launching SteamVR from path: {}", steamvr_path.display());
 
-                if let Err(e) = Command::new(&steamvr_path).spawn() {
+                if let Err(e) = spawn_and_reap(&mut Command::new(&steamvr_path)) {
                     error!(
                         "Failed to run SteamVR from automatically detected path {} with error: {e}",
                         steamvr_path.display()

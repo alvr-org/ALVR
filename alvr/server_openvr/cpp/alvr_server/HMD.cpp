@@ -72,6 +72,14 @@ bool Hmd::activate() {
 
     SetOpenvrProps((void*)this, this->device_id);
 
+#if !defined(_WIN32) && !defined(__APPLE__)
+    // The property has no type suffix in the header, so the generated key
+    // enum cannot name it and it is set here instead of the props path.
+    vr_properties->SetBoolProperty(
+        this->prop_container, vr::Prop_Hmd_AllowsClientToControlTextureIndex, true
+    );
+#endif
+
     vr_properties->SetFloatProperty(
         this->prop_container,
         vr::Prop_DisplayFrequency_Float,
@@ -189,43 +197,28 @@ void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
     if (m_viveTrackerProxy)
         m_viveTrackerProxy->update();
 
-#if !defined(_WIN32) && !defined(__APPLE__)
-    // This has to be set after initialization is done, because something in vrcompositor is
-    // setting it to 90Hz in the meantime
-    if (!m_refreshRateSet /* && m_encoder && m_encoder->IsConnected() */) {
-        m_refreshRateSet = true;
-        vr::VRProperties()->SetFloatProperty(
-            this->prop_container,
-            vr::Prop_DisplayFrequency_Float,
-            static_cast<float>(Settings_Instance()->m_refreshRate)
-        );
-        // One frame period. A streamed display has no measured panel latency
-        // to put here, so one frame is the honest placeholder, and setting it
-        // explicitly rather than leaving it unset keeps pose prediction
-        // deterministic. ALVR compensates streaming latency in its own
-        // tracking path, so link latency deliberately is not folded in here.
-        vr::VRProperties()->SetFloatProperty(
-            this->prop_container,
-            vr::Prop_SecondsFromVsyncToPhotons_Float,
-            1.0f / static_cast<float>(Settings_Instance()->m_refreshRate)
-        );
-    }
-    // True = SteamVR uses the timing of our VsyncEvent calls instead of its
-    // hardcoded 2.8 ms vsync-offset model (openvr v1.0.8 release notes). The
-    // driver fires VsyncEvent from PostPresent at running-start time with the
-    // seconds remaining until the tick.
-    vr::VRProperties()->SetBoolProperty( this->prop_container, vr::Prop_DriverDirectModeSendsVsyncEvents_Bool, true );
-    // Enables the per-app throttling UI and the Throttling_t hints delivered
-    // to PostPresent, which the pacing grid honors.
-    vr::VRProperties()->SetBoolProperty( this->prop_container, vr::Prop_Hmd_SupportsAppThrottling_Bool, true );
-    vr::VRProperties()->SetBoolProperty( this->prop_container, vr::Prop_SupportsXrTextureSets_Bool, true );
-    vr::VRProperties()->SetBoolProperty( this->prop_container, vr::Prop_Hmd_AllowsClientToControlTextureIndex, true );
-
-#endif
 }
 
 void Hmd::StartStreaming() {
     Debug("Hmd::StartStreaming");
+
+#if !defined(_WIN32) && !defined(__APPLE__)
+    // Set at streaming start rather than activation because vrcompositor
+    // overwrites the display frequency after activation.
+    vr::VRProperties()->SetFloatProperty(
+        this->prop_container,
+        vr::Prop_DisplayFrequency_Float,
+        static_cast<float>(Settings_Instance()->m_refreshRate)
+    );
+    // One frame period. A streamed display has no measured panel latency to
+    // put here. ALVR compensates streaming latency in its own tracking path,
+    // so link latency deliberately is not folded in.
+    vr::VRProperties()->SetFloatProperty(
+        this->prop_container,
+        vr::Prop_SecondsFromVsyncToPhotons_Float,
+        1.0f / static_cast<float>(Settings_Instance()->m_refreshRate)
+    );
+#endif
 
     vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, true, 0.0);
 

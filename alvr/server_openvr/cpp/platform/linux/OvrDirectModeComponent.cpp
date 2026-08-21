@@ -13,9 +13,93 @@
 #include "alvr_server/Logger.h"
 #include <vector>
 
+// Multiples of the frame interval. A job older than this when the worker picks
+// it up is from a stall, and the swap texture sets are only three deep, so the
+// slot is close to its next writer.
+constexpr double JobAgeLimitFrames = 1.5;
+
+// The negotiated refresh rate expressed as a frame period.
+static std::chrono::nanoseconds frameInterval() {
+    return std::chrono::nanoseconds((int64_t)(1e9 / Settings_Instance()->m_refreshRate));
+}
+
 OvrDirectModeComponent::OvrDirectModeComponent(std::shared_ptr<PoseHistory> poseHistory)
     : m_poseHistory(poseHistory)
-    , m_submitLayer(0) { }
+    , m_submitLayer(0) {
+    m_encodeWorker = std::thread(&OvrDirectModeComponent::EncodeWorkerLoop, this);
+}
+
+OvrDirectModeComponent::~OvrDirectModeComponent() {
+    {
+        std::lock_guard<std::mutex> lock(m_jobMutex);
+        m_workerExit = true;
+        m_jobPending = false;
+    }
+    m_jobCv.notify_one();
+    if (m_encodeWorker.joinable()) {
+        m_encodeWorker.join();
+    }
+}
+
+void OvrDirectModeComponent::DrainPendingJob() {
+    std::lock_guard<std::mutex> lock(m_jobMutex);
+    m_jobPending = false;
+}
+
+void OvrDirectModeComponent::EncodeWorkerLoop() {
+    while (true) {
+        FrameJob job;
+        {
+            std::unique_lock<std::mutex> lock(m_jobMutex);
+            m_jobCv.wait(lock, [this] { return m_jobPending || m_workerExit; });
+            if (m_workerExit) {
+                break;
+            }
+            job = m_job;
+            m_jobPending = false;
+        }
+
+        auto const ageLimit = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            frameInterval() * JobAgeLimitFrames
+        );
+        if (std::chrono::steady_clock::now() - job.enqueueTime > ageLimit) {
+            continue;
+        }
+
+        try {
+            std::lock_guard<std::mutex> encLock(m_encMutex);
+
+            if (job.generation != m_encGeneration) {
+                continue;
+            }
+
+            enc.present(job.leftIdx, job.rightIdx, job.targetTimestampNs);
+        } catch (std::exception const& e) {
+            // An exception escaping a thread's start function is
+            // std::terminate, which takes vrserver with it. Same recovery as
+            // the compositor-thread paths: log, tear the encoder down, go
+            // idle until the next client connect.
+            Error("Encode worker: %s. Tearing down encoder and going idle.\n", e.what());
+            std::lock_guard<std::mutex> encLock(m_encMutex);
+            // The try block's lock released when the exception left it, so a
+            // rebuild may have swapped the encoder in between. A moved
+            // generation means this failure belongs to an encoder that no
+            // longer exists; leave the new one alone.
+            if (job.generation != m_encGeneration) {
+                continue;
+            }
+            m_encGeneration++;
+            try {
+                enc.shutdown();
+            } catch (std::exception const& e2) {
+                // Teardown of already-broken state must not become the
+                // std::terminate this handler exists to prevent.
+                Error("Encode worker: teardown also failed: %s\n", e2.what());
+            }
+            m_encoderState = EncoderState::Idle;
+        }
+    }
+}
 
 void OvrDirectModeComponent::CreateSwapTextureSet(
     uint32_t unPid,
@@ -208,17 +292,25 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
     m_submitLayer = 0;
 
     switch (m_encoderState.load()) {
-    case EncoderState::RebuildRequested:
+    case EncoderState::RebuildRequested: {
         Info("Rebuilding encoder from negotiated settings\n");
+        DrainPendingJob();
+        std::lock_guard<std::mutex> encLock(m_encMutex);
+        m_encGeneration++;
         enc.shutdown();
         layer0Texts.fill(0);
         m_encoderState = EncoderState::Streaming;
         break;
-    case EncoderState::ShutdownRequested:
+    }
+    case EncoderState::ShutdownRequested: {
+        DrainPendingJob();
+        std::lock_guard<std::mutex> encLock(m_encMutex);
+        m_encGeneration++;
         enc.shutdown();
         layer0Texts.fill(0);
         m_encoderState = EncoderState::Idle;
         return;
+    }
     // Before a client connects there are no negotiated settings, so building
     // an encoder here would use wrong defaults and fail noisily. Do nothing
     // until streaming starts.
@@ -298,6 +390,10 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
 
         // Renderer and encoder setup can throw (Vulkan import, VAAPI). An
         // exception escaping Present kills vrserver, so log and stay idle.
+        DrainPendingJob();
+        std::lock_guard<std::mutex> encLock(m_encMutex);
+        m_encGeneration++;
+
         try {
             enc.createImages(rendererCI);
             enc.initEncoding();
@@ -317,7 +413,23 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
 
     // TODO: Merge layers or something
 
-    enc.present(leftIdx.value(), rightIdx.value(), m_targetTimestampNs);
+    FrameJob job {};
+    job.leftIdx = leftIdx.value();
+    job.rightIdx = rightIdx.value();
+    job.targetTimestampNs = m_targetTimestampNs;
+    job.generation = m_encGeneration;
+    job.enqueueTime = std::chrono::steady_clock::now();
+
+    {
+        std::lock_guard<std::mutex> lock(m_jobMutex);
+        if (m_workerExit) {
+            // Teardown already drained the mailbox; do not repopulate it.
+            return;
+        }
+        m_job = job;
+        m_jobPending = true;
+    }
+    m_jobCv.notify_one();
 }
 
 void OvrDirectModeComponent::PostPresent(const Throttling_t* pThrottling) {  

@@ -7,7 +7,10 @@
 
 #include <map>
 #include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <mutex>
+#include <thread>
 
 #include <vulkan/vulkan.h>
 
@@ -18,6 +21,7 @@ public:
     OvrDirectModeComponent(
         /* std::shared_ptr<Renderer> pVKRender,  */ std::shared_ptr<PoseHistory> poseHistory
     );
+    ~OvrDirectModeComponent();
 
     void RequestIdr() { enc.requestIdr(); }
 
@@ -95,4 +99,37 @@ private:
     std::atomic<EncoderState> m_encoderState { EncoderState::Idle };
 
     std::mutex m_presentMutex;
+
+    // Single-slot latest-wins mailbox: at steady state the worker drains
+    // faster than frames arrive, and if it falls behind, the newest frame
+    // replaces the stale pending one.
+    struct FrameJob {
+        uint32_t leftIdx;
+        uint32_t rightIdx;
+        uint64_t targetTimestampNs;
+        // Encoder-state generation this job was built against. The worker
+        // discards the job if the generation moved (rebuild, shutdown, set
+        // switch) between enqueue and processing.
+        uint64_t generation;
+        std::chrono::steady_clock::time_point enqueueTime;
+    };
+    void EncodeWorkerLoop();
+    // Drop a pending job. Call before any path that touches the encoder from
+    // the compositor thread.
+    void DrainPendingJob();
+
+    std::thread m_encodeWorker;
+    std::mutex m_jobMutex;
+    std::condition_variable m_jobCv;
+    FrameJob m_job {};
+    bool m_jobPending = false;
+    bool m_workerExit = false;
+    // Serializes encoder access: the worker's per-frame enc.present against
+    // the compositor thread's rebuild and shutdown paths. Never held together
+    // with m_jobMutex.
+    std::mutex m_encMutex;
+    // Incremented under m_encMutex by every compositor-thread path that
+    // mutates encoder state. A job whose generation is stale gets dropped
+    // instead of presenting old indices against rebuilt state.
+    uint64_t m_encGeneration = 0;
 };

@@ -11,6 +11,9 @@
 #include "OvrDirectModeComponent.h"
 
 #include "alvr_server/Logger.h"
+#include "alvr_server/include/openvr_math.h"
+#include <cmath>
+#include <cstring>
 #include <vector>
 
 // Multiples of the frame interval. A job older than this when the worker picks
@@ -21,6 +24,73 @@ constexpr double JobAgeLimitFrames = 1.5;
 // The negotiated refresh rate expressed as a frame period.
 static std::chrono::nanoseconds frameInterval() {
     return std::chrono::nanoseconds((int64_t)(1e9 / Settings_Instance()->m_refreshRate));
+}
+
+// Loose on purpose: it rejects zeroed and uninitialized poses, which miss by
+// orders of magnitude, not accumulated rounding drift.
+constexpr double UnitQuatNormSqTolerance = 0.1;
+
+static bool IsUnitQuat(double w, double x, double y, double z) {
+    double normSq = w * w + x * x + y * y + z * z;
+    return normSq > 1.0 - UnitQuatNormSqTolerance && normSq < 1.0 + UnitQuatNormSqTolerance;
+}
+
+// Fill the warp push constants for a rotational reprojection from
+// renderOrientation to latestOrientation. The shaders sample backwards, so the
+// rotation they need is source-from-destination, R_render^T * R_latest; with
+// the Hamilton product convention of openvr_math.h, conj(q_render) * q_latest
+// composes the same way. Both quaternions are world-from-head, so the world
+// frame cancels and the playspace transform never enters. Returns false, with
+// params left disabled, on a degenerate FOV or a non-unit orientation.
+static bool BuildWarpParams(
+    const vr::HmdQuaternion_t& renderOrientation,
+    const FfiQuat& latestOrientation,
+    const FfiFov& leftFov,
+    const FfiFov& rightFov,
+    alvr::render::WarpParams& params
+) {
+    float leftTans[4]
+        = { tanf(leftFov.left), tanf(leftFov.right), tanf(leftFov.up), tanf(leftFov.down) };
+    float rightTans[4]
+        = { tanf(rightFov.left), tanf(rightFov.right), tanf(rightFov.up), tanf(rightFov.down) };
+    if (leftTans[1] - leftTans[0] == 0.f || rightTans[1] - rightTans[0] == 0.f
+        || leftTans[2] - leftTans[3] == 0.f || rightTans[2] - rightTans[3] == 0.f) {
+        return false;
+    }
+    if (!IsUnitQuat(
+            renderOrientation.w, renderOrientation.x, renderOrientation.y, renderOrientation.z
+        )
+        || !IsUnitQuat(
+            latestOrientation.w, latestOrientation.x, latestOrientation.y, latestOrientation.z
+        )) {
+        return false;
+    }
+
+    vr::HmdQuaternion_t qLatest
+        = { latestOrientation.w, latestOrientation.x, latestOrientation.y, latestOrientation.z };
+    vr::HmdQuaternion_t qDelta = vrmath::quaternionConjugate(renderOrientation) * qLatest;
+
+    vr::HmdMatrix34_t rot;
+    HmdMatrix_QuatToMat(qDelta.w, qDelta.x, qDelta.y, qDelta.z, &rot);
+
+    // GLSL mat4 is column-major: rotation[col * 4 + row].
+    for (int row = 0; row < 4; ++row) {
+        for (int col = 0; col < 4; ++col) {
+            params.rotation[col * 4 + row]
+                = (row < 3 && col < 3) ? rot.m[row][col] : (float)(row == col);
+        }
+    }
+    memcpy(params.leftTans, leftTans, sizeof(leftTans));
+    memcpy(params.rightTans, rightTans, sizeof(rightTans));
+    params.enabled = 1;
+    return true;
+}
+
+void OvrDirectModeComponent::SetViewParams(const FfiViewParams params[2]) {
+    std::unique_lock<std::mutex> lock(m_viewParamsMutex);
+    m_viewParams[0] = params[0];
+    m_viewParams[1] = params[1];
+    m_viewParamsValid = true;
 }
 
 OvrDirectModeComponent::OvrDirectModeComponent(std::shared_ptr<PoseHistory> poseHistory)
@@ -73,7 +143,39 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
                 continue;
             }
 
-            enc.present(job.leftIdx, job.rightIdx, job.targetTimestampNs);
+            // Rotationally reproject the frame from the pose it was rendered
+            // with to the newest tracking pose, then stamp it with that pose's
+            // timestamp: after the warp the newest pose is the image's pose,
+            // and the client reprojects from whatever the stamp names. Moving
+            // one without the other is what breaks world lock. Sampled here
+            // rather than in Present so the target is as fresh as possible.
+            uint64_t stampTimestampNs = job.targetTimestampNs;
+            alvr::render::WarpParams warpParams {};
+            if (enc.warpCapable()) {
+                auto latest = m_poseHistory->GetLatestPose();
+
+                FfiViewParams viewParams[2];
+                bool viewParamsValid;
+                {
+                    std::unique_lock<std::mutex> vpLock(m_viewParamsMutex);
+                    viewParams[0] = m_viewParams[0];
+                    viewParams[1] = m_viewParams[1];
+                    viewParamsValid = m_viewParamsValid;
+                }
+
+                if (latest && viewParamsValid
+                    && BuildWarpParams(
+                        job.renderOrientation,
+                        latest->motion.pose.orientation,
+                        viewParams[0].fov,
+                        viewParams[1].fov,
+                        warpParams
+                    )) {
+                    stampTimestampNs = latest->targetTimestampNs;
+                }
+            }
+
+            enc.present(job.leftIdx, job.rightIdx, stampTimestampNs, warpParams);
         } catch (std::exception const& e) {
             // An exception escaping a thread's start function is
             // std::terminate, which takes vrserver with it. Same recovery as
@@ -417,6 +519,7 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
     job.leftIdx = leftIdx.value();
     job.rightIdx = rightIdx.value();
     job.targetTimestampNs = m_targetTimestampNs;
+    job.renderOrientation = m_framePoseRotation;
     job.generation = m_encGeneration;
     job.enqueueTime = std::chrono::steady_clock::now();
 

@@ -143,6 +143,12 @@ class Encoder {
     bool encoderMissingLogged = false;
     IDRScheduler idrScheduler;
 
+    // Whether the current pass chain ends in a shader carrying the warp fold,
+    // which is ffr.comp or quad.comp. A colour-correction-only chain does not,
+    // and warping there would move the frame's stamp while leaving the pixels
+    // unwarped, which is worse than not warping at all.
+    bool warpCapableChain = false;
+
 public:
     // TODO: How are we supposed to match the physical device with direct mode?
     Encoder()
@@ -179,6 +185,9 @@ public:
                     QUAD_SHADER_COMP_SPV_PTR, QUAD_SHADER_COMP_SPV_PTR + QUAD_SHADER_COMP_SPV_LEN
                 ),
             });
+            warpCapableChain = true;
+        } else {
+            warpCapableChain = settings->m_enableFoveatedEncoding;
         }
 
         outExtent = rendererCI.outputExtent;
@@ -256,7 +265,9 @@ public:
         encoderMissingLogged = false;
     }
 
-    void present(u32 leftIdx, u32 rightIdx, u64 targetTimestampNs) {
+    void present(
+        u32 leftIdx, u32 rightIdx, u64 targetTimestampNs, render::WarpParams const& warp
+    ) {
         if (!encoder) {
             // Say it once instead of at frame rate.
             if (!encoderMissingLogged) {
@@ -265,6 +276,7 @@ public:
             }
             return;
         }
+        renderer.get().warpParams = warp;
         ReportPresent(targetTimestampNs, 0);
         renderer.get().render(vkCtx, leftIdx, rightIdx);
         ReportComposed(targetTimestampNs, 0);
@@ -286,6 +298,11 @@ public:
     }
 
     void requestIdr() { idrScheduler.InsertIDR(); }
+
+    // True when engaging the reprojection actually warps pixels with the
+    // current pass chain. Also false while the encoder has not been built.
+    // Non-const because Optional::hasValue() is not const-qualified.
+    bool warpCapable() { return renderer.hasValue() && warpCapableChain; }
 
     ~Encoder() {
         // The device dies in this body, but members are destroyed after the

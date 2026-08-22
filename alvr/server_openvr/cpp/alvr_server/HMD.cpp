@@ -280,6 +280,13 @@ void Hmd::SetViewParams(const FfiViewParams params[2]) {
     if (m_encoder) {
         m_encoder->SetViewParams(left_proj, left_transform, right_proj, right_transform);
     }
+#elif !defined(__APPLE__)
+    // The direct mode component needs the FOV to build the reprojection. This
+    // is the only path that delivers it, and without it the warp stays off
+    // silently rather than failing.
+    if (m_directModeComponent) {
+        m_directModeComponent->SetViewParams(params);
+    }
 #endif
 
     // todo: check if this is still needed

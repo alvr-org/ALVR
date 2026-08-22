@@ -1,6 +1,7 @@
 #pragma once
 #include "alvr_server/PoseHistory.h"
 #include "alvr_server/Utils.h"
+#include "alvr_server/bindings.h"
 #include "openvr_driver.h"
 
 #include "alvr_server/Settings.h"
@@ -33,6 +34,10 @@ public:
     // Called from the event loop thread when the client disconnects. Present
     // tears the encoder down and goes idle until the next connect.
     void RequestEncoderShutdown() { m_encoderState = EncoderState::ShutdownRequested; }
+
+    // Called on the event loop thread whenever the client's projection
+    // changes. Supplies the per-eye FOV the reprojection needs.
+    void SetViewParams(const FfiViewParams params[2]);
 
     /** Specific to Oculus compositor support, textures supplied must be created using this method.
      */
@@ -107,6 +112,11 @@ private:
         uint32_t leftIdx;
         uint32_t rightIdx;
         uint64_t targetTimestampNs;
+        // Orientation the layer was rendered with, captured in Present. The
+        // worker needs it to build the reprojection, and it cannot read
+        // m_framePoseRotation itself because the compositor thread has
+        // overwritten it by then.
+        vr::HmdQuaternion_t renderOrientation;
         // Encoder-state generation this job was built against. The worker
         // discards the job if the generation moved (rebuild, shutdown, set
         // switch) between enqueue and processing.
@@ -132,4 +142,11 @@ private:
     // mutates encoder state. A job whose generation is stale gets dropped
     // instead of presenting old indices against rebuilt state.
     uint64_t m_encGeneration = 0;
+
+    // Written by the event loop thread in SetViewParams, read by the worker.
+    // Invalid until the client's projection arrives, and the reprojection
+    // stays off until then because it has no FOV to build a ray from.
+    std::mutex m_viewParamsMutex;
+    FfiViewParams m_viewParams[2] {};
+    bool m_viewParamsValid = false;
 };

@@ -13,9 +13,18 @@ RenderPipeline::RenderPipeline(
     };
     shader = ctx.dev.createShaderModule(shaderCI);
 
+    // Every pass shares the warp push-constant range; shaders that do not
+    // declare the block simply ignore it.
+    vk::PushConstantRange pushRange {
+        .stageFlags = vk::ShaderStageFlagBits::eCompute,
+        .offset = 0,
+        .size = sizeof(WarpParams),
+    };
     vk::PipelineLayoutCreateInfo pipeLayoutCI {
         .setLayoutCount = 1,
         .pSetLayouts = &layout,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &pushRange,
     };
     pipeLayout = ctx.dev.createPipelineLayout(pipeLayoutCI);
 
@@ -47,9 +56,14 @@ void RenderPipeline::render(
     vk::CommandBuffer cmdBuf,
     vk::ImageView in,
     vk::ImageView out,
-    vk::Extent2D outSize
+    vk::Extent2D outSize,
+    WarpParams const& warp
 ) {
     cmdBuf.bindPipeline(vk::PipelineBindPoint::eCompute, pipe);
+
+    cmdBuf.pushConstants(
+        pipeLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(WarpParams), &warp
+    );
 
     vk::DescriptorImageInfo descImgInfoIn {
         .imageView = in,
@@ -679,7 +693,7 @@ void Renderer::render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx) {
         flushBarriers(barriers, vk::PipelineStageFlagBits::eTransfer | vk::PipelineStageFlagBits::eComputeShader,
                       vk::PipelineStageFlagBits::eComputeShader);
 
-        pipes[pipeIdx].render(vkCtx, cmdBuf, prev->view, nextOut->view, targetExtent);
+        pipes[pipeIdx].render(vkCtx, cmdBuf, prev->view, nextOut->view, targetExtent, warpParams);
         prev = nextOut;
     }
 

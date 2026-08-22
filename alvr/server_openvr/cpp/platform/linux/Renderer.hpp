@@ -2,6 +2,7 @@
 
 #define VULKAN_HPP_NO_CONSTRUCTORS
 #include <vulkan/vulkan.h>
+#include <cstddef>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_enums.hpp>
@@ -58,6 +59,23 @@ struct RendererCreateInfo {
     std::array<int, ImageCount> inputImgFds;
 };
 
+// Push-constant payload for the rotational reprojection fold in the sampling
+// shaders. Field offsets must match the GLSL block (0/64/80/96). enabled == 0
+// reproduces the unwarped sampling exactly, so a zero-initialized struct is a
+// correct passthrough.
+struct WarpParams {
+    float rotation[16] = {}; // column-major mat4, rotation in the upper-left 3x3
+    float leftTans[4] = {}; // tanLeft, tanRight, tanUp, tanDown
+    float rightTans[4] = {};
+    u32 enabled = 0;
+    u32 _padding[3] = {};
+};
+static_assert(sizeof(WarpParams) == 112);
+static_assert(offsetof(WarpParams, rotation) == 0);
+static_assert(offsetof(WarpParams, leftTans) == 64);
+static_assert(offsetof(WarpParams, rightTans) == 80);
+static_assert(offsetof(WarpParams, enabled) == 96);
+
 namespace detail {
 
     class RenderPipeline {
@@ -75,7 +93,8 @@ namespace detail {
             vk::CommandBuffer cmdBuf,
             vk::ImageView in,
             vk::ImageView out,
-            vk::Extent2D outSize
+            vk::Extent2D outSize,
+            WarpParams const& warp
         );
 
         void destroy(VkContext const& ctx);
@@ -114,6 +133,8 @@ public:
     // NOTE: Use the output immediately afterwards, as this synchronizes to the end of gpu
     // operations
     void render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx);
+
+    WarpParams warpParams {};
 
     Output getOutput() { return output; }
 

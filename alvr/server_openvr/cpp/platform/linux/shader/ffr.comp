@@ -18,6 +18,31 @@ const vec2 centerSize = vec2(centerSizeX, centerSizeY);
 const vec2 centerShift = vec2(centerShiftX, centerShiftY);
 const vec2 edgeRatio = vec2(edgeRatioX, edgeRatioY);
 
+// Rotational reprojection from the pose the frame was rendered with to the
+// newest tracking pose, folded into this pass so the warp costs no extra
+// resample. rotation is the source-from-destination view rotation
+// (R_render^T * R_latest), applied to each output pixel's view ray.
+// Tangents are (tanLeft, tanRight, tanUp, tanDown) per eye; view space is
+// +x right, +y up, forward -z; image v grows downward so v=0 maps to tan(up).
+// enabled == 0 leaves this shader's output bit-identical to the unwarped one.
+layout (push_constant) uniform Rewarp {
+    mat4 rotation;
+    vec4 leftTans;
+    vec4 rightTans;
+    uint enabled;
+} pc;
+
+// eyeUV must be in true left-to-right orientation (not the mirrored space
+// TextureToEyeUV produces for the right eye).
+vec2 WarpEyeUV(vec2 eyeUV, bool isRightEye)
+{
+    vec4 tans = isRightEye ? pc.rightTans : pc.leftTans;
+    vec3 ray = vec3(mix(tans.x, tans.y, eyeUV.x), mix(tans.z, tans.w, eyeUV.y), -1.);
+    vec3 src = mat3(pc.rotation) * ray;
+    vec2 ndc = src.xy / -src.z;
+    return vec2((ndc.x - tans.x) / (tans.y - tans.x), (ndc.y - tans.z) / (tans.w - tans.z));
+}
+
 vec2 TextureToEyeUV(vec2 textureUV, bool isRightEye)
 {
     // flip distortion horizontally for right eye
@@ -66,5 +91,30 @@ void main()
 
     vec2 compressedUV = underBound * leftEdge + inBound * center + overBound * rightEdge;
 
-    imageStore(out_img, pos, texture(in_img, EyeToTextureUV(compressedUV, isRightEye)));
+    vec2 sampleUV = EyeToTextureUV(compressedUV, isRightEye);
+
+    if (pc.enabled != 0) {
+        // compressedUV is in the mirrored per-eye space for the right eye;
+        // the ray math needs true orientation, so unmirror, warp, remirror.
+        vec2 warpUV = compressedUV;
+        if (isRightEye) {
+            warpUV.x = 1. - warpUV.x;
+        }
+        warpUV = WarpEyeUV(warpUV, isRightEye);
+        if (isRightEye) {
+            warpUV.x = 1. - warpUV.x;
+        }
+        sampleUV = EyeToTextureUV(warpUV, isRightEye);
+
+        // Keep the sample inside this eye's half of the shared texture, half a
+        // texel in on both axes. The sampler addresses eRepeat, so a coordinate
+        // outside the image wraps to the opposite edge rather than clamping,
+        // and the half-texel inset keeps the bilinear taps off the wrapped row.
+        vec2 texel = 1. / vec2(textureSize(in_img, 0));
+        vec2 lo = vec2(float(isRightEye) * .5 + .5 * texel.x, .5 * texel.y);
+        vec2 hi = vec2(.5 + float(isRightEye) * .5 - .5 * texel.x, 1. - .5 * texel.y);
+        sampleUV = clamp(sampleUV, lo, hi);
+    }
+
+    imageStore(out_img, pos, texture(in_img, sampleUV));
 }

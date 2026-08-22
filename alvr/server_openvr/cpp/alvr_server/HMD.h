@@ -64,10 +64,6 @@ private:
 
     std::shared_ptr<ViveTrackerProxy> m_viveTrackerProxy;
 
-#ifndef _WIN32
-    bool m_refreshRateSet = false;
-#endif
-
     // TrackedDevice
     virtual bool activate() final;
     virtual void* get_component(const char* component_name_and_version) final;

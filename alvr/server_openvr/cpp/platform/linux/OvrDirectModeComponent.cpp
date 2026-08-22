@@ -11,25 +11,159 @@
 #include "OvrDirectModeComponent.h"
 
 #include "alvr_server/Logger.h"
+#include "alvr_server/include/openvr_math.h"
+#include <cmath>
+#include <cstring>
 #include <vector>
+
+#include <linux/dma-buf.h>
+#include <poll.h>
+#include <sys/ioctl.h>
 
 // Multiples of the frame interval. A job older than this when the worker picks
 // it up is from a stall, and the swap texture sets are only three deep, so the
 // slot is close to its next writer.
 constexpr double JobAgeLimitFrames = 1.5;
 
+// The declared vsync grid leads the real frame deadline by this much, a
+// fixed time rather than a fraction of the frame. Declaring a zero offset
+// advertises no headroom and heavy applications fall to half the refresh
+// rate; a lead inside the running start band Valve documents for direct
+// mode drivers, in milliseconds, holds at any refresh rate.
+constexpr auto RunningStart = std::chrono::microseconds(2000);
+
+// Consecutive writer-fence poll timeouts before the GPU wait disarms for the
+// session, so a permanently wedged writer degrades the stream once instead of
+// taxing every frame.
+constexpr uint32_t GpuWaitDisarmThreshold = 30;
+
+// Cap on the writer-fence poll, in frame intervals. The render submission
+// waits on these fences unboundedly while holding the encoder mutex, which
+// Present's rebuild paths also take, so an unsignalled fence must be caught
+// here or it wedges SteamVR's frame loop through the worker built to keep it
+// free.
+constexpr int64_t GpuWaitPollCapFrames = 2;
+
+// Guard sleep before render, ms. The compositor's own scene writes carry only
+// detached pre-signaled placeholder fences, so the GPU-side fence wait cannot
+// see them; this bounds how fresh such a write can be when the read starts.
+// Runs on the worker, so it costs pipeline depth, not compositor-thread
+// budget.
+constexpr int GuardSleepMs = 4;
+
 // The negotiated refresh rate expressed as a frame period.
 static std::chrono::nanoseconds frameInterval() {
     return std::chrono::nanoseconds((int64_t)(1e9 / Settings_Instance()->m_refreshRate));
+}
+
+// Export the sync file a reader must wait on (the writer's fences) from a
+// dma-buf fd. Returns the sync_file fd, or -1 when there is nothing to wait
+// on or the kernel lacks the ioctl. The caller owns the returned fd.
+static int exportReadSyncFile(int dmabufFd) {
+#if defined(DMA_BUF_IOCTL_EXPORT_SYNC_FILE)
+    struct dma_buf_export_sync_file exportInfo = {};
+    exportInfo.flags = DMA_BUF_SYNC_READ;
+    exportInfo.fd = -1;
+    if (ioctl(dmabufFd, DMA_BUF_IOCTL_EXPORT_SYNC_FILE, &exportInfo) != 0) {
+        return -1;
+    }
+    return exportInfo.fd;
+#else
+    (void)dmabufFd;
+    return -1;
+#endif
+}
+
+// Close whichever of a job's fence fds are open. Every path that drops a
+// job without presenting it owes this call.
+static void closeWaitFds(int fds[2]) {
+    for (int e = 0; e < 2; ++e) {
+        if (fds[e] >= 0) {
+            close(fds[e]);
+            fds[e] = -1;
+        }
+    }
+}
+
+// Loose on purpose: it rejects zeroed and uninitialized poses, which miss by
+// orders of magnitude, not accumulated rounding drift.
+constexpr double UnitQuatNormSqTolerance = 0.1;
+
+static bool IsUnitQuat(double w, double x, double y, double z) {
+    double normSq = w * w + x * x + y * y + z * z;
+    return normSq > 1.0 - UnitQuatNormSqTolerance && normSq < 1.0 + UnitQuatNormSqTolerance;
+}
+
+// Fill the warp push constants for a rotational reprojection from
+// renderOrientation to latestOrientation. The shaders sample backwards, so the
+// rotation they need is source-from-destination, R_render^T * R_latest; with
+// the Hamilton product convention of openvr_math.h, conj(q_render) * q_latest
+// composes the same way. Both quaternions are world-from-head, so the world
+// frame cancels and the playspace transform never enters. Returns false, with
+// params left disabled, on a degenerate FOV or a non-unit orientation.
+static bool BuildWarpParams(
+    const vr::HmdQuaternion_t& renderOrientation,
+    const FfiQuat& latestOrientation,
+    const FfiFov& leftFov,
+    const FfiFov& rightFov,
+    alvr::render::WarpParams& params
+) {
+    float leftTans[4]
+        = { tanf(leftFov.left), tanf(leftFov.right), tanf(leftFov.up), tanf(leftFov.down) };
+    float rightTans[4]
+        = { tanf(rightFov.left), tanf(rightFov.right), tanf(rightFov.up), tanf(rightFov.down) };
+    if (leftTans[1] - leftTans[0] == 0.f || rightTans[1] - rightTans[0] == 0.f
+        || leftTans[2] - leftTans[3] == 0.f || rightTans[2] - rightTans[3] == 0.f) {
+        return false;
+    }
+    if (!IsUnitQuat(
+            renderOrientation.w, renderOrientation.x, renderOrientation.y, renderOrientation.z
+        )
+        || !IsUnitQuat(
+            latestOrientation.w, latestOrientation.x, latestOrientation.y, latestOrientation.z
+        )) {
+        return false;
+    }
+
+    vr::HmdQuaternion_t qLatest
+        = { latestOrientation.w, latestOrientation.x, latestOrientation.y, latestOrientation.z };
+    vr::HmdQuaternion_t qDelta = vrmath::quaternionConjugate(renderOrientation) * qLatest;
+
+    vr::HmdMatrix34_t rot;
+    HmdMatrix_QuatToMat(qDelta.w, qDelta.x, qDelta.y, qDelta.z, &rot);
+
+    // GLSL mat4 is column-major: rotation[col * 4 + row].
+    for (int row = 0; row < 4; ++row) {
+        for (int col = 0; col < 4; ++col) {
+            params.rotation[col * 4 + row]
+                = (row < 3 && col < 3) ? rot.m[row][col] : (float)(row == col);
+        }
+    }
+    memcpy(params.leftTans, leftTans, sizeof(leftTans));
+    memcpy(params.rightTans, rightTans, sizeof(rightTans));
+    params.enabled = 1;
+    return true;
+}
+
+void OvrDirectModeComponent::SetViewParams(const FfiViewParams params[2]) {
+    std::unique_lock<std::mutex> lock(m_viewParamsMutex);
+    m_viewParams[0] = params[0];
+    m_viewParams[1] = params[1];
+    m_viewParamsValid = true;
 }
 
 OvrDirectModeComponent::OvrDirectModeComponent(std::shared_ptr<PoseHistory> poseHistory)
     : m_poseHistory(poseHistory)
     , m_submitLayer(0) {
     m_encodeWorker = std::thread(&OvrDirectModeComponent::EncodeWorkerLoop, this);
+    m_vsyncAnnouncer = std::thread(&OvrDirectModeComponent::VsyncAnnouncerLoop, this);
 }
 
 OvrDirectModeComponent::~OvrDirectModeComponent() {
+    m_announcerExit = true;
+    if (m_vsyncAnnouncer.joinable()) {
+        m_vsyncAnnouncer.join();
+    }
     {
         std::lock_guard<std::mutex> lock(m_jobMutex);
         m_workerExit = true;
@@ -39,10 +173,20 @@ OvrDirectModeComponent::~OvrDirectModeComponent() {
     if (m_encodeWorker.joinable()) {
         m_encodeWorker.join();
     }
+    // The worker is gone; whatever job was pending will never present.
+    closeWaitFds(m_job.waitFds);
+    for (int fd : m_syncFds) {
+        if (fd >= 0) {
+            close(fd);
+        }
+    }
 }
 
 void OvrDirectModeComponent::DrainPendingJob() {
     std::lock_guard<std::mutex> lock(m_jobMutex);
+    if (m_jobPending) {
+        closeWaitFds(m_job.waitFds);
+    }
     m_jobPending = false;
 }
 
@@ -63,22 +207,115 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
             frameInterval() * JobAgeLimitFrames
         );
         if (std::chrono::steady_clock::now() - job.enqueueTime > ageLimit) {
+            closeWaitFds(job.waitFds);
             continue;
+        }
+
+        // Bounded gate on the writer's fences, before the encoder lock. On
+        // timeout close the fds and present unguarded instead of wedging.
+        if (job.waitFds[0] >= 0 || job.waitFds[1] >= 0) {
+            bool dropFds = m_gpuWaitPollDisarmed;
+            if (!dropFds) {
+                struct pollfd pfds[2] = {};
+                nfds_t count = 0;
+                for (int e = 0; e < 2; ++e) {
+                    if (job.waitFds[e] >= 0) {
+                        pfds[count].fd = job.waitFds[e];
+                        pfds[count].events = POLLIN;
+                        ++count;
+                    }
+                }
+                auto const capNs = frameInterval() * GpuWaitPollCapFrames;
+                auto const deadline = std::chrono::steady_clock::now() + capNs;
+                bool allSignaled = false;
+                while (!allSignaled) {
+                    int remainingMs
+                        = (int)std::chrono::duration_cast<std::chrono::milliseconds>(
+                              deadline - std::chrono::steady_clock::now()
+                        )
+                              .count();
+                    if (remainingMs < 0) {
+                        break;
+                    }
+                    if (poll(pfds, count, remainingMs) <= 0) {
+                        break;
+                    }
+                    allSignaled = true;
+                    for (nfds_t i = 0; i < count; ++i) {
+                        if ((pfds[i].revents & POLLIN) == 0) {
+                            allSignaled = false;
+                        }
+                    }
+                }
+                if (allSignaled) {
+                    m_gpuWaitConsecTimeouts = 0;
+                } else {
+                    dropFds = true;
+                    if (++m_gpuWaitConsecTimeouts >= GpuWaitDisarmThreshold) {
+                        m_gpuWaitPollDisarmed = true;
+                        Info("Encode worker: writer fences timed out %u frames in a row; "
+                             "GPU wait disarmed for this session\n",
+                             m_gpuWaitConsecTimeouts);
+                    }
+                }
+            }
+            if (dropFds) {
+                closeWaitFds(job.waitFds);
+            }
+        }
+
+        if (GuardSleepMs > 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(GuardSleepMs));
         }
 
         try {
             std::lock_guard<std::mutex> encLock(m_encMutex);
 
             if (job.generation != m_encGeneration) {
+                closeWaitFds(job.waitFds);
                 continue;
             }
 
-            enc.present(job.leftIdx, job.rightIdx, job.targetTimestampNs);
+            // Rotationally reproject the frame from the pose it was rendered
+            // with to the newest tracking pose, then stamp it with that pose's
+            // timestamp: after the warp the newest pose is the image's pose,
+            // and the client reprojects from whatever the stamp names. Moving
+            // one without the other is what breaks world lock. Sampled here
+            // rather than in Present so the target is as fresh as possible.
+            uint64_t stampTimestampNs = job.targetTimestampNs;
+            alvr::render::WarpParams warpParams {};
+            if (enc.warpCapable()) {
+                auto latest = m_poseHistory->GetLatestPose();
+
+                FfiViewParams viewParams[2];
+                bool viewParamsValid;
+                {
+                    std::unique_lock<std::mutex> vpLock(m_viewParamsMutex);
+                    viewParams[0] = m_viewParams[0];
+                    viewParams[1] = m_viewParams[1];
+                    viewParamsValid = m_viewParamsValid;
+                }
+
+                if (latest && viewParamsValid
+                    && BuildWarpParams(
+                        job.renderOrientation,
+                        latest->motion.pose.orientation,
+                        viewParams[0].fov,
+                        viewParams[1].fov,
+                        warpParams
+                    )) {
+                    stampTimestampNs = latest->targetTimestampNs;
+                }
+            }
+
+            enc.present(job.leftIdx, job.rightIdx, stampTimestampNs, warpParams, job.waitFds);
         } catch (std::exception const& e) {
             // An exception escaping a thread's start function is
             // std::terminate, which takes vrserver with it. Same recovery as
             // the compositor-thread paths: log, tear the encoder down, go
             // idle until the next client connect.
+            // The job's fds may be partially consumed by the throw point, so
+            // they are deliberately not closed here.
             Error("Encode worker: %s. Tearing down encoder and going idle.\n", e.what());
             std::lock_guard<std::mutex> encLock(m_encMutex);
             // The try block's lock released when the exception left it, so a
@@ -370,6 +607,15 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
             }
         }
 
+        // Keep a second dup of each texture fd for exporting write fences at
+        // Present; Vulkan consumes the import dups below.
+        for (u32 i = 0; i < fds.size(); ++i) {
+            if (m_syncFds[i] >= 0) {
+                close(m_syncFds[i]);
+            }
+            m_syncFds[i] = dup(fds[i]);
+        }
+
         auto const& settings = Settings_Instance();
 
         // Hopefully it's the same for both eyes in a layer
@@ -417,14 +663,37 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
     job.leftIdx = leftIdx.value();
     job.rightIdx = rightIdx.value();
     job.targetTimestampNs = m_targetTimestampNs;
+    job.renderOrientation = m_framePoseRotation;
     job.generation = m_encGeneration;
     job.enqueueTime = std::chrono::steady_clock::now();
+
+    // Export each eye's write fences so the render submission starts exactly
+    // when the writer finishes. Both eyes or neither: a single armed eye
+    // would order one read correctly and leave the other racing, which is
+    // strictly harder to diagnose than the symmetric fallback.
+    {
+        u32 const eyeSlot[2] = { leftIdx.value(), rightIdx.value() };
+        for (int e = 0; e < 2; ++e) {
+            if (m_syncFds[eyeSlot[e]] >= 0) {
+                job.waitFds[e] = exportReadSyncFile(m_syncFds[eyeSlot[e]]);
+            }
+        }
+        if (job.waitFds[0] < 0 || job.waitFds[1] < 0) {
+            closeWaitFds(job.waitFds);
+        }
+    }
 
     {
         std::lock_guard<std::mutex> lock(m_jobMutex);
         if (m_workerExit) {
             // Teardown already drained the mailbox; do not repopulate it.
+            closeWaitFds(job.waitFds);
             return;
+        }
+        // Latest wins: a still-pending job is replaced, and its fences will
+        // never be waited on, so close them here.
+        if (m_jobPending) {
+            closeWaitFds(m_job.waitFds);
         }
         m_job = job;
         m_jobPending = true;
@@ -432,8 +701,99 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
     m_jobCv.notify_one();
 }
 
-void OvrDirectModeComponent::PostPresent(const Throttling_t* pThrottling) {  
-    vr::VRServerDriverHost()->VsyncEvent(0.0);
-    //Calls VsyncEnvent somewhere
-    //WaitForVSync();
-  }
+void OvrDirectModeComponent::VsyncAnnouncerLoop() {
+    using std::chrono::steady_clock;
+
+    auto next = steady_clock::now() + frameInterval();
+    while (!m_announcerExit) {
+        auto const interval = frameInterval();
+        // Wake a phase lead before the tick and declare the vsync at that
+        // announce point. VsyncEvent takes a time offset in seconds, so
+        // declaring early gives WaitGetPoses release and pose prediction a
+        // head start on the real deadline. The offset self-corrects wake
+        // jitter: it goes slightly negative on oversleep, which reads as the
+        // vsync having just passed.
+        auto const announce = next - RunningStart;
+        std::this_thread::sleep_until(announce);
+        if (m_announcerExit) {
+            break;
+        }
+
+        double offset = std::chrono::duration_cast<std::chrono::duration<double>>(
+                            announce - steady_clock::now()
+        )
+                            .count();
+        vr::VRServerDriverHost()->VsyncEvent(offset);
+        m_lastTickNs = next.time_since_epoch().count();
+
+        // Advance along the grid, losing whole ticks that were missed rather
+        // than accumulating debt and snapping.
+        next += interval;
+        auto const now = steady_clock::now();
+        while (next <= now) {
+            next += interval;
+            m_skippedVsyncs++;
+        }
+    }
+}
+
+void OvrDirectModeComponent::PostPresent(const Throttling_t* pThrottling) {
+    // Prop_Hmd_SupportsAppThrottling_Bool is set, so SteamVR sends throttle
+    // hints here and predicts poses assuming we honor them. Ignoring them
+    // while it throttles an app predicts poses for a cadence we are not
+    // keeping, which reprojects the world against head motion.
+    uint32_t throttleFrames = 0;
+    if (pThrottling != nullptr) {
+        throttleFrames = pThrottling->nFramesToThrottle;
+        if (pThrottling->nFramesToThrottle != m_lastThrottleFrames
+            || pThrottling->nAdditionalFramesToPredict != m_lastPredictFrames) {
+            m_lastThrottleFrames = pThrottling->nFramesToThrottle;
+            m_lastPredictFrames = pThrottling->nAdditionalFramesToPredict;
+            Info(
+                "Throttling: framesToThrottle=%u additionalFramesToPredict=%u\n",
+                pThrottling->nFramesToThrottle,
+                pThrottling->nAdditionalFramesToPredict
+            );
+        }
+    }
+
+    // Pace Present without owning the vsync declaration: the announcer fires
+    // events on the wall-clock grid whatever happens here, so a slow frame
+    // costs one frame instead of slowing the schedule the compositor hands
+    // the application. Holding this thread until the next tick keeps the
+    // compositor from free-running at encode speed, which floods the client
+    // decoder; adding the throttle hint holds it the extra frames SteamVR
+    // asked for.
+    using std::chrono::nanoseconds;
+    using std::chrono::steady_clock;
+
+    auto const interval = frameInterval();
+    int64_t const lastTickNs = m_lastTickNs;
+    if (lastTickNs == 0) {
+        std::this_thread::sleep_for(interval);
+        return;
+    }
+
+    auto const lastTick = steady_clock::time_point(nanoseconds(lastTickNs));
+    std::this_thread::sleep_until(lastTick + interval * (1 + throttleFrames));
+}
+
+void OvrDirectModeComponent::GetFrameTiming(vr::DriverDirectMode_FrameTiming* pFrameTiming) {
+    if (pFrameTiming == nullptr
+        || pFrameTiming->m_nSize < sizeof(vr::DriverDirectMode_FrameTiming)) {
+        return;
+    }
+
+    // Skipped ticks are not reported as dropped frames: the compositor reads a
+    // drop as GPU overload and enables interleaved reprojection, which halves
+    // the rate, so the grid then skips a tick every frame and reports another
+    // drop, throttled from then on. Consume the counter without reporting it
+    // until there is a channel that does not throttle.
+    (void)m_skippedVsyncs.exchange(0);
+    pFrameTiming->m_nNumFramePresents = 1;
+    pFrameTiming->m_nNumMisPresented = 0;
+    pFrameTiming->m_nNumDroppedFrames = 0;
+    // These bits overlap the throttle mask and must not be echoed back
+    // unhandled, per the interface header.
+    pFrameTiming->m_nReprojectionFlags = 0;
+}

@@ -72,6 +72,14 @@ bool Hmd::activate() {
 
     SetOpenvrProps((void*)this, this->device_id);
 
+#if !defined(_WIN32) && !defined(__APPLE__)
+    // The property has no type suffix in the header, so the generated key
+    // enum cannot name it and it is set here instead of the props path.
+    vr_properties->SetBoolProperty(
+        this->prop_container, vr::Prop_Hmd_AllowsClientToControlTextureIndex, true
+    );
+#endif
+
     vr_properties->SetFloatProperty(
         this->prop_container,
         vr::Prop_DisplayFrequency_Float,
@@ -189,34 +197,28 @@ void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
     if (m_viveTrackerProxy)
         m_viveTrackerProxy->update();
 
-#if !defined(_WIN32) && !defined(__APPLE__)
-    // This has to be set after initialization is done, because something in vrcompositor is
-    // setting it to 90Hz in the meantime
-    if (!m_refreshRateSet /* && m_encoder && m_encoder->IsConnected() */) {
-        m_refreshRateSet = true;
-        vr::VRProperties()->SetFloatProperty(
-            this->prop_container,
-            vr::Prop_DisplayFrequency_Float,
-            static_cast<float>(Settings_Instance()->m_refreshRate)
-        );
-    }
-    //TODO: make this linux only
-    //DEBUG: Linux Direct Mode driver needs this to be set to true, otherwise it will not work.
-    //This feels like a hacky solution, should be enalbed by default for drivers implementing DMC.
-    vr::VRProperties()->SetBoolProperty( this->prop_container, vr::Prop_DriverDirectModeSendsVsyncEvents_Bool, true );
-    //TODO: DO we truely need this? I think we do, but it is not clear. This is a hacky solution, but it works for now.
-    vr::VRProperties()->SetBoolProperty( this->prop_container, vr::Prop_Hmd_SupportsAppThrottling_Bool, true );
-    //TODO: Same as Prop_DriverDirectModeSendsVsyncEvents_Bool Property
-    vr::VRProperties()->SetBoolProperty( this->prop_container, vr::Prop_SupportsXrTextureSets_Bool, true );
-    
-    //TODO: ????
-    vr::VRProperties()->SetBoolProperty( this->prop_container, vr::Prop_Hmd_AllowsClientToControlTextureIndex, true );
-
-#endif
 }
 
 void Hmd::StartStreaming() {
     Debug("Hmd::StartStreaming");
+
+#if !defined(_WIN32) && !defined(__APPLE__)
+    // Set at streaming start rather than activation because vrcompositor
+    // overwrites the display frequency after activation.
+    vr::VRProperties()->SetFloatProperty(
+        this->prop_container,
+        vr::Prop_DisplayFrequency_Float,
+        static_cast<float>(Settings_Instance()->m_refreshRate)
+    );
+    // One frame period. A streamed display has no measured panel latency to
+    // put here. ALVR compensates streaming latency in its own tracking path,
+    // so link latency deliberately is not folded in.
+    vr::VRProperties()->SetFloatProperty(
+        this->prop_container,
+        vr::Prop_SecondsFromVsyncToPhotons_Float,
+        1.0f / static_cast<float>(Settings_Instance()->m_refreshRate)
+    );
+#endif
 
     vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, true, 0.0);
 
@@ -279,6 +281,13 @@ void Hmd::SetViewParams(const FfiViewParams params[2]) {
 #ifdef _WIN32
     if (m_encoder) {
         m_encoder->SetViewParams(left_proj, left_transform, right_proj, right_transform);
+    }
+#elif !defined(__APPLE__)
+    // The direct mode component needs the FOV to build the reprojection. This
+    // is the only path that delivers it, and without it the warp stays off
+    // silently rather than failing.
+    if (m_directModeComponent) {
+        m_directModeComponent->SetViewParams(params);
     }
 #endif
 

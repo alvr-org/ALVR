@@ -249,6 +249,20 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
     let headset_serial = &serial_number(*HEAD_ID);
 
     if device_id == *HEAD_ID {
+        // Capabilities of the linux direct driver, declared at activation.
+        // The win32 driver never sends vsync events and keeps SteamVR's
+        // hardcoded vsync-offset model, so these stay linux-only.
+        #[cfg(target_os = "linux")]
+        {
+            // SteamVR uses the timing of VsyncEvent calls instead of its
+            // hardcoded vsync-offset model.
+            set_prop(DriverDirectModeSendsVsyncEventsBool, "true");
+            // Enables the per-app throttling UI and the Throttling_t hints
+            // the pacing grid honors.
+            set_prop(HmdSupportsAppThrottlingBool, "true");
+            set_prop(SupportsXrTextureSetsBool, "true");
+        }
+
         // Closure for all the common Quest headset properties
         let set_oculus_common_headset_props = || {
             set_prop(

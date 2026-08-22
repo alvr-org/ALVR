@@ -784,12 +784,11 @@ void OvrDirectModeComponent::GetFrameTiming(vr::DriverDirectMode_FrameTiming* pF
         return;
     }
 
-    // Reporting skipped ticks as dropped frames looks like honest cadence
-    // feedback, but the compositor reads it as GPU overload and turns on
-    // interleaved reprojection: half rate, so the grid then skips a tick every
-    // frame, so we report another drop, throttled forever. Measured as Home
-    // locked to 35 with the report in and 72 without. Consume the counter
-    // without reporting it until there is a channel that does not throttle.
+    // Skipped ticks are not reported as dropped frames: the compositor reads a
+    // drop as GPU overload and enables interleaved reprojection, which halves
+    // the rate, so the grid then skips a tick every frame and reports another
+    // drop, throttled from then on. Consume the counter without reporting it
+    // until there is a channel that does not throttle.
     (void)m_skippedVsyncs.exchange(0);
     pFrameTiming->m_nNumFramePresents = 1;
     pFrameTiming->m_nNumMisPresented = 0;

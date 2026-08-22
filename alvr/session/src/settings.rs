@@ -1432,6 +1432,15 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     ))]
     pub allow_untrusted_http: bool,
 
+    #[schema(flag = "steamvr-restart")]
+    #[schema(strings(
+        display_name = "Allow remote dashboard access",
+        help = "Serve the dashboard on all network interfaces instead of localhost only. \
+                Anyone who can reach this machine can then control ALVR, as the web server \
+                has no authentication."
+    ))]
+    pub allow_remote_dashboard: bool,
+
     #[schema(strings(
         help = r#"If the client, server or the network discarded one packet, discard packets until a IDR packet is found."#
     ))]
@@ -2190,6 +2199,7 @@ pub fn session_settings_default() -> SettingsDefault {
             enable_on_connect_script: false,
             enable_on_disconnect_script: false,
             allow_untrusted_http: false,
+            allow_remote_dashboard: false,
             packet_size: 1400,
             statistics_history_size: 256,
         },

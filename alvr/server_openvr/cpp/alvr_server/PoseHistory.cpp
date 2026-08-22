@@ -5,6 +5,10 @@
 #include <mutex>
 #include <optional>
 
+// A submitted frame was rendered from a recent pose, so matches older than this
+// are stale no matter how well the rotation agrees.
+static constexpr uint64_t MATCH_WINDOW_NS = 250000000;
+
 void PoseHistory::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
     // Put pose history buffer
     TrackingHistoryFrame history;
@@ -42,9 +46,22 @@ void PoseHistory::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion moti
 std::optional<PoseHistory::TrackingHistoryFrame>
 PoseHistory::GetBestPoseMatch(const vr::HmdMatrix34_t& pose) const {
     std::unique_lock<std::mutex> lock(m_mutex);
+    if (m_poseBuffer.empty()) {
+        Debug("PoseHistory::GetBestPoseMatch: No pose matched.");
+        return {};
+    }
+
+    // The buffer holds about 1.7 seconds of tracking, so sweeping the head back
+    // over an orientation it recently held leaves several entries matching
+    // equally well. Search newest first so a tie resolves to the most recent
+    // entry, and stop at the window bound.
+    const uint64_t newestTimestampNs = m_poseBuffer.back().targetTimestampNs;
     float minDiff = 100000;
-    auto minIt = m_poseBuffer.begin();
-    for (auto it = m_poseBuffer.begin(); it != m_poseBuffer.end(); ++it) {
+    auto minIt = m_poseBuffer.rbegin();
+    for (auto it = m_poseBuffer.rbegin(); it != m_poseBuffer.rend(); ++it) {
+        if (newestTimestampNs - it->targetTimestampNs > MATCH_WINDOW_NS) {
+            break;
+        }
         float distance = 0;
         // Rotation matrix composes a part of ViewMatrix of TrackingInfo.
         // Be carefull of transpose.
@@ -60,12 +77,7 @@ PoseHistory::GetBestPoseMatch(const vr::HmdMatrix34_t& pose) const {
             minDiff = distance;
         }
     }
-    if (minIt != m_poseBuffer.end()) {
-        return *minIt;
-    }
-
-    Debug("PoseHistory::GetBestPoseMatch: No pose matched.");
-    return {};
+    return *minIt;
 }
 
 std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetPoseAt(uint64_t timestampNs

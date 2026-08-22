@@ -25,10 +25,11 @@
 // slot is close to its next writer.
 constexpr double JobAgeLimitFrames = 1.5;
 
-// The declared vsync grid leads the real frame deadline by this much. Sleeping
-// to the tick and declaring a zero offset advertises no headroom, which
-// measured as heavy applications locked to half rate; 2 ms measured as a full
-// 72.
+// The declared vsync grid leads the real frame deadline by this much, a
+// fixed time rather than a fraction of the frame. Declaring a zero offset
+// advertises no headroom and heavy applications fall to half the refresh
+// rate; a lead inside the running start band Valve documents for direct
+// mode drivers, in milliseconds, holds at any refresh rate.
 constexpr auto RunningStart = std::chrono::microseconds(2000);
 
 // Consecutive writer-fence poll timeouts before the GPU wait disarms for the

@@ -2,6 +2,7 @@ mod foveated_encoding;
 mod graphics;
 mod props;
 mod tracking;
+mod vsync;
 
 #[allow(
     non_camel_case_types,
@@ -156,6 +157,10 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
         } else {
             (0, 0, false, 0.0, false)
         };
+
+    // The vsync grid runs at the rate the driver is told about, set here so the announcer never
+    // has to read a setting back across the boundary.
+    vsync::set_refresh_rate(refresh_rate as f32);
 
     Settings {
         m_refreshRate: refresh_rate,

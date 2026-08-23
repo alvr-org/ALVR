@@ -1,4 +1,6 @@
 #include "Renderer.hpp"
+
+#include <unistd.h>
 #include <optional>
 #include <vulkan/vulkan_structs.hpp>
 
@@ -13,10 +15,12 @@ RenderPipeline::RenderPipeline(
     };
     shader = ctx.dev.createShaderModule(shaderCI);
 
+    // Every pass shares one push-constant range; shaders that do not declare
+    // the block simply ignore it.
     vk::PushConstantRange pushRange {
         .stageFlags = vk::ShaderStageFlagBits::eCompute,
         .offset = 0,
-        .size = sizeof(FoveationCenterShifts),
+        .size = sizeof(PushConstants),
     };
     vk::PipelineLayoutCreateInfo pipeLayoutCI {
         .setLayoutCount = 1,
@@ -55,15 +59,11 @@ void RenderPipeline::render(
     vk::ImageView in,
     vk::ImageView out,
     vk::Extent2D outSize,
-    FoveationCenterShifts const& centerShifts
+    PushConstants const& pushConstants
 ) {
     cmdBuf.bindPipeline(vk::PipelineBindPoint::eCompute, pipe);
     cmdBuf.pushConstants(
-        pipeLayout,
-        vk::ShaderStageFlagBits::eCompute,
-        0,
-        sizeof(FoveationCenterShifts),
-        &centerShifts
+        pipeLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(PushConstants), &pushConstants
     );
 
     vk::DescriptorImageInfo descImgInfoIn {
@@ -564,7 +564,34 @@ Renderer::Renderer(
     fence = vkCtx.dev.createFence({});
 }
 
-void Renderer::render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx) {
+void Renderer::render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx, int const waitFds[2]) {
+    // Import the input writers' sync files as temporary binary semaphores;
+    // the submission below waits on them at the transfer stage, so the eye
+    // copies start exactly when the writes complete.
+    vk::Semaphore importedSems[2] = {};
+    u32 importedCount = 0;
+    if (waitFds != nullptr) {
+        for (int e = 0; e < 2; ++e) {
+            if (waitFds[e] < 0) {
+                continue;
+            }
+            vk::Semaphore sem = vkCtx.dev.createSemaphore({});
+            vk::ImportSemaphoreFdInfoKHR importInfo {
+                .semaphore = sem,
+                .flags = vk::SemaphoreImportFlagBits::eTemporary,
+                .handleType = vk::ExternalSemaphoreHandleTypeFlagBits::eSyncFd,
+                .fd = waitFds[e],
+            };
+            if (vkCtx.dev.importSemaphoreFdKHR(&importInfo, vkCtx.dispatch)
+                == vk::Result::eSuccess) {
+                importedSems[importedCount++] = sem;
+            } else {
+                vkCtx.dev.destroy(sem);
+                close(waitFds[e]);
+            }
+        }
+    }
+
     vk::CommandBufferBeginInfo beginInfo {};
     cmdBuf.begin(beginInfo);
 
@@ -668,6 +695,11 @@ void Renderer::render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx) {
 
     prev = stageOut;
 
+    PushConstants const pushConstants {
+        .warp = warpParams,
+        .centerShifts = foveationCenterShifts,
+    };
+
     for (usize pipeIdx = 0; pipeIdx < pipes.size(); ++pipeIdx) {
         Image* nextOut = pipeIdx + 1 == pipes.size() ? &output.image : &stagingImgs[(pipeIdx + 1) % StagingImgCount];
         vk::Extent2D targetExtent = pipeIdx + 1 == pipes.size() ? outExtent
@@ -695,7 +727,7 @@ void Renderer::render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx) {
                       vk::PipelineStageFlagBits::eComputeShader);
 
         pipes[pipeIdx].render(
-            vkCtx, cmdBuf, prev->view, nextOut->view, targetExtent, foveationCenterShifts
+            vkCtx, cmdBuf, prev->view, nextOut->view, targetExtent, pushConstants
         );
         prev = nextOut;
     }
@@ -709,19 +741,29 @@ void Renderer::render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx) {
     //     .waitSemaphoreValueCount = 1,
     //     .pWaitSemaphoreValues = &waitValue,
     // };
-    vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eBottomOfPipe;
+    vk::PipelineStageFlags waitStages[2] = {
+        vk::PipelineStageFlagBits::eTransfer,
+        vk::PipelineStageFlagBits::eTransfer,
+    };
     vk::SubmitInfo submitInfo {
         // .pNext = &timelineInfo,
-        // .waitSemaphoreCount = 1,
-        // .pWaitSemaphores = &renderFinishedSem,
-        .pWaitDstStageMask = &waitStage,
+        .waitSemaphoreCount = importedCount,
+        .pWaitSemaphores = importedSems,
+        .pWaitDstStageMask = waitStages,
         .commandBufferCount = 1,
         .pCommandBuffers = &cmdBuf,
     };
 
     vkCtx.useQueue([&](auto& queue) { queue.submit(submitInfo, fence); });
+    // The fence wait below also orders the destruction of the temporary
+    // imported semaphores: the queue waits on them until the submission
+    // finishes, so destroying them earlier would be a use after free.
     assert(vkCtx.dev.waitForFences(fence, true, UINT64_MAX) == vk::Result::eSuccess);
     vkCtx.dev.resetFences(fence);
+
+    for (u32 i = 0; i < importedCount; ++i) {
+        vkCtx.dev.destroy(importedSems[i]);
+    }
 }
 
 void Renderer::destroy(VkContext const& ctx) {

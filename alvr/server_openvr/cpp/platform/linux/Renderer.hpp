@@ -2,6 +2,7 @@
 
 #define VULKAN_HPP_NO_CONSTRUCTORS
 #include <vulkan/vulkan.h>
+#include <cstddef>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_enums.hpp>
@@ -58,14 +59,39 @@ struct RendererCreateInfo {
     std::array<int, ImageCount> inputImgFds;
 };
 
-// Push-constant payload for the per-eye foveation centers in ffr.comp, updated
-// every frame. Field offsets must match the GLSL block. Every pass shares the
-// range; shaders that do not declare it ignore it.
+// Push-constant payload for the rotational reprojection fold in the sampling
+// shaders. Field offsets must match the GLSL block (0/64/80/96). enabled == 0
+// reproduces the unwarped sampling exactly, so a zero-initialized struct is a
+// correct passthrough.
+struct WarpParams {
+    float rotation[16] = {}; // column-major mat4, rotation in the upper-left 3x3
+    float leftTans[4] = {}; // tanLeft, tanRight, tanUp, tanDown
+    float rightTans[4] = {};
+    u32 enabled = 0;
+    u32 _padding[3] = {};
+};
+static_assert(sizeof(WarpParams) == 112);
+static_assert(offsetof(WarpParams, rotation) == 0);
+static_assert(offsetof(WarpParams, leftTans) == 64);
+static_assert(offsetof(WarpParams, rightTans) == 80);
+static_assert(offsetof(WarpParams, enabled) == 96);
+
+// Per-eye foveation center shifts for ffr.comp, updated every frame.
 struct FoveationCenterShifts {
     float left[2] = {};
     float right[2] = {};
 };
 static_assert(sizeof(FoveationCenterShifts) == 16);
+
+// The push-constant range every pass shares. The warp sits at offset 0 so
+// quad.comp can declare only that prefix; ffr.comp declares the whole block
+// (centers at 112/120). Shaders that declare neither ignore it.
+struct PushConstants {
+    WarpParams warp;
+    FoveationCenterShifts centerShifts;
+};
+static_assert(sizeof(PushConstants) == 128);
+static_assert(offsetof(PushConstants, centerShifts) == 112);
 
 namespace detail {
 
@@ -85,7 +111,7 @@ namespace detail {
             vk::ImageView in,
             vk::ImageView out,
             vk::Extent2D outSize,
-            FoveationCenterShifts const& centerShifts
+            PushConstants const& pushConstants
         );
 
         void destroy(VkContext const& ctx);
@@ -123,7 +149,13 @@ public:
 
     // NOTE: Use the output immediately afterwards, as this synchronizes to the end of gpu
     // operations
-    void render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx);
+    // waitFds, when given, are sync_file fds imported as temporary semaphores
+    // the submission waits on before the eye copies. Ownership transfers to
+    // this call: a successful import hands the fd to Vulkan, a failed one is
+    // closed here.
+    void render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx, int const waitFds[2] = nullptr);
+
+    WarpParams warpParams {};
 
     FoveationCenterShifts foveationCenterShifts {};
 

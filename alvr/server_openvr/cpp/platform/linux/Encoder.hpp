@@ -11,6 +11,7 @@
 #include "alvr_server/IDRScheduler.h"
 #include "alvr_server/Settings.h"
 #include "alvr_server/bindings.h"
+#include <unistd.h>
 
 namespace alvr {
 
@@ -107,6 +108,12 @@ class Encoder {
     bool encoderMissingLogged = false;
     IDRScheduler idrScheduler;
 
+    // Whether the current pass chain ends in a shader carrying the warp fold,
+    // which is ffr.comp or quad.comp. A colour-correction-only chain does not,
+    // and warping there would move the frame's stamp while leaving the pixels
+    // unwarped, which is worse than not warping at all.
+    bool warpCapableChain = false;
+
 public:
     // TODO: How are we supposed to match the physical device with direct mode?
     Encoder()
@@ -143,6 +150,9 @@ public:
                     QUAD_SHADER_COMP_SPV_PTR, QUAD_SHADER_COMP_SPV_PTR + QUAD_SHADER_COMP_SPV_LEN
                 ),
             });
+            warpCapableChain = true;
+        } else {
+            warpCapableChain = settings->m_enableFoveatedEncoding;
         }
 
         outExtent = rendererCI.outputExtent;
@@ -220,8 +230,21 @@ public:
         encoderMissingLogged = false;
     }
 
-    void present(u32 leftIdx, u32 rightIdx, u64 targetTimestampNs) {
+    // waitFds are sync_file fds the render submission must wait on before
+    // sampling the eye textures; ownership transfers here on every path.
+    void present(
+        u32 leftIdx,
+        u32 rightIdx,
+        u64 targetTimestampNs,
+        render::WarpParams const& warp,
+        int const waitFds[2]
+    ) {
         if (!encoder) {
+            for (int e = 0; e < 2; ++e) {
+                if (waitFds[e] >= 0) {
+                    close(waitFds[e]);
+                }
+            }
             // Say it once instead of at frame rate.
             if (!encoderMissingLogged) {
                 Error("Encoder not initialized, skipping frames until it is rebuilt.\n");
@@ -229,9 +252,10 @@ public:
             }
             return;
         }
+        renderer.get().warpParams = warp;
         ReportPresent(targetTimestampNs, 0);
         updateFoveationCenters(targetTimestampNs);
-        renderer.get().render(vkCtx, leftIdx, rightIdx);
+        renderer.get().render(vkCtx, leftIdx, rightIdx, waitFds);
         ReportComposed(targetTimestampNs, 0);
 
         encoder->PushFrame(0, idrScheduler.CheckIDRInsertion());
@@ -252,9 +276,15 @@ public:
 
     void requestIdr() { idrScheduler.InsertIDR(); }
 
+    // True when engaging the reprojection actually warps pixels with the
+    // current pass chain. Also false while the encoder has not been built.
+    // Non-const because Optional::hasValue() is not const-qualified.
+    bool warpCapable() { return renderer.hasValue() && warpCapableChain; }
+
 private:
     // Eye-tracked centers when the client supplies gaze, the negotiated static
-    // ones otherwise. Reported under the frame's timestamp so the client
+    // ones otherwise. Looked up and reported under the timestamp the frame is
+    // sent with, which after a warp is the newest pose's, so the client
     // decodes the frame with the same centers it was encoded with.
     void updateFoveationCenters(u64 targetTimestampNs) {
         auto const& settings = Settings_Instance();
@@ -278,7 +308,6 @@ private:
     }
 
 public:
-
     ~Encoder() {
         // The device dies in this body, but members are destroyed after the
         // body runs. Release the pipeline and the frame first so ~VkFrame

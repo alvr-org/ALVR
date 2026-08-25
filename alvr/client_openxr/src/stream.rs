@@ -109,9 +109,6 @@ pub struct StreamContext {
     /// Companion decoder for the monochrome alpha stream. Only created when the 8 bit alpha
     /// passthrough mode negotiated successfully.
     alpha_decoder: Option<(VideoDecoderConfig, VideoDecoderSource)>,
-    /// Last alpha frame pulled from the alpha decoder, kept so it can be matched against a later
-    /// color frame. Holds (timestamp, hardware buffer).
-    pending_alpha_frame: Option<(Duration, *mut c_void)>,
     use_custom_reprojection: bool,
 }
 
@@ -258,7 +255,6 @@ impl StreamContext {
             renderer,
             decoder: None,
             alpha_decoder: None,
-            pending_alpha_frame: None,
         };
 
         this.update_reference_space();
@@ -387,63 +383,27 @@ impl StreamContext {
         self.config.clientside_post_processing = config.clientside_post_processing.clone();
     }
 
-    /// Returns the alpha hardware buffer matching `target_timestamp`, or null if none is available.
-    ///
-    /// Both decoders emit frames independently, so the queues can drift. This walks the alpha
-    /// queue forward, dropping frames that are older than the color frame (they can never be
-    /// matched again) and stopping as soon as it reaches one that is newer, which is retained for
-    /// a future call. It is deliberately non-blocking: alpha must never stall color presentation.
-    fn dequeue_alpha_frame(&mut self, target_timestamp: Duration) -> *mut c_void {
+    /// Wait briefly for the alpha hardware buffer with the exact color-frame timestamp.
+    fn dequeue_alpha_frame(
+        &mut self,
+        target_timestamp: Duration,
+        deadline: Instant,
+    ) -> *mut c_void {
         let Some((_, source)) = &mut self.alpha_decoder else {
             return ptr::null_mut();
         };
 
-        // Bound the walk so a badly desynced stream cannot spin here.
-        const MAX_ALPHA_FRAMES_PER_RENDER: usize = 8;
-
-        // Drain whatever the alpha decoder has produced and keep the newest frame at or before the
-        // color frame. Exact timestamp equality is deliberately NOT required: when the color
-        // decoder returns no frame, render() falls back to vsync_time, which never matches an
-        // encoded timestamp, and the two decoders can drift by a frame anyway. Insisting on
-        // equality left the alpha texture permanently unwritten (fully transparent output).
-        let mut newest: Option<(Duration, *mut c_void)> = self.pending_alpha_frame.take();
-
-        for _ in 0..MAX_ALPHA_FRAMES_PER_RENDER {
-            // Stop as soon as the held frame is genuinely ahead of the color frame; keep it for
-            // later. An implausibly large lead means a timestamp domain mismatch rather than a
-            // real lead, so keep draining instead of stalling forever.
-            if let Some((timestamp, _)) = newest
-                && timestamp > target_timestamp
-                && timestamp.saturating_sub(target_timestamp) < Duration::from_secs(1)
-            {
-                break;
+        loop {
+            if let Some((_, buffer_ptr)) = source.get_frame_at_timestamp(target_timestamp) {
+                return buffer_ptr;
             }
 
-            match source.get_frame() {
-                Some(frame) => newest = Some(frame),
-                None => break,
+            if Instant::now() >= deadline {
+                return ptr::null_mut();
             }
+
+            thread::sleep(Duration::from_micros(250));
         }
-
-        // A frame more than a second ahead of the color stream cannot be a genuine lead; it means
-        // the two sides disagree about the timestamp domain. Use it rather than holding it
-        // forever, which would stall alpha permanently.
-        const MAX_ALPHA_LEAD: Duration = Duration::from_secs(1);
-
-        let result = match newest {
-            // Frame is newer than the color frame: hold it back for a subsequent render.
-            Some((timestamp, buffer_ptr))
-                if timestamp > target_timestamp
-                    && timestamp.saturating_sub(target_timestamp) < MAX_ALPHA_LEAD =>
-            {
-                self.pending_alpha_frame = Some((timestamp, buffer_ptr));
-                ptr::null_mut()
-            }
-            Some((_, buffer_ptr)) => buffer_ptr,
-            None => ptr::null_mut(),
-        };
-
-        result
     }
 
     pub fn render(
@@ -464,7 +424,7 @@ impl StreamContext {
             }
         }
 
-        let (timestamp, view_params, buffer_ptr) =
+        let (timestamp, view_params, mut buffer_ptr) =
             if let Some((timestamp, buffer_ptr)) = frame_result {
                 let view_params = self.core_context.report_compositor_start(timestamp);
 
@@ -475,11 +435,20 @@ impl StreamContext {
                 (vsync_time, self.last_good_view_params, ptr::null_mut())
             };
 
-        // Pair the alpha frame with the color frame by timestamp. The color stream drives pacing,
-        // so this never blocks: it only discards alpha frames older than the color frame and holds
-        // back newer ones until their color frame arrives. A null result keeps the previously
-        // uploaded alpha, which is better than flashing opaque on a single dropped frame.
-        let alpha_buffer_ptr = self.dequeue_alpha_frame(timestamp);
+        // Present color and alpha as one logical frame. If the matching alpha frame does not arrive
+        // within this display interval, keep both previous textures instead of mixing timestamps.
+        let alpha_buffer_ptr = if self.alpha_decoder.is_some() && !buffer_ptr.is_null() {
+            let alpha_deadline = Instant::now() + frame_interval;
+            let alpha_buffer_ptr = self.dequeue_alpha_frame(timestamp, alpha_deadline);
+
+            if alpha_buffer_ptr.is_null() {
+                buffer_ptr = ptr::null_mut();
+            }
+
+            alpha_buffer_ptr
+        } else {
+            ptr::null_mut()
+        };
 
         let left_swapchain_idx = self.swapchains[0].acquire_image().unwrap();
         let right_swapchain_idx = self.swapchains[1].acquire_image().unwrap();

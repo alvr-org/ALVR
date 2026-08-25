@@ -134,6 +134,41 @@ impl VideoDecoderSource {
             None
         }
     }
+
+    // Return only the frame with the requested timestamp. Older frames are no longer useful and
+    // are discarded, while a newer frame is left queued for the next color frame.
+    pub fn dequeue_frame_at_timestamp(
+        &mut self,
+        target_timestamp: Duration,
+    ) -> Option<(Duration, *mut c_void)> {
+        let mut image_queue_lock = self.image_queue.lock();
+
+        if image_queue_lock.front().is_some_and(|image| image.in_use) {
+            image_queue_lock.pop_front();
+        }
+
+        while image_queue_lock
+            .front()
+            .is_some_and(|image| image.timestamp < target_timestamp)
+        {
+            image_queue_lock.pop_front();
+        }
+
+        let queued_image = image_queue_lock
+            .front_mut()
+            .filter(|image| image.timestamp == target_timestamp)?;
+        queued_image.in_use = true;
+
+        Some((
+            queued_image.timestamp,
+            queued_image
+                .image
+                .hardware_buffer()
+                .unwrap()
+                .as_ptr()
+                .cast(),
+        ))
+    }
 }
 
 impl Drop for VideoDecoderSource {

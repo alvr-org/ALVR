@@ -56,6 +56,19 @@ impl VideoDecoderSource {
         #[cfg(not(target_os = "android"))]
         None
     }
+
+    /// Return the frame whose timestamp exactly matches `target_timestamp`.
+    pub fn get_frame_at_timestamp(
+        &mut self,
+        target_timestamp: Duration,
+    ) -> Option<(Duration, *mut std::ffi::c_void)> {
+        #[cfg(target_os = "android")]
+        {
+            self.inner.dequeue_frame_at_timestamp(target_timestamp)
+        }
+        #[cfg(not(target_os = "android"))]
+        None
+    }
 }
 
 // report_frame_decoded: (target_timestamp: Duration) -> ()

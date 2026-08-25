@@ -186,13 +186,9 @@ void CEncoder::Run() {
             // mismatched IDR decision would leave the alpha decoder unable to recover in step.
             bool insertIDR = m_scheduler.CheckIDRInsertion();
 
-            m_videoEncoder->Transmit(
-                m_FrameRender->GetTexture().Get(),
-                m_presentationTime,
-                m_targetTimestampNs,
-                insertIDR
-            );
-
+            // Submit alpha first to give the companion decoder a head start. Exact timestamp
+            // pairing is what guarantees synchronization; this ordering may reduce how long the
+            // client waits for alpha, but its latency benefit has not been measured.
             if (m_alphaVideoEncoder && m_FrameRender->GetAlphaTexture()) {
                 m_alphaVideoEncoder->Transmit(
                     m_FrameRender->GetAlphaTexture().Get(),
@@ -201,6 +197,13 @@ void CEncoder::Run() {
                     insertIDR
                 );
             }
+
+            m_videoEncoder->Transmit(
+                m_FrameRender->GetTexture().Get(),
+                m_presentationTime,
+                m_targetTimestampNs,
+                insertIDR
+            );
         }
 
         m_encodeFinished.Set();

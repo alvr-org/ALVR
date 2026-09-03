@@ -1,6 +1,16 @@
+# AI usage
+We follow roughly the policy of the [`rustc` project](https://rustfoundation.org/policy/internal-ai-usage-policy/).
+
+Integrating and remarking some points:
+
+- AI contributions are allowed, but contributors must completely understand and "own" the coding decisions made.
+- Contributors must be able to discuss without using AI copy-pasted responses. This applies both to GitHub issues/PRs **and Discord messages in development channels**
+- The PRs description must at least contain some human written summary of the content of the code.
+- We reserve the right to ignore and close big PRs that show no human effort.
+
 # Style
 
-Checklist for code style. This is on top of common Rust styling rules. These rules are not mandatory but I might point them out if not respected in PRs :) -zarik
+Checklist for code style. This is on top of common Rust styling rules. These rules are not mandatory but they might be pointed out if not respected in PRs.
 
 ## Naming
 

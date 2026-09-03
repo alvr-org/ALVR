@@ -7,6 +7,7 @@ Everybody is welcome to contribute to ALVR. We have some rules:
 - Try to adhere to our coding style (below)
 - Big PRs are difficult to review; try to break them into minimum size PRs that if merged would still leave the project in working condition
 - Creating a PR will not guarantee that it will be merged. It could be delayed or dismissed depending on the current state and direction of the project.
+- If you contributed a reasonably sized PR, you can request the contributor role on our Discord server.
 
 ## AI policy
 We follow roughly the policy of the [`rustc` project](https://rustfoundation.org/policy/internal-ai-usage-policy/).

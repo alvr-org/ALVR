@@ -1,4 +1,14 @@
-# AI usage
+# Contributing
+
+Everybody is welcome to contribute to ALVR. We have some rules:
+
+- Be respectful to other people
+- Respect our AI policy (below)
+- Try to adhere to our coding style (below)
+- Big PRs are difficult to review; try to break them into minimum size PRs that if merged would still leave the project in working condition
+- Creating a PR will not guarantee that it will be merged. It could be delayed or dismissed depending on the current state and direction of the project.
+
+## AI policy
 We follow roughly the policy of the [`rustc` project](https://rustfoundation.org/policy/internal-ai-usage-policy/).
 
 Integrating and remarking some points:
@@ -8,11 +18,11 @@ Integrating and remarking some points:
 - The PRs description must at least contain some human written summary of the content of the code.
 - We reserve the right to ignore and close big PRs that show no human effort.
 
-# Style
+## Style
 
 Checklist for code style. This is on top of common Rust styling rules. These rules are not mandatory but they might be pointed out if not respected in PRs.
 
-## Naming
+### Naming
 
 - Respect Rust naming conventions (not respecting this will cause a warning).
 - Add useful information in the name, with the exception of indices for iterating.
@@ -32,22 +42,22 @@ Checklist for code style. This is on top of common Rust styling rules. These rul
 
 - If both directory and file paths are used in the same context, suffix directories with `_dir` and files with `_path`. Suffix file names with `_fname`.
 
-## Top level definitions
+### Top level definitions
 
 - For each file, define in order: private imports, public imports, ffi bindings import, private constants, public constants, private structs, public structs, private top level functions, public top level functions.
 
-### Imports
+#### Imports
 
 - Do not leave spaces between imports, only between the private and public import blocks.
 - Define imports in alphabetical order (use cargo fmt).
 - Group imports using braces when there are common parts of the path.
 
-### Structs
+#### Structs
 
 - Prefer adding trait bounds to the impl type parameters instead of struct type parameters
 - Define in order: struct, Default impl, custom impl, Drop impl, all in the same module. Do not split the custom impl.
 
-## Spacing
+### Spacing
 
 Smartly use empty newlines between blocks of code to improve legibility
 
@@ -56,12 +66,12 @@ Smartly use empty newlines between blocks of code to improve legibility
 - Spaces between groups of statements should be done so the groups are similar is size and that each achieves a specific purpose. You should be able to easily describe what the group does in few words, even if you don't comment it (because the meaning should be self evident).
 - Do not define variables at the start of the function/block, but do define them at the start of the functional group delimited by spaces.
 
-## Comments
+### Comments
 
 - It's important to use comments when the meaning or inner workings of a piece of code is not clear from the context. Well-named symbols (variables and functions) are often enough. In doubt do use comments.
 - Do not add comments about how certain parts of the language/std library work, unless it's about quirks of features.
 
-## Panicking and error handling
+### Panicking and error handling
 
 - Use of `panic!()` is discouraged
 - When matching exhaustively, prefer `unreachable!()` over `panic!()` for certain branches.
@@ -70,7 +80,7 @@ Smartly use empty newlines between blocks of code to improve legibility
 - Add a `// # Safety` comment before a statement that contains a `unwrap()` or raw indexing, explaining why it should never crash.
 - Use `todo!()` to mark unfinished code (it returns `!` and so it helps with the missing return statement).
 
-## Code repetition and maintainability
+### Code repetition and maintainability
 
 - Lean towards the DRY rule, without overdoing it.
 - Extract a piece of code (in a function or lambda) only when it is used two or more times and it doesn't depend on many parameters.
@@ -78,7 +88,7 @@ Smartly use empty newlines between blocks of code to improve legibility
 - Prefer defining constants at the start of the file, even if used locally in a single function.
 - Prefer using "complex" types for constants, if the std library allows it. Example: prefer using `Duration` instead of an integer type if the constant represents a time duration. Same with `Path` vs string.
 
-## Structural soundness
+### Structural soundness
 
 - Try to avoid invalid states in the data, using Rust enums. Example: do not use `resumed` + `streaming` boolean variables if the state `resumed == false` + `streaming == true` is invalid. Instead use `enum State { Paused, Resumed, Streaming }`.
 - Make full use of pattern matching with `if let` and `while let`, this reduces the use of `unwrap()`.

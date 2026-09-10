@@ -27,7 +27,7 @@ use alvr_events::{EventType, HapticsEvent};
 use alvr_filesystem as afs;
 use alvr_packets::{
     BatteryInfo, ButtonEntry, ClientConnectionsAction, DecoderInitializationConfig, Haptics,
-    VideoPacketHeader,
+    VideoPacketHeader, VideoStreamKind,
 };
 use alvr_server_io::ServerSessionManager;
 use alvr_session::{CodecType, H264Profile, OpenvrProperty, Settings, SteamvrHmdInitConfig};
@@ -110,11 +110,14 @@ pub struct ConnectionContext {
     bitrate_manager: Mutex<BitrateManager>,
     tracking_manager: RwLock<TrackingManager>,
     decoder_config: Mutex<Option<DecoderInitializationConfig>>,
+    /// Decoder config for the companion alpha stream, sent alongside the color one on IDR request.
+    alpha_decoder_config: Mutex<Option<DecoderInitializationConfig>>,
     video_mirror_sender: Mutex<Option<broadcast::Sender<Vec<u8>>>>,
     video_recording_file: Mutex<Option<File>>,
     connection_threads: Mutex<Vec<JoinHandle<()>>>,
     clients_to_be_removed: Mutex<HashSet<String>>,
     video_channel_sender: Mutex<Option<SyncSender<VideoPacket>>>,
+    alpha_video_channel_sender: Mutex<Option<SyncSender<VideoPacket>>>,
     haptics_sender: Mutex<Option<StreamSender<Haptics>>>,
 }
 
@@ -228,11 +231,13 @@ impl ServerCoreContext {
                 initial_settings.connection.statistics_history_size,
             )),
             decoder_config: Mutex::new(None),
+            alpha_decoder_config: Mutex::new(None),
             video_mirror_sender: Mutex::new(None),
             video_recording_file: Mutex::new(None),
             connection_threads: Mutex::new(Vec::new()),
             clients_to_be_removed: Mutex::new(HashSet::new()),
             video_channel_sender: Mutex::new(None),
+            alpha_video_channel_sender: Mutex::new(None),
             haptics_sender: Mutex::new(None),
         });
 
@@ -377,8 +382,44 @@ impl ServerCoreContext {
         *self.connection_context.decoder_config.lock() = Some(DecoderInitializationConfig {
             codec,
             config_buffer,
+            stream: VideoStreamKind::Color,
             ext_str: String::new(),
         });
+    }
+
+    /// Config NALs for the companion alpha stream. Deliberately not mirrored or recorded: the
+    /// capture files hold the color stream only.
+    pub fn set_alpha_video_config_nals(&self, config_buffer: Vec<u8>, codec: CodecType) {
+        dbg_server_core!("set_alpha_video_config_nals");
+
+        *self.connection_context.alpha_decoder_config.lock() = Some(DecoderInitializationConfig {
+            codec,
+            config_buffer,
+            stream: VideoStreamKind::Alpha,
+            ext_str: String::new(),
+        });
+    }
+
+    /// Alpha NALs bypass the statistics, mirror, recording and IDR corruption logic of the color
+    /// path: the color stream owns frame pacing and recovery, and duplicating that bookkeeping
+    /// here would double count frames and fight over the shared IDR state.
+    pub fn send_alpha_video_nal(&self, timestamp: Duration, is_idr: bool, nal_buffer: Vec<u8>) {
+        dbg_server_core!("send_alpha_video_nal");
+
+        if let Some(sender) = &*self.connection_context.alpha_video_channel_sender.lock()
+            && sender
+                .try_send(VideoPacket {
+                    header: VideoPacketHeader {
+                        timestamp,
+                        global_view_params: [ViewParams::DUMMY; 2],
+                        is_idr,
+                    },
+                    payload: nal_buffer,
+                })
+                .is_err()
+        {
+            warn!("Dropping alpha video packet. Reason: Can't push to network");
+        }
     }
 
     pub fn send_video_nal(

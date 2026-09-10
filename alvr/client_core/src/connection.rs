@@ -16,7 +16,8 @@ use alvr_common::{
 use alvr_packets::{
     AUDIO, ClientConnectionResult, ClientControlPacket, ClientStatistics, ConnectionAcceptedInfo,
     HAPTICS, Haptics, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData,
-    VIDEO, VideoPacketHeader, VideoStreamingCapabilities, VideoStreamingCapabilitiesExt,
+    VIDEO, VIDEO_ALPHA, VideoPacketHeader, VideoStreamingCapabilities,
+    VideoStreamingCapabilitiesExt,
 };
 use alvr_session::{SocketProtocol, settings_schema::Switch};
 use alvr_sockets::{
@@ -64,6 +65,8 @@ pub struct ConnectionContext {
     pub statistics_sender: Mutex<Option<StreamSender<ClientStatistics>>>,
     pub statistics_manager: Mutex<Option<StatisticsManager>>,
     pub decoder_callback: Mutex<Option<Box<DecoderCallback>>>,
+    /// Sink for the companion monochrome alpha stream, used by the 8 bit alpha passthrough mode.
+    pub alpha_decoder_callback: Mutex<Option<Box<DecoderCallback>>>,
     pub global_view_params_queue: Mutex<VecDeque<(Duration, [ViewParams; 2])>>,
     pub max_prediction: RwLock<Duration>,
 }
@@ -182,7 +185,11 @@ fn connection_pipeline(
                         prefer_hdr: capabilities.prefer_hdr,
                         ext_str: String::new(),
                     }
-                    .with_ext(VideoStreamingCapabilitiesExt {}),
+                    .with_ext(VideoStreamingCapabilitiesExt {
+                        // The alpha stream needs a second decoder instance; MediaCodec supports
+                        // this on all currently targeted devices.
+                        alpha_stream: true,
+                    }),
                 ),
             },
         )))
@@ -263,8 +270,16 @@ fn connection_pipeline(
 
     info!("Connected to server");
 
+    let enable_alpha_stream = negotiated_config
+        .ext()
+        .map(|ext| ext.enable_alpha_stream)
+        .unwrap_or(false);
+
     let mut video_receiver =
         stream_socket.subscribe_to_stream::<VideoPacketHeader>(VIDEO, MAX_UNREAD_PACKETS);
+    let mut alpha_video_receiver = enable_alpha_stream.then(|| {
+        stream_socket.subscribe_to_stream::<VideoPacketHeader>(VIDEO_ALPHA, MAX_UNREAD_PACKETS)
+    });
     let mut game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO, MAX_UNREAD_PACKETS);
     let tracking_sender = stream_socket.request_stream(TRACKING);
     let mut haptics_receiver =
@@ -335,6 +350,51 @@ fn connection_pipeline(
                 }
             }
         }
+    });
+
+    // The alpha stream is decoded independently and paired with the color frame by timestamp at
+    // render time, so this thread only feeds its decoder.
+    //
+    // It does need to be able to ask for an IDR though: the alpha encoder starts after the color
+    // one and misses the single keyframe emitted at stream start, and an H.264 decoder produces
+    // nothing until it sees one. Requests are rate limited because the server's IDR insertion is
+    // shared with the color stream.
+    let alpha_video_receive_thread = alpha_video_receiver.take().map(|mut receiver| {
+        thread::spawn({
+            let ctx = Arc::clone(&ctx);
+            move || {
+                let mut got_idr = false;
+                let mut last_idr_request = Instant::now() - Duration::from_secs(10);
+
+                while is_streaming(&ctx) {
+                    let data = match receiver.recv(STREAMING_RECV_TIMEOUT) {
+                        Ok(data) => data,
+                        Err(ConnectionError::TryAgain(_)) => continue,
+                        Err(ConnectionError::Other(_)) => return,
+                    };
+                    let Ok((header, nal)) = data.get() else {
+                        return;
+                    };
+
+                    if header.is_idr {
+                        got_idr = true;
+                    } else if !got_idr
+                        && Instant::now() > last_idr_request + Duration::from_secs(1)
+                    {
+                        // No keyframe yet: the decoder cannot output anything until one arrives.
+                        last_idr_request = Instant::now();
+                        if let Some(sender) = &mut *ctx.control_sender.lock() {
+                            sender.send(&ClientControlPacket::RequestIdr).ok();
+                        }
+                    }
+
+                    ctx.alpha_decoder_callback
+                        .lock()
+                        .as_mut()
+                        .map(|callback| callback(header.timestamp, nal));
+                }
+            }
+        })
     });
 
     let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
@@ -481,6 +541,7 @@ fn connection_pipeline(
                             .push_back(ClientCoreEvent::DecoderConfig {
                                 codec: config.codec,
                                 config_nal: config.config_buffer,
+                                stream: config.stream,
                             });
                     }
                     Ok(ServerControlPacket::Restarting) => {
@@ -576,6 +637,9 @@ fn connection_pipeline(
     dbg_connection!("connection_pipeline: Destroying streams");
 
     video_receive_thread.join().ok();
+    if let Some(thread) = alpha_video_receive_thread {
+        thread.join().ok();
+    }
     game_audio_thread.join().ok();
     microphone_thread.join().ok();
     haptics_receive_thread.join().ok();

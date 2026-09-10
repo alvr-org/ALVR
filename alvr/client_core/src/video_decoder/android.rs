@@ -134,6 +134,41 @@ impl VideoDecoderSource {
             None
         }
     }
+
+    // Return only the frame with the requested timestamp. Older frames are no longer useful and
+    // are discarded, while a newer frame is left queued for the next color frame.
+    pub fn dequeue_frame_at_timestamp(
+        &mut self,
+        target_timestamp: Duration,
+    ) -> Option<(Duration, *mut c_void)> {
+        let mut image_queue_lock = self.image_queue.lock();
+
+        if image_queue_lock.front().is_some_and(|image| image.in_use) {
+            image_queue_lock.pop_front();
+        }
+
+        while image_queue_lock
+            .front()
+            .is_some_and(|image| image.timestamp < target_timestamp)
+        {
+            image_queue_lock.pop_front();
+        }
+
+        let queued_image = image_queue_lock
+            .front_mut()
+            .filter(|image| image.timestamp == target_timestamp)?;
+        queued_image.in_use = true;
+
+        Some((
+            queued_image.timestamp,
+            queued_image
+                .image
+                .hardware_buffer()
+                .unwrap()
+                .as_ptr()
+                .cast(),
+        ))
+    }
 }
 
 impl Drop for VideoDecoderSource {
@@ -215,7 +250,18 @@ fn decoder_lifecycle(
 
             match image_reader.acquire_next_image() {
                 Ok(AcquireResult::Image(image)) => {
-                    let timestamp = Duration::from_nanos(image.timestamp().unwrap() as u64);
+                    let raw_timestamp = image.timestamp().unwrap() as u64;
+
+                    // ALVR intentionally pushes nanoseconds into queue_input_buffer's microsecond
+                    // field (see push_frame_nal) to keep full precision. With scheduled release
+                    // that value survives untouched, but a surface render makes Android interpret
+                    // it as microseconds and scale it to real nanoseconds, inflating it 1000x.
+                    // Undo that here so the timestamp is comparable to the color stream's again.
+                    let timestamp = if config.release_frames_immediately {
+                        Duration::from_nanos(raw_timestamp / 1000)
+                    } else {
+                        Duration::from_nanos(raw_timestamp)
+                    };
 
                     if let Some(callback) = frame_result_callback.upgrade() {
                         callback(Ok(timestamp));
@@ -312,11 +358,18 @@ fn decoder_lifecycle(
     while running.value() {
         match decoder.dequeue_output_buffer(Duration::from_millis(1)) {
             Ok(DequeuedOutputBufferInfoResult::Buffer(buffer)) => {
-                // The buffer timestamp is actually nanoseconds
-                let presentation_time_ns = buffer.info().presentation_time_us();
+                let release_result = if config.release_frames_immediately {
+                    // Render as soon as the frame is decoded. Scheduling against a presentation
+                    // time only works for a stream paced by the compositor; the alpha companion
+                    // stream is not, so scheduling defers its frames forever.
+                    decoder.release_output_buffer(buffer, true)
+                } else {
+                    // The buffer timestamp is actually nanoseconds
+                    let presentation_time_ns = buffer.info().presentation_time_us();
+                    decoder.release_output_buffer_at_time(buffer, presentation_time_ns)
+                };
 
-                if let Err(e) = decoder.release_output_buffer_at_time(buffer, presentation_time_ns)
-                {
+                if let Err(e) = release_result {
                     error!("Decoder dequeue error: {e}");
                 }
             }

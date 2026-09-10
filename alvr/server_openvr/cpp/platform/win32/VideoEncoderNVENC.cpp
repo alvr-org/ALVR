@@ -95,8 +95,10 @@ void VideoEncoderNVENC::Shutdown() {
 void VideoEncoderNVENC::Transmit(
     ID3D11Texture2D* pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR
 ) {
+    // The dynamic bitrate manager tracks the color stream, so the alpha encoder keeps the fixed
+    // bitrate it was configured with rather than following those updates.
     auto params = GetDynamicEncoderParams();
-    if (params.updated) {
+    if (params.updated && !m_isAlphaStream) {
         m_bitrateInMBits = params.bitrate_bps / 1'000'000;
         NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
         NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
@@ -155,7 +157,7 @@ void VideoEncoderNVENC::Transmit(
             fpOut.write(reinterpret_cast<char*>(buf), len);
         }
 
-        ParseFrameNals(m_codec, buf, len, targetTimestampNs, insertIDR);
+        ParseFrameNals(m_codec, buf, len, targetTimestampNs, insertIDR, m_isAlphaStream);
     }
 }
 

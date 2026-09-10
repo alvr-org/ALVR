@@ -16,4 +16,13 @@ public:
         uint64_t targetTimestampNs,
         bool insertIDR
     ) = 0;
+
+    /// Marks this instance as encoding the monochrome alpha companion stream, so its output is
+    /// routed to the alpha NAL path and its bitrate comes from the fixed alpha setting instead of
+    /// the dynamic bitrate manager (which tracks the color stream only).
+    void SetAlphaStream(bool isAlpha) { m_isAlphaStream = isAlpha; }
+    bool IsAlphaStream() const { return m_isAlphaStream; }
+
+protected:
+    bool m_isAlphaStream = false;
 };

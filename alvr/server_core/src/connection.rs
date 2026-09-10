@@ -22,11 +22,11 @@ use alvr_packets::{
     AUDIO, ClientConnectionResult, ClientConnectionsAction, ClientControlPacket,
     ClientNegotiatedStreamingConfig, ClientStatistics, HAPTICS, NegotiatedStreamingConfigExt,
     RealTimeConfig, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData,
-    VIDEO, VideoPacketHeader,
+    VIDEO, VIDEO_ALPHA, VideoPacketHeader,
 };
 use alvr_session::{
-    BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile, Settings,
-    SocketProtocol, SteamvrHmdInitConfig,
+    BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile,
+    PassthroughMode, Settings, SocketProtocol, SteamvrHmdInitConfig,
 };
 use alvr_sockets::{
     CONTROL_PORT, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, ProtoControlSocket, SocketConnection,
@@ -719,6 +719,22 @@ fn connection_pipeline(
         .encoding_gamma
         .unwrap_or(streaming_caps.preferred_encoding_gamma);
 
+    // The 8 bit alpha passthrough mode needs a second monochrome stream, which older clients
+    // cannot decode. Fall back to no passthrough rather than streaming something unreadable.
+    let mut enable_alpha_stream = matches!(
+        initial_settings.video.passthrough.as_option(),
+        Some(PassthroughMode::AlphaStream(_))
+    );
+    if enable_alpha_stream
+        && !streaming_caps
+            .ext()
+            .map(|ext| ext.alpha_stream)
+            .unwrap_or(false)
+    {
+        warn!("The alpha stream passthrough mode is not supported by the client.");
+        enable_alpha_stream = false;
+    }
+
     let codec = if initial_settings.video.preferred_codec == CodecType::AV1 {
         let codec = if streaming_caps.encoder_av1 {
             CodecType::AV1
@@ -782,7 +798,9 @@ fn connection_pipeline(
             wired,
             ext_str: String::new(),
         }
-        .with_ext(NegotiatedStreamingConfigExt {}),
+        .with_ext(NegotiatedStreamingConfigExt {
+            enable_alpha_stream,
+        }),
     )
     .to_con()?;
 
@@ -848,6 +866,8 @@ fn connection_pipeline(
 
     let control_sender = Arc::new(Mutex::new(socket.request_reliable_stream()?));
     let mut video_sender = socket.request_unreliable_stream(VIDEO);
+    let mut alpha_video_sender = enable_alpha_stream
+        .then(|| socket.request_unreliable_stream::<VideoPacketHeader>(VIDEO_ALPHA));
     let game_audio_sender: alvr_sockets::StreamSender<()> = socket.request_unreliable_stream(AUDIO);
     let haptics_sender = socket.request_unreliable_stream(HAPTICS);
 
@@ -863,6 +883,14 @@ fn connection_pipeline(
         std::sync::mpsc::sync_channel(initial_settings.connection.max_queued_server_video_frames);
     *ctx.video_channel_sender.lock() = Some(video_channel_sender);
     *ctx.haptics_sender.lock() = Some(haptics_sender);
+
+    let alpha_video_channel_receiver = enable_alpha_stream.then(|| {
+        let (sender, receiver) = std::sync::mpsc::sync_channel(
+            initial_settings.connection.max_queued_server_video_frames,
+        );
+        *ctx.alpha_video_channel_sender.lock() = Some(sender);
+        receiver
+    });
 
     let video_send_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
@@ -888,6 +916,25 @@ fn connection_pipeline(
                     .ok();
             }
         }
+    });
+
+    // Alpha view params are unused by the client (it reuses the color frame's), so unlike the
+    // color thread this does no unrecentering.
+    let alpha_video_send_thread = alpha_video_channel_receiver.map(|receiver| {
+        let mut sender = alpha_video_sender.take().unwrap();
+        let client_hostname = client_hostname.clone();
+        thread::spawn(move || {
+            while is_streaming(&client_hostname) {
+                let VideoPacket { header, payload } =
+                    match receiver.recv_timeout(STREAMING_RECV_TIMEOUT) {
+                        Ok(packet) => packet,
+                        Err(RecvTimeoutError::Timeout) => continue,
+                        Err(RecvTimeoutError::Disconnected) => return,
+                    };
+
+                sender.send_header_with_payload(&header, &payload).ok();
+            }
+        })
     });
 
     #[cfg_attr(target_os = "linux", expect(unused_variables))]
@@ -1214,6 +1261,12 @@ fn connection_pipeline(
                                 .send(&ServerControlPacket::DecoderConfig(config))
                                 .ok();
                         }
+                        if let Some(config) = ctx.alpha_decoder_config.lock().clone() {
+                            control_sender
+                                .lock()
+                                .send(&ServerControlPacket::DecoderConfig(config))
+                                .ok();
+                        }
                         ctx.events_sender.send(ServerCoreEvent::RequestIDR).ok();
                     }
                     ClientControlPacket::LocalViewParams(params) => {
@@ -1428,6 +1481,9 @@ fn connection_pipeline(
     // Ensure shutdown of threads
     dbg_connection!("connection_pipeline: Shutdown threads");
     video_send_thread.join().ok();
+    if let Some(thread) = alpha_video_send_thread {
+        thread.join().ok();
+    }
     game_audio_thread.join().ok();
     microphone_thread.join().ok();
     tracking_receive_thread.join().ok();

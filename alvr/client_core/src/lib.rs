@@ -25,6 +25,7 @@ use alvr_common::{
 };
 use alvr_packets::{
     BatteryInfo, ButtonEntry, ClientControlPacket, ClientStreamConfig, RealTimeConfig, TrackingData,
+    VideoStreamKind,
 };
 use alvr_session::CodecType;
 use alvr_system_info::Platform;
@@ -53,6 +54,7 @@ pub enum ClientCoreEvent {
     DecoderConfig {
         codec: CodecType,
         config_nal: Vec<u8>,
+        stream: VideoStreamKind,
     },
     RealTimeConfig(RealTimeConfig),
 }
@@ -254,6 +256,22 @@ impl ClientCoreContext {
         dbg_client_core!("set_decoder_input_callback");
 
         *self.connection_context.decoder_callback.lock() = Some(callback);
+
+        if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
+            sender.send(&ClientControlPacket::RequestIdr).ok();
+        }
+    }
+
+    /// Sink for the companion alpha stream.
+    ///
+    /// This must request an IDR: the alpha encoder is created after the color one and therefore
+    /// misses the single keyframe emitted at stream start (IDRScheduler::CheckIDRInsertion is
+    /// one-shot). Without this, the alpha decoder never receives a keyframe, so it accepts every
+    /// NAL and emits no frames at all, leaving the alpha plane permanently blank.
+    pub fn set_alpha_decoder_input_callback(&self, callback: Box<DecoderCallback>) {
+        dbg_client_core!("set_alpha_decoder_input_callback");
+
+        *self.connection_context.alpha_decoder_callback.lock() = Some(callback);
 
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender.send(&ClientControlPacket::RequestIdr).ok();

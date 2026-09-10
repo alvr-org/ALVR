@@ -515,9 +515,13 @@ pub fn entry_point() {
                             )
                             .unwrap();
                     }
-                    ClientCoreEvent::DecoderConfig { codec, config_nal } => {
+                    ClientCoreEvent::DecoderConfig {
+                        codec,
+                        config_nal,
+                        stream: stream_kind,
+                    } => {
                         if let Some(stream) = &mut stream_context {
-                            stream.maybe_initialize_decoder(codec, config_nal);
+                            stream.maybe_initialize_decoder(codec, config_nal, stream_kind);
                         }
                     }
                     ClientCoreEvent::RealTimeConfig(config) => {

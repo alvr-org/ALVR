@@ -39,10 +39,14 @@ override B_RIGHT_Y: f32 = 0.0;
 override C_RIGHT_X: f32 = 0.0;
 override C_RIGHT_Y: f32 = 0.0;
 
+// Set when the pipeline is built with a companion monochrome alpha stream. The alpha texture is
+// only bound in that case, so sampling it must be guarded by this constant.
+override ENABLE_ALPHA_STREAM: bool = false;
+
 struct PushConstant {
     reprojection_transform: mat4x4f,
     view_idx: u32,
-    passthrough_mode: u32, // 0: Blend, 1: RGB chroma key, 2: HSV chroma key
+    passthrough_mode: u32, // 0: Blend, 1: RGB chroma key, 2: HSV chroma key, 3: alpha stream
     blend_alpha: f32,
     _align: u32,
     ck_channel0: vec4f,
@@ -53,6 +57,7 @@ var<push_constant> pc: PushConstant;
 
 @group(0) @binding(0) var stream_texture: texture_2d<f32>;
 @group(0) @binding(1) var stream_sampler: sampler;
+@group(0) @binding(2) var alpha_texture: texture_2d<f32>;
 
 struct VertexOutput {
     @builtin(position) position: vec4f,
@@ -147,7 +152,12 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
     }
 
     var alpha = pc.blend_alpha; // Default to Blend passthrough mode
-    if pc.passthrough_mode != 0 { // Chroma key
+    if ENABLE_ALPHA_STREAM && pc.passthrough_mode == 3 {
+        // Full 8 bit alpha carried by a separate monochrome stream. The alpha plane is encoded as
+        // luma, so any channel holds the value. It is sampled with the same corrected UV as the
+        // color, since both streams share the encoding layout (including foveation).
+        alpha = clamp(textureSample(alpha_texture, stream_sampler, corrected_uv).r, 0.0, 1.0);
+    } else if pc.passthrough_mode == 1 || pc.passthrough_mode == 2 { // Chroma key
         var current = color;
         if pc.passthrough_mode == 2 { // HSV mode
             current = rgb_to_hsv(color);

@@ -10,6 +10,9 @@ void PoseHistory::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion moti
     TrackingHistoryFrame history;
     history.targetTimestampNs = targetTimestampNs;
     history.motion = motion;
+    history.serverReceiveTimeNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()
+    ).count();
 
     HmdMatrix_QuatToMat(
         motion.pose.orientation.w,
@@ -68,6 +71,14 @@ PoseHistory::GetBestPoseMatch(const vr::HmdMatrix34_t& pose) const {
     return {};
 }
 
+std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetLatestPose() const {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    if (m_poseBuffer.empty()) {
+        return {};
+    }
+    return m_poseBuffer.back();
+}
+
 std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetPoseAt(uint64_t timestampNs
 ) const {
     std::unique_lock<std::mutex> lock(m_mutex);
@@ -77,6 +88,20 @@ std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetPoseAt(uint64_t
     }
 
     Debug("PoseHistory::GetPoseAt: No pose matched.");
+    return {};
+}
+
+std::optional<PoseHistory::TrackingHistoryFrame>
+PoseHistory::GetPoseByPresentTime(uint64_t presentTimeNs) const {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    if (m_poseBuffer.empty()) {
+        return {};
+    }
+    for (auto it = m_poseBuffer.rbegin(); it != m_poseBuffer.rend(); ++it) {
+        if (it->serverReceiveTimeNs <= presentTimeNs) {
+            return *it;
+        }
+    }
     return {};
 }
 

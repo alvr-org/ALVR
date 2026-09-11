@@ -118,6 +118,15 @@ impl FaceTrackingSink {
                     Some(FaceExpressions::Bd(items)) => {
                         self.append_packet_vrcft(*b"FacePico", items);
                     }
+                    Some(FaceExpressions::Phoenix { eyes, lip }) => {
+                        if let Some(eyes) = eyes {
+                            self.append_packet_vrcft(*b"EyesPhnx", eyes);
+                        }
+
+                        if let Some(lip) = lip {
+                            self.append_packet_vrcft(*b"FacePhnx", lip);
+                        }
+                    }
                     Some(FaceExpressions::Htc { eye, lip }) => {
                         if let Some(arr) = eye {
                             self.append_packet_vrcft(*b"EyesHtc\0", arr);

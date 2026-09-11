@@ -130,9 +130,36 @@ fn connection_pipeline(
 
     let (mut proto_control_socket, server_ip) = {
         let config = Config::load();
-        let announcer_socket = AnnouncerSocket::new(&config.hostname).to_con()?;
-        let listener_socket =
-            alvr_sockets::get_server_listener(HANDSHAKE_ACTION_TIMEOUT).to_con()?;
+
+        // Only one process per machine can own the well-known control port. Falling back to an
+        // OS-assigned one lets several clients share a machine, which is what makes running more
+        // than one emulated headset possible. The port is advertised over mDNS so the server knows
+        // where to connect; servers that ignore the advertisement still reach clients that got the
+        // well-known port, so ordinary clients are unaffected.
+        let (listener_socket, control_port) =
+            match alvr_sockets::get_server_listener(HANDSHAKE_ACTION_TIMEOUT) {
+                Ok(listener) => (listener, alvr_sockets::CONTROL_PORT),
+                Err(e) => {
+                    info!(
+                        "Could not bind control port {} ({e}), using an OS-assigned one",
+                        alvr_sockets::CONTROL_PORT
+                    );
+
+                    let listener =
+                        alvr_sockets::get_server_listener_on_port(HANDSHAKE_ACTION_TIMEOUT, 0)
+                            .to_con()?;
+                    let port = listener
+                        .local_addr()
+                        .map_err(alvr_common::anyhow::Error::from)
+                        .to_con()?
+                        .port();
+
+                    (listener, port)
+                }
+            };
+
+        let announcer_socket =
+            AnnouncerSocket::new_with_control_port(&config.hostname, control_port).to_con()?;
 
         loop {
             if *lifecycle_state.write() != LifecycleState::Resumed {
@@ -237,17 +264,44 @@ fn connection_pipeline(
     };
 
     dbg_connection!("connection_pipeline: create StreamSocket");
+    let configured_stream_port = settings.connection.stream_port;
+
+    // The client yields the configured stream port whenever it shares a machine with the server.
+    //
+    // Only one of the two can bind it, and it cannot be the client: the client dials the server by
+    // port number, so the server's port is fixed by the protocol while the client's is not. The
+    // client binds first (it is listening before the server connects), so simply trying the
+    // configured port would win the race and leave the server unable to bind at all.
+    //
+    // Across machines this is moot — both sides can hold the same number — so ordinary clients keep
+    // using the configured port and send the original `StreamReady`.
+    let share_machine_with_server = server_ip.is_loopback() || alvr_system_info::local_ip() == server_ip;
+    let requested_stream_port = if share_machine_with_server {
+        info!("Server is on this machine; binding an OS-assigned stream port");
+        0
+    } else {
+        configured_stream_port
+    };
+
     let stream_socket_builder = StreamSocketBuilder::listen_for_server(
         Duration::from_secs(1),
-        settings.connection.stream_port,
+        requested_stream_port,
         stream_protocol,
         settings.connection.dscp,
         settings.connection.client_buffer_config,
     )
     .to_con()?;
+    let local_stream_port = stream_socket_builder.local_port().to_con()?;
 
     dbg_connection!("connection_pipeline: Send StreamReady");
-    if let Err(e) = control_sender.send(&ClientControlPacket::StreamReady) {
+    // Only the newer packet carries the port, so keep sending the original one whenever the
+    // configured port was available: servers that predate the new variant still understand it.
+    let stream_ready = if local_stream_port == configured_stream_port {
+        ClientControlPacket::StreamReady
+    } else {
+        ClientControlPacket::StreamReadyOnPort(local_stream_port)
+    };
+    if let Err(e) = control_sender.send(&stream_ready) {
         info!("Server disconnected. Cause: {e:?}");
         set_hud_message(&event_queue, SERVER_DISCONNECTED_MESSAGE);
         return Ok(());

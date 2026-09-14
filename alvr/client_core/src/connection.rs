@@ -305,8 +305,8 @@ fn connection_pipeline(
                 if !stream_corrupted || !settings.connection.avoid_video_glitching {
                     // Metadata must be available before the decoder can return this frame.
                     {
-                        let mut queue = ctx.video_frame_metadata_queue.lock();
-                        queue.push_back((
+                        let queue_mut = &mut *ctx.video_frame_metadata_queue.lock();
+                        queue_mut.push_back((
                             header.timestamp,
                             VideoFrameMetadata {
                                 view_params: header.global_view_params,
@@ -314,8 +314,8 @@ fn connection_pipeline(
                             },
                         ));
 
-                        while queue.len() > VIDEO_FRAME_METADATA_HISTORY_SIZE {
-                            queue.pop_front();
+                        while queue_mut.len() > VIDEO_FRAME_METADATA_HISTORY_SIZE {
+                            queue_mut.pop_front();
                         }
                     }
 
@@ -581,7 +581,6 @@ fn connection_pipeline(
     dbg_connection!("connection_pipeline: Destroying streams");
 
     video_receive_thread.join().ok();
-    ctx.video_frame_metadata_queue.lock().clear();
     game_audio_thread.join().ok();
     microphone_thread.join().ok();
     haptics_receive_thread.join().ok();

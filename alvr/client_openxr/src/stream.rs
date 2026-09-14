@@ -7,15 +7,15 @@ use alvr_client_core::{
     video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
 };
 use alvr_common::{
-    DETACHED_CONTROLLER_LEFT_ID, DETACHED_CONTROLLER_RIGHT_ID, HAND_LEFT_ID, HAND_RIGHT_ID,
-    HEAD_ID, Pose, RelaxedAtomic, ViewParams,
+    AlvrFoveatedEncodingParams, DETACHED_CONTROLLER_LEFT_ID, DETACHED_CONTROLLER_RIGHT_ID,
+    HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID, Pose, RelaxedAtomic, ViewParams,
     anyhow::Result,
     error,
     glam::{UVec2, Vec2},
     parking_lot::RwLock,
 };
 use alvr_graphics::{GraphicsContext, StreamRenderer, StreamViewParams};
-use alvr_packets::{ClientStreamConfig, FoveatedEncodingParams, RealTimeConfig, TrackingData};
+use alvr_packets::{ClientStreamConfig, RealTimeConfig, TrackingData};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, ClientsidePostProcessingConfig, CodecType,
     MediacodecProperty, PassthroughMode, UpscalingConfig,
@@ -38,7 +38,7 @@ pub struct ParsedStreamConfig {
     pub encoding_gamma: f32,
     pub enable_hdr: bool,
     pub passthrough: Option<PassthroughMode>,
-    pub foveated_encoding_config: Option<FoveatedEncodingParams>,
+    pub foveated_encoding_config: Option<AlvrFoveatedEncodingParams>,
     pub clientside_foveation_config: Option<ClientsideFoveationConfig>,
     pub clientside_post_processing: Option<ClientsidePostProcessingConfig>,
     pub upscaling: Option<UpscalingConfig>,

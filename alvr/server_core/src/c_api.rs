@@ -6,10 +6,10 @@ use crate::{
     logging_backend, tracking::HandType,
 };
 use alvr_common::{
-    AlvrCodecType, AlvrFoveationCenters, AlvrPose, AlvrViewParams, log,
+    AlvrCodecType, AlvrFoveatedEncodingParams, AlvrFoveationCenters, AlvrPose, AlvrViewParams, log,
     parking_lot::{Mutex, RwLock},
 };
-use alvr_packets::{ButtonEntry, ButtonValue, FoveatedEncodingParams, Haptics};
+use alvr_packets::{ButtonEntry, ButtonValue, Haptics};
 use alvr_session::CodecType;
 use std::{
     collections::{HashMap, VecDeque},
@@ -102,7 +102,7 @@ pub struct AlvrNegotiatedConfig {
     pub target_view_resolution: [u32; 2],
     pub refresh_rate: f32,
     pub enable_foveated_encoding: bool,
-    pub foveated_encoding: FoveatedEncodingParams,
+    pub foveated_encoding: AlvrFoveatedEncodingParams,
     pub codec: AlvrCodecType,
     pub h264_profile: u32,
     pub use_10bit_encoder: bool,
@@ -486,12 +486,14 @@ pub unsafe extern "C" fn alvr_set_video_config_nals(
 /// global_view_params must be an array of length 2
 /// `foveation_centers` must contain the centers used to encode this frame, already aligned.
 /// Frames with the same timestamp_ns must use the same centers.
-/// Set has_centers to false only when FFR is disabled.
+/// Pass null when FFR is disabled or no new center information is available.
+/// Safety: `foveation_centers` must be null or point to an initialized AlvrFoveationCenters
+/// for the duration of this call. The centers are copied; the pointer is not retained.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn alvr_send_video_nal(
     timestamp_ns: u64,
     global_view_params: *const AlvrViewParams,
-    foveation_centers: AlvrFoveationCenters,
+    foveation_centers: *const AlvrFoveationCenters,
     is_idr: bool,
     buffer_ptr: *mut u8,
     len: i32,
@@ -509,9 +511,8 @@ pub unsafe extern "C" fn alvr_send_video_nal(
         context.send_video_nal(
             Duration::from_nanos(timestamp_ns),
             global_view_params,
-            foveation_centers
-                .has_centers
-                .then_some(foveation_centers.center_shifts),
+            // Safety: the caller provides either null or a valid centers struct.
+            unsafe { foveation_centers.as_ref() }.map(|centers| centers.center_shifts),
             is_idr,
             buffer.to_vec(),
         );

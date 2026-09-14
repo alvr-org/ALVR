@@ -575,13 +575,13 @@ extern "C" fn report_encoder_foveation_centers(
     right_x: f32,
     right_y: f32,
 ) {
-    let mut queue = FOVEATION_CENTER_QUEUE.lock();
-    queue.push_back((
+    let queue_mut = &mut *FOVEATION_CENTER_QUEUE.lock();
+    queue_mut.push_back((
         Duration::from_nanos(timestamp_ns),
         [[left_x, left_y], [right_x, right_y]],
     ));
-    while queue.len() > FOVEATION_CENTER_HISTORY_CAPACITY {
-        queue.pop_front();
+    while queue_mut.len() > FOVEATION_CENTER_HISTORY_CAPACITY {
+        queue_mut.pop_front();
     }
 }
 

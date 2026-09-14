@@ -16,8 +16,8 @@ pub use tracking::HandType;
 
 use crate::connection::VideoPacket;
 use alvr_common::{
-    ConnectionState, DEVICE_ID_TO_PATH, DeviceMotion, LifecycleState, Pose, ViewParams,
-    dbg_server_core, error,
+    AlvrFoveatedEncodingParams, ConnectionState, DEVICE_ID_TO_PATH, DeviceMotion, LifecycleState,
+    Pose, ViewParams, dbg_server_core, error,
     glam::{UVec2, Vec2},
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
@@ -26,8 +26,8 @@ use alvr_common::{
 use alvr_events::{EventType, HapticsEvent};
 use alvr_filesystem as afs;
 use alvr_packets::{
-    BatteryInfo, ButtonEntry, ClientConnectionsAction, DecoderInitializationConfig,
-    FoveatedEncodingParams, Haptics, VideoPacketHeader,
+    BatteryInfo, ButtonEntry, ClientConnectionsAction, DecoderInitializationConfig, Haptics,
+    VideoPacketHeader,
 };
 use alvr_server_io::ServerSessionManager;
 use alvr_session::{CodecType, H264Profile, OpenvrProperty, Settings, SteamvrHmdInitConfig};
@@ -74,7 +74,7 @@ pub struct ServerNegotiatedStreamingConfig {
     pub transcoding_view_resolution: UVec2,
     pub emulated_headset_view_resolution: UVec2,
     pub refresh_rate: f32,
-    pub foveated_encoding: Option<FoveatedEncodingParams>,
+    pub foveated_encoding: Option<AlvrFoveatedEncodingParams>,
     pub codec: CodecType,
     pub h264_profile: H264Profile,
     pub use_10bit_encoder: bool,

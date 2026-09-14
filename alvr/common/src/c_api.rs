@@ -1,6 +1,6 @@
-use glam::{Quat, Vec3};
-
 use crate::{Fov, Pose, ViewParams};
+use glam::{Quat, Vec3};
+use serde::{Deserialize, Serialize};
 
 #[repr(C)]
 pub struct AlvrFov {
@@ -36,12 +36,20 @@ pub struct AlvrViewParams {
     pub fov: AlvrFov,
 }
 
-/// Initialize every field before passing this struct, even when `has_centers` is false.
-/// C callers can use `AlvrFoveationCenters centers = {0};` when FFR is disabled.
+/// Server-aligned FFR parameters shared by the encoder and client inverse transform.
+#[repr(C)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq)]
+pub struct AlvrFoveatedEncodingParams {
+    pub encoded_view_resolution: [u32; 2],
+    pub view_ratio: [f32; 2],
+    pub center_size: [f32; 2],
+    /// Left/right eye offsets, each in X/Y order. Consumers must not align these again.
+    pub center_shifts: [[f32; 2]; 2],
+    pub edge_ratio: [f32; 2],
+}
+
 #[repr(C)]
 pub struct AlvrFoveationCenters {
-    /// False when no centers are provided; center_shifts is ignored in that case.
-    pub has_centers: bool,
     /// Encoder-aligned center shifts for the left and right eyes of one frame.
     pub center_shifts: [[f32; 2]; 2],
 }

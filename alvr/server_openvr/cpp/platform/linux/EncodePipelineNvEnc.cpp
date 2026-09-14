@@ -180,6 +180,9 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
     encoder_ctx->max_b_frames = 0;
     encoder_ctx->gop_size = INT16_MAX;
     encoder_ctx->color_range = AVCOL_RANGE_JPEG;
+    encoder_ctx->color_primaries = AVCOL_PRI_BT709;
+    encoder_ctx->color_trc = AVCOL_TRC_IEC61966_2_1;
+    encoder_ctx->colorspace = AVCOL_SPC_BT709;
     // The manager reports a target only once per change, so a rebuild mid
     // session has to reuse the last one.
     auto params = GetDynamicEncoderParams();

@@ -48,12 +48,6 @@ pub struct AlvrFoveatedEncodingParams {
     pub edge_ratio: [f32; 2],
 }
 
-#[repr(C)]
-pub struct AlvrFoveationCenters {
-    /// Encoder-aligned center shifts for the left and right eyes of one frame.
-    pub center_shifts: [[f32; 2]; 2],
-}
-
 #[repr(u8)]
 pub enum AlvrCodecType {
     H264 = 0,

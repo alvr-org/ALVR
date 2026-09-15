@@ -484,17 +484,17 @@ pub unsafe extern "C" fn alvr_set_video_config_nals(
 }
 
 /// global_view_params must be an array of length 2
-/// `center_shifts` must contain the centers used to encode this frame, already aligned.
+/// `foveation_center_shifts` must contain the centers used to encode this frame, already aligned.
 /// Frames with the same timestamp_ns must use the same centers.
 /// Pass null when FFR is disabled or no new center information is available.
-/// Safety: `center_shifts` must be null or point to an initialized `float[2][2]` array,
-/// in left/right eye and X/Y order, that remains valid for this call.
+/// Safety: `foveation_center_shifts` must be null or point to an initialized
+/// `float[2][2]` array, in left/right eye and X/Y order, that remains valid for this call.
 /// The centers are copied; the pointer is not retained.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn alvr_send_video_nal(
     timestamp_ns: u64,
     global_view_params: *const AlvrViewParams,
-    center_shifts: *const [[f32; 2]; 2],
+    foveation_center_shifts: *const [[f32; 2]; 2],
     is_idr: bool,
     buffer_ptr: *mut u8,
     len: i32,
@@ -513,7 +513,7 @@ pub unsafe extern "C" fn alvr_send_video_nal(
             Duration::from_nanos(timestamp_ns),
             global_view_params,
             // # Safety: the caller provides either null or a valid 2x2 centers array.
-            unsafe { center_shifts.as_ref() }.copied(),
+            unsafe { foveation_center_shifts.as_ref() }.copied(),
             is_idr,
             buffer.to_vec(),
         );

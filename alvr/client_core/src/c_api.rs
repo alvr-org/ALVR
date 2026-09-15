@@ -95,7 +95,7 @@ pub struct AlvrVideoFrameMetadata {
     /// False when no new centers are available; reuse the previous centers in that case.
     has_foveation_centers: bool,
     /// Encoder-aligned center shifts, in left/right eye and X/Y order.
-    center_shifts: [[f32; 2]; 2],
+    foveation_center_shifts: [[f32; 2]; 2],
 }
 
 #[repr(C)]
@@ -579,7 +579,7 @@ pub extern "C" fn alvr_report_compositor_start(
                     .view_params
                     .map(|params| alvr_common::to_capi_view_params(&params)),
                 has_foveation_centers: metadata.foveation_center_shifts.is_some(),
-                center_shifts: metadata.foveation_center_shifts.unwrap_or_default(),
+                foveation_center_shifts: metadata.foveation_center_shifts.unwrap_or_default(),
             };
         }
 
@@ -778,14 +778,14 @@ pub extern "C" fn alvr_render_lobby_opengl(
 /// Pass the matched frame's centers when available, otherwise reuse the previous centers.
 /// Pass null to use negotiated centers before the first update or when FFR is off.
 /// When reusing the staged image, also reuse that image's metadata.
-/// Safety: `center_shifts` must be null or point to an initialized `float[2][2]` array,
-/// in left/right eye and X/Y order, that remains valid for this call.
+/// Safety: `foveation_center_shifts` must be null or point to an initialized
+/// `float[2][2]` array, in left/right eye and X/Y order, that remains valid for this call.
 /// The centers must be encoder-aligned. They are copied; the pointer is not retained.
 #[unsafe(no_mangle)]
 pub extern "C" fn alvr_render_stream_opengl(
     hardware_buffer: *mut c_void,
     view_params: *const AlvrStreamViewParams,
-    center_shifts: *const [[f32; 2]; 2],
+    foveation_center_shifts: *const [[f32; 2]; 2],
 ) {
     STREAM_RENDERER.with_borrow(|renderer| {
         if let Some(renderer) = renderer {
@@ -829,7 +829,8 @@ pub extern "C" fn alvr_render_stream_opengl(
                 ],
                 None,
                 // # Safety: the caller provides either null or a valid 2x2 centers array.
-                unsafe { center_shifts.as_ref() }.map(|centers| centers.map(Vec2::from_array)),
+                unsafe { foveation_center_shifts.as_ref() }
+                    .map(|centers| centers.map(Vec2::from_array)),
             );
         }
     });

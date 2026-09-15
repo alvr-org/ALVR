@@ -12,6 +12,7 @@ public:
     Output CreateOutput();
     uint32_t GetEncodingWidth() const;
     uint32_t GetEncodingHeight() const;
+    void Render(uint32_t index, uint64_t waitValue, uint64_t targetTimestampNs);
 
 private:
     struct ColorCorrection {

@@ -114,7 +114,7 @@ bool CEncoder::CopyToStaging(
     m_FrameRender->Startup();
 
     m_FrameRender->RenderFrame(
-        pTexture, bounds, poses, layerCount, recentering, message, debugText
+        pTexture, bounds, poses, layerCount, recentering, targetTimestampNs, message, debugText
     );
     return true;
 }

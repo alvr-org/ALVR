@@ -11,6 +11,7 @@ mod tracking;
 mod web_server;
 
 pub use c_api::*;
+pub use connection::align_foveation_center_shift;
 pub use logging_backend::init_logging;
 pub use tracking::HandType;
 
@@ -18,7 +19,7 @@ use crate::connection::VideoPacket;
 use alvr_common::{
     AlvrFoveatedEncodingParams, ConnectionState, DEVICE_ID_TO_PATH, DeviceMotion, LifecycleState,
     Pose, ViewParams, dbg_server_core, error,
-    glam::{UVec2, Vec2},
+    glam::{Quat, UVec2, Vec2},
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
     warn,
@@ -94,6 +95,8 @@ pub enum ServerCoreEvent {
     LocalViewParams([ViewParams; 2]), // In relation to head
     Tracking {
         poll_timestamp: Duration,
+        /// Head-local orientation, with -Z pointing along the combined gaze direction.
+        combined_eye_gaze: Option<Quat>,
     },
     Buttons(Vec<ButtonEntry>), // Note: this is after mapping
     RequestIDR,

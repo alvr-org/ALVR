@@ -55,12 +55,7 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
 pub fn check_msrv() {
     let sh = Shell::new().unwrap();
 
-    cmd!(
-        sh,
-        "cargo install cargo-msrv --git https://github.com/foresterre/cargo-msrv --rev 14097beaa5fa770aabd66170572cb04f1dac87c2"
-    )
-    .run()
-    .unwrap();
+    cmd!(sh, "cargo install cargo-msrv --locked").run().unwrap();
 
     let paths = [
         "alvr/server_openvr",

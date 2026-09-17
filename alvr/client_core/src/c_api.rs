@@ -5,7 +5,8 @@ use crate::{
     video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
 };
 use alvr_common::{
-    AlvrCodecType, AlvrFov, AlvrPose, AlvrQuat, AlvrViewParams, DeviceMotion, Pose, ViewParams,
+    AlvrCodecType, AlvrFov, AlvrFoveatedEncodingParams, AlvrPose, AlvrQuat, AlvrViewParams,
+    DeviceMotion, Pose, ViewParams,
     anyhow::Result,
     debug, error,
     glam::{UVec2, Vec2, Vec3},
@@ -17,7 +18,7 @@ use alvr_graphics::{
     GraphicsContext, HandData, LobbyRenderer, LobbyViewParams, SDR_FORMAT_GL, StreamRenderer,
     StreamViewParams,
 };
-use alvr_packets::{ButtonEntry, ButtonValue, FaceData, FoveatedEncodingParams, TrackingData};
+use alvr_packets::{ButtonEntry, ButtonValue, FaceData, TrackingData};
 use alvr_session::{CodecType, MediacodecPropType, MediacodecProperty, UpscalingConfig};
 use std::{
     cell::RefCell,
@@ -62,7 +63,7 @@ pub enum AlvrEvent {
         refresh_rate_hint: f32,
         encoding_gamma: f32,
         enable_foveated_encoding: bool,
-        foveated_encoding: FoveatedEncodingParams,
+        foveated_encoding: AlvrFoveatedEncodingParams,
         enable_hdr: bool,
     },
     StreamingStopped,
@@ -86,6 +87,15 @@ pub struct AlvrVideoFrameData {
     timestamp_ns: u64,
     buffer_ptr: *const u8,
     buffer_size: u64,
+}
+
+#[repr(C)]
+pub struct AlvrVideoFrameMetadata {
+    view_params: [AlvrViewParams; 2],
+    /// False when no new centers are available; reuse the previous centers in that case.
+    has_foveation_centers: bool,
+    /// Encoder-aligned center shifts, in left/right eye and X/Y order.
+    foveation_center_shifts: [[f32; 2]; 2],
 }
 
 #[repr(C)]
@@ -547,21 +557,35 @@ pub extern "C" fn alvr_report_fatal_decoder_error(message: *const c_char) {
     }
 }
 
-/// out_view_params must be a vector of 2 elements
-/// out_view_params is populated only if the core context is valid
+/// Returns false without writing output if no metadata matches the decoded frame.
+/// In that case, the caller can display the new frame using its previous metadata.
+/// If matched metadata has no centers, keep the previous centers, or use negotiated centers
+/// if none have been received yet.
+/// Reset cached metadata when a new stream starts.
+/// `out_metadata` must point to writable storage for one AlvrVideoFrameMetadata.
 #[unsafe(no_mangle)]
 pub extern "C" fn alvr_report_compositor_start(
     target_timestamp_ns: u64,
-    out_view_params: *mut AlvrViewParams,
-) {
-    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
-        let view_params =
-            context.report_compositor_start(Duration::from_nanos(target_timestamp_ns));
-
+    out_metadata: *mut AlvrVideoFrameMetadata,
+) -> bool {
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock()
+        && let Some(metadata) =
+            context.report_compositor_start(Duration::from_nanos(target_timestamp_ns))
+    {
+        // # Safety: the caller provides writable storage for one output struct.
         unsafe {
-            *out_view_params = alvr_common::to_capi_view_params(&view_params[0]);
-            *out_view_params.offset(1) = alvr_common::to_capi_view_params(&view_params[1]);
+            *out_metadata = AlvrVideoFrameMetadata {
+                view_params: metadata
+                    .view_params
+                    .map(|params| alvr_common::to_capi_view_params(&params)),
+                has_foveation_centers: metadata.foveation_center_shifts.is_some(),
+                foveation_center_shifts: metadata.foveation_center_shifts.unwrap_or_default(),
+            };
         }
+
+        true
+    } else {
+        false
     }
 }
 
@@ -604,7 +628,7 @@ pub struct AlvrStreamConfig {
     swapchain_length: u32,
     enable_foveation: bool,
     /// Copy the server-aligned parameters from the StreamingStarted event.
-    foveated_encoding: FoveatedEncodingParams,
+    foveated_encoding: AlvrFoveatedEncodingParams,
     enable_upscaling: bool,
     upscaling_edge_direction: bool,
     upscaling_edge_threshold: f32,
@@ -751,10 +775,17 @@ pub extern "C" fn alvr_render_lobby_opengl(
 }
 
 /// view_params: array of 2
+/// Pass the matched frame's centers when available, otherwise reuse the previous centers.
+/// Pass null to use negotiated centers before the first update or when FFR is off.
+/// When reusing the staged image, also reuse that image's metadata.
+/// Safety: `foveation_center_shifts` must be null or point to an initialized
+/// `float[2][2]` array, in left/right eye and X/Y order, that remains valid for this call.
+/// The centers must be encoder-aligned. They are copied; the pointer is not retained.
 #[unsafe(no_mangle)]
 pub extern "C" fn alvr_render_stream_opengl(
     hardware_buffer: *mut c_void,
     view_params: *const AlvrStreamViewParams,
+    foveation_center_shifts: *const [[f32; 2]; 2],
 ) {
     STREAM_RENDERER.with_borrow(|renderer| {
         if let Some(renderer) = renderer {
@@ -797,7 +828,9 @@ pub extern "C" fn alvr_render_stream_opengl(
                     },
                 ],
                 None,
-                None,
+                // # Safety: the caller provides either null or a valid 2x2 centers array.
+                unsafe { foveation_center_shifts.as_ref() }
+                    .map(|centers| centers.map(Vec2::from_array)),
             );
         }
     });

@@ -38,9 +38,13 @@ use std::{
     time::{Duration, Instant},
 };
 
+const FOVEATION_CENTER_HISTORY_CAPACITY: usize = 360;
+
 static SERVER_CORE_CONTEXT: RwLock<Option<ServerCoreContext>> = RwLock::new(None);
 static LOCAL_VIEW_PARAMS: RwLock<[ViewParams; 2]> = RwLock::new([ViewParams::DUMMY; 2]);
 static HEAD_POSE_QUEUE: Mutex<VecDeque<(Duration, Pose)>> = Mutex::new(VecDeque::new());
+static FOVEATION_CENTER_QUEUE: Mutex<VecDeque<(Duration, [[f32; 2]; 2])>> =
+    Mutex::new(VecDeque::new());
 static EVENT_LOOP_HANDLE: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
 static IDLE_INIT_HANDLE: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
 static FACTORY_INIT_DATA: Mutex<Option<FactoryInitData>> = Mutex::new(None);
@@ -242,6 +246,7 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                     props::set_openvr_prop(None, device_id, prop)
                 }
                 ServerCoreEvent::ClientConnected(config) => unsafe {
+                    FOVEATION_CENTER_QUEUE.lock().clear();
                     if InitializeStreaming(make_settings(Some(&config))) {
                         RequestDriverResync();
                     } else {
@@ -251,7 +256,10 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                     }
                 },
 
-                ServerCoreEvent::ClientDisconnected => unsafe { DeinitializeStreaming() },
+                ServerCoreEvent::ClientDisconnected => unsafe {
+                    DeinitializeStreaming();
+                    FOVEATION_CENTER_QUEUE.lock().clear();
+                },
                 ServerCoreEvent::Battery(info) => unsafe {
                     SetBattery(info.device_id, info.gauge_value, info.is_plugged)
                 },
@@ -559,6 +567,24 @@ extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32)
     }
 }
 
+#[unsafe(export_name = "ReportEncoderFoveationCenters")]
+extern "C" fn report_encoder_foveation_centers(
+    timestamp_ns: u64,
+    left_x: f32,
+    left_y: f32,
+    right_x: f32,
+    right_y: f32,
+) {
+    let queue_mut = &mut *FOVEATION_CENTER_QUEUE.lock();
+    queue_mut.push_back((
+        Duration::from_nanos(timestamp_ns),
+        [[left_x, left_y], [right_x, right_y]],
+    ));
+    while queue_mut.len() > FOVEATION_CENTER_HISTORY_CAPACITY {
+        queue_mut.pop_front();
+    }
+}
+
 #[unsafe(export_name = "VideoSend")]
 extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_idr: bool) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
@@ -587,7 +613,23 @@ extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_id
             },
         ];
 
-        context.send_video_nal(timestamp, global_view_params, is_idr, buffer.to_vec());
+        // Keep entries until eviction: an encoder may output multiple NALs for one frame.
+        let foveation_center_shifts =
+            FOVEATION_CENTER_QUEUE
+                .lock()
+                .iter()
+                .rev()
+                .find_map(|(frame_timestamp, centers)| {
+                    (*frame_timestamp == timestamp).then_some(*centers)
+                });
+
+        context.send_video_nal(
+            timestamp,
+            global_view_params,
+            foveation_center_shifts,
+            is_idr,
+            buffer.to_vec(),
+        );
     }
 }
 

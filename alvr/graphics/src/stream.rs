@@ -1,9 +1,8 @@
 use super::{GraphicsContext, MAX_PUSH_CONSTANTS_SIZE, staging::StagingRenderer};
 use alvr_common::{
-    ViewParams,
+    AlvrFoveatedEncodingParams, ViewParams,
     glam::{Mat4, UVec2, Vec2, Vec3, Vec4},
 };
-use alvr_packets::FoveatedEncodingParams;
 use alvr_session::{PassthroughMode, UpscalingConfig};
 use std::{cell::Cell, ffi::c_void, iter, mem, rc::Rc};
 use wgpu::{
@@ -55,7 +54,7 @@ pub struct StreamRenderer {
     staging_renderer: StagingRenderer,
     pipeline: RenderPipeline,
     views_objects: [ViewObjects; 2],
-    foveated_encoding: Option<FoveatedEncodingParams>,
+    foveated_encoding: Option<AlvrFoveatedEncodingParams>,
     foveation_buffer: Buffer,
     last_foveation_center_shifts: Cell<Option<[Vec2; 2]>>,
 }
@@ -69,7 +68,7 @@ impl StreamRenderer {
         target_view_resolution: UVec2,
         swapchain_textures: [Vec<u32>; 2],
         target_format: u32,
-        foveated_encoding: Option<FoveatedEncodingParams>,
+        foveated_encoding: Option<AlvrFoveatedEncodingParams>,
         enable_srgb_correction: bool,
         fix_limited_range: bool,
         encoding_gamma: f32,
@@ -501,7 +500,7 @@ fn set_passthrough_push_constants(render_pass: &mut RenderPass, config: Option<&
 }
 
 fn foveated_encoding_data(
-    config: &FoveatedEncodingParams,
+    config: &AlvrFoveatedEncodingParams,
     center_shifts: [Vec2; 2],
 ) -> [Vec4; FOVEATION_UNIFORM_VEC4_COUNT] {
     let center_size_aligned = Vec2::from_array(config.center_size);

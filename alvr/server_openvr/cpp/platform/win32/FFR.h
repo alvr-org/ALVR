@@ -6,7 +6,7 @@ class FFR {
 public:
     FFR(ID3D11Device* device);
     void Initialize(ID3D11Texture2D* compositionTexture);
-    void Render();
+    void Render(uint64_t targetTimestampNs);
     void GetOptimizedResolution(uint32_t* width, uint32_t* height);
     ID3D11Texture2D* GetOutputTexture();
 

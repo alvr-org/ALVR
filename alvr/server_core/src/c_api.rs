@@ -6,10 +6,10 @@ use crate::{
     logging_backend, tracking::HandType,
 };
 use alvr_common::{
-    AlvrCodecType, AlvrPose, AlvrViewParams, log,
+    AlvrCodecType, AlvrFoveatedEncodingParams, AlvrPose, AlvrViewParams, log,
     parking_lot::{Mutex, RwLock},
 };
-use alvr_packets::{ButtonEntry, ButtonValue, FoveatedEncodingParams, Haptics};
+use alvr_packets::{ButtonEntry, ButtonValue, Haptics};
 use alvr_session::CodecType;
 use std::{
     collections::{HashMap, VecDeque},
@@ -102,7 +102,7 @@ pub struct AlvrNegotiatedConfig {
     pub target_view_resolution: [u32; 2],
     pub refresh_rate: f32,
     pub enable_foveated_encoding: bool,
-    pub foveated_encoding: FoveatedEncodingParams,
+    pub foveated_encoding: AlvrFoveatedEncodingParams,
     pub codec: AlvrCodecType,
     pub h264_profile: u32,
     pub use_10bit_encoder: bool,
@@ -484,10 +484,17 @@ pub unsafe extern "C" fn alvr_set_video_config_nals(
 }
 
 /// global_view_params must be an array of length 2
+/// `foveation_center_shifts` must contain the centers used to encode this frame, already aligned.
+/// Frames with the same timestamp_ns must use the same centers.
+/// Pass null when FFR is disabled or no new center information is available.
+/// Safety: `foveation_center_shifts` must be null or point to an initialized
+/// `float[2][2]` array, in left/right eye and X/Y order, that remains valid for this call.
+/// The centers are copied; the pointer is not retained.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn alvr_send_video_nal(
     timestamp_ns: u64,
     global_view_params: *const AlvrViewParams,
+    foveation_center_shifts: *const [[f32; 2]; 2],
     is_idr: bool,
     buffer_ptr: *mut u8,
     len: i32,
@@ -505,6 +512,8 @@ pub unsafe extern "C" fn alvr_send_video_nal(
         context.send_video_nal(
             Duration::from_nanos(timestamp_ns),
             global_view_params,
+            // # Safety: the caller provides either null or a valid 2x2 centers array.
+            unsafe { foveation_center_shifts.as_ref() }.copied(),
             is_idr,
             buffer.to_vec(),
         );

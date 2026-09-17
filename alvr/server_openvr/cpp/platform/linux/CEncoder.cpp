@@ -243,7 +243,7 @@ void CEncoder::Run() {
                 );
             }
 
-            render.Render(frame_info.image, frame_info.semaphore_value);
+            render.Render(frame_info.image, frame_info.semaphore_value, pose->targetTimestampNs);
 
             if (!valid_timestamps) {
                 ReportPresent(pose->targetTimestampNs, 0);

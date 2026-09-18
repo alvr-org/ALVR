@@ -1,3 +1,4 @@
+mod foveated_encoding;
 mod graphics;
 mod props;
 mod tracking;
@@ -27,8 +28,9 @@ use alvr_server_core::{
     HandType, ServerCoreContext, ServerCoreEvent, ServerNegotiatedStreamingConfig,
 };
 use alvr_session::{
-    BodyTrackingSinkConfig, CodecType, ControllersConfig, ControllersEmulationMode,
+    BodyTrackingSinkConfig, CodecType, ControllersConfig, ControllersEmulationMode, GazeInputSource,
 };
+use foveated_encoding::EyeTrackedFoveation;
 use std::{
     collections::VecDeque,
     ffi::{CString, OsStr, c_char, c_void},
@@ -45,6 +47,7 @@ static LOCAL_VIEW_PARAMS: RwLock<[ViewParams; 2]> = RwLock::new([ViewParams::DUM
 static HEAD_POSE_QUEUE: Mutex<VecDeque<(Duration, Pose)>> = Mutex::new(VecDeque::new());
 static FOVEATION_CENTER_QUEUE: Mutex<VecDeque<(Duration, [[f32; 2]; 2])>> =
     Mutex::new(VecDeque::new());
+static EYE_TRACKED_FOVEATION: Mutex<Option<EyeTrackedFoveation>> = Mutex::new(None);
 static EVENT_LOOP_HANDLE: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
 static IDLE_INIT_HANDLE: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
 static FACTORY_INIT_DATA: Mutex<Option<FactoryInitData>> = Mutex::new(None);
@@ -247,6 +250,20 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                 }
                 ServerCoreEvent::ClientConnected(config) => unsafe {
                     FOVEATION_CENTER_QUEUE.lock().clear();
+                    *EYE_TRACKED_FOVEATION.lock() = config
+                        .foveated_encoding
+                        .filter(|_| {
+                            alvr_server_core::settings()
+                                .video
+                                .foveated_encoding
+                                .as_option()
+                                .is_some_and(|config| {
+                                    config.gaze_input_source == GazeInputSource::Headset
+                                })
+                        })
+                        .map(|params| {
+                            EyeTrackedFoveation::new(params, config.transcoding_view_resolution)
+                        });
                     if InitializeStreaming(make_settings(Some(&config))) {
                         RequestDriverResync();
                     } else {
@@ -258,6 +275,7 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
 
                 ServerCoreEvent::ClientDisconnected => unsafe {
                     DeinitializeStreaming();
+                    *EYE_TRACKED_FOVEATION.lock() = None;
                     FOVEATION_CENTER_QUEUE.lock().clear();
                 },
                 ServerCoreEvent::Battery(info) => unsafe {
@@ -268,6 +286,9 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                 },
                 ServerCoreEvent::LocalViewParams(params) => unsafe {
                     *LOCAL_VIEW_PARAMS.write() = params;
+                    if let Some(foveation) = &mut *EYE_TRACKED_FOVEATION.lock() {
+                        foveation.view_params = Some(params);
+                    }
 
                     let ffi_params = [
                         tracking::to_ffi_view_params(params[0]),
@@ -275,7 +296,13 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                     ];
                     SetLocalViewParams(ffi_params.as_ptr());
                 },
-                ServerCoreEvent::Tracking { poll_timestamp } => {
+                ServerCoreEvent::Tracking {
+                    poll_timestamp,
+                    combined_eye_gaze,
+                } => {
+                    if let Some(foveation) = &mut *EYE_TRACKED_FOVEATION.lock() {
+                        foveation.update(poll_timestamp, combined_eye_gaze, Instant::now());
+                    }
                     let headset_config = &alvr_server_core::settings().headset;
 
                     let controllers_config = headset_config.controllers.clone().into_option();
@@ -564,6 +591,19 @@ extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32)
 
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         context.set_video_config_nals(config_buffer, codec);
+    }
+}
+
+#[unsafe(export_name = "GetEyeTrackedFoveationCenters")]
+extern "C" fn get_eye_tracked_foveation_centers(timestamp_ns: u64) -> FfiFoveationCenters {
+    let centers = EYE_TRACKED_FOVEATION
+        .lock()
+        .as_ref()
+        .and_then(|foveation| foveation.centers(Duration::from_nanos(timestamp_ns)));
+
+    FfiFoveationCenters {
+        valid: centers.is_some(),
+        centerShifts: centers.unwrap_or_default(),
     }
 }
 

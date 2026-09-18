@@ -460,6 +460,10 @@ pub struct FoveatedEncodingConfig {
     #[schema(strings(help = "Force enable on smartphone clients"))]
     pub force_enable: bool,
 
+    #[schema(strings(display_name = "Eye tracking input"))]
+    #[schema(flag = "steamvr-restart")]
+    pub gaze_input_source: GazeInputSource,
+
     #[schema(strings(
         display_name = "Center region size",
         help = "Width and height, in X/Y order"
@@ -470,7 +474,7 @@ pub struct FoveatedEncodingConfig {
 
     #[schema(strings(
         display_name = "Center shift",
-        help = "Horizontal and vertical shift, in X/Y order"
+        help = "Horizontal and vertical shift, in X/Y order. Used as a static fallback; overridden, not added to, when headset eye-tracking centers are available."
     ))]
     #[schema(gui(slider(min = -1.0, max = 1.0, step = 0.01)))]
     #[schema(flag = "steamvr-restart")]
@@ -480,6 +484,14 @@ pub struct FoveatedEncodingConfig {
     #[schema(gui(slider(min = 1.0, max = 10.0, step = 1.0)))]
     #[schema(flag = "steamvr-restart")]
     pub edge_ratio: [f32; 2],
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GazeInputSource {
+    #[schema(strings(help = "Use the configured static foveation center"))]
+    None,
+    #[schema(strings(display_name = "Headset eye tracking"))]
+    Headset,
 }
 
 #[repr(C)]
@@ -1869,6 +1881,9 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: FoveatedEncodingConfigDefault {
                     gui_collapsed: true,
                     force_enable: false,
+                    gaze_input_source: GazeInputSourceDefault {
+                        variant: GazeInputSourceDefaultVariant::None,
+                    },
                     center_size: ArrayDefault {
                         gui_collapsed: false,
                         content: [0.45, 0.4],

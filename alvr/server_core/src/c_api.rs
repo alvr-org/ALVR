@@ -6,7 +6,7 @@ use crate::{
     logging_backend, tracking::HandType,
 };
 use alvr_common::{
-    AlvrCodecType, AlvrFoveatedEncodingParams, AlvrPose, AlvrViewParams, log,
+    AlvrCodecType, AlvrFoveatedEncodingParams, AlvrPose, AlvrQuat, AlvrViewParams, log,
     parking_lot::{Mutex, RwLock},
 };
 use alvr_packets::{ButtonEntry, ButtonValue, Haptics};
@@ -67,7 +67,12 @@ pub enum AlvrEvent {
     Battery(AlvrBatteryInfo),
     PlayspaceSync([f32; 2]),
     LocalViewParams([AlvrViewParams; 2]), // In relation to head
-    TrackingUpdated { sample_timestamp_ns: u64 },
+    TrackingUpdated {
+        sample_timestamp_ns: u64,
+        has_combined_eye_gaze: bool,
+        /// Head-local orientation; ignored when has_combined_eye_gaze is false.
+        combined_eye_gaze: AlvrQuat,
+    },
     ButtonsUpdated,
     RequestIDR,
     CaptureFrame,
@@ -302,9 +307,16 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
                     alvr_common::to_capi_view_params(&config[1]),
                 ])
             },
-            ServerCoreEvent::Tracking { poll_timestamp } => unsafe {
+            ServerCoreEvent::Tracking {
+                poll_timestamp,
+                combined_eye_gaze,
+            } => unsafe {
                 *out_event = AlvrEvent::TrackingUpdated {
                     sample_timestamp_ns: poll_timestamp.as_nanos() as u64,
+                    has_combined_eye_gaze: combined_eye_gaze.is_some(),
+                    combined_eye_gaze: combined_eye_gaze
+                        .map(|orientation| alvr_common::to_capi_quat(&orientation))
+                        .unwrap_or_default(),
                 };
             },
             ServerCoreEvent::Buttons(entries) => {

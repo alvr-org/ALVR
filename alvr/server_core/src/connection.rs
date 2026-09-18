@@ -26,8 +26,8 @@ use alvr_packets::{
     VIDEO, VideoPacketHeader,
 };
 use alvr_session::{
-    BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile, Settings,
-    SocketProtocol, SteamvrHmdInitConfig,
+    BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, GazeInputSource,
+    H264Profile, Settings, SocketProtocol, SteamvrHmdInitConfig,
 };
 use alvr_sockets::{
     CONTROL_PORT, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, ProtoControlSocket, SocketConnection,
@@ -65,6 +65,30 @@ fn is_streaming(client_hostname: &str) -> bool {
         .client_list()
         .get(client_hostname)
         .is_some_and(|c| c.connection_state == ConnectionState::Streaming)
+}
+
+/// Align one center coordinate using the same rule for static and gaze-driven foveation.
+pub fn align_foveation_center_shift(center_shift: f32, edge_size: f32, edge_ratio: f32) -> f32 {
+    if !center_shift.is_finite()
+        || !edge_size.is_finite()
+        || !edge_ratio.is_finite()
+        || edge_size <= 0.0
+        || edge_ratio <= 0.0
+    {
+        return 0.0;
+    }
+
+    let step = edge_ratio * 2.0 / edge_size;
+    if !step.is_finite() || step >= 1.0 {
+        return 0.0;
+    }
+
+    // Reserve one alignment step on each edge to avoid singular inverse coefficients.
+    // Do not replace this with division by `step`: f32 rounding can change the ceiling.
+    let aligned =
+        (center_shift * edge_size / (edge_ratio * 2.0)).ceil() * (edge_ratio * 2.0) / edge_size;
+
+    aligned.clamp(-1.0 + step, 1.0 - step)
 }
 
 // Compute a hash over all steamvr-restart settings and client-negotiated values.
@@ -118,6 +142,7 @@ pub fn compute_restart_settings_hash(
         .map(|c| c.sources.meta.prefer_full_body)
         .unwrap_or(false);
 
+    let mut foveation_gaze_input_source = GazeInputSource::None;
     let mut foveation_center_size_x = 0.0_f32;
     let mut foveation_center_size_y = 0.0_f32;
     let mut foveation_center_shift_x = 0.0_f32;
@@ -126,6 +151,7 @@ pub fn compute_restart_settings_hash(
     let mut foveation_edge_ratio_y = 0.0_f32;
     let enable_foveated_encoding =
         if let Switch::Enabled(config) = &settings.video.foveated_encoding {
+            foveation_gaze_input_source = config.gaze_input_source;
             [foveation_center_size_x, foveation_center_size_y] = config.center_size;
             [foveation_center_shift_x, foveation_center_shift_y] = config.center_shift;
             [foveation_edge_ratio_x, foveation_edge_ratio_y] = config.edge_ratio;
@@ -218,6 +244,7 @@ pub fn compute_restart_settings_hash(
     nvenc.enable_weighted_prediction.hash(&mut h);
     // Foveated encoding
     enable_foveated_encoding.hash(&mut h);
+    foveation_gaze_input_source.hash(&mut h);
     foveation_center_size_x.to_bits().hash(&mut h);
     foveation_center_size_y.to_bits().hash(&mut h);
     foveation_center_shift_x.to_bits().hash(&mut h);
@@ -693,27 +720,8 @@ fn connection_pipeline(
                         * (edge_ratio as f64 * 2.0)
                         / resolution as f64) as f32;
                 let edge_size = resolution - center_size * resolution;
-                let center_shift = if !center_shift.is_finite()
-                    || !edge_size.is_finite()
-                    || !edge_ratio.is_finite()
-                    || edge_size <= 0.0
-                    || edge_ratio <= 0.0
-                {
-                    0.0
-                } else {
-                    let step = edge_ratio * 2.0 / edge_size;
-                    if !step.is_finite() || step >= 1.0 {
-                        0.0
-                    } else {
-                        // Reserve one alignment step on each edge to avoid singular inverse coefficients.
-                        // Do not replace this with division by `step`: f32 rounding can change the ceiling.
-                        let aligned = (center_shift * edge_size / (edge_ratio * 2.0)).ceil()
-                            * (edge_ratio * 2.0)
-                            / edge_size;
-
-                        aligned.clamp(-1.0 + step, 1.0 - step)
-                    }
-                };
+                let center_shift =
+                    align_foveation_center_shift(center_shift, edge_size, edge_ratio);
 
                 let scale =
                     (center_size as f64 + (1.0 - center_size as f64) / edge_ratio as f64) as f32;

@@ -29,8 +29,21 @@ pub fn driver_registration(driver_paths: &[PathBuf], register: bool) -> Result<(
     if register {
         paths.extend(driver_paths.iter().cloned());
     } else {
-        for path in driver_paths {
-            paths.remove(path);
+        for remove_path in driver_paths {
+            let remove_norm = remove_path
+                .canonicalize()
+                .unwrap_or_else(|_| remove_path.clone());
+            paths.retain(|p| {
+                let p_norm = p.canonicalize().unwrap_or_else(|_| p.clone());
+                if cfg!(windows) {
+                    p_norm.to_string_lossy().to_lowercase()
+                        != remove_norm.to_string_lossy().to_lowercase()
+                        && p.to_string_lossy().replace('/', "\\").to_lowercase()
+                            != remove_path.to_string_lossy().replace('/', "\\").to_lowercase()
+                } else {
+                    p_norm != remove_norm && p != remove_path
+                }
+            });
         }
     }
 

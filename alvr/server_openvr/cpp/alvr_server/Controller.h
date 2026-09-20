@@ -36,6 +36,13 @@ private:
     float m_triggerValue = 0;
     float m_gripValue = 0;
 
+    // Per-sensor touch tracking to resolve thumb gesture conflicts in VRChat (Issue #2368)
+    bool m_thumbstickTouch = false;
+    bool m_button1Touch = false;
+    bool m_button2Touch = false;
+    bool m_trackpadTouch = false;
+    bool m_thumbrestTouch = false;
+
     vr::VRInputComponentHandle_t getHapticComponent();
     void GetBoneTransform(bool withController, vr::VRBoneTransform_t outBoneTransform[]);
 

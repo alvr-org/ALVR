@@ -131,13 +131,18 @@ pub async fn web_server(connection_context: Arc<ConnectionContext>) -> Result<()
         .layer(middleware::from_fn(ensure_preflight))
         .with_state(connection_context);
 
-    axum::serve(
-        TcpListener::bind(SocketAddr::new(bind_address.into(), web_server_port))
-            .await
-            .unwrap(),
-        router,
-    )
-    .await?;
+    let addr = SocketAddr::new(bind_address.into(), web_server_port);
+    let listener = match TcpListener::bind(addr).await {
+        Ok(l) => l,
+        Err(e) => {
+            error!(
+                "Failed to bind web server to {addr}: {e}. If port {web_server_port} is in use (e.g. OS error 10048), another instance of ALVR or SteamVR may already be running.",
+            );
+            return Err(e.into());
+        }
+    };
+
+    axum::serve(listener, router).await?;
 
     Ok(())
 }

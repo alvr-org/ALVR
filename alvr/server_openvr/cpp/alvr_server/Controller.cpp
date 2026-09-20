@@ -156,13 +156,27 @@ void Controller::SetButton(uint64_t id, FfiButtonValue value) {
         }
     }
 
-    // todo: remove when moving inferred controller hand skeleton to rust
+    // Track each touch sensor independently to prevent release events on one sensor
+    // from resetting the touch state of other sensors (resolves thumb tracking glitch in VRChat)
+    if (id == LEFT_THUMBSTICK_TOUCH_ID || id == RIGHT_THUMBSTICK_TOUCH_ID) {
+        m_thumbstickTouch = (bool)value.binary;
+    } else if (id == LEFT_A_TOUCH_ID || id == LEFT_X_TOUCH_ID || id == RIGHT_A_TOUCH_ID) {
+        m_button1Touch = (bool)value.binary;
+    } else if (id == LEFT_B_TOUCH_ID || id == LEFT_Y_TOUCH_ID || id == RIGHT_B_TOUCH_ID) {
+        m_button2Touch = (bool)value.binary;
+    } else if (id == LEFT_TRACKPAD_TOUCH_ID || id == RIGHT_TRACKPAD_TOUCH_ID) {
+        m_trackpadTouch = (bool)value.binary;
+    } else if (id == LEFT_THUMBREST_TOUCH_ID || id == RIGHT_THUMBREST_TOUCH_ID) {
+        m_thumbrestTouch = (bool)value.binary;
+    }
+
     if (id == LEFT_A_TOUCH_ID || id == LEFT_B_TOUCH_ID || id == LEFT_X_TOUCH_ID
         || id == LEFT_Y_TOUCH_ID || id == LEFT_TRACKPAD_TOUCH_ID || id == LEFT_THUMBSTICK_TOUCH_ID
         || id == LEFT_THUMBREST_TOUCH_ID || id == RIGHT_A_TOUCH_ID || id == RIGHT_B_TOUCH_ID
         || id == RIGHT_TRACKPAD_TOUCH_ID || id == RIGHT_THUMBSTICK_TOUCH_ID
         || id == RIGHT_THUMBREST_TOUCH_ID) {
-        m_currentThumbTouch = value.binary;
+        m_currentThumbTouch = m_thumbstickTouch || m_button1Touch || m_button2Touch
+            || m_trackpadTouch || m_thumbrestTouch;
     } else if (id == LEFT_TRIGGER_TOUCH_ID || id == RIGHT_TRIGGER_TOUCH_ID) {
         m_currentTriggerTouch = value.binary;
     } else if (id == LEFT_TRIGGER_VALUE_ID || id == RIGHT_TRIGGER_VALUE_ID) {
@@ -1207,6 +1221,21 @@ void Controller::GetBoneTransform(bool withController, vr::VRBoneTransform_t out
     // thumb
     GetThumbBoneTransform(withController, isLeftHand, m_lastThumbTouch, boneTransform1);
     GetThumbBoneTransform(withController, isLeftHand, m_currentThumbTouch, boneTransform2);
+
+    // Differentiate thumb pose when touching buttons vs thumbrest vs thumbstick (Issue #2368)
+    if (m_currentThumbTouch && (m_button1Touch || m_button2Touch || m_thumbrestTouch)) {
+        float offsetAngle = 0.0f;
+        if (m_button2Touch) {
+            offsetAngle = isLeftHand ? 0.08f : -0.08f;
+        } else if (m_button1Touch) {
+            offsetAngle = isLeftHand ? 0.04f : -0.04f;
+        } else if (m_thumbrestTouch) {
+            offsetAngle = isLeftHand ? -0.06f : 0.06f;
+        }
+        boneTransform2[3].orientation.z += offsetAngle;
+        boneTransform2[4].orientation.z += offsetAngle * 0.5f;
+    }
+
     for (int boneIdx = 2; boneIdx < 6; boneIdx++) {
         outBoneTransform[boneIdx].position = Lerp(
             boneTransform1[boneIdx].position,

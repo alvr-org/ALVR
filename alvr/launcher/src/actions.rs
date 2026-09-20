@@ -93,23 +93,44 @@ async fn fetch_all_releases(client: &reqwest::Client) -> Result<ReleaseChannelsI
 async fn fetch_releases_for_repo(client: &reqwest::Client, url: &str) -> Result<Vec<ReleaseInfo>> {
     let response: serde_json::Value = client.get(url).send().await?.json().await?;
 
-    let mut releases = Vec::new();
+    let mut releases_with_date = Vec::new();
     for value in response.as_array().to_any()? {
-        releases.push(ReleaseInfo {
-            version: value["tag_name"].as_str().to_any()?.into(),
-            assets: value["assets"]
-                .as_array()
-                .to_any()?
-                .iter()
-                .filter_map(|value| {
-                    Some((
-                        value["name"].as_str()?.into(),
-                        value["browser_download_url"].as_str()?.into(),
-                    ))
-                })
-                .collect(),
-        })
+        let published_at = value["published_at"]
+            .as_str()
+            .or_else(|| value["created_at"].as_str())
+            .unwrap_or_default()
+            .to_string();
+
+        let tag_name = value["tag_name"].as_str().to_any()?.to_string();
+
+        let assets = value["assets"]
+            .as_array()
+            .to_any()?
+            .iter()
+            .filter_map(|value| {
+                Some((
+                    value["name"].as_str()?.into(),
+                    value["browser_download_url"].as_str()?.into(),
+                ))
+            })
+            .collect();
+
+        releases_with_date.push((
+            published_at,
+            ReleaseInfo {
+                version: tag_name,
+                assets,
+            },
+        ));
     }
+
+    // Sort by publication timestamp descending so the most recent nightly/stable release is always first
+    releases_with_date.sort_by(|(date_a, rel_a), (date_b, rel_b)| {
+        date_b.cmp(date_a).then_with(|| rel_b.version.cmp(&rel_a.version))
+    });
+
+    let releases = releases_with_date.into_iter().map(|(_, rel)| rel).collect();
+
     Ok(releases)
 }
 

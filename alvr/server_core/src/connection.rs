@@ -262,11 +262,11 @@ pub fn compute_restart_settings_hash(
 pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<LifecycleState>>) {
     dbg_connection!("handshake_loop: Begin");
 
-    let welcome_socket = match WelcomeSocket::new() {
-        Ok(socket) => socket,
+    let mut welcome_socket: Option<WelcomeSocket> = match WelcomeSocket::new() {
+        Ok(socket) => Some(socket),
         Err(e) => {
-            error!("Failed to create discovery socket: {e:?}");
-            return;
+            warn!("Failed to create discovery socket: {e:?}. Automatic mDNS discovery may be temporarily unavailable, but wired and manual IP connections will remain functional.");
+            None
         }
     };
 
@@ -402,14 +402,23 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
         if let Switch::Enabled(config) = discovery_config {
             dbg_connection!("handshake_loop: Discovering clients");
 
-            let clients = match welcome_socket.recv_all() {
-                Ok(clients) => clients,
-                Err(e) => {
-                    warn!("mDNS listening error: {e:?}");
+            if welcome_socket.is_none() {
+                welcome_socket = WelcomeSocket::new().ok();
+            }
 
-                    thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-                    continue;
+            let clients = if let Some(socket) = &welcome_socket {
+                match socket.recv_all() {
+                    Ok(clients) => clients,
+                    Err(e) => {
+                        warn!("mDNS listening error: {e:?}");
+                        welcome_socket = None;
+                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                        continue;
+                    }
                 }
+            } else {
+                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                continue;
             };
 
             if clients.is_empty() {
@@ -1034,36 +1043,41 @@ fn connection_pipeline(
     let microphone_thread = if let Switch::Enabled(config) =
         initial_settings.audio.microphone.clone()
     {
-        #[allow(unused_variables)]
-        let (sink, source) = alvr_audio::new_virtual_microphone_pair(config.devices).to_con()?;
+        match alvr_audio::new_virtual_microphone_pair(config.devices) {
+            Ok((sink, source)) => {
+                #[cfg(windows)]
+                if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
+                    ctx.events_sender
+                        .send(ServerCoreEvent::SetOpenvrProperty {
+                            device_id: *alvr_common::HEAD_ID,
+                            prop: alvr_session::OpenvrProperty {
+                                key: alvr_session::OpenvrPropKey::AudioDefaultRecordingDeviceIdString,
+                                value: id,
+                            },
+                        })
+                        .ok();
+                }
 
-        #[cfg(windows)]
-        if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
-            ctx.events_sender
-                .send(ServerCoreEvent::SetOpenvrProperty {
-                    device_id: *alvr_common::HEAD_ID,
-                    prop: alvr_session::OpenvrProperty {
-                        key: alvr_session::OpenvrPropKey::AudioDefaultRecordingDeviceIdString,
-                        value: id,
-                    },
+                let client_hostname = client_hostname.clone();
+                thread::spawn(move || {
+                    alvr_common::show_err(alvr_audio::play_audio_loop(
+                        {
+                            let client_hostname = client_hostname.clone();
+                            move || is_streaming(&client_hostname)
+                        },
+                        &sink,
+                        1,
+                        streaming_caps.microphone_sample_rate,
+                        config.buffering,
+                        &mut microphone_receiver,
+                    ));
                 })
-                .ok();
+            }
+            Err(e) => {
+                warn!("Virtual microphone setup failed: {e}. Streaming will continue without microphone input. Please install VB-CABLE or VoiceMeeter if microphone forwarding is needed.");
+                thread::spawn(|| ())
+            }
         }
-
-        let client_hostname = client_hostname.clone();
-        thread::spawn(move || {
-            alvr_common::show_err(alvr_audio::play_audio_loop(
-                {
-                    let client_hostname = client_hostname.clone();
-                    move || is_streaming(&client_hostname)
-                },
-                &sink,
-                1,
-                streaming_caps.microphone_sample_rate,
-                config.buffering,
-                &mut microphone_receiver,
-            ));
-        })
     } else {
         thread::spawn(|| ())
     };

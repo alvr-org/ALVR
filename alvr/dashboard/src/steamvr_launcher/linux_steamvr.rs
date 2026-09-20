@@ -69,6 +69,37 @@ pub fn maybe_wrap_vrcompositor_launcher() -> alvr_common::anyhow::Result<()> {
         compositor_path.display()
     );
 
+    // Copy pico_controller binding files to the vrlink driver's resources.
+    // SteamVR v2.16+ requires controller-type-specific binding files and no longer
+    // falls back to generic bindings. These files map the system button to
+    // ToggleDashboard and provide legacy input bindings for pico_controller.
+    let vrlink_input_dir = steamvr_bin_dir
+        .join("..")
+        .join("drivers")
+        .join("vrlink")
+        .join("resources")
+        .join("input");
+    if vrlink_input_dir.exists() {
+        let binding_files = [
+            "legacy_bindings_pico_controller.json",
+            "vrcompositor_bindings_pico_controller.json",
+        ];
+        let alvr_resources_input = std::env::current_exe()
+            .map(|p| p.join("../../share/alvr/server_openvr/resources/input"))
+            .unwrap_or_default();
+        for fname in &binding_files {
+            let src = alvr_resources_input.join(fname);
+            let dst = vrlink_input_dir.join(fname);
+            if src.exists() && !dst.exists() {
+                if let Err(e) = fs::copy(&src, &dst) {
+                    warn!("Failed to copy {} to vrlink driver: {}", fname, e);
+                } else {
+                    info!("Copied {} to vrlink driver resources", fname);
+                }
+            }
+        }
+    }
+
     Ok(())
 }
 #[derive(PartialEq)]

@@ -72,10 +72,21 @@ const TrackedDevicePose_t & find_pose_in_call_stack()
   if (res != nullptr)
     return *res;
   static TrackedDevicePose_t notfound;
+  constexpr unsigned failure_threshold = 300;
+  constexpr unsigned retry_interval = 1000;
+  static unsigned failures;
+  if (failures >= failure_threshold && failures % retry_interval != 0)
+  {
+    ++failures;
+    return notfound;
+  }
   unw_context_t ctx;
   unw_getcontext(&ctx);
   unw_cursor_t cursor;
   unw_init_local(&cursor, &ctx);
+
+  // Phase 1: Try to find CRenderThread::UpdateAsync by symbol name.
+  // This works on non-stripped binaries (SteamVR < 2.16).
   while (unw_step(&cursor) > 0)
   {
     char name[1024];
@@ -99,5 +110,44 @@ const TrackedDevicePose_t & find_pose_in_call_stack()
       return notfound;
     }
   }
+
+  // Phase 2: Blind stack scan (SteamVR 2.16+ stripped binary).
+  // Walk frames without symbol name lookup and scan each frame's
+  // local variable region for a valid TrackedDevicePose_t.
+  // The result is cached in res, so this scan runs at most once.
+  unw_getcontext(&ctx);
+  unw_init_local(&cursor, &ctx);
+  unsigned frame_count = 0;
+  constexpr unsigned max_frames = 20;
+  while (unw_step(&cursor) > 0 && frame_count < max_frames)
+  {
+    ++frame_count;
+    unw_word_t sp, sp_end;
+    unw_get_reg(&cursor, UNW_REG_SP, &sp);
+    unw_cursor_t next_cursor = cursor;
+    if (unw_step(&next_cursor) > 0)
+    {
+      unw_get_reg(&next_cursor, UNW_REG_SP, &sp_end);
+    }
+    else
+    {
+      sp_end = sp + 4096;
+    }
+
+    if (sp_end <= sp)
+      continue;
+
+    for (uintptr_t addr = sp; addr + sizeof(TrackedDevicePose_t) <= sp_end; addr += 8)
+    {
+      TrackedDevicePose_t * p = (TrackedDevicePose_t *) addr;
+      if (check_pose(*p))
+      {
+        res = p;
+        return *p;
+      }
+    }
+  }
+
+  ++failures;
   return notfound;
 }

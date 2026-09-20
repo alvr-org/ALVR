@@ -217,13 +217,19 @@ pub enum FaceExpressions {
         eye: Option<Vec<f32>>, // 14 values
         lip: Option<Vec<f32>>, // 37 values
     },
+    Phoenix {
+        eyes: Option<Vec<f32>>, // 10 values
+        lip: Option<Vec<f32>>,  // 52 values
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct FaceData {
-    // Can be used for foveated eye tracking
+    /// Head-local orientation whose -Z axis follows the combined gaze direction.
+    /// The sample is associated with TrackingData::poll_timestamp, not an independent gaze clock.
     pub eyes_combined: Option<Quat>,
-    // Should be used only for social presence
+    /// Head-local per-eye orientations, potentially smoothed by the runtime for social presence.
+    /// Also used as a foveation input fallback when native combined gaze is unavailable.
     pub eyes_social: [Option<Quat>; 2],
 
     pub face_expressions: Option<FaceExpressions>,

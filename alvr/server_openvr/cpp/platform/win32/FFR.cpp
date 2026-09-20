@@ -101,6 +101,13 @@ void FFR::Initialize(ID3D11Texture2D* compositionTexture) {
 
 void FFR::Render(uint64_t targetTimestampNs) {
     auto fovVars = CalculateFoveationVars();
+    const auto centers = GetEyeTrackedFoveationCenters(targetTimestampNs);
+    if (centers.valid) {
+        fovVars.centerShiftLeftX = centers.centerShifts[0][0];
+        fovVars.centerShiftLeftY = centers.centerShifts[0][1];
+        fovVars.centerShiftRightX = centers.centerShifts[1][0];
+        fovVars.centerShiftRightY = centers.centerShifts[1][1];
+    }
     UpdateBuffer(mImmediateContext.Get(), mFoveatedRenderingBuffer.Get(), &fovVars);
 
     // Publish the same centers that were uploaded for this frame, without re-aligning them.

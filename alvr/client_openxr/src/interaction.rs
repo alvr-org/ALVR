@@ -2,7 +2,7 @@ use crate::{
     Platform,
     extra_extensions::{
         self, BodyTrackerBD, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB, FaceTrackerBD,
-        FacialTrackerHTC, MotionTrackerBD, MultimodalMeta,
+        FaceTrackerPhoenix, FacialTrackerHTC, MotionTrackerBD, MultimodalMeta,
     },
 };
 use alvr_common::{
@@ -11,7 +11,9 @@ use alvr_common::{
 };
 use alvr_graphics::HandData;
 use alvr_packets::{ButtonEntry, ButtonValue, ClientStreamConfig, FaceData, FaceExpressions};
-use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
+use alvr_session::{
+    BodyTrackingBDConfig, BodyTrackingSourcesConfig, FaceTrackingSourcesConfig, GazeInputSource,
+};
 use openxr as xr;
 use std::{
     collections::{HashMap, HashSet},
@@ -122,6 +124,10 @@ pub enum FaceExpressionsTracker {
         eye: Option<FacialTrackerHTC>,
         lip: Option<FacialTrackerHTC>,
     },
+    Phoenix {
+        eyes: Option<FaceTrackerPhoenix>,
+        lip: Option<FaceTrackerPhoenix>,
+    },
 }
 
 pub struct FaceSources {
@@ -154,7 +160,17 @@ impl InteractionSourcesConfig {
                 .headset
                 .face_tracking
                 .as_option()
-                .map(|c| c.sources.clone()),
+                .map(|c| c.sources.clone())
+                .or_else(|| {
+                    // Foveation requests eye input locally, without enabling face tracking output.
+                    config
+                        .settings
+                        .video
+                        .foveated_encoding
+                        .as_option()
+                        .is_some_and(|c| c.gaze_input_source == GazeInputSource::Headset)
+                        .then_some(FaceTrackingSourcesConfig::PreferEyeTrackingOnly)
+                }),
             body_tracking: config
                 .settings
                 .headset
@@ -541,6 +557,19 @@ impl InteractionContext {
                     alvr_system_info::try_get_permission("com.picovr.permission.FACE_TRACKING")
                 }
             }
+
+            // Social eye tracking can be available without EXT combined gaze.
+            #[cfg(target_os = "android")]
+            if self.platform == Platform::QuestPro
+                && self
+                    .xr_session
+                    .instance()
+                    .exts()
+                    .fb_eye_tracking_social
+                    .is_some()
+            {
+                alvr_system_info::try_get_permission("com.oculus.permission.EYE_TRACKING");
+            }
         }
 
         if config.body_tracking.is_some()
@@ -582,6 +611,37 @@ impl InteractionContext {
                 }
                 // For vive, face trackers are always created at startup regardless of settings, and
                 // also cannot be destroyed early.
+
+                if matches!(
+                    self.platform,
+                    Platform::Pico4Pro | Platform::Pico4Enterprise
+                ) {
+                    let eyes_tracker = check_ext_object(
+                        "EyeTrackerPhoenix",
+                        FaceTrackerPhoenix::new(self.xr_session.clone(), self.xr_system),
+                    );
+
+                    let lip_tracker =
+                        if matches!(config, FaceTrackingSourcesConfig::PreferFullFaceTracking) {
+                            check_ext_object(
+                                "FaceTrackerPhoenix",
+                                FaceTrackerPhoenix::new(self.xr_session.clone(), self.xr_system),
+                            )
+                        } else {
+                            None
+                        };
+
+                    if let Some(eyes) = &eyes_tracker {
+                        eyes.stop_tracking().ok();
+                        eyes.start_tracking().ok();
+                    }
+
+                    self.face_sources.face_expressions_tracker =
+                        Some(FaceExpressionsTracker::Phoenix {
+                            eyes: eyes_tracker,
+                            lip: lip_tracker,
+                        });
+                }
             }
         }
 
@@ -962,25 +1022,50 @@ pub fn update_buttons(
     button_entries
 }
 
-// Note: Using the headset view space in order to get heading-independent eye gazes
+// Return native combined and per-eye social gazes separately, both in head-local space.
+// For foveation, the server prefers combined gaze and only derives a common gaze from
+// the social pair when native combined gaze is absent.
 pub fn get_face_data(
     xr_session: &xr::Session<xr::OpenGlEs>,
+    platform: Platform,
     sources: &FaceSources,
+    stage_reference_space: &xr::Space,
     view_reference_space: &xr::Space,
+    head_orientation: Quat,
     time: Duration,
 ) -> FaceData {
     let xr_time = crate::to_xr_time(time);
+    // On the tested PICO 4 Pro, locating gaze in VIEW space returned an identity rotation.
+    // For the PICO models below, use STAGE space and remove the head rotation from the
+    // same sampling time to recover head-local gaze.
+    let pico_eye_gaze_workaround = matches!(
+        platform,
+        Platform::PicoNeo3 | Platform::Pico4Pro | Platform::Pico4Enterprise
+    );
 
     let eyes_combined = if let Some((action, space)) = &sources.eyes_combined
         && action
             .is_active(xr_session, xr::Path::NULL)
             .unwrap_or(false)
-        && let Ok(location) = space.locate(view_reference_space, xr_time)
+        && let Ok(location) = space.locate(
+            if pico_eye_gaze_workaround {
+                stage_reference_space
+            } else {
+                view_reference_space
+            },
+            xr_time,
+        )
         && location
             .location_flags
             .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
     {
-        Some(crate::from_xr_quat(location.pose.orientation))
+        let orientation = crate::from_xr_quat(location.pose.orientation);
+
+        Some(if pico_eye_gaze_workaround {
+            head_orientation.inverse() * orientation
+        } else {
+            orientation
+        })
     } else {
         None
     };
@@ -1008,6 +1093,16 @@ pub fn get_face_data(
                 .ok()
                 .flatten()
                 .map(FaceExpressions::Bd),
+            FaceExpressionsTracker::Phoenix { eyes, lip } => {
+                let eyes = eyes.as_ref().and_then(|eye_tracker| {
+                    eye_tracker.get_eye_tracking_data(xr_time).ok().flatten()
+                });
+                let lip = lip.as_ref().and_then(|face_tracker| {
+                    face_tracker.get_face_tracking_data(xr_time).ok().flatten()
+                });
+
+                Some(FaceExpressions::Phoenix { eyes, lip })
+            }
             FaceExpressionsTracker::Htc { eye, lip } => {
                 let eye = eye
                     .as_ref()

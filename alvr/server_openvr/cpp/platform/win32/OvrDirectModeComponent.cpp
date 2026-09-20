@@ -241,8 +241,8 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
         // This enforces scheduling of work on the gpu between processes.
         if (SUCCEEDED(pSyncTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&pKeyedMutex)
             )) {
-            // TODO: Reasonable timeout and timeout handling
-            HRESULT hr = pKeyedMutex->AcquireSync(0, 10);
+            // Increased timeout from 10 to 500 to prevent frame drop/freeze at low FPS (PR #3212 / Issue #2931)
+            HRESULT hr = pKeyedMutex->AcquireSync(0, 500);
             if (hr != S_OK) {
                 Debug(
                     "[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %ls", hr, hr, GetErrorStr(hr).c_str()

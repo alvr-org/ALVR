@@ -315,6 +315,30 @@ pub fn tracking_loop(
         };
 
         let timestamp = tracking.poll_timestamp;
+        // Foveation uses one head-local gaze: prefer native combined gaze; if absent,
+        // use the bisector of both valid social eye directions. The resulting common gaze
+        // is projected into each eye later; the original face data remains unchanged.
+        let combined_eye_gaze = tracking.face.eyes_combined.or_else(|| {
+            let [left, right] = tracking.face.eyes_social;
+            let orientations = [left?, right?];
+            if orientations.iter().any(|orientation| {
+                let length_squared = orientation.length_squared();
+                !length_squared.is_finite() || length_squared <= f32::EPSILON
+            }) {
+                return None;
+            }
+
+            let [left, right] =
+                orientations.map(|orientation| orientation.normalize() * Vec3::NEG_Z);
+            if left.z >= -f32::EPSILON || right.z >= -f32::EPSILON {
+                return None;
+            }
+
+            // Social gaze may already be smoothed by the runtime.
+            (left + right)
+                .try_normalize()
+                .map(|direction| Quat::from_rotation_arc(Vec3::NEG_Z, direction))
+        });
 
         if let Some(stats) = &mut *ctx.statistics_manager.write() {
             stats.report_tracking_received(timestamp);
@@ -448,6 +472,7 @@ pub fn tracking_loop(
         ctx.events_sender
             .send(ServerCoreEvent::Tracking {
                 poll_timestamp: tracking.poll_timestamp,
+                combined_eye_gaze,
             })
             .ok();
 

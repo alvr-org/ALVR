@@ -268,6 +268,22 @@ pub fn build_streamer(
             build_layout.openvr_driver_manifest(),
         )
         .unwrap();
+
+        // copy pico_controller binding files
+        let input_resources_dir = build_layout.resources_dir().join("input");
+        sh.create_dir(&input_resources_dir).unwrap();
+        for fname in [
+            "legacy_bindings_pico_controller.json",
+            "vrcompositor_bindings_pico_controller.json",
+        ] {
+            sh.copy_file(
+                afs::crate_dir("server_openvr")
+                    .join("resources/input")
+                    .join(fname),
+                input_resources_dir.join(fname),
+            )
+            .unwrap();
+        }
     }
 }
 

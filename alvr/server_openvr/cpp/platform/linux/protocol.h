@@ -13,6 +13,7 @@ struct present_packet {
     uint32_t frame;
     uint64_t semaphore_value;
     float pose[3][4];
+    uint64_t present_time_ns;
 };
 
 struct init_packet {

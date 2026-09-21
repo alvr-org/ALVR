@@ -95,8 +95,6 @@ pub enum ServerCoreEvent {
     LocalViewParams([ViewParams; 2]), // In relation to head
     Tracking {
         poll_timestamp: Duration,
-        /// Head-local orientation, with -Z pointing along the combined gaze direction.
-        combined_eye_gaze: Option<Quat>,
     },
     Buttons(Vec<ButtonEntry>), // Note: this is after mapping
     RequestIDR,
@@ -294,6 +292,17 @@ impl ServerCoreContext {
             .read()
             .get_hand_skeleton(hand_type, timestamp)
             .copied()
+    }
+
+    /// Return head-local gaze for an exact retained tracking timestamp, with -Z along the gaze.
+    /// Returns None if the sample has no gaze or is no longer in the bounded history.
+    pub fn get_combined_eye_gaze(&self, sample_timestamp: Duration) -> Option<Quat> {
+        dbg_server_core!("get_combined_eye_gaze: sample_ts={sample_timestamp:?}");
+
+        self.connection_context
+            .tracking_manager
+            .read()
+            .get_combined_eye_gaze(sample_timestamp)
     }
 
     pub fn get_motion_to_photon_latency(&self) -> Duration {

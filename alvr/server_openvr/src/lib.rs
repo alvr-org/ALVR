@@ -296,13 +296,7 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                     ];
                     SetLocalViewParams(ffi_params.as_ptr());
                 },
-                ServerCoreEvent::Tracking {
-                    poll_timestamp,
-                    combined_eye_gaze,
-                } => {
-                    if let Some(foveation) = &mut *EYE_TRACKED_FOVEATION.lock() {
-                        foveation.update(poll_timestamp, combined_eye_gaze, Instant::now());
-                    }
+                ServerCoreEvent::Tracking { poll_timestamp } => {
                     let headset_config = &alvr_server_core::settings().headset;
 
                     let controllers_config = headset_config.controllers.clone().into_option();
@@ -315,6 +309,14 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                         .is_some_and(|c| c.detached_controllers_steamvr_sink);
 
                     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+                        if let Some(foveation) = &mut *EYE_TRACKED_FOVEATION.lock() {
+                            foveation.update(
+                                poll_timestamp,
+                                context.get_combined_eye_gaze(poll_timestamp),
+                                Instant::now(),
+                            );
+                        }
+
                         let target_timestamp =
                             poll_timestamp + context.get_motion_to_photon_latency();
                         let controllers_pose_time_offset = context.get_tracker_pose_time_offset();

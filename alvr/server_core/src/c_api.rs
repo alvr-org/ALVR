@@ -67,12 +67,7 @@ pub enum AlvrEvent {
     Battery(AlvrBatteryInfo),
     PlayspaceSync([f32; 2]),
     LocalViewParams([AlvrViewParams; 2]), // In relation to head
-    TrackingUpdated {
-        sample_timestamp_ns: u64,
-        has_combined_eye_gaze: bool,
-        /// Head-local orientation; ignored when has_combined_eye_gaze is false.
-        combined_eye_gaze: AlvrQuat,
-    },
+    TrackingUpdated { sample_timestamp_ns: u64 },
     ButtonsUpdated,
     RequestIDR,
     CaptureFrame,
@@ -307,16 +302,9 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
                     alvr_common::to_capi_view_params(&config[1]),
                 ])
             },
-            ServerCoreEvent::Tracking {
-                poll_timestamp,
-                combined_eye_gaze,
-            } => unsafe {
+            ServerCoreEvent::Tracking { poll_timestamp } => unsafe {
                 *out_event = AlvrEvent::TrackingUpdated {
                     sample_timestamp_ns: poll_timestamp.as_nanos() as u64,
-                    has_combined_eye_gaze: combined_eye_gaze.is_some(),
-                    combined_eye_gaze: combined_eye_gaze
-                        .map(|orientation| alvr_common::to_capi_quat(&orientation))
-                        .unwrap_or_default(),
                 };
             },
             ServerCoreEvent::Buttons(entries) => {
@@ -389,6 +377,27 @@ pub unsafe extern "C" fn alvr_get_hand_skeleton(
         for (i, joint_pose) in skeleton.iter().enumerate() {
             unsafe { *out_skeleton.add(i) = alvr_common::to_capi_pose(joint_pose) };
         }
+
+        true
+    } else {
+        false
+    }
+}
+
+/// Return head-local gaze for an exact retained tracking timestamp, with -Z along the gaze.
+/// Returns false without writing out_gaze if the sample has no gaze or is no longer retained.
+///
+/// # Safety
+/// out_gaze must point to a valid, writable AlvrQuat.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn alvr_get_combined_eye_gaze(
+    sample_timestamp_ns: u64,
+    out_gaze: *mut AlvrQuat,
+) -> bool {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read()
+        && let Some(gaze) = context.get_combined_eye_gaze(Duration::from_nanos(sample_timestamp_ns))
+    {
+        unsafe { *out_gaze = alvr_common::to_capi_quat(&gaze) };
 
         true
     } else {

@@ -553,19 +553,6 @@ impl InteractionContext {
                     alvr_system_info::try_get_permission("com.picovr.permission.FACE_TRACKING")
                 }
             }
-
-            // Social eye tracking can be available without EXT combined gaze.
-            #[cfg(target_os = "android")]
-            if self.platform == Platform::QuestPro
-                && self
-                    .xr_session
-                    .instance()
-                    .exts()
-                    .fb_eye_tracking_social
-                    .is_some()
-            {
-                alvr_system_info::try_get_permission("com.oculus.permission.EYE_TRACKING");
-            }
         }
 
         if config.body_tracking.is_some()

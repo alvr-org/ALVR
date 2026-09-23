@@ -89,6 +89,7 @@ pub struct ClientCoreContext {
 }
 
 impl ClientCoreContext {
+    /// On Android, the caller is responsible for requesting microphone permission.
     pub fn new(capabilities: ClientCapabilities) -> Self {
         dbg_client_core!("Create");
 
@@ -99,11 +100,7 @@ impl ClientCoreContext {
         }
 
         #[cfg(target_os = "android")]
-        {
-            dbg_client_core!("Getting permissions");
-            alvr_system_info::try_get_permission(alvr_system_info::MICROPHONE_PERMISSION);
-            alvr_system_info::set_wifi_lock(true);
-        }
+        alvr_system_info::set_wifi_lock(true);
 
         let platform = capabilities.platform;
 

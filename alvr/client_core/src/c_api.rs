@@ -234,6 +234,11 @@ pub extern "C" fn alvr_initialize(capabilities: AlvrClientCapabilities) {
         preferred_encoding_gamma: capabilities.preferred_encoding_gamma,
         prefer_hdr: capabilities.prefer_hdr,
     };
+
+    // Microphone permission is needed for audio capture in ClientCoreContext.
+    #[cfg(target_os = "android")]
+    alvr_system_info::try_get_permission(alvr_system_info::MICROPHONE_PERMISSION);
+
     *CLIENT_CORE_CONTEXT.lock() = Some(ClientCoreContext::new(capabilities));
 }
 

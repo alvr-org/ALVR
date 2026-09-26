@@ -234,7 +234,8 @@ pub extern "C" fn alvr_initialize(capabilities: AlvrClientCapabilities) {
         preferred_encoding_gamma: capabilities.preferred_encoding_gamma,
         prefer_hdr: capabilities.prefer_hdr,
     };
-    *CLIENT_CORE_CONTEXT.lock() = Some(ClientCoreContext::new(capabilities));
+
+    *CLIENT_CORE_CONTEXT.lock() = Some(ClientCoreContext::new(capabilities, vec![]));
 }
 
 #[unsafe(no_mangle)]

@@ -340,7 +340,34 @@ pub fn entry_point() {
             preferred_encoding_gamma: 1.0,
             prefer_hdr: false,
         };
-        let core_context = Arc::new(ClientCoreContext::new(capabilities));
+
+        let permissions = {
+            #[cfg(not(target_os = "android"))]
+            {
+                vec![]
+            }
+            #[cfg(target_os = "android")]
+            {
+                let mut permissions = vec![];
+
+                // Eye-tracking permission is needed for gaze input in InteractionContext.
+                if extra_extensions::supports_eye_gaze_interaction(&xr_session, xr_system) {
+                    match platform {
+                        Platform::QuestPro => {
+                            permissions.push("com.oculus.permission.EYE_TRACKING");
+                        }
+                        Platform::PicoNeo3 | Platform::Pico4Pro | Platform::Pico4Enterprise => {
+                            permissions.push("com.picovr.permission.EYE_TRACKING");
+                        }
+                        _ => {}
+                    }
+                }
+
+                permissions
+            }
+        };
+
+        let core_context = Arc::new(ClientCoreContext::new(capabilities, permissions));
 
         let interaction_context = Arc::new(RwLock::new(InteractionContext::new(
             xr_session.clone(),

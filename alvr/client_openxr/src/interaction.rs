@@ -405,17 +405,6 @@ impl InteractionContext {
 
         let eyes_combined =
             if extra_extensions::supports_eye_gaze_interaction(&xr_session, xr_system) {
-                if matches!(platform, Platform::QuestPro) {
-                    #[cfg(target_os = "android")]
-                    alvr_system_info::try_get_permission("com.oculus.permission.EYE_TRACKING");
-                } else if matches!(
-                    platform,
-                    Platform::PicoNeo3 | Platform::Pico4Pro | Platform::Pico4Enterprise
-                ) {
-                    #[cfg(target_os = "android")]
-                    alvr_system_info::try_get_permission("com.picovr.permission.EYE_TRACKING");
-                }
-
                 let action = action_set
                     .create_action("combined_eye_gaze", "Combined eye gaze", &[])
                     .unwrap();

@@ -3,7 +3,7 @@ use jni::{
     Env, JavaVM,
     errors::Result as JniResult,
     jni_sig, jni_str,
-    objects::{JObject, JString},
+    objects::{JObject, JObjectArray, JString},
     refs::Reference,
     strings::JNIStr,
     sys::jobject,
@@ -35,28 +35,38 @@ fn get_api_level() -> i32 {
     .unwrap()
 }
 
-pub fn try_get_permission(permission: &str) {
+/// Requests missing permissions together without waiting for the user's response.
+pub fn try_get_permissions(permissions: &[&str]) {
     vm().attach_current_thread(|env| {
-        let mic_perm_jstring = env.new_string(permission)?;
+        let mut missing_permissions = Vec::new();
+        for permission in permissions {
+            let permission = env.new_string(permission)?;
+            let permission_status = env
+                .call_method(
+                    unsafe { JObject::global_kind_from_raw(context()) },
+                    jni_str!("checkSelfPermission"),
+                    jni_sig!("(Ljava/lang/String;)I"),
+                    &[(&permission).into()],
+                )?
+                .i()?;
 
-        let permission_status = env
-            .call_method(
-                unsafe { JObject::global_kind_from_raw(context()) },
-                jni_str!("checkSelfPermission"),
-                jni_sig!("(Ljava/lang/String;)I"),
-                &[(&mic_perm_jstring).into()],
-            )?
-            .i()?;
+            if permission_status != 0 {
+                missing_permissions.push(permission);
+            }
+        }
 
-        if permission_status != 0 {
-            let perm_array =
-                env.new_object_array(1, jni_str!("java/lang/String"), mic_perm_jstring)?;
+        if !missing_permissions.is_empty() {
+            let permissions =
+                JObjectArray::<JString>::new(env, missing_permissions.len(), JString::null())?;
+            for (index, permission) in missing_permissions.iter().enumerate() {
+                permissions.set_element(env, index, permission)?;
+            }
 
             env.call_method(
                 unsafe { JObject::global_kind_from_raw(context()) },
                 jni_str!("requestPermissions"),
                 jni_sig!("([Ljava/lang/String;I)V"),
-                &[(&perm_array).into(), 0.into()],
+                &[(&permissions).into(), 0.into()],
             )?;
             // todo: handle case where permission is rejected
         }
@@ -64,6 +74,10 @@ pub fn try_get_permission(permission: &str) {
         JniResult::Ok(())
     })
     .unwrap();
+}
+
+pub fn try_get_permission(permission: &str) {
+    try_get_permissions(&[permission]);
 }
 
 pub fn build_string(ty: &CStr) -> String {

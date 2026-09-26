@@ -89,8 +89,9 @@ pub struct ClientCoreContext {
 }
 
 impl ClientCoreContext {
-    /// On Android, the caller is responsible for requesting microphone permission.
-    pub fn new(capabilities: ClientCapabilities) -> Self {
+    /// On Android, requests microphone permission together with the additional permissions.
+    #[cfg_attr(not(target_os = "android"), expect(unused_variables))]
+    pub fn new(capabilities: ClientCapabilities, additional_permissions: Vec<&str>) -> Self {
         dbg_client_core!("Create");
 
         // Make sure to reset config in case of version compat mismatch.
@@ -100,7 +101,12 @@ impl ClientCoreContext {
         }
 
         #[cfg(target_os = "android")]
-        alvr_system_info::set_wifi_lock(true);
+        {
+            let mut permissions = additional_permissions;
+            permissions.push(alvr_system_info::MICROPHONE_PERMISSION);
+            alvr_system_info::try_get_permissions(&permissions);
+            alvr_system_info::set_wifi_lock(true);
+        }
 
         let platform = capabilities.platform;
 

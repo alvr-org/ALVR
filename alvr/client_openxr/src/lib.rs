@@ -341,28 +341,33 @@ pub fn entry_point() {
             prefer_hdr: false,
         };
 
-        #[cfg(target_os = "android")]
-        {
-            // Microphone permission is needed for audio capture in ClientCoreContext.
-            let mut permissions = vec![alvr_system_info::MICROPHONE_PERMISSION];
-
-            // Eye-tracking permission is needed for gaze input in InteractionContext.
-            if extra_extensions::supports_eye_gaze_interaction(&xr_session, xr_system) {
-                match platform {
-                    Platform::QuestPro => {
-                        permissions.push("com.oculus.permission.EYE_TRACKING");
-                    }
-                    Platform::PicoNeo3 | Platform::Pico4Pro | Platform::Pico4Enterprise => {
-                        permissions.push("com.picovr.permission.EYE_TRACKING");
-                    }
-                    _ => {}
-                }
+        let permissions = {
+            #[cfg(not(target_os = "android"))]
+            {
+                vec![]
             }
+            #[cfg(target_os = "android")]
+            {
+                let mut permissions = vec![];
 
-            alvr_system_info::try_get_permissions(&permissions);
-        }
+                // Eye-tracking permission is needed for gaze input in InteractionContext.
+                if extra_extensions::supports_eye_gaze_interaction(&xr_session, xr_system) {
+                    match platform {
+                        Platform::QuestPro => {
+                            permissions.push("com.oculus.permission.EYE_TRACKING");
+                        }
+                        Platform::PicoNeo3 | Platform::Pico4Pro | Platform::Pico4Enterprise => {
+                            permissions.push("com.picovr.permission.EYE_TRACKING");
+                        }
+                        _ => {}
+                    }
+                }
 
-        let core_context = Arc::new(ClientCoreContext::new(capabilities));
+                permissions
+            }
+        };
+
+        let core_context = Arc::new(ClientCoreContext::new(capabilities, permissions));
 
         let interaction_context = Arc::new(RwLock::new(InteractionContext::new(
             xr_session.clone(),

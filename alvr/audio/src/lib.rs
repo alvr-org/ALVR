@@ -219,6 +219,7 @@ fn downmix_audio(data: Vec<u8>, in_channels: u16, out_channels: u16) -> Vec<u8> 
                 AudioChannel::BackRight,
             ],
             6 => vec![
+                AudioChannel::FrontLeft,
                 AudioChannel::FrontRight,
                 AudioChannel::Center,
                 AudioChannel::LowFrequency,

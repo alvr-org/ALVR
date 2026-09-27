@@ -108,7 +108,6 @@ struct Settings {
     int m_recommendedTargetWidth;
     int m_recommendedTargetHeight;
     int m_nAdapterIndex;
-    char m_captureFrameDir[1024];
 
     bool m_enableFoveatedEncoding;
     FfiFoveatedEncodingParams m_foveatedEncoding;
@@ -164,8 +163,6 @@ struct Settings {
 
     bool m_enableViveTrackerProxy = false;
     bool m_trackingRefOnly = false;
-    bool m_enableLinuxVulkanAsyncCompute;
-    bool m_enableLinuxAsyncReprojection;
 
     bool m_enableControllers;
     bool m_controllerIsTracker = false;
@@ -265,8 +262,6 @@ extern "C" void SetProximityState(bool headset_is_worn);
 extern "C" void InitOpenvrClient();
 extern "C" void ShutdownOpenvrClient();
 extern "C" void SetChaperoneArea(float areaWidth, float areaHeight);
-
-extern "C" void CaptureFrame();
 
 // NalParsing.cpp
 void ParseFrameNals(

@@ -1,7 +1,7 @@
 #include "Renderer.hpp"
 
-#include <unistd.h>
 #include <optional>
+#include <unistd.h>
 #include <vulkan/vulkan_structs.hpp>
 
 namespace alvr::render::detail {
@@ -640,14 +640,31 @@ void Renderer::render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx, int const wai
 
     // Copy the left and right eye images into the first working image.
     Image* stageOut = pipes.empty() ? &output.image : &stagingImgs[0];
-    transitionImage(inputImages[leftIdx], vk::ImageLayout::eGeneral, vk::AccessFlagBits::eNone,
-                    vk::AccessFlagBits::eTransferRead, barriers);
-    transitionImage(inputImages[rightIdx], vk::ImageLayout::eGeneral, vk::AccessFlagBits::eNone,
-                    vk::AccessFlagBits::eTransferRead, barriers);
-    transitionImage(*stageOut, vk::ImageLayout::eGeneral, vk::AccessFlagBits::eNone,
-                    vk::AccessFlagBits::eTransferWrite, barriers);
+    transitionImage(
+        inputImages[leftIdx],
+        vk::ImageLayout::eGeneral,
+        vk::AccessFlagBits::eNone,
+        vk::AccessFlagBits::eTransferRead,
+        barriers
+    );
+    transitionImage(
+        inputImages[rightIdx],
+        vk::ImageLayout::eGeneral,
+        vk::AccessFlagBits::eNone,
+        vk::AccessFlagBits::eTransferRead,
+        barriers
+    );
+    transitionImage(
+        *stageOut,
+        vk::ImageLayout::eGeneral,
+        vk::AccessFlagBits::eNone,
+        vk::AccessFlagBits::eTransferWrite,
+        barriers
+    );
 
-    flushBarriers(barriers, vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer);
+    flushBarriers(
+        barriers, vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer
+    );
 
     vk::ImageSubresourceLayers subresLayout {
         .aspectMask = vk::ImageAspectFlagBits::eColor,
@@ -701,12 +718,14 @@ void Renderer::render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx, int const wai
     };
 
     for (usize pipeIdx = 0; pipeIdx < pipes.size(); ++pipeIdx) {
-        Image* nextOut = pipeIdx + 1 == pipes.size() ? &output.image : &stagingImgs[(pipeIdx + 1) % StagingImgCount];
+        Image* nextOut = pipeIdx + 1 == pipes.size()
+            ? &output.image
+            : &stagingImgs[(pipeIdx + 1) % StagingImgCount];
         vk::Extent2D targetExtent = pipeIdx + 1 == pipes.size() ? outExtent
-                                                               : vk::Extent2D {
-                                                                     .width = eyeExtent.width * 2,
-                                                                     .height = eyeExtent.height,
-                                                                 };
+                                                                : vk::Extent2D {
+                                                                      .width = eyeExtent.width * 2,
+                                                                      .height = eyeExtent.height,
+                                                                  };
 
         transitionImage(
             *prev,
@@ -723,15 +742,17 @@ void Renderer::render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx, int const wai
             barriers
         );
 
-        flushBarriers(barriers, vk::PipelineStageFlagBits::eTransfer | vk::PipelineStageFlagBits::eComputeShader,
-                      vk::PipelineStageFlagBits::eComputeShader);
+        flushBarriers(
+            barriers,
+            vk::PipelineStageFlagBits::eTransfer | vk::PipelineStageFlagBits::eComputeShader,
+            vk::PipelineStageFlagBits::eComputeShader
+        );
 
         pipes[pipeIdx].render(
             vkCtx, cmdBuf, prev->view, nextOut->view, targetExtent, pushConstants
         );
         prev = nextOut;
     }
-
 
     cmdBuf.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, timestampPool, 1);
 
@@ -747,10 +768,8 @@ void Renderer::render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx, int const wai
     };
     vk::SubmitInfo submitInfo {
         // .pNext = &timelineInfo,
-        .waitSemaphoreCount = importedCount,
-        .pWaitSemaphores = importedSems,
-        .pWaitDstStageMask = waitStages,
-        .commandBufferCount = 1,
+        .waitSemaphoreCount = importedCount, .pWaitSemaphores = importedSems,
+        .pWaitDstStageMask = waitStages,     .commandBufferCount = 1,
         .pCommandBuffers = &cmdBuf,
     };
 

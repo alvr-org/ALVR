@@ -222,11 +222,10 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
                 auto const deadline = std::chrono::steady_clock::now() + capNs;
                 bool allSignaled = false;
                 while (!allSignaled) {
-                    int remainingMs
-                        = (int)std::chrono::duration_cast<std::chrono::milliseconds>(
-                              deadline - std::chrono::steady_clock::now()
-                        )
-                              .count();
+                    int remainingMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(
+                                          deadline - std::chrono::steady_clock::now()
+                    )
+                                          .count();
                     if (remainingMs < 0) {
                         break;
                     }
@@ -246,9 +245,11 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
                     dropFds = true;
                     if (++m_gpuWaitConsecTimeouts >= GpuWaitDisarmThreshold) {
                         m_gpuWaitPollDisarmed = true;
-                        Info("Encode worker: writer fences timed out %u frames in a row; "
-                             "GPU wait disarmed for this session\n",
-                             m_gpuWaitConsecTimeouts);
+                        Info(
+                            "Encode worker: writer fences timed out %u frames in a row; "
+                            "GPU wait disarmed for this session\n",
+                            m_gpuWaitConsecTimeouts
+                        );
                     }
                 }
             }
@@ -356,9 +357,8 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
     }
 
     uint32_t usageFlags = static_cast<uint32_t>(
-        vk::ImageUsageFlagBits::eTransferSrc | 
-        vk::ImageUsageFlagBits::eSampled | 
-        vk::ImageUsageFlagBits::eInputAttachment
+        vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled
+        | vk::ImageUsageFlagBits::eInputAttachment
     );
 
     for (int i = 0; i < 3; i++) {
@@ -372,8 +372,10 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
             true,
             1,
             1,
-            0, // Change creation flags if changed in renderer. Otherwise, the image may not be usable in the renderer.
-            usageFlags, // Change usage flags if changed in renderer. Otherwise, the image may not be usable in the renderer.
+            0, // Change creation flags if changed in renderer. Otherwise, the image may not be
+               // usable in the renderer.
+            usageFlags, // Change usage flags if changed in renderer. Otherwise, the image may not
+                        // be usable in the renderer.
             &myHandle
         );
 
@@ -425,7 +427,7 @@ void OvrDirectModeComponent::DestroySwapTextureSet(vr::SharedTextureHandle_t sha
 /** Used to purge all texture sets for a given process. */
 void OvrDirectModeComponent::DestroyAllSwapTextureSets(uint32_t unPid) {
     Info("DestroyAllSwapTextureSets pid=%d\n", unPid);
-    
+
     m_presentMutex.lock();
     std::vector<ProcessResource*> resourcesToDestroy;
     for (auto it = m_handleMap.begin(); it != m_handleMap.end(); ++it) {

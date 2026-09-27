@@ -347,7 +347,8 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
     inputs->pad_idx = 0;
     inputs->next = NULL;
 
-    std::string filters = "scale_vaapi=w=" + std::to_string(width) + ":h=" + std::to_string(height) + ":out_range=full:out_color_matrix=bt709:format=";
+    std::string filters = "scale_vaapi=w=" + std::to_string(width) + ":h=" + std::to_string(height)
+        + ":out_range=full:out_color_matrix=bt709:format=";
     if ((Settings_Instance()->m_codec == ALVR_CODEC_HEVC
          || Settings_Instance()->m_codec == ALVR_CODEC_AV1)
         && Settings_Instance()->m_use10bitEncoder) {
@@ -373,9 +374,10 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
 
     AVBufferRef* out_hw_frames = av_buffersink_get_hw_frames_ctx(filter_out);
     if (!out_hw_frames) {
-        throw std::runtime_error("Failed to get hw_frames_ctx from buffersink. scale_vaapi failed to output a hardware frame.");
+        throw std::runtime_error("Failed to get hw_frames_ctx from buffersink. scale_vaapi failed "
+                                 "to output a hardware frame.");
     }
-    
+
     encoder_ctx->hw_frames_ctx = av_buffer_ref(out_hw_frames);
 
     err = avcodec_open2(encoder_ctx, codec, NULL);

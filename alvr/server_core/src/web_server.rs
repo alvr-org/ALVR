@@ -91,7 +91,6 @@ pub async fn web_server(connection_context: Arc<ConnectionContext>) -> Result<()
                 )
                 .route("/buttons", routing::post(set_buttons))
                 .route("/insert-idr", routing::post(insert_idr))
-                .route("/capture-frame", routing::post(capture_frame))
                 .nest(
                     "/recording",
                     Router::new()
@@ -204,10 +203,6 @@ async fn update_client_connections(
 
 async fn insert_idr(State(ctx): State<Arc<ConnectionContext>>) {
     ctx.events_sender.send(ServerCoreEvent::RequestIDR).ok();
-}
-
-async fn capture_frame(State(ctx): State<Arc<ConnectionContext>>) {
-    ctx.events_sender.send(ServerCoreEvent::CaptureFrame).ok();
 }
 
 async fn start_recording(State(ctx): State<Arc<ConnectionContext>>) {

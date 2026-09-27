@@ -196,7 +196,6 @@ void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
 
     if (m_viveTrackerProxy)
         m_viveTrackerProxy->update();
-
 }
 
 void Hmd::StartStreaming() {

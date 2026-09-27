@@ -45,9 +45,7 @@ AVPixelFormat nvenc_surface_format(AVPixelFormat inputFormat) {
     }
 }
 
-void set_hwframe_ctx(
-    AVCodecContext* ctx, AVBufferRef* hw_device_ctx, AVPixelFormat surfaceFormat
-) {
+void set_hwframe_ctx(AVCodecContext* ctx, AVBufferRef* hw_device_ctx, AVPixelFormat surfaceFormat) {
     AVBufferRef* hw_frames_ref;
     AVHWFramesContext* frames_ctx = NULL;
     int err = 0;

@@ -72,6 +72,5 @@ private:
     uint64_t m_targetTimestampNs;
     uint64_t m_prevTargetTimestampNs;
 
-
     std::mutex m_presentMutex;
 };

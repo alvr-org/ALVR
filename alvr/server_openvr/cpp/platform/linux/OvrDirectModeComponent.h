@@ -6,10 +6,10 @@
 
 #include "alvr_server/Settings.h"
 
-#include <map>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <map>
 #include <mutex>
 #include <thread>
 

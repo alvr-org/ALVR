@@ -1,8 +1,8 @@
 #pragma once
 
 #define VULKAN_HPP_NO_CONSTRUCTORS
-#include <vulkan/vulkan.h>
 #include <cstddef>
+#include <vulkan/vulkan.h>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_enums.hpp>

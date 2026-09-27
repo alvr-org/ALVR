@@ -70,7 +70,6 @@ pub enum AlvrEvent {
     TrackingUpdated { sample_timestamp_ns: u64 },
     ButtonsUpdated,
     RequestIDR,
-    CaptureFrame,
     RestartPending,
     ShutdownPending,
     ProximityState(bool),
@@ -312,7 +311,6 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
                 unsafe { *out_event = AlvrEvent::ButtonsUpdated };
             }
             ServerCoreEvent::RequestIDR => unsafe { *out_event = AlvrEvent::RequestIDR },
-            ServerCoreEvent::CaptureFrame => unsafe { *out_event = AlvrEvent::CaptureFrame },
             ServerCoreEvent::RestartPending => unsafe {
                 *out_event = AlvrEvent::RestartPending;
             },

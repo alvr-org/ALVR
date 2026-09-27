@@ -522,11 +522,3 @@ void SetProximityState(bool headset_is_worn) {
 void SetChaperoneArea(float areaWidth, float areaHeight) {
     _SetChaperoneArea(areaWidth, areaHeight);
 }
-
-void CaptureFrame() {
-#if _WIN32
-    // if (g_driver_provider.hmd && g_driver_provider.hmd->m_encoder) {
-    //     g_driver_provider.hmd->m_encoder->CaptureFrame();
-    // }
-#endif
-}

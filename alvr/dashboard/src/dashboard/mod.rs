@@ -31,7 +31,6 @@ pub enum ServerRequest {
         hostname: String,
         action: ClientConnectionsAction,
     },
-    CaptureFrame,
     InsertIdr,
     StartRecording,
     StopRecording,

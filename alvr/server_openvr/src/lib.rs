@@ -258,7 +258,7 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                 .foveated_encoding
                                 .as_option()
                                 .is_some_and(|config| {
-                                    config.gaze_input_source == GazeInputSource::Headset
+                                    config.gaze_input_source != GazeInputSource::None
                                 })
                         })
                         .map(|params| {

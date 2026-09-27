@@ -474,7 +474,7 @@ pub struct FoveatedEncodingConfig {
 
     #[schema(strings(
         display_name = "Center shift",
-        help = "Horizontal and vertical shift, in X/Y order. Used as a static fallback; overridden, not added to, when headset eye-tracking centers are available."
+        help = "Horizontal and vertical shift, in X/Y order. Used as a static fallback; overridden, not added to, when eye-tracking centers are available."
     ))]
     #[schema(gui(slider(min = -1.0, max = 1.0, step = 0.01)))]
     #[schema(flag = "steamvr-restart")]
@@ -492,6 +492,14 @@ pub enum GazeInputSource {
     None,
     #[schema(strings(display_name = "Headset eye tracking"))]
     Headset,
+    #[schema(strings(
+        display_name = "External OSC",
+        help = "Receive head-local combined gaze over OSC/UDP on localhost."
+    ))]
+    ExternalOsc {
+        #[schema(strings(display_name = "UDP port"))]
+        port: u16,
+    },
 }
 
 #[repr(C)]
@@ -1882,6 +1890,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     gui_collapsed: true,
                     force_enable: false,
                     gaze_input_source: GazeInputSourceDefault {
+                        ExternalOsc: GazeInputSourceExternalOscDefault { port: 9945 },
                         variant: GazeInputSourceDefaultVariant::None,
                     },
                     center_size: ArrayDefault {

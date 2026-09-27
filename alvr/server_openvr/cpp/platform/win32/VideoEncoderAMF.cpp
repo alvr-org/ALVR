@@ -728,11 +728,17 @@ void VideoEncoderAMF::Transmit(
             m_amfComponents.back()->SetProperty(
                 AMF_VIDEO_ENCODER_VBV_BUFFER_SIZE, bitRateIn / m_refreshRate * 1.1
             );
-        } else {
+        } else if (m_codec == ALVR_CODEC_HEVC) {
             m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
             m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_PEAK_BITRATE, bitRateIn);
             m_amfComponents.back()->SetProperty(
                 AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitRateIn / m_refreshRate * 1.1
+            );
+        } else {
+            m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_AV1_TARGET_BITRATE, bitRateIn);
+            m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_AV1_PEAK_BITRATE, bitRateIn);
+            m_amfComponents.back()->SetProperty(
+                AMF_VIDEO_ENCODER_AV1_VBV_BUFFER_SIZE, bitRateIn / m_refreshRate * 1.1
             );
         }
 

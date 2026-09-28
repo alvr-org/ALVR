@@ -21,7 +21,7 @@ use alvr_common::{
 use alvr_events::{EventType, TrackingEvent};
 use alvr_packets::TrackingData;
 use alvr_session::{
-    BodyTrackingConfig, GazeInputSource, HeadsetConfig, RecenteringMode, Settings, VMCConfig,
+    BodyTrackingConfig, HeadsetConfig, RecenteringMode, Settings, VMCConfig,
     settings_schema::Switch,
 };
 use alvr_sockets::StreamReceiver;
@@ -302,12 +302,26 @@ pub fn tracking_loop(
                 )
             });
 
+    let eye_tracking_osc_port = initial_settings
+        .headset
+        .face_tracking
+        .as_option()
+        .and_then(|config| config.eye_tracking_osc_override.as_option())
+        .map(|config| config.port);
+    let mut eye_gaze_receiver = eye_tracking_osc_port.and_then(|port| {
+        EyeGazeReceiver::new(port)
+            .inspect_err(|error| warn!("Failed to bind external gaze OSC port {port}: {error}"))
+            .ok()
+    });
+
     let mut face_tracking_sink = initial_settings
         .headset
         .face_tracking
         .into_option()
         .and_then(|config| {
-            FaceTrackingSink::new(config.sink, initial_settings.connection.osc_local_port).ok()
+            FaceTrackingSink::new(config.sink, initial_settings.connection.osc_local_port)
+                .ok()
+                .flatten()
         });
 
     let mut body_tracking_sink = initial_settings
@@ -324,19 +338,6 @@ pub fn tracking_loop(
         .into_option()
         .and_then(|config| VMCSink::new(config).ok());
 
-    let gaze_input_source = initial_settings
-        .video
-        .foveated_encoding
-        .as_option()
-        .map_or(GazeInputSource::None, |config| config.gaze_input_source);
-    let mut eye_gaze_receiver = if let GazeInputSource::ExternalOsc { port } = gaze_input_source {
-        EyeGazeReceiver::new(port)
-            .inspect_err(|error| warn!("Failed to bind external gaze OSC port {port}: {error}"))
-            .ok()
-    } else {
-        None
-    };
-
     while is_streaming() {
         let data = match tracking_receiver.recv(STREAMING_RECV_TIMEOUT) {
             Ok(tracking) => tracking,
@@ -349,8 +350,11 @@ pub fn tracking_loop(
 
         let timestamp = tracking.poll_timestamp;
 
-        let combined_eye_gaze = match (gaze_input_source, &mut eye_gaze_receiver) {
-            (GazeInputSource::ExternalOsc { .. }, Some(receiver)) => {
+        if eye_tracking_osc_port.is_some() {
+            // Select one eye input before foveation and social output consume it. Do not fall
+            // back to headset eyes when OSC input is missing, invalid or unavailable.
+            tracking.face.eyes_social = [None; 2];
+            tracking.face.eyes_combined = if let Some(receiver) = &mut eye_gaze_receiver {
                 match receiver.receive(timestamp) {
                     Ok(gaze) => gaze,
                     Err(error) => {
@@ -360,10 +364,10 @@ pub fn tracking_loop(
                         None
                     }
                 }
-            }
-            (GazeInputSource::ExternalOsc { .. }, None) => None,
-            (GazeInputSource::None | GazeInputSource::Headset, _) => tracking.face.eyes_combined,
-        };
+            } else {
+                None
+            };
+        }
 
         if let Some(stats) = &mut *ctx.statistics_manager.write() {
             stats.report_tracking_received(timestamp);
@@ -424,8 +428,7 @@ pub fn tracking_loop(
                 tracking_manager_lock.report_hand_skeleton(HandType::Right, timestamp, skeleton);
             }
 
-            // Select foveation input without replacing the client's face/OSC output data.
-            tracking_manager_lock.report_combined_eye_gaze(timestamp, combined_eye_gaze);
+            tracking_manager_lock.report_combined_eye_gaze(timestamp, tracking.face.eyes_combined);
 
             if let Some(sink) = &mut face_tracking_sink {
                 sink.send_tracking(&tracking.face);

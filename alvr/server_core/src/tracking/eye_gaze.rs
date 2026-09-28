@@ -114,7 +114,8 @@ impl EyeGazeReceiver {
                     continue;
                 }
 
-                Some(orientation)
+                // Social output also consumes this quaternion and expects a unit rotation.
+                Some(orientation.normalize())
             } else {
                 None
             };

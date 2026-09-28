@@ -15,8 +15,9 @@ pub struct FaceTrackingSink {
 }
 
 impl FaceTrackingSink {
-    pub fn new(config: FaceTrackingSinkConfig, local_osc_port: u16) -> Result<Self> {
+    pub fn new(config: FaceTrackingSinkConfig, local_osc_port: u16) -> Result<Option<Self>> {
         let port = match config {
+            FaceTrackingSinkConfig::None => return Ok(None),
             FaceTrackingSinkConfig::VrchatEyeOsc { port } => port,
             FaceTrackingSinkConfig::VrcFaceTracking => VRCFT_PORT,
         };
@@ -24,11 +25,11 @@ impl FaceTrackingSink {
         let socket = UdpSocket::bind(format!("127.0.0.1:{local_osc_port}"))?;
         socket.connect(format!("127.0.0.1:{port}"))?;
 
-        Ok(Self {
+        Ok(Some(Self {
             config,
             socket,
             packet_buffer: vec![],
-        })
+        }))
     }
 
     fn send_osc_message(&self, path: &str, args: Vec<OscType>) {
@@ -53,6 +54,7 @@ impl FaceTrackingSink {
 
     pub fn send_tracking(&mut self, face_data: &FaceData) {
         match self.config {
+            FaceTrackingSinkConfig::None => (),
             FaceTrackingSinkConfig::VrchatEyeOsc { .. } => {
                 if let [Some(left), Some(right)] = face_data.eyes_social {
                     let (left_pitch, left_yaw, _) = left.to_euler(EulerRot::XYZ);

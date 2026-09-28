@@ -460,9 +460,12 @@ pub struct FoveatedEncodingConfig {
     #[schema(strings(help = "Force enable on smartphone clients"))]
     pub force_enable: bool,
 
-    #[schema(strings(display_name = "Eye tracking input"))]
+    #[schema(strings(
+        display_name = "Use eye tracking",
+        help = "Move the foveation center using eye tracking. Turn this off to keep fixed foveated encoding. Configure external input under Headset > Face tracking > Eye tracking OSC override."
+    ))]
     #[schema(flag = "steamvr-restart")]
-    pub gaze_input_source: GazeInputSource,
+    pub eye_tracking: bool,
 
     #[schema(strings(
         display_name = "Center region size",
@@ -474,7 +477,7 @@ pub struct FoveatedEncodingConfig {
 
     #[schema(strings(
         display_name = "Center shift",
-        help = "Horizontal and vertical shift, in X/Y order. Used as a static fallback; overridden, not added to, when eye-tracking centers are available."
+        help = "Horizontal and vertical shift, in X/Y order. Used when Use eye tracking is off, or as a fallback when eye tracking is unavailable. Eye-tracking centers replace this shift rather than adding to it."
     ))]
     #[schema(gui(slider(min = -1.0, max = 1.0, step = 0.01)))]
     #[schema(flag = "steamvr-restart")]
@@ -484,22 +487,6 @@ pub struct FoveatedEncodingConfig {
     #[schema(gui(slider(min = 1.0, max = 10.0, step = 1.0)))]
     #[schema(flag = "steamvr-restart")]
     pub edge_ratio: [f32; 2],
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum GazeInputSource {
-    #[schema(strings(help = "Use the configured static foveation center"))]
-    None,
-    #[schema(strings(display_name = "Headset eye tracking"))]
-    Headset,
-    #[schema(strings(
-        display_name = "External OSC",
-        help = "Receive head-local combined gaze over OSC/UDP on localhost."
-    ))]
-    ExternalOsc {
-        #[schema(strings(display_name = "UDP port"))]
-        port: u16,
-    },
 }
 
 #[repr(C)]
@@ -927,6 +914,8 @@ pub enum FaceTrackingSourcesConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub enum FaceTrackingSinkConfig {
+    #[schema(strings(display_name = "Disabled"))]
+    None,
     #[schema(strings(display_name = "VRChat Eye OSC"))]
     VrchatEyeOsc { port: u16 },
     #[schema(strings(display_name = "VRCFaceTracking"))]
@@ -934,9 +923,22 @@ pub enum FaceTrackingSinkConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct OscPort {
+    pub port: u16,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct FaceTrackingConfig {
     pub sources: FaceTrackingSourcesConfig,
+    #[schema(strings(
+        display_name = "Eye tracking OSC override",
+        help = "Use external combined gaze received over OSC/UDP on localhost instead of headset eye directions. This input is shared by foveated encoding and social output. Turn this off to use headset eye tracking."
+    ))]
+    pub eye_tracking_osc_override: Switch<OscPort>,
+    #[schema(strings(
+        help = "Forward eye and face tracking to another application. Select Disabled to turn off forwarding without disabling eye tracking for foveated encoding."
+    ))]
     pub sink: FaceTrackingSinkConfig,
 }
 
@@ -1889,10 +1891,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: FoveatedEncodingConfigDefault {
                     gui_collapsed: true,
                     force_enable: false,
-                    gaze_input_source: GazeInputSourceDefault {
-                        ExternalOsc: GazeInputSourceExternalOscDefault { port: 9945 },
-                        variant: GazeInputSourceDefaultVariant::None,
-                    },
+                    eye_tracking: false,
                     center_size: ArrayDefault {
                         gui_collapsed: false,
                         content: [0.45, 0.4],
@@ -2004,6 +2003,10 @@ pub fn session_settings_default() -> SettingsDefault {
                     gui_collapsed: true,
                     sources: FaceTrackingSourcesConfigDefault {
                         variant: FaceTrackingSourcesConfigDefaultVariant::PreferFullFaceTracking,
+                    },
+                    eye_tracking_osc_override: SwitchDefault {
+                        enabled: false,
+                        content: OscPortDefault { port: 9945 },
                     },
                     sink: FaceTrackingSinkConfigDefault {
                         VrchatEyeOsc: FaceTrackingSinkConfigVrchatEyeOscDefault { port: 9000 },

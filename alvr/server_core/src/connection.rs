@@ -26,8 +26,8 @@ use alvr_packets::{
     VIDEO, VideoPacketHeader,
 };
 use alvr_session::{
-    BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, GazeInputSource,
-    H264Profile, Settings, SocketProtocol, SteamvrHmdInitConfig,
+    BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile, Settings,
+    SocketProtocol, SteamvrHmdInitConfig,
 };
 use alvr_sockets::{
     CONTROL_PORT, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, ProtoControlSocket, SocketConnection,
@@ -142,7 +142,7 @@ pub fn compute_restart_settings_hash(
         .map(|c| c.sources.meta.prefer_full_body)
         .unwrap_or(false);
 
-    let mut foveation_gaze_input_source = GazeInputSource::None;
+    let mut foveation_eye_tracking = false;
     let mut foveation_center_size_x = 0.0_f32;
     let mut foveation_center_size_y = 0.0_f32;
     let mut foveation_center_shift_x = 0.0_f32;
@@ -151,7 +151,11 @@ pub fn compute_restart_settings_hash(
     let mut foveation_edge_ratio_y = 0.0_f32;
     let enable_foveated_encoding =
         if let Switch::Enabled(config) = &settings.video.foveated_encoding {
-            foveation_gaze_input_source = config.gaze_input_source;
+            foveation_eye_tracking = settings
+                .headset
+                .face_tracking
+                .as_option()
+                .is_some_and(|config| config.sink.eye_tracked_foveated_encoding);
             [foveation_center_size_x, foveation_center_size_y] = config.center_size;
             [foveation_center_shift_x, foveation_center_shift_y] = config.center_shift;
             [foveation_edge_ratio_x, foveation_edge_ratio_y] = config.edge_ratio;
@@ -244,7 +248,7 @@ pub fn compute_restart_settings_hash(
     nvenc.enable_weighted_prediction.hash(&mut h);
     // Foveated encoding
     enable_foveated_encoding.hash(&mut h);
-    foveation_gaze_input_source.hash(&mut h);
+    foveation_eye_tracking.hash(&mut h);
     foveation_center_size_x.to_bits().hash(&mut h);
     foveation_center_size_y.to_bits().hash(&mut h);
     foveation_center_shift_x.to_bits().hash(&mut h);

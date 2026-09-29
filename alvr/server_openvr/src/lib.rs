@@ -28,7 +28,7 @@ use alvr_server_core::{
     HandType, ServerCoreContext, ServerCoreEvent, ServerNegotiatedStreamingConfig,
 };
 use alvr_session::{
-    BodyTrackingSinkConfig, CodecType, ControllersConfig, ControllersEmulationMode, GazeInputSource,
+    BodyTrackingSinkConfig, CodecType, ControllersConfig, ControllersEmulationMode,
 };
 use foveated_encoding::EyeTrackedFoveation;
 use std::{
@@ -254,12 +254,10 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                         .foveated_encoding
                         .filter(|_| {
                             alvr_server_core::settings()
-                                .video
-                                .foveated_encoding
+                                .headset
+                                .face_tracking
                                 .as_option()
-                                .is_some_and(|config| {
-                                    config.gaze_input_source == GazeInputSource::Headset
-                                })
+                                .is_some_and(|config| config.sink.eye_tracked_foveated_encoding)
                         })
                         .map(|params| {
                             EyeTrackedFoveation::new(params, config.transcoding_view_resolution)

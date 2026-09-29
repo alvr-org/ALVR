@@ -1,4 +1,5 @@
 mod body;
+mod eye_gaze;
 mod face;
 mod vmc;
 
@@ -15,7 +16,7 @@ use crate::{
 use alvr_common::{
     ConnectionError, DEVICE_ID_TO_PATH, DeviceMotion, Pose, ViewParams,
     glam::{Quat, Vec3},
-    inputs as inp,
+    inputs as inp, warn,
 };
 use alvr_events::{EventType, TrackingEvent};
 use alvr_packets::TrackingData;
@@ -24,6 +25,7 @@ use alvr_session::{
     settings_schema::Switch,
 };
 use alvr_sockets::StreamReceiver;
+use eye_gaze::EyeGazeReceiver;
 use std::{
     cmp::Ordering,
     collections::{HashMap, VecDeque},
@@ -300,12 +302,27 @@ pub fn tracking_loop(
                 )
             });
 
+    let eye_tracking_osc_port = initial_settings
+        .headset
+        .face_tracking
+        .as_option()
+        .and_then(|config| config.eye_tracking_osc_override.as_option())
+        .map(|config| config.port);
+    let mut eye_gaze_receiver = eye_tracking_osc_port.and_then(|port| {
+        EyeGazeReceiver::new(port)
+            .inspect_err(|error| warn!("Failed to bind external gaze OSC port {port}: {error}"))
+            .ok()
+    });
+
     let mut face_tracking_sink = initial_settings
         .headset
         .face_tracking
         .into_option()
+        .and_then(|config| config.sink.social_presence)
         .and_then(|config| {
-            FaceTrackingSink::new(config.sink, initial_settings.connection.osc_local_port).ok()
+            FaceTrackingSink::new(config, initial_settings.connection.osc_local_port)
+                .inspect_err(|error| warn!("Failed to initialize social presence sink: {error}"))
+                .ok()
         });
 
     let mut body_tracking_sink = initial_settings
@@ -333,6 +350,25 @@ pub fn tracking_loop(
         };
 
         let timestamp = tracking.poll_timestamp;
+
+        if eye_tracking_osc_port.is_some() {
+            // Select one eye input before foveation and social output consume it. Do not fall
+            // back to headset eyes when OSC input is missing, invalid or unavailable.
+            tracking.face.eyes_social = [None; 2];
+            tracking.face.eyes_combined = if let Some(receiver) = &mut eye_gaze_receiver {
+                match receiver.receive(timestamp) {
+                    Ok(gaze) => gaze,
+                    Err(error) => {
+                        warn!("External gaze OSC receiver stopped: {error}");
+                        eye_gaze_receiver = None;
+
+                        None
+                    }
+                }
+            } else {
+                None
+            };
+        }
 
         if let Some(stats) = &mut *ctx.statistics_manager.write() {
             stats.report_tracking_received(timestamp);

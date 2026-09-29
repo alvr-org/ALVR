@@ -11,9 +11,7 @@ use alvr_common::{
 };
 use alvr_graphics::HandData;
 use alvr_packets::{ButtonEntry, ButtonValue, ClientStreamConfig, FaceData, FaceExpressions};
-use alvr_session::{
-    BodyTrackingBDConfig, BodyTrackingSourcesConfig, FaceTrackingSourcesConfig, GazeInputSource,
-};
+use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
 use std::{
     collections::{HashMap, HashSet},
@@ -150,23 +148,15 @@ pub struct InteractionSourcesConfig {
 
 impl InteractionSourcesConfig {
     pub fn new(config: &ClientStreamConfig) -> Self {
+        let face_tracking = config.settings.headset.face_tracking.as_option();
+        let eye_tracking_osc_override =
+            face_tracking.is_some_and(|c| c.eye_tracking_osc_override.enabled());
+
         Self {
-            face_tracking: config
-                .settings
-                .headset
-                .face_tracking
-                .as_option()
-                .map(|c| c.sources.clone())
-                .or_else(|| {
-                    // Foveation requests eye input locally, without enabling face tracking output.
-                    config
-                        .settings
-                        .video
-                        .foveated_encoding
-                        .as_option()
-                        .is_some_and(|c| c.gaze_input_source == GazeInputSource::Headset)
-                        .then_some(FaceTrackingSourcesConfig::PreferEyeTrackingOnly)
-                }),
+            face_tracking: face_tracking.map(|c| c.sources.clone()).filter(|sources| {
+                !eye_tracking_osc_override
+                    || *sources == FaceTrackingSourcesConfig::PreferFullFaceTracking
+            }),
             body_tracking: config
                 .settings
                 .headset

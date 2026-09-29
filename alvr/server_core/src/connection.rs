@@ -151,7 +151,11 @@ pub fn compute_restart_settings_hash(
     let mut foveation_edge_ratio_y = 0.0_f32;
     let enable_foveated_encoding =
         if let Switch::Enabled(config) = &settings.video.foveated_encoding {
-            foveation_eye_tracking = config.eye_tracking;
+            foveation_eye_tracking = settings
+                .headset
+                .face_tracking
+                .as_option()
+                .is_some_and(|config| config.sink.eye_tracked_foveated_encoding);
             [foveation_center_size_x, foveation_center_size_y] = config.center_size;
             [foveation_center_shift_x, foveation_center_shift_y] = config.center_shift;
             [foveation_edge_ratio_x, foveation_edge_ratio_y] = config.edge_ratio;

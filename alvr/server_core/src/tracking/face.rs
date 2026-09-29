@@ -1,6 +1,9 @@
-use alvr_common::{anyhow::Result, glam::EulerRot};
+use alvr_common::{
+    anyhow::{Result, bail},
+    glam::EulerRot,
+};
 use alvr_packets::{FaceData, FaceExpressions};
-use alvr_session::FaceTrackingSinkConfig;
+use alvr_session::FaceTrackingSocialPresenceSinkConfig;
 use rosc::{OscMessage, OscPacket, OscType};
 use std::{f32::consts::PI, net::UdpSocket};
 
@@ -9,27 +12,29 @@ const RAD_TO_DEG: f32 = 180.0 / PI;
 const VRCFT_PORT: u16 = 0xA1F7;
 
 pub struct FaceTrackingSink {
-    config: FaceTrackingSinkConfig,
+    config: FaceTrackingSocialPresenceSinkConfig,
     socket: UdpSocket,
     packet_buffer: Vec<u8>,
 }
 
 impl FaceTrackingSink {
-    pub fn new(config: FaceTrackingSinkConfig, local_osc_port: u16) -> Result<Option<Self>> {
+    pub fn new(config: FaceTrackingSocialPresenceSinkConfig, local_osc_port: u16) -> Result<Self> {
         let port = match config {
-            FaceTrackingSinkConfig::None => return Ok(None),
-            FaceTrackingSinkConfig::VrchatEyeOsc { port } => port,
-            FaceTrackingSinkConfig::VrcFaceTracking => VRCFT_PORT,
+            FaceTrackingSocialPresenceSinkConfig::None => {
+                bail!("Cannot create a disabled social presence sink")
+            }
+            FaceTrackingSocialPresenceSinkConfig::VrchatEyeOsc { port } => port,
+            FaceTrackingSocialPresenceSinkConfig::VrcFaceTracking => VRCFT_PORT,
         };
 
         let socket = UdpSocket::bind(format!("127.0.0.1:{local_osc_port}"))?;
         socket.connect(format!("127.0.0.1:{port}"))?;
 
-        Ok(Some(Self {
+        Ok(Self {
             config,
             socket,
             packet_buffer: vec![],
-        }))
+        })
     }
 
     fn send_osc_message(&self, path: &str, args: Vec<OscType>) {
@@ -54,8 +59,8 @@ impl FaceTrackingSink {
 
     pub fn send_tracking(&mut self, face_data: &FaceData) {
         match self.config {
-            FaceTrackingSinkConfig::None => (),
-            FaceTrackingSinkConfig::VrchatEyeOsc { .. } => {
+            FaceTrackingSocialPresenceSinkConfig::None => (),
+            FaceTrackingSocialPresenceSinkConfig::VrchatEyeOsc { .. } => {
                 if let [Some(left), Some(right)] = face_data.eyes_social {
                     let (left_pitch, left_yaw, _) = left.to_euler(EulerRot::XYZ);
                     let (right_pitch, right_yaw, _) = right.to_euler(EulerRot::XYZ);
@@ -102,7 +107,7 @@ impl FaceTrackingSink {
                     );
                 }
             }
-            FaceTrackingSinkConfig::VrcFaceTracking => {
+            FaceTrackingSocialPresenceSinkConfig::VrcFaceTracking => {
                 self.packet_buffer.clear();
 
                 if let [Some(left_quat), Some(right_quat)] = face_data.eyes_social {

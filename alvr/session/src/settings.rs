@@ -461,13 +461,6 @@ pub struct FoveatedEncodingConfig {
     pub force_enable: bool,
 
     #[schema(strings(
-        display_name = "Use eye tracking",
-        help = "Move the foveation center using eye tracking. Turn this off to keep fixed foveated encoding. Configure external input under Headset > Face tracking > Eye tracking OSC override."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub eye_tracking: bool,
-
-    #[schema(strings(
         display_name = "Center region size",
         help = "Width and height, in X/Y order"
     ))]
@@ -477,7 +470,7 @@ pub struct FoveatedEncodingConfig {
 
     #[schema(strings(
         display_name = "Center shift",
-        help = "Horizontal and vertical shift, in X/Y order. Used when Use eye tracking is off, or as a fallback when eye tracking is unavailable. Eye-tracking centers replace this shift rather than adding to it."
+        help = "Horizontal and vertical shift, in X/Y order. Used for fixed foveated encoding and when eye tracking is unavailable. Eye-tracking centers replace this shift rather than adding to it."
     ))]
     #[schema(gui(slider(min = -1.0, max = 1.0, step = 0.01)))]
     #[schema(flag = "steamvr-restart")]
@@ -702,7 +695,8 @@ pub struct VideoConfig {
 
     #[schema(strings(
         notice = r"Disabling foveated encoding may result in significantly higher encode/decode times and stuttering, or even crashing.
-If you want to reduce the amount of pixelation on the edges, increase the center region width and height"
+If you want to reduce the amount of pixelation on the edges, increase the center region width and height.
+For eye-tracked foveation, enable Headset > Face tracking > Sink > Eye-tracked foveated encoding."
     ))]
     #[schema(flag = "steamvr-restart")]
     pub foveated_encoding: Switch<FoveatedEncodingConfig>,
@@ -913,13 +907,27 @@ pub enum FaceTrackingSourcesConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub enum FaceTrackingSinkConfig {
+pub enum FaceTrackingSocialPresenceSinkConfig {
     #[schema(strings(display_name = "Disabled"))]
     None,
     #[schema(strings(display_name = "VRChat Eye OSC"))]
     VrchatEyeOsc { port: u16 },
     #[schema(strings(display_name = "VRCFaceTracking"))]
     VrcFaceTracking,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct FaceTrackingSinkConfig {
+    #[schema(strings(
+        help = "Forward eye and face tracking to another application. Disabled turns off forwarding without disabling eye-tracked foveated encoding."
+    ))]
+    pub social_presence: FaceTrackingSocialPresenceSinkConfig,
+    #[schema(strings(
+        display_name = "Eye-tracked foveated encoding",
+        help = "Use the selected eye tracking input to move the foveation center. Requires Video > Foveated encoding to be enabled. Turn this off to keep fixed foveated encoding."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub eye_tracked_foveated_encoding: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -936,9 +944,6 @@ pub struct FaceTrackingConfig {
         help = "Use external combined gaze received over OSC/UDP on localhost instead of headset eye directions. This input is shared by foveated encoding and social output. Turn this off to use headset eye tracking."
     ))]
     pub eye_tracking_osc_override: Switch<OscPort>,
-    #[schema(strings(
-        help = "Forward eye and face tracking to another application. Select Disabled to turn off forwarding without disabling eye tracking for foveated encoding."
-    ))]
     pub sink: FaceTrackingSinkConfig,
 }
 
@@ -1891,7 +1896,6 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: FoveatedEncodingConfigDefault {
                     gui_collapsed: true,
                     force_enable: false,
-                    eye_tracking: false,
                     center_size: ArrayDefault {
                         gui_collapsed: false,
                         content: [0.45, 0.4],
@@ -2009,8 +2013,14 @@ pub fn session_settings_default() -> SettingsDefault {
                         content: OscPortDefault { port: 9945 },
                     },
                     sink: FaceTrackingSinkConfigDefault {
-                        VrchatEyeOsc: FaceTrackingSinkConfigVrchatEyeOscDefault { port: 9000 },
-                        variant: FaceTrackingSinkConfigDefaultVariant::VrchatEyeOsc,
+                        social_presence: FaceTrackingSocialPresenceSinkConfigDefault {
+                            VrchatEyeOsc: FaceTrackingSocialPresenceSinkConfigVrchatEyeOscDefault {
+                                port: 9000,
+                            },
+                            variant:
+                                FaceTrackingSocialPresenceSinkConfigDefaultVariant::VrchatEyeOsc,
+                        },
+                        eye_tracked_foveated_encoding: false,
                     },
                 },
             },

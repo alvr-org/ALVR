@@ -153,22 +153,10 @@ impl InteractionSourcesConfig {
             face_tracking.is_some_and(|c| c.eye_tracking_osc_override.enabled());
 
         Self {
-            face_tracking: face_tracking
-                .map(|c| c.sources.clone())
-                .or_else(|| {
-                    // Foveation requests eye input locally, without enabling face tracking output.
-                    config
-                        .settings
-                        .video
-                        .foveated_encoding
-                        .as_option()
-                        .is_some_and(|c| c.eye_tracking)
-                        .then_some(FaceTrackingSourcesConfig::PreferEyeTrackingOnly)
-                })
-                .filter(|sources| {
-                    !eye_tracking_osc_override
-                        || *sources == FaceTrackingSourcesConfig::PreferFullFaceTracking
-                }),
+            face_tracking: face_tracking.map(|c| c.sources.clone()).filter(|sources| {
+                !eye_tracking_osc_override
+                    || *sources == FaceTrackingSourcesConfig::PreferFullFaceTracking
+            }),
             body_tracking: config
                 .settings
                 .headset

@@ -21,8 +21,8 @@ use alvr_common::{
 use alvr_events::{EventType, TrackingEvent};
 use alvr_packets::TrackingData;
 use alvr_session::{
-    BodyTrackingConfig, FaceTrackingSocialPresenceSinkConfig, HeadsetConfig, RecenteringMode,
-    Settings, VMCConfig, settings_schema::Switch,
+    BodyTrackingConfig, HeadsetConfig, RecenteringMode, Settings, VMCConfig,
+    settings_schema::Switch,
 };
 use alvr_sockets::StreamReceiver;
 use eye_gaze::EyeGazeReceiver;
@@ -318,19 +318,11 @@ pub fn tracking_loop(
         .headset
         .face_tracking
         .into_option()
-        .filter(|config| {
-            !matches!(
-                config.sink.social_presence,
-                FaceTrackingSocialPresenceSinkConfig::None
-            )
-        })
+        .and_then(|config| config.sink.social_presence)
         .and_then(|config| {
-            FaceTrackingSink::new(
-                config.sink.social_presence,
-                initial_settings.connection.osc_local_port,
-            )
-            .inspect_err(|error| warn!("Failed to initialize social presence sink: {error}"))
-            .ok()
+            FaceTrackingSink::new(config, initial_settings.connection.osc_local_port)
+                .inspect_err(|error| warn!("Failed to initialize social presence sink: {error}"))
+                .ok()
         });
 
     let mut body_tracking_sink = initial_settings

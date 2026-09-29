@@ -1,7 +1,4 @@
-use alvr_common::{
-    anyhow::{Result, bail},
-    glam::EulerRot,
-};
+use alvr_common::{anyhow::Result, glam::EulerRot};
 use alvr_packets::{FaceData, FaceExpressions};
 use alvr_session::FaceTrackingSocialPresenceSinkConfig;
 use rosc::{OscMessage, OscPacket, OscType};
@@ -20,9 +17,6 @@ pub struct FaceTrackingSink {
 impl FaceTrackingSink {
     pub fn new(config: FaceTrackingSocialPresenceSinkConfig, local_osc_port: u16) -> Result<Self> {
         let port = match config {
-            FaceTrackingSocialPresenceSinkConfig::None => {
-                bail!("Cannot create a disabled social presence sink")
-            }
             FaceTrackingSocialPresenceSinkConfig::VrchatEyeOsc { port } => port,
             FaceTrackingSocialPresenceSinkConfig::VrcFaceTracking => VRCFT_PORT,
         };
@@ -59,7 +53,6 @@ impl FaceTrackingSink {
 
     pub fn send_tracking(&mut self, face_data: &FaceData) {
         match self.config {
-            FaceTrackingSocialPresenceSinkConfig::None => (),
             FaceTrackingSocialPresenceSinkConfig::VrchatEyeOsc { .. } => {
                 if let [Some(left), Some(right)] = face_data.eyes_social {
                     let (left_pitch, left_yaw, _) = left.to_euler(EulerRot::XYZ);

@@ -198,6 +198,9 @@ value = "OpenXR"
 [[package.metadata.android.application.meta_data]]
 name = "pxr.sdk.version_code"
 value = "5900"
+[[package.metadata.android.application.meta_data]]
+name = "pvr.app.et_tob_advance"
+value = "true"
 
 # Yvr entries
 [[package.metadata.android.application.meta_data]]

@@ -28,12 +28,14 @@ IMAGE_NAME="alvr-windows-build"
 CARGO_TARGET_VOLUME="alvr-windows-cargo-target"
 CARGO_REGISTRY_VOLUME="alvr-windows-cargo-registry"
 XWIN_CACHE_VOLUME="alvr-xwin-cache"
+RUST_TOOLCHAIN="$(sed -n 's/^channel *= *"\(.*\)"/\1/p' "$REPO_ROOT/rust-toolchain.toml")"
 
 TARGET="x86_64-pc-windows-msvc"
 
 build_image() {
     DOCKER_BUILDKIT=0 docker build \
         --network=host \
+        --build-arg RUST_TOOLCHAIN="$RUST_TOOLCHAIN" \
         --file "$SCRIPT_DIR/Dockerfile.windows-build" \
         --tag "$IMAGE_NAME" \
         "$SCRIPT_DIR"

@@ -27,9 +27,12 @@ RUN wget -qO /etc/apt/trusted.gpg.d/apt.llvm.org.asc https://apt.llvm.org/llvm-s
         --slave /usr/bin/llvm-lib llvm-lib /usr/bin/llvm-lib-19 && \
     rm -rf /var/lib/apt/lists/*
 
-# Rust with Windows MSVC target + cargo-xwin
+# Rust toolchain pinned by rust-toolchain.toml (passed in by build-windows.sh)
+# with the Windows MSVC target, + cargo-xwin. Baking it into the image avoids
+# rustup reinstalling it, without the target, on every --rm run.
+ARG RUST_TOOLCHAIN
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-    sh -s -- -y --default-toolchain stable --profile minimal
+    sh -s -- -y --default-toolchain "$RUST_TOOLCHAIN" --profile minimal \
+        --target x86_64-pc-windows-msvc
 ENV PATH="/root/.cargo/bin:${PATH}"
-RUN rustup target add x86_64-pc-windows-msvc && \
-    cargo install cargo-xwin
+RUN cargo install cargo-xwin

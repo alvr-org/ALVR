@@ -916,9 +916,7 @@ pub enum FaceTrackingSocialPresenceSinkConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct FaceTrackingSinkConfig {
-    #[schema(strings(
-        help = "Forward eye and face tracking to another application"
-    ))]
+    #[schema(strings(help = "Forward eye and face tracking to another application"))]
     pub social_presence: Switch<FaceTrackingSocialPresenceSinkConfig>,
     #[schema(strings(
         display_name = "Eye-tracked foveated encoding",

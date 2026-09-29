@@ -6,7 +6,7 @@
 #include <memory>
 #ifdef _WIN32
 #include "platform/win32/OvrDirectModeComponent.h"
-#else
+#elif __linux__
 #include "platform/linux/OvrDirectModeComponent.h"
 #endif
 
@@ -54,11 +54,10 @@ private:
     std::shared_ptr<CD3DRender> m_D3DRender;
 #endif
 
-#ifdef __linux__
+#if defined(_WIN32) || defined(__linux__)
 public:
-#endif
     std::shared_ptr<OvrDirectModeComponent> m_directModeComponent;
-#ifdef __linux__
+
 private:
 #endif
 

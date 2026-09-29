@@ -158,9 +158,11 @@ void* Hmd::get_component(const char* component_name_and_version) {
         return (vr::IVRDisplayComponent*)this;
     }
 
+#ifndef __APPLE__
     if (name_and_vers == vr::IVRDriverDirectModeComponent_Version) {
         return m_directModeComponent.get();
     }
+#endif
 
     return nullptr;
 }

@@ -129,8 +129,6 @@ impl Layout {
                 or_path(option_env!("ALVR_STATIC_RESOURCES_DIR"), "share/alvr");
             let openvr_driver_root_dir =
                 or_path(option_env!("ALVR_OPENVR_DRIVER_ROOT_DIR"), "lib64/alvr");
-            let vrcompositor_wrapper_dir =
-                or_path(option_env!("ALVR_VRCOMPOSITOR_WRAPPER_DIR"), "libexec/alvr");
             let firewall_script_dir = or_path(option_env!("FIREWALL_SCRIPT_DIR"), "libexec/alvr");
             let firewalld_config_dir = or_path(option_env!("FIREWALLD_CONFIG_DIR"), "libexec/alvr");
             let ufw_config_dir = or_path(option_env!("UFW_CONFIG_DIR"), "libexec/alvr");

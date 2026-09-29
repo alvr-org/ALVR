@@ -917,9 +917,9 @@ pub enum FaceTrackingSocialPresenceSinkConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct FaceTrackingSinkConfig {
     #[schema(strings(
-        help = "Forward eye and face tracking to another application. Select Default to disable forwarding without disabling eye-tracked foveated encoding."
+        help = "Forward eye and face tracking to another application"
     ))]
-    pub social_presence: Option<FaceTrackingSocialPresenceSinkConfig>,
+    pub social_presence: Switch<FaceTrackingSocialPresenceSinkConfig>,
     #[schema(strings(
         display_name = "Eye-tracked foveated encoding",
         help = "Use the selected eye tracking input to move the foveation center. Requires Video > Foveated encoding to be enabled. Turn this off to keep fixed foveated encoding."
@@ -2011,8 +2011,8 @@ pub fn session_settings_default() -> SettingsDefault {
                         content: OscPortDefault { port: 9945 },
                     },
                     sink: FaceTrackingSinkConfigDefault {
-                        social_presence: OptionalDefault {
-                            set: true,
+                        social_presence: SwitchDefault {
+                            enabled: true,
                             content: FaceTrackingSocialPresenceSinkConfigDefault {
                                 VrchatEyeOsc:
                                     FaceTrackingSocialPresenceSinkConfigVrchatEyeOscDefault {

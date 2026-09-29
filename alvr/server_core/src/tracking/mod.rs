@@ -318,7 +318,7 @@ pub fn tracking_loop(
         .headset
         .face_tracking
         .into_option()
-        .and_then(|config| config.sink.social_presence)
+        .and_then(|config| config.sink.social_presence.into_option())
         .and_then(|config| {
             FaceTrackingSink::new(config, initial_settings.connection.osc_local_port)
                 .inspect_err(|error| warn!("Failed to initialize social presence sink: {error}"))

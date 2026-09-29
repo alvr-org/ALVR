@@ -466,7 +466,7 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
                 modifiers: vec![
                     bool_modifier("session_settings.headset.face_tracking.enabled", true),
                     bool_modifier(
-                        "session_settings.headset.face_tracking.content.sink.social_presence.set",
+                        "session_settings.headset.face_tracking.content.sink.social_presence.enabled",
                         true,
                     ),
                     string_modifier(
@@ -481,7 +481,7 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
                 modifiers: vec![
                     bool_modifier("session_settings.headset.face_tracking.enabled", true),
                     bool_modifier(
-                        "session_settings.headset.face_tracking.content.sink.social_presence.set",
+                        "session_settings.headset.face_tracking.content.sink.social_presence.enabled",
                         true,
                     ),
                     string_modifier(

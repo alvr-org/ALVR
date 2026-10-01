@@ -142,6 +142,25 @@ static u32 to_drm_format(vk::Format format) {
     }
 }
 
+static bool get_compatible_formats(vk::Format format, vk::Format& outSrgb, vk::Format& outUnorm) {
+    switch (format) {
+    case vk::Format::eR8G8B8A8Srgb:
+    case vk::Format::eR8G8B8A8Unorm:
+        outSrgb = vk::Format::eR8G8B8A8Srgb;
+        outUnorm = vk::Format::eR8G8B8A8Unorm;
+        return true;
+    case vk::Format::eB8G8R8A8Srgb:
+    case vk::Format::eB8G8R8A8Unorm:
+        outSrgb = vk::Format::eB8G8R8A8Srgb;
+        outUnorm = vk::Format::eB8G8R8A8Unorm;
+        return true;
+    default:
+        outSrgb = format;
+        outUnorm = format;
+        return false;
+    }
+}
+
 using namespace alvr;
 using namespace alvr::render;
 
@@ -441,42 +460,60 @@ Renderer::Renderer(
     eyeExtent = createInfo.inputEyeExtent;
     outExtent = createInfo.outputExtent;
 
-    // TODO: This is not standard compliant, but it respects the binary format so only the colors
-    // should be messed up
     vk::Format inputFormat = createInfo.format;
-    if (inputFormat == vk::Format::eR8G8B8A8Srgb)
-        inputFormat = vk::Format::eR8G8B8A8Unorm;
+    vk::Format srgbFormat = inputFormat;
+    vk::Format unormFormat = inputFormat;
+    bool hasCompatibleFormats = get_compatible_formats(inputFormat, srgbFormat, unormFormat);
 
-    if (inputFormat == vk::Format::eB8G8R8A8Srgb)
-        inputFormat = vk::Format::eB8G8R8A8Unorm;
+    std::array<vk::Format, 2> inputViewFormats = {
+        inputFormat, (inputFormat == unormFormat) ? srgbFormat : unormFormat
+    };
+    vk::ImageFormatListCreateInfo inputFormatListCI {
+        .viewFormatCount = hasCompatibleFormats ? 2u : 1u,
+        .pViewFormats = inputViewFormats.data(),
+    };
 
     // TODO: Only put the usage flags for the images that need to have them
     vk::ImageCreateInfo inputImgCI {
-            .imageType = vk::ImageType::e2D,
-            .format = inputFormat,
+        .pNext = hasCompatibleFormats ? &inputFormatListCI : nullptr,
+        .flags = hasCompatibleFormats ? vk::ImageCreateFlagBits::eMutableFormat
+                                      : vk::ImageCreateFlags {},
+        .imageType = vk::ImageType::e2D,
+        .format = inputFormat,
 
-            .extent = {
-                .width = eyeExtent.width,
-                .height = eyeExtent.height,
-                .depth = 1,
-            },
+        .extent = {
+            .width = eyeExtent.width,
+            .height = eyeExtent.height,
+            .depth = 1,
+        },
 
-            .mipLevels = 1,
-            .arrayLayers = 1,
-            .samples = vk::SampleCountFlagBits::e1,
-            .usage = vk::ImageUsageFlagBits::eTransferSrc
-                | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
-            .sharingMode = vk::SharingMode::eExclusive,
-            .initialLayout = vk::ImageLayout::eUndefined,
-        };
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = vk::SampleCountFlagBits::e1,
+        .usage = vk::ImageUsageFlagBits::eTransferSrc
+            | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
+        .sharingMode = vk::SharingMode::eExclusive,
+        .initialLayout = vk::ImageLayout::eUndefined,
+    };
 
     for (int i = 0; i < ImageCount; ++i) {
         inputImages[i] = createImage(vkCtx, inputImgCI, createInfo.inputImgFds[i]);
     }
 
+    std::array<vk::Format, 2> stagingViewFormats = { unormFormat, srgbFormat };
+    vk::ImageFormatListCreateInfo stagingFormatListCI {
+        .viewFormatCount = hasCompatibleFormats ? 2u : 1u,
+        .pViewFormats = stagingViewFormats.data(),
+    };
+
     auto stagingImgCI = inputImgCI;
+    stagingImgCI.pNext = hasCompatibleFormats ? &stagingFormatListCI : nullptr;
+    stagingImgCI.flags = hasCompatibleFormats ? vk::ImageCreateFlagBits::eMutableFormat
+                                             : vk::ImageCreateFlags {};
+    stagingImgCI.format = unormFormat;
     stagingImgCI.extent.width = eyeExtent.width * 2;
-    stagingImgCI.usage = inputImgCI.usage | vk::ImageUsageFlagBits::eTransferDst;
+    stagingImgCI.usage = inputImgCI.usage | vk::ImageUsageFlagBits::eTransferDst
+        | vk::ImageUsageFlagBits::eStorage;
 
     for (auto& img : stagingImgs) {
         img = createImage(vkCtx, stagingImgCI);

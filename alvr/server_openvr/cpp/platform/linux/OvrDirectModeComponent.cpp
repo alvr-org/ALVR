@@ -361,6 +361,8 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
         | vk::ImageUsageFlagBits::eInputAttachment
     );
 
+    uint32_t creationFlags = static_cast<uint32_t>(vk::ImageCreateFlagBits::eMutableFormat);
+
     for (int i = 0; i < 3; i++) {
         vr::SharedTextureHandle_t myHandle = 0;
         bool success = vr::VRIPCResourceManager()->NewSharedVulkanImage(
@@ -372,10 +374,8 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
             true,
             1,
             1,
-            0, // Change creation flags if changed in renderer. Otherwise, the image may not be
-               // usable in the renderer.
-            usageFlags, // Change usage flags if changed in renderer. Otherwise, the image may not
-                        // be usable in the renderer.
+            creationFlags,
+            usageFlags,
             &myHandle
         );
 

@@ -155,9 +155,14 @@ u32 memoryTypeIndex(VkContext const& ctx, vk::MemoryPropertyFlags properties, u3
     throw std::runtime_error("No matching memoryTypeIndex found");
 }
 
-// Create or import Image, depending on whether an fd is passed
+// Create or import Image, depending on whether an fd is passed. viewFormat
+// overrides the view's format; the image must be MUTABLE_FORMAT for that to
+// be legal when it differs from imageCI.format.
 inline Image createImage(
-    VkContext const& ctx, vk::ImageCreateInfo imageCI, std::optional<int> fd = std::nullopt
+    VkContext const& ctx,
+    vk::ImageCreateInfo imageCI,
+    std::optional<int> fd = std::nullopt,
+    std::optional<vk::Format> viewFormat = std::nullopt
 ) {
     vk::ExternalMemoryImageCreateInfo extMemImgCI {
         .handleTypes = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd,
@@ -208,7 +213,7 @@ inline Image createImage(
     vk::ImageViewCreateInfo imgViewCI {
         .image = img.image,
         .viewType = vk::ImageViewType::e2D,
-        .format = imageCI.format,
+        .format = viewFormat.value_or(imageCI.format),
         .components {
             .r = vk::ComponentSwizzle::eIdentity,
             .g = vk::ComponentSwizzle::eIdentity,
@@ -441,42 +446,53 @@ Renderer::Renderer(
     eyeExtent = createInfo.inputEyeExtent;
     outExtent = createInfo.outputExtent;
 
-    // TODO: This is not standard compliant, but it respects the binary format so only the colors
-    // should be messed up
+    // The import must match how SteamVR created the image: its real format
+    // and MUTABLE_FORMAT (passed in CreateSwapTextureSet), and no format list
+    // since SteamVR's image has none. A list could let the driver choose a
+    // different memory layout (e.g. compression) than the exporter did.
+    // MUTABLE_FORMAT is what makes the UNORM view of an sRGB image legal.
     vk::Format inputFormat = createInfo.format;
+    vk::Format unormFormat = createInfo.format;
     if (inputFormat == vk::Format::eR8G8B8A8Srgb)
-        inputFormat = vk::Format::eR8G8B8A8Unorm;
+        unormFormat = vk::Format::eR8G8B8A8Unorm;
 
     if (inputFormat == vk::Format::eB8G8R8A8Srgb)
-        inputFormat = vk::Format::eB8G8R8A8Unorm;
+        unormFormat = vk::Format::eB8G8R8A8Unorm;
 
     // TODO: Only put the usage flags for the images that need to have them
     vk::ImageCreateInfo inputImgCI {
-            .imageType = vk::ImageType::e2D,
-            .format = inputFormat,
+        .flags = vk::ImageCreateFlagBits::eMutableFormat,
+        .imageType = vk::ImageType::e2D,
+        .format = inputFormat,
 
-            .extent = {
-                .width = eyeExtent.width,
-                .height = eyeExtent.height,
-                .depth = 1,
-            },
+        .extent = {
+            .width = eyeExtent.width,
+            .height = eyeExtent.height,
+            .depth = 1,
+        },
 
-            .mipLevels = 1,
-            .arrayLayers = 1,
-            .samples = vk::SampleCountFlagBits::e1,
-            .usage = vk::ImageUsageFlagBits::eTransferSrc
-                | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
-            .sharingMode = vk::SharingMode::eExclusive,
-            .initialLayout = vk::ImageLayout::eUndefined,
-        };
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = vk::SampleCountFlagBits::e1,
+        .usage = vk::ImageUsageFlagBits::eTransferSrc
+            | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
+        .sharingMode = vk::SharingMode::eExclusive,
+        .initialLayout = vk::ImageLayout::eUndefined,
+    };
 
     for (int i = 0; i < ImageCount; ++i) {
-        inputImages[i] = createImage(vkCtx, inputImgCI, createInfo.inputImgFds[i]);
+        inputImages[i] = createImage(vkCtx, inputImgCI, createInfo.inputImgFds[i], unormFormat);
     }
 
+    // Everything downstream is UNORM regardless of the input format: the
+    // copy moves raw bytes, the shaders imageStore through rgba8, and the
+    // encoder consumes raw bytes with no notion of sRGB.
     auto stagingImgCI = inputImgCI;
+    stagingImgCI.flags = {};
+    stagingImgCI.format = unormFormat;
     stagingImgCI.extent.width = eyeExtent.width * 2;
-    stagingImgCI.usage = inputImgCI.usage | vk::ImageUsageFlagBits::eTransferDst;
+    stagingImgCI.usage = inputImgCI.usage | vk::ImageUsageFlagBits::eTransferDst
+        | vk::ImageUsageFlagBits::eStorage;
 
     for (auto& img : stagingImgs) {
         img = createImage(vkCtx, stagingImgCI);

@@ -203,8 +203,6 @@ pub fn compute_restart_settings_hash(
     settings.video.adapter_index.hash(&mut h);
     settings.headset.tracking_ref_only.hash(&mut h);
     settings.headset.enable_vive_tracker_proxy.hash(&mut h);
-    settings.extra.patches.linux_async_compute.hash(&mut h);
-    settings.extra.patches.linux_async_reprojection.hash(&mut h);
     // Encoder / codec
     (settings.video.preferred_codec as u8).hash(&mut h);
     (enc.h264_profile as u32).hash(&mut h);
@@ -272,7 +270,6 @@ pub fn compute_restart_settings_hash(
     body_tracking_has_legs.hash(&mut h);
     // Misc
     settings.connection.minimum_idr_interval_ms.hash(&mut h);
-    settings.extra.capture.capture_frame_dir.hash(&mut h);
     settings.video.bitrate.image_corruption_fix.hash(&mut h);
     // Debug groups
     dbg.server_impl.hash(&mut h);

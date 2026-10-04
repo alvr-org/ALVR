@@ -65,8 +65,6 @@ public:
 
     void InsertIDR();
 
-    void CaptureFrame();
-
 private:
     CThreadEvent m_newFrameReady, m_encodeFinished;
     std::shared_ptr<VideoEncoder> m_videoEncoder;

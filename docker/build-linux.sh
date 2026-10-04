@@ -21,6 +21,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 IMAGE_NAME="alvr-linux-build"
 CARGO_TARGET_VOLUME="alvr-linux-cargo-target"
 CARGO_REGISTRY_VOLUME="alvr-linux-cargo-registry"
+RUST_TOOLCHAIN="$(sed -n 's/^channel *= *"\(.*\)"/\1/p' "$REPO_ROOT/rust-toolchain.toml")"
 
 build_image() {
     # --platform linux/amd64 ensures x86_64 even on Apple Silicon — our target is
@@ -32,6 +33,7 @@ build_image() {
         --platform linux/amd64 \
         --network=host \
         --load \
+        --build-arg RUST_TOOLCHAIN="$RUST_TOOLCHAIN" \
         --file "$SCRIPT_DIR/Dockerfile.linux-build" \
         --tag "$IMAGE_NAME" \
         "$SCRIPT_DIR"

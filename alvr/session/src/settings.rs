@@ -916,9 +916,7 @@ pub enum FaceTrackingSocialPresenceSinkConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct FaceTrackingSinkConfig {
-    #[schema(strings(
-        help = "Forward eye and face tracking to another application"
-    ))]
+    #[schema(strings(help = "Forward eye and face tracking to another application"))]
     pub social_presence: Switch<FaceTrackingSocialPresenceSinkConfig>,
     #[schema(strings(
         display_name = "Eye-tracked foveated encoding",
@@ -1590,23 +1588,6 @@ pub struct CaptureConfig {
     pub startup_video_recording: bool,
 
     pub rolling_video_files: Switch<RollingVideoFilesConfig>,
-
-    #[schema(flag = "steamvr-restart")]
-    pub capture_frame_dir: String,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct Patches {
-    #[schema(strings(
-        help = "Async Compute is currently broken in SteamVR, keep disabled. ONLY FOR TESTING."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub linux_async_compute: bool,
-    #[schema(strings(
-        help = "Async reprojection only works if you can always hit at least half of your refresh rate.",
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub linux_async_reprojection: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1620,8 +1601,6 @@ pub struct ExtraConfig {
     pub steamvr_launcher: SteamvrLauncher,
     pub capture: CaptureConfig,
     pub logging: LoggingConfig,
-    #[cfg_attr(not(target_os = "linux"), schema(flag = "hidden"))]
-    pub patches: Patches,
 
     #[schema(
         strings(help = "Linear and angular velocity multiplier for debug purposes.
@@ -2289,15 +2268,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     enabled: false,
                     content: RollingVideoFilesConfigDefault { duration_s: 5 },
                 },
-                capture_frame_dir: if !cfg!(target_os = "linux") {
-                    "/tmp".into()
-                } else {
-                    "".into()
-                },
-            },
-            patches: PatchesDefault {
-                linux_async_compute: false,
-                linux_async_reprojection: false,
             },
             velocities_multiplier: 1.0,
             open_setup_wizard: alvr_common::is_stable() || alvr_common::is_nightly(),

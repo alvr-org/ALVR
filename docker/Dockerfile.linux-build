@@ -25,8 +25,10 @@ RUN apt-get update && apt-get install -y \
     libclang-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Rust toolchain (stable, matching CI)
+# Rust toolchain pinned by rust-toolchain.toml, passed in by build-linux.sh.
+# Baking it into the image avoids rustup reinstalling it on every --rm run.
+ARG RUST_TOOLCHAIN
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-    sh -s -- -y --default-toolchain stable --profile minimal
+    sh -s -- -y --default-toolchain "$RUST_TOOLCHAIN" --profile minimal
 
 ENV PATH="/root/.cargo/bin:${PATH}"

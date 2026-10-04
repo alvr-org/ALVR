@@ -41,26 +41,6 @@ pub fn clean_session() {
 
     session_manager.clean_client_list();
 
-    #[cfg(target_os = "linux")]
-    {
-        let has_nvidia = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::VULKAN,
-            ..Default::default()
-        })
-        .enumerate_adapters(wgpu::Backends::VULKAN)
-        .iter()
-        .any(|adapter| adapter.get_info().vendor == 0x10de);
-
-        if has_nvidia {
-            session_manager
-                .session_mut()
-                .session_settings
-                .extra
-                .patches
-                .linux_async_reprojection = false;
-        }
-    }
-
     if session_manager.session().server_version != *ALVR_VERSION {
         let mut session_ref = session_manager.session_mut();
         session_ref.server_version = ALVR_VERSION.clone();
@@ -302,8 +282,7 @@ impl DataSources {
                                         )
                                     }
                                 }
-                                ServerRequest::CaptureFrame
-                                | ServerRequest::InsertIdr
+                                ServerRequest::InsertIdr
                                 | ServerRequest::StartRecording
                                 | ServerRequest::StopRecording => {
                                     warn!(
@@ -363,7 +342,6 @@ impl DataSources {
                                 ServerRequest::UnregisterDriver(path) => {
                                     post_body(&rq, &base_uri, "drivers/unregister", Some(path))
                                 }
-                                ServerRequest::CaptureFrame => post("capture-frame"),
                                 ServerRequest::InsertIdr => post("insert-idr"),
                                 ServerRequest::StartRecording => post("recording/start"),
                                 ServerRequest::StopRecording => post("recording/stop"),

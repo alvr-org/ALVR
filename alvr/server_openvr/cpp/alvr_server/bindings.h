@@ -108,7 +108,6 @@ struct Settings {
     int m_recommendedTargetWidth;
     int m_recommendedTargetHeight;
     int m_nAdapterIndex;
-    char m_captureFrameDir[1024];
 
     bool m_enableFoveatedEncoding;
     FfiFoveatedEncodingParams m_foveatedEncoding;
@@ -164,8 +163,6 @@ struct Settings {
 
     bool m_enableViveTrackerProxy = false;
     bool m_trackingRefOnly = false;
-    bool m_enableLinuxVulkanAsyncCompute;
-    bool m_enableLinuxAsyncReprojection;
 
     bool m_enableControllers;
     bool m_controllerIsTracker = false;
@@ -225,12 +222,22 @@ extern "C" void SetOpenvrProps(void* instancePtr, unsigned long long deviceID);
 extern "C" void RegisterButtons(void* instancePtr, unsigned long long deviceID);
 extern "C" void WaitForVSync();
 
+// The vsync grid, in Rust. The driver starts and stops the announcer with its own lifetime, holds
+// Present against the grid, and reads the skipped tick count, without keeping a copy of any of it.
+extern "C" void StartVsyncAnnouncer();
+extern "C" void StopVsyncAnnouncer();
+extern "C" void PaceAfterPresent(unsigned int throttleFrames);
+extern "C" unsigned int TakeSkippedVsyncs();
+
 extern "C" void CppInit(bool earlyHmdInitialization, Settings settings);
 extern "C" void* CppOpenvrEntryPoint(const char* pInterfaceName, int* pReturnCode);
 extern "C" void InitializeRuntime();
 extern "C" bool InitializeStreaming(Settings settings);
 extern "C" void DeinitializeStreaming();
-extern "C" void SendVSync();
+// Called by the vsync grid in Rust, which owns the schedule. Declaring the vsync is the only part
+// of it that has to stay on this side, because the interface is C++. The offset is in seconds and
+// runs negative when the announcement lands after the point it describes.
+extern "C" void SendVSync(double offsetSeconds);
 extern "C" void RequestIDR();
 extern "C" void SetTracking(
     unsigned long long targetTimestampNs,
@@ -255,8 +262,6 @@ extern "C" void SetProximityState(bool headset_is_worn);
 extern "C" void InitOpenvrClient();
 extern "C" void ShutdownOpenvrClient();
 extern "C" void SetChaperoneArea(float areaWidth, float areaHeight);
-
-extern "C" void CaptureFrame();
 
 // NalParsing.cpp
 void ParseFrameNals(

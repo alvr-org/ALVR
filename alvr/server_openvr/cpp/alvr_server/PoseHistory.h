@@ -20,6 +20,10 @@ public:
     std::optional<TrackingHistoryFrame> GetBestPoseMatch(const vr::HmdMatrix34_t& pose) const;
     // Return the most recent pose known at the given timestamp
     std::optional<TrackingHistoryFrame> GetPoseAt(uint64_t timestampNs) const;
+    // The newest pose held. Reprojection targets it, and a reprojected frame is
+    // stamped with its timestamp, so the target has to be a real buffer entry
+    // for that stamp to resolve on the Rust side.
+    std::optional<TrackingHistoryFrame> GetLatestPose() const;
 
     void SetTransform(const vr::HmdMatrix34_t& transform);
 

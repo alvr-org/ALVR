@@ -2,6 +2,7 @@ mod foveated_encoding;
 mod graphics;
 mod props;
 mod tracking;
+mod vsync;
 
 #[allow(
     non_camel_case_types,
@@ -63,17 +64,6 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
     let nvenc = &video.encoder_config.nvenc;
     let amf = &video.encoder_config.amf;
     let hdr = &video.encoder_config.hdr;
-
-    let mut capture_frame_dir = [0i8; 1024];
-    let cstr = CString::new(settings.extra.capture.capture_frame_dir.as_str()).unwrap_or_default();
-    let bytes = cstr.as_bytes_with_nul();
-    unsafe {
-        std::ptr::copy_nonoverlapping(
-            bytes.as_ptr().cast(),
-            capture_frame_dir.as_mut_ptr(),
-            bytes.len().min(1024),
-        )
-    };
 
     let (controllers_enabled, controller_is_tracker, use_separate_hand_trackers) =
         if let Switch::Enabled(config) = &settings.headset.controllers {
@@ -157,6 +147,10 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
             (0, 0, false, 0.0, false)
         };
 
+    // The vsync grid runs at the rate the driver is told about, set here so the announcer never
+    // has to read a setting back across the boundary.
+    vsync::set_refresh_rate(refresh_rate as f32);
+
     Settings {
         m_refreshRate: refresh_rate,
         m_renderWidth: render_width,
@@ -164,7 +158,6 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
         m_recommendedTargetWidth: target_width as i32,
         m_recommendedTargetHeight: target_height as i32,
         m_nAdapterIndex: video.adapter_index as i32,
-        m_captureFrameDir: capture_frame_dir,
         m_enableFoveatedEncoding: foveated_encoding.is_some(),
         m_foveatedEncoding: FfiFoveatedEncodingParams {
             encodedViewResolution: foveation_params.encoded_view_resolution,
@@ -220,8 +213,6 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
         m_minimumIdrIntervalMs: settings.connection.minimum_idr_interval_ms,
         m_enableViveTrackerProxy: settings.headset.enable_vive_tracker_proxy,
         m_trackingRefOnly: settings.headset.tracking_ref_only,
-        m_enableLinuxVulkanAsyncCompute: settings.extra.patches.linux_async_compute,
-        m_enableLinuxAsyncReprojection: settings.extra.patches.linux_async_reprojection,
         m_enableControllers: controllers_enabled,
         m_controllerIsTracker: controller_is_tracker,
         m_enableBodyTrackingFakeVive: body_tracking_vive_enabled,
@@ -492,7 +483,6 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                     }
                 }
                 ServerCoreEvent::RequestIDR => unsafe { RequestIDR() },
-                ServerCoreEvent::CaptureFrame => unsafe { CaptureFrame() },
                 ServerCoreEvent::GameRenderLatencyFeedback(game_latency) => {
                     if cfg!(target_os = "linux") && game_latency.as_secs_f32() > 0.25 {
                         let now = Instant::now();

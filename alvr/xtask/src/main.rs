@@ -269,7 +269,6 @@ fn main() {
                         clippy()
                     }
                 }
-                "check-msrv" => version::check_msrv(),
                 "check-licenses" => {
                     packaging::check_licenses();
                 }

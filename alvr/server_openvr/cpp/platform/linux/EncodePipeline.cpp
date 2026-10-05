@@ -68,7 +68,10 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(
     return nullptr;
 }
 
-alvr::EncodePipeline::~EncodePipeline() { avcodec_free_context(&encoder_ctx); }
+alvr::EncodePipeline::~EncodePipeline() {
+    av_packet_free(&encoder_packet);
+    avcodec_free_context(&encoder_ctx);
+}
 
 bool alvr::EncodePipeline::GetEncoded(FramePacket& packet) {
     av_packet_free(&encoder_packet);

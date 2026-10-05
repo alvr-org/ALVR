@@ -122,6 +122,7 @@ public:
     void createImages(render::RendererCreateInfo rendererCI) {
         if (renderer.hasValue()) {
             renderer.get().destroy(vkCtx);
+            renderer.reset();
         }
 
         auto const& settings = Settings_Instance();
@@ -227,6 +228,10 @@ public:
 
         encoder.reset();
         frame.reset();
+        if (renderer.hasValue()) {
+            renderer.get().destroy(vkCtx);
+            renderer.reset();
+        }
         encoderMissingLogged = false;
     }
 
@@ -317,6 +322,7 @@ public:
 
         if (renderer.hasValue()) {
             renderer.get().destroy(vkCtx);
+            renderer.reset();
         }
 
         vkCtx.destroy();

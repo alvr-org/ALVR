@@ -815,7 +815,7 @@ void Renderer::destroy(VkContext const& ctx) {
     ctx.dev.destroy(cmdPool);
     ctx.dev.destroy(timestampPool);
 
-    output.image.destroy(ctx);
+    output.destroy(ctx);
 
     for (auto& img : stagingImgs) {
         img.destroy(ctx);

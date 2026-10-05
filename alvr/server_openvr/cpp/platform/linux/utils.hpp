@@ -51,6 +51,13 @@ public:
 
     bool hasValue() { return hasValue_; }
 
+    void reset() {
+        if (hasValue_)
+            value.~T();
+
+        hasValue_ = false;
+    }
+
     ~Optional() {
         if (hasValue_)
             value.~T();

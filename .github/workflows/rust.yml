@@ -10,6 +10,7 @@ env:
 
 jobs:
   check-windows:
+    if: github.event.sender.login != 'pre-commit-ci-lite[bot]'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
@@ -30,6 +31,7 @@ jobs:
       - run: cargo xtask clippy --ci
 
   check-linux:
+    if: github.event.sender.login != 'pre-commit-ci-lite[bot]'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
@@ -54,6 +56,7 @@ jobs:
       - run: cargo xtask clippy --ci
 
   check-macos:
+    if: github.event.sender.login != 'pre-commit-ci-lite[bot]'
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v6
@@ -72,6 +75,7 @@ jobs:
       - run: cargo clippy
 
   check-android:
+    if: github.event.sender.login != 'pre-commit-ci-lite[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -111,6 +115,7 @@ jobs:
         run: cargo xtask build-client
 
   tests:
+    if: github.event.sender.login != 'pre-commit-ci-lite[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -123,18 +128,8 @@ jobs:
       - name: Run tests
         run: cargo test -p alvr_session
 
-  check-format:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
-
-      - run: cargo xtask check-format
-
   check-licenses:
+    if: github.event.sender.login != 'pre-commit-ci-lite[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -144,3 +139,35 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - run: cargo xtask check-licenses
+
+  # Formatting fixes are pushed by pre-commit.ci lite only if all other jobs passed. This way the
+  # jobs can be skipped on the commit pushed by pre-commit.ci lite without hiding failures
+  autofix:
+    needs:
+      [
+        check-windows,
+        check-linux,
+        check-macos,
+        check-android,
+        tests,
+        check-licenses,
+      ]
+    # Run even if some jobs failed, so that formatting issues are still reported
+    if: ${{ !cancelled() && github.event.sender.login != 'pre-commit-ci-lite[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - run: cargo xtask format
+
+      - name: Fail if formatting fixes are needed
+        run: git diff --stat --exit-code
+
+      - uses: pre-commit-ci/lite-action@v1.2.0
+        if: ${{ always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
+        with:
+          msg: "style: apply automatic formatting fixes"

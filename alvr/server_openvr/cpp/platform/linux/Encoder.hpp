@@ -36,10 +36,10 @@ auto makeSpecs(T... args)
         auto const offset = static_cast<u32>(info.specData.size());
         info.specData.insert(info.specData.end(), arr.begin(), arr.end());
         info.specs.push_back({
-                .constantID = index,
-                .offset = offset,
-                .size = Size,
-            });
+            .constantID = index,
+            .offset = offset,
+            .size = Size,
+        });
         ++index;
     };
 
@@ -147,10 +147,10 @@ public:
 
         if (pipeCIs.empty()) {
             pipeCIs.push_back({
-                    .shaderData = std::vector(
-                        QUAD_SHADER_COMP_SPV_PTR, QUAD_SHADER_COMP_SPV_PTR + QUAD_SHADER_COMP_SPV_LEN
-                    ),
-                });
+                .shaderData = std::vector(
+                    QUAD_SHADER_COMP_SPV_PTR, QUAD_SHADER_COMP_SPV_PTR + QUAD_SHADER_COMP_SPV_LEN
+                ),
+            });
             warpCapableChain = true;
         } else {
             warpCapableChain = settings->m_enableFoveatedEncoding;

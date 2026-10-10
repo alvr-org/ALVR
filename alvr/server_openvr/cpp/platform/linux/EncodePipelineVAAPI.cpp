@@ -128,6 +128,9 @@ AVFrame* import_frame(AVBufferRef* hw_frames_ref, alvr::DrmImage& drm) {
     return va_frame;
 }
 
+// Last target the bitrate manager delivered; see initEncoding.
+int64_t last_known_bitrate_bps = 0;
+
 }
 
 alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
@@ -236,10 +239,15 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
     encoder_ctx->color_trc = AVCOL_TRC_IEC61966_2_1;
     encoder_ctx->colorspace = AVCOL_SPC_BT709;
 
-    auto params = FfiDynamicEncoderParams {};
+    // The manager reports a target only once per change, so a rebuild mid
+    // session has to reuse the last one.
+    auto params = GetDynamicEncoderParams();
+    if (!params.updated || params.bitrate_bps <= 0) {
+        params.bitrate_bps = last_known_bitrate_bps > 0 ? last_known_bitrate_bps : 30'000'000;
+    }
     params.updated = true;
-    params.bitrate_bps = 30'000'000;
     params.framerate = settings->m_refreshRate;
+    Info("VAAPI init bitrate: %.1f Mbps\n", params.bitrate_bps / 1e6);
     SetParams(params);
 
     vlVaQualityBits quality = {};
@@ -387,13 +395,13 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
 }
 
 alvr::EncodePipelineVAAPI::~EncodePipelineVAAPI() {
-    // Commented because freeing it here causes a gpu reset, it should be cleaned up away
-    // avcodec_free_context(&encoder_ctx);
-    // avfilter_graph_free(&filter_graph);
-    // av_frame_free(&mapped_frame);
-    // av_frame_free(&encoder_frame);
-    // av_buffer_unref(&hw_ctx);
-    // av_buffer_unref(&drm_ctx);
+    avcodec_send_frame(encoder_ctx, nullptr);
+    avcodec_free_context(&encoder_ctx);
+    avfilter_graph_free(&filter_graph);
+    av_frame_free(&mapped_frame);
+    av_frame_free(&encoder_frame);
+    av_buffer_unref(&hw_ctx);
+    av_buffer_unref(&drm_ctx);
 }
 
 void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr) {
@@ -425,6 +433,8 @@ void alvr::EncodePipelineVAAPI::SetParams(FfiDynamicEncoderParams params) {
     if (!params.updated) {
         return;
     }
+    // Survives encoder rebuilds; see the note on the variable.
+    last_known_bitrate_bps = params.bitrate_bps;
     encoder_ctx->bit_rate = params.bitrate_bps;
     encoder_ctx->framerate = AVRational { int(params.framerate * 1000), 1000 };
     encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / params.framerate;

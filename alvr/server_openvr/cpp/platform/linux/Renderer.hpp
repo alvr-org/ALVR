@@ -33,8 +33,8 @@ struct Image {
 
     void destroy(VkContext const& ctx) {
         ctx.dev.destroy(view);
-        ctx.dev.free(memory);
         ctx.dev.destroy(image);
+        ctx.dev.free(memory);
     }
 };
 
@@ -44,6 +44,14 @@ struct Output {
     // VkSemaphore semaphore;
     VkImageCreateInfo imageCI;
     VkDeviceSize size;
+
+    void destroy(VkContext const& ctx) {
+        if (drm.fd >= 0) {
+            close(drm.fd);
+            drm.fd = -1;
+        }
+        image.destroy(ctx);
+    }
 };
 
 struct PipelineCreateInfo {

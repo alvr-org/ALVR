@@ -122,6 +122,7 @@ public:
     void createImages(render::RendererCreateInfo rendererCI) {
         if (renderer.hasValue()) {
             renderer.get().destroy(vkCtx);
+            renderer.reset();
         }
 
         auto const& settings = Settings_Instance();
@@ -227,6 +228,10 @@ public:
 
         encoder.reset();
         frame.reset();
+        if (renderer.hasValue()) {
+            renderer.get().destroy(vkCtx);
+            renderer.reset();
+        }
         encoderMissingLogged = false;
     }
 
@@ -258,6 +263,7 @@ public:
         renderer.get().render(vkCtx, leftIdx, rightIdx, waitFds);
         ReportComposed(targetTimestampNs, 0);
 
+        encoder->SetParams(GetDynamicEncoderParams());
         encoder->PushFrame(0, idrScheduler.CheckIDRInsertion());
 
         alvr::FramePacket framePacket;
@@ -317,6 +323,7 @@ public:
 
         if (renderer.hasValue()) {
             renderer.get().destroy(vkCtx);
+            renderer.reset();
         }
 
         vkCtx.destroy();

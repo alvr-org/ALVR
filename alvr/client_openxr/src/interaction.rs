@@ -2,7 +2,7 @@ use crate::{
     Platform,
     extra_extensions::{
         self, BodyTrackerBD, BodyTrackerFB, EyeTrackerSocial, FaceTracker2FB, FaceTrackerBD,
-        FacialTrackerHTC, MotionTrackerBD, MultimodalMeta,
+        FaceTrackerPico, FacialTrackerHTC, MotionTrackerBD, MultimodalMeta,
     },
 };
 use alvr_common::{
@@ -118,6 +118,7 @@ pub struct HandInteraction {
 pub enum FaceExpressionsTracker {
     Fb(FaceTracker2FB),
     Bd(FaceTrackerBD),
+    Pico(FaceTrackerPico),
     Htc {
         eye: Option<FacialTrackerHTC>,
         lip: Option<FacialTrackerHTC>,
@@ -570,6 +571,16 @@ impl InteractionContext {
                 ) {
                     self.face_sources.face_expressions_tracker =
                         Some(FaceExpressionsTracker::Bd(tracker));
+                } else if matches!(
+                    self.platform,
+                    Platform::PicoNeo3 | Platform::Pico4Pro | Platform::Pico4Enterprise
+                ) && let Some(tracker) = check_ext_object(
+                    "FaceTrackerPico",
+                    FaceTrackerPico::new(self.xr_session.clone()),
+                ) {
+                    tracker.start_face_tracking().ok();
+                    self.face_sources.face_expressions_tracker =
+                        Some(FaceExpressionsTracker::Pico(tracker));
                 }
                 // For vive, face trackers are always created at startup regardless of settings, and
                 // also cannot be destroyed early.
@@ -1019,6 +1030,11 @@ pub fn get_face_data(
                 .ok()
                 .flatten()
                 .map(FaceExpressions::Fb),
+            FaceExpressionsTracker::Pico(tracker) => tracker
+                .get_face_tracking_data(xr_time)
+                .ok()
+                .flatten()
+                .map(FaceExpressions::Bd),
             FaceExpressionsTracker::Bd(face_tracker_bd) => face_tracker_bd
                 .get_facial_simulation_data(xr_time)
                 .ok()

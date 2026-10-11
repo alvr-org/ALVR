@@ -13,6 +13,7 @@ use alvr_common::{
     glam::{Quat, UVec2, Vec3},
     info,
     parking_lot::RwLock,
+    warn,
 };
 use alvr_graphics::GraphicsContext;
 use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, PerformanceLevel};
@@ -252,19 +253,32 @@ pub fn entry_point() {
         })
         .collect::<Vec<_>>();
 
-    let xr_instance = xr_entry
-        .create_instance(
+    let create_instance = |api_version| {
+        xr_entry.create_instance(
             &xr::ApplicationInfo {
                 application_name: "ALVR Client",
                 application_version: 0,
                 engine_name: "ALVR",
                 engine_version: 0,
-                api_version: openxr_version,
+                api_version,
             },
             &selected_exts,
             &[],
         )
-        .unwrap();
+    };
+    // Some runtimes (e.g. SteamVR on the Steam Frame / Lepton) reject OpenXR 1.1. Retry with 1.0.
+    let xr_instance = match create_instance(openxr_version) {
+        Err(xr::sys::Result::ERROR_API_VERSION_UNSUPPORTED)
+            if openxr_version != LEGACY_OPENXR_VERSION =>
+        {
+            warn!(
+                "OpenXR {openxr_version} unsupported by the runtime, retrying with {LEGACY_OPENXR_VERSION}"
+            );
+            create_instance(LEGACY_OPENXR_VERSION)
+        }
+        res => res,
+    }
+    .unwrap();
 
     let platform = alvr_system_info::platform(
         xr_instance
@@ -648,10 +662,38 @@ pub fn entry_point() {
 
 #[allow(unused)]
 fn xr_runtime_now(xr_instance: &xr::Instance) -> Option<xr::Time> {
-    xr_instance
-        .now()
-        .ok()
-        .filter(|&time_nanos| time_nanos.as_nanos() > 0)
+    // XR_KHR_convert_timespec_time is optional and not supported by every runtime (e.g. SteamVR
+    // on the Steam Frame / Lepton). openxr::Instance::now() panics if the extension is not
+    // loaded, so fall back to CLOCK_MONOTONIC, which is the XrTime time base used by the common
+    // Android/Linux runtimes.
+    if xr_instance.exts().khr_convert_timespec_time.is_some() {
+        xr_instance
+            .now()
+            .ok()
+            .filter(|&time_nanos| time_nanos.as_nanos() > 0)
+    } else {
+        monotonic_now().filter(|&time_nanos| time_nanos.as_nanos() > 0)
+    }
+}
+
+#[cfg(target_os = "android")]
+fn monotonic_now() -> Option<xr::Time> {
+    let mut ts = libc::timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+    if unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts) } != 0 {
+        return None;
+    }
+
+    Some(xr::Time::from_nanos(
+        ts.tv_sec as i64 * 1_000_000_000 + ts.tv_nsec as i64,
+    ))
+}
+
+#[cfg(not(target_os = "android"))]
+fn monotonic_now() -> Option<xr::Time> {
+    None
 }
 
 #[cfg(target_os = "android")]

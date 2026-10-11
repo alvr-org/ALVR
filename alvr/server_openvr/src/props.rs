@@ -565,7 +565,7 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
                         InputProfilePathString,
                         "{htc}/input/vive_tracker_profile.json",
                     );
-                    set_icons("{htc}/icons/tracker");
+                    set_icons("{htc}/icons/tracker_status");
 
                     // All of these property values were dumped from real a vive tracker via
                     // https://github.com/SDraw/openvr_dumper and were copied from
@@ -607,7 +607,7 @@ pub extern "C" fn set_device_openvr_props(instance_ptr: *mut c_void, device_id: 
                     // vr_properties->SetStringProperty(this->prop_container,
                     //                                  vr::Prop_Firmware_ProgrammingTargetString,
                     //                                  GetSerialNumber().c_str());
-                    set_prop(FirmwareForceUpdateRequiredBool, device_serial);
+                    set_prop(FirmwareForceUpdateRequiredBool, "false");
                     set_prop(FirmwareRemindUpdateBool, "false");
                     set_prop(HasDisplayComponentBool, "false");
                     set_prop(HasCameraComponentBool, "false");

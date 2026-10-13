@@ -1,0 +1,51 @@
+From 3efcba77fa553ff30480c09e60826af701a0c1c6 Mon Sep 17 00:00:00 2001
+From: Fabiano Tassotti <fabianotassotti@gmail.com>
+Date: Tue, 13 Oct 2026 19:11:49 -0300
+Subject: [PATCH] nvenc: Honour colorspace and color_range for RGB input
+
+NVENC converts RGB input to YUV itself, using the colour matrix and the
+full range flag of the VUI. For RGB input these were forced to BT.601 and
+limited range, whatever the caller set on the codec context.
+---
+ libavcodec/nvenc.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/libavcodec/nvenc.c b/libavcodec/nvenc.c
+index 392230526d..8f908cc019 100644
+--- a/libavcodec/nvenc.c
++++ b/libavcodec/nvenc.c
+@@ -1276,10 +1276,13 @@ static av_cold int nvenc_setup_h264_config(AVCodecContext *avctx)
+     const AVPixFmtDescriptor *pixdesc = av_pix_fmt_desc_get(ctx->data_pix_fmt);
+ 
+     if ((pixdesc->flags & AV_PIX_FMT_FLAG_RGB) && !IS_GBRP(ctx->data_pix_fmt)) {
+-        vui->colourMatrix = to_nv_color_matrix(AVCOL_SPC_BT470BG);
++        // The encoder converts RGB input itself and follows these two fields.
++        // Honour what the caller asked for instead of forcing limited BT.601.
++        vui->colourMatrix = to_nv_color_matrix(avctx->colorspace == AVCOL_SPC_UNSPECIFIED
++                                               ? AVCOL_SPC_BT470BG : avctx->colorspace);
+         vui->colourPrimaries = to_nv_color_pri(avctx->color_primaries);
+         vui->transferCharacteristics = to_nv_color_trc(avctx->color_trc);
+-        vui->videoFullRangeFlag = 0;
++        vui->videoFullRangeFlag = (avctx->color_range == AVCOL_RANGE_JPEG);
+     } else {
+         vui->colourMatrix = to_nv_color_matrix(IS_GBRP(ctx->data_pix_fmt) ? AVCOL_SPC_RGB : avctx->colorspace);
+         vui->colourPrimaries = to_nv_color_pri(avctx->color_primaries);
+@@ -1467,10 +1470,13 @@ static av_cold int nvenc_setup_hevc_config(AVCodecContext *avctx)
+     const AVPixFmtDescriptor *pixdesc = av_pix_fmt_desc_get(ctx->data_pix_fmt);
+ 
+     if ((pixdesc->flags & AV_PIX_FMT_FLAG_RGB) && !IS_GBRP(ctx->data_pix_fmt)) {
+-        vui->colourMatrix = to_nv_color_matrix(AVCOL_SPC_BT470BG);
++        // The encoder converts RGB input itself and follows these two fields.
++        // Honour what the caller asked for instead of forcing limited BT.601.
++        vui->colourMatrix = to_nv_color_matrix(avctx->colorspace == AVCOL_SPC_UNSPECIFIED
++                                               ? AVCOL_SPC_BT470BG : avctx->colorspace);
+         vui->colourPrimaries = to_nv_color_pri(avctx->color_primaries);
+         vui->transferCharacteristics = to_nv_color_trc(avctx->color_trc);
+-        vui->videoFullRangeFlag = 0;
++        vui->videoFullRangeFlag = (avctx->color_range == AVCOL_RANGE_JPEG);
+     } else {
+         vui->colourMatrix = to_nv_color_matrix(IS_GBRP(ctx->data_pix_fmt) ? AVCOL_SPC_RGB : avctx->colorspace);
+         vui->colourPrimaries = to_nv_color_pri(avctx->color_primaries);
+-- 
+2.43.0
+

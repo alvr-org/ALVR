@@ -642,6 +642,14 @@ std::optional<alvr::render::Layer> OvrDirectModeComponent::SubmittedLayer(int i)
         if (it == m_handleMap.end()) {
             return std::nullopt;
         }
+        auto const& b = submitted.bounds;
+        if (!std::isfinite(b.uMin) || !std::isfinite(b.uMax) || !std::isfinite(b.vMin)
+            || !std::isfinite(b.vMax) || b.uMin < 0.f || b.uMin > 1.f || b.uMax < 0.f
+            || b.uMax > 1.f || b.vMin < 0.f || b.vMin > 1.f || b.vMax < 0.f || b.vMax > 1.f
+            || b.uMin == b.uMax || b.vMin == b.vMax) {
+            Warn("Invalid texture bounds for layer %d eye %d; skipping it\n", i, eye);
+            return std::nullopt;
+        }
         auto const* resource = it->second.first;
         layer.format = (vk::Format)(VkFormat)resource->textDesc.nFormat;
         layer.extent = vk::Extent2D { .width = resource->textDesc.nWidth,
@@ -649,6 +657,10 @@ std::optional<alvr::render::Layer> OvrDirectModeComponent::SubmittedLayer(int i)
         layer.eyes[eye] = {
             .handle = submitted.hTexture,
             .fd = resource->fds[it->second.second],
+            .uMin = b.uMin,
+            .vMin = b.vMin,
+            .uMax = b.uMax,
+            .vMax = b.vMax,
         };
     }
     return layer;

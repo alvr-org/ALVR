@@ -92,7 +92,7 @@ private:
     // Called before CleanupProcessResource.
     void ForgetTextures(std::vector<vr::SharedTextureHandle_t> const& textures);
     // Layer i of the frame being presented, or nothing when one of its
-    // textures is not one of ours.
+    // textures is not one of ours or its bounds are invalid.
     std::optional<alvr::render::Layer> SubmittedLayer(int i);
 
     static const int MAX_LAYERS = 10;

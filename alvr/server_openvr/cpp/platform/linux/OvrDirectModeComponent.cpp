@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "OvrDirectModeComponent.h"
+#include "SteamVrSync.h"
 
 #include "alvr_server/Logger.h"
 #include "alvr_server/include/openvr_math.h"
@@ -37,12 +38,17 @@ constexpr uint32_t GpuWaitDisarmThreshold = 30;
 // free.
 constexpr int64_t GpuWaitPollCapFrames = 2;
 
-// Guard sleep before render, ms. The compositor's own scene writes carry only
-// detached pre-signaled placeholder fences, so the GPU-side fence wait cannot
-// see them; this bounds how fresh such a write can be when the read starts.
-// Runs on the worker, so it costs pipeline depth, not compositor-thread
-// budget.
+// Guard sleep before render, ms, only for a frame with a texture that has no
+// SteamVR timeline semaphore (see SteamVrSync.h). The compositor's own scene
+// writes carry only detached pre-signaled placeholder fences, and on NVIDIA
+// the dma-bufs carry none at all, so the fence wait cannot see them; this
+// bounds how fresh such a write can be when the read starts. Runs on the
+// worker, so it costs pipeline depth, not compositor-thread budget.
 constexpr int GuardSleepMs = 4;
+
+// Cap on the wait for a texture's timeline semaphore, in frame intervals.
+// On timeout the frame is read anyway, as it would have been without it.
+constexpr int64_t TimelineWaitCapFrames = 2;
 
 // The negotiated refresh rate expressed as a frame period.
 static std::chrono::nanoseconds frameInterval() {
@@ -199,12 +205,15 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
             continue;
         }
 
-        // Bounded gate on the writers' implicit fences, before the encoder
-        // lock. On timeout close the fds and present unguarded instead of
-        // wedging. Devices: on Mesa (AMD, Intel) these fences carry the
-        // writer's work; on NVIDIA the dma-bufs carry none.
+        // Fallback for textures without a SteamVR semaphore: bounded gate on
+        // the writer's implicit fences, before the encoder lock. On timeout
+        // close the fds and present unguarded instead of wedging. Devices: on
+        // Mesa (AMD, Intel) these fences carry the writer's work; on NVIDIA
+        // the dma-bufs carry none and nothing is exported.
+        bool needsGuard = false;
         std::vector<struct pollfd> pfds;
         for (auto const& wait : job.waits) {
+            needsGuard = needsGuard || wait.semaphore == 0;
             if (wait.fenceFd >= 0) {
                 pfds.push_back({ .fd = wait.fenceFd, .events = POLLIN, .revents = 0 });
             }
@@ -244,7 +253,7 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
         }
         closeFenceFds(job.waits);
 
-        if (GuardSleepMs > 0) {
+        if (needsGuard && GuardSleepMs > 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(GuardSleepMs));
         }
 
@@ -253,6 +262,35 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
 
             if (job.generation != m_encGeneration) {
                 continue;
+            }
+
+            // Wait for the exact end of SteamVR's write into each texture, as
+            // Steam Link does (SteamVrSync.h). Most textures are already
+            // finished here; on NVIDIA the waits measured reach ~4 ms in
+            // SteamVR Home and ~6 ms when a heavy application's frame ends
+            // late.
+            auto const timelineCapNs
+                = (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
+                      frameInterval() * TimelineWaitCapFrames
+                )
+                      .count();
+            for (auto const& wait : job.waits) {
+                if (wait.semaphore == 0) {
+                    continue;
+                }
+                uint64_t const semaphore = wait.semaphore;
+                if (!enc.waitTimeline(
+                        semaphore,
+                        [semaphore] { return steamvrsync::Sync::Get().DupFd(semaphore); },
+                        wait.value,
+                        timelineCapNs
+                    )) {
+                    Warn(
+                        "SteamVR texture semaphore %llx not reached or not importable; "
+                        "reading the frame anyway\n",
+                        (unsigned long long)semaphore
+                    );
+                }
             }
 
             // Rotationally reproject the frame from the pose it was rendered
@@ -439,9 +477,10 @@ void OvrDirectModeComponent::ForgetTextures(std::vector<vr::SharedTextureHandle_
     // and move the generation so a job the worker already holds is dropped
     // instead of importing an fd that is about to be closed.
     DrainPendingJob();
+    std::vector<uint64_t> semaphores = steamvrsync::Sync::Get().Forget(textures);
     std::lock_guard<std::mutex> encLock(m_encMutex);
     m_encGeneration++;
-    enc.releaseTextures(textures);
+    enc.releaseTextures(textures, semaphores);
 }
 
 void OvrDirectModeComponent::CleanupProcessResource(ProcessResource* processResource) {
@@ -615,12 +654,27 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
     job.generation = m_encGeneration;
     job.enqueueTime = std::chrono::steady_clock::now();
 
-    // Export each texture's write fences so the worker starts reading when
-    // the writer finishes.
+    // What marks the end of each texture's write. SteamVR's timeline
+    // semaphore and its value, read now (by the worker SteamVR may already
+    // have submitted the next write into the same texture); for a texture
+    // without one, the dma-buf's implicit fences as before.
+    auto& sync = steamvrsync::Sync::Get();
     for (auto const& layer : job.layers) {
         for (auto const& eye : layer.eyes) {
             FrameJob::TextureWait wait;
-            wait.fenceFd = exportReadSyncFile(eye.fd);
+            wait.semaphore = sync.SemaphoreOf(eye.handle);
+            if (wait.semaphore == 0 || !sync.Value(wait.semaphore, &wait.value)) {
+                wait.semaphore = 0;
+                wait.fenceFd = exportReadSyncFile(eye.fd);
+                if (m_noSemaphoreLogged.insert(eye.handle).second) {
+                    Info(
+                        "SteamVR texture %llx has no timeline semaphore; using its implicit "
+                        "fences and a %d ms guard\n",
+                        (unsigned long long)eye.handle,
+                        GuardSleepMs
+                    );
+                }
+            }
             job.waits.push_back(wait);
         }
     }

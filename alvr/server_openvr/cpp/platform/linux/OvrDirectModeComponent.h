@@ -12,6 +12,7 @@
 #include <map>
 #include <mutex>
 #include <optional>
+#include <set>
 #include <thread>
 #include <vector>
 
@@ -88,8 +89,8 @@ private:
     };
     std::map<vr::SharedTextureHandle_t, std::pair<ProcessResource*, int>> m_handleMap;
     void CleanupProcessResource(ProcessResource* processResource);
-    // Frees what the encoder imported for textures SteamVR is destroying.
-    // Called before CleanupProcessResource.
+    // Frees what the encoder and the semaphore lookup kept for textures
+    // SteamVR is destroying. Called before CleanupProcessResource.
     void ForgetTextures(std::vector<vr::SharedTextureHandle_t> const& textures);
     // Layer i of the frame being presented, or nothing when one of its
     // textures is not one of ours or its bounds are invalid.
@@ -108,6 +109,8 @@ private:
     // The renderer and encoder are built from the first layer 0 texture set
     // after a connect or rebuild; later sets are taken by handle.
     bool m_encoderReady = false;
+    // Textures already reported as having no SteamVR semaphore (logged once).
+    std::set<vr::SharedTextureHandle_t> m_noSemaphoreLogged;
 
     alvr::Encoder enc;
 
@@ -138,11 +141,14 @@ private:
         // discards the job if the generation moved (rebuild, shutdown, set
         // switch) between enqueue and processing.
         uint64_t generation;
-        // What marks the end of the write into each texture the job reads: a
-        // sync_file fd exported from the dma-buf's implicit fences (-1 when
-        // there are none). The fds are owned by the job: every path that
-        // drops it must close them.
+        // What marks the end of the write into each texture the job reads:
+        // SteamVR's timeline semaphore and the value read at Present, or,
+        // for a texture without one, a sync_file fd exported from the
+        // dma-buf's implicit fences (-1 when there are none). The fence fds
+        // are owned by the job: every path that drops it must close them.
         struct TextureWait {
+            uint64_t semaphore = 0;
+            uint64_t value = 0;
             int fenceFd = -1;
         };
         std::vector<TextureWait> waits;

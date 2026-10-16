@@ -1,8 +1,13 @@
 #include "Renderer.hpp"
 
+#include <cstdint>
+#include <cstring>
 #include <optional>
+#include <stdexcept>
 #include <unistd.h>
 #include <vulkan/vulkan_structs.hpp>
+
+#include "alvr_server/bindings.h"
 
 namespace alvr::render::detail {
 
@@ -440,59 +445,51 @@ Output createOutputImage(
 
 namespace alvr::render {
 
+// Matches layer.comp's push constant block (std430).
+struct LayerPush {
+    int32_t dstOffset[2];
+    int32_t dstSize[2];
+    float uvRect[4];
+    int32_t opaque;
+};
+
 Renderer::Renderer(
     VkContext const& vkCtx, RendererCreateInfo& createInfo, std::vector<PipelineCreateInfo> pipeCIs
 ) {
     eyeExtent = createInfo.inputEyeExtent;
     outExtent = createInfo.outputExtent;
 
-    // The import must match how SteamVR created the image: its real format
-    // and MUTABLE_FORMAT (passed in CreateSwapTextureSet), and no format list
-    // since SteamVR's image has none. A list could let the driver choose a
-    // different memory layout (e.g. compression) than the exporter did.
-    // MUTABLE_FORMAT is what makes the UNORM view of an sRGB image legal.
-    vk::Format inputFormat = createInfo.format;
+    // SteamVR's sRGB textures are sampled through UNORM views (see
+    // importTexture), so everything downstream is UNORM: the shaders
+    // imageStore through rgba8 and the encoder consumes raw bytes with no
+    // notion of sRGB.
     vk::Format unormFormat = createInfo.format;
-    if (inputFormat == vk::Format::eR8G8B8A8Srgb)
+    if (unormFormat == vk::Format::eR8G8B8A8Srgb)
         unormFormat = vk::Format::eR8G8B8A8Unorm;
 
-    if (inputFormat == vk::Format::eB8G8R8A8Srgb)
+    if (unormFormat == vk::Format::eB8G8R8A8Srgb)
         unormFormat = vk::Format::eB8G8R8A8Unorm;
 
-    // TODO: Only put the usage flags for the images that need to have them
-    vk::ImageCreateInfo inputImgCI {
-        .flags = vk::ImageCreateFlagBits::eMutableFormat,
+    // The working images hold both eyes side by side at the size of the
+    // first layer 0 texture set; later sets of another size (SteamVR Home's)
+    // are scaled into it by layer.comp.
+    vk::ImageCreateInfo stagingImgCI {
         .imageType = vk::ImageType::e2D,
-        .format = inputFormat,
-
+        .format = unormFormat,
         .extent = {
-            .width = eyeExtent.width,
+            .width = eyeExtent.width * 2,
             .height = eyeExtent.height,
             .depth = 1,
         },
-
         .mipLevels = 1,
         .arrayLayers = 1,
         .samples = vk::SampleCountFlagBits::e1,
-        .usage = vk::ImageUsageFlagBits::eTransferSrc
-            | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
+        .usage = vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eInputAttachment
+            | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst
+            | vk::ImageUsageFlagBits::eStorage,
         .sharingMode = vk::SharingMode::eExclusive,
         .initialLayout = vk::ImageLayout::eUndefined,
     };
-
-    for (int i = 0; i < ImageCount; ++i) {
-        inputImages[i] = createImage(vkCtx, inputImgCI, createInfo.inputImgFds[i], unormFormat);
-    }
-
-    // Everything downstream is UNORM regardless of the input format: the
-    // copy moves raw bytes, the shaders imageStore through rgba8, and the
-    // encoder consumes raw bytes with no notion of sRGB.
-    auto stagingImgCI = inputImgCI;
-    stagingImgCI.flags = {};
-    stagingImgCI.format = unormFormat;
-    stagingImgCI.extent.width = eyeExtent.width * 2;
-    stagingImgCI.usage = inputImgCI.usage | vk::ImageUsageFlagBits::eTransferDst
-        | vk::ImageUsageFlagBits::eStorage;
 
     for (auto& img : stagingImgs) {
         img = createImage(vkCtx, stagingImgCI);
@@ -578,34 +575,51 @@ Renderer::Renderer(
     // renderFinishedSem = vkCtx.dev.createSemaphore(semCI);
 
     fence = vkCtx.dev.createFence({});
+
+    // Copied out of the embedded bytes, which carry no 4-byte alignment.
+    std::vector<u32> layerCode((LAYER_SHADER_COMP_SPV_LEN + 3) / 4);
+    memcpy(layerCode.data(), LAYER_SHADER_COMP_SPV_PTR, LAYER_SHADER_COMP_SPV_LEN);
+    vk::ShaderModuleCreateInfo layerShaderCI {
+        .codeSize = LAYER_SHADER_COMP_SPV_LEN,
+        .pCode = layerCode.data(),
+    };
+    layerShader = vkCtx.dev.createShaderModule(layerShaderCI);
+    vk::PushConstantRange layerPushRange {
+        .stageFlags = vk::ShaderStageFlagBits::eCompute,
+        .offset = 0,
+        .size = sizeof(LayerPush),
+    };
+    vk::PipelineLayoutCreateInfo layerPipeLayoutCI {
+        .setLayoutCount = 1,
+        .pSetLayouts = &descLayout,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &layerPushRange,
+    };
+    layerPipeLayout = vkCtx.dev.createPipelineLayout(layerPipeLayoutCI);
+    vk::ComputePipelineCreateInfo layerPipeCI {
+        .stage = {
+            .stage = vk::ShaderStageFlagBits::eCompute,
+            .module = layerShader,
+            .pName = "main",
+        },
+        .layout = layerPipeLayout,
+    };
+    auto [layerPipeResult, layerPipes] = vkCtx.dev.createComputePipelines({}, layerPipeCI);
+    if (layerPipeResult != vk::Result::eSuccess) {
+        throw std::runtime_error("Could not create the layer pipeline");
+    }
+    layerPipe = layerPipes[0];
 }
 
-void Renderer::render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx, int const waitFds[2]) {
-    // Import the input writers' sync files as temporary binary semaphores;
-    // the submission below waits on them at the transfer stage, so the eye
-    // copies start exactly when the writes complete.
-    vk::Semaphore importedSems[2] = {};
-    u32 importedCount = 0;
-    if (waitFds != nullptr) {
-        for (int e = 0; e < 2; ++e) {
-            if (waitFds[e] < 0) {
-                continue;
-            }
-            vk::Semaphore sem = vkCtx.dev.createSemaphore({});
-            vk::ImportSemaphoreFdInfoKHR importInfo {
-                .semaphore = sem,
-                .flags = vk::SemaphoreImportFlagBits::eTemporary,
-                .handleType = vk::ExternalSemaphoreHandleTypeFlagBits::eSyncFd,
-                .fd = waitFds[e],
-            };
-            if (vkCtx.dev.importSemaphoreFdKHR(&importInfo, vkCtx.dispatch)
-                == vk::Result::eSuccess) {
-                importedSems[importedCount++] = sem;
-            } else {
-                vkCtx.dev.destroy(sem);
-                close(waitFds[e]);
-            }
-        }
+void Renderer::render(VkContext& vkCtx, std::vector<Layer> const& layers) {
+    if (layers.empty()) {
+        return;
+    }
+    // Imports happen before recording: they create Vulkan objects.
+    std::vector<std::vector<Image*>> sources;
+    for (auto const& layer : layers) {
+        sources.push_back({ &importTexture(vkCtx, layer, layer.eyes[0]),
+                            &importTexture(vkCtx, layer, layer.eyes[1]) });
     }
 
     vk::CommandBufferBeginInfo beginInfo {};
@@ -652,81 +666,58 @@ void Renderer::render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx, int const wai
     };
 
     std::vector<vk::ImageMemoryBarrier> barriers;
-    Image* prev = nullptr;
 
-    // Copy the left and right eye images into the first working image.
-    Image* stageOut = pipes.empty() ? &output.image : &stagingImgs[0];
-    transitionImage(
-        inputImages[leftIdx],
-        vk::ImageLayout::eGeneral,
-        vk::AccessFlagBits::eNone,
-        vk::AccessFlagBits::eTransferRead,
-        barriers
-    );
-    transitionImage(
-        inputImages[rightIdx],
-        vk::ImageLayout::eGeneral,
-        vk::AccessFlagBits::eNone,
-        vk::AccessFlagBits::eTransferRead,
-        barriers
-    );
+    // Draw layer 0 into the first working image, then blend each further
+    // layer over it, in submission order. layer.comp scales each eye's valid
+    // sub-rectangle to the eye; with full bounds and the same size it is a
+    // plain copy.
+    Image* stageOut = &stagingImgs[0];
+    for (auto const& eyes : sources) {
+        for (Image* source : eyes) {
+            transitionImage(
+                *source,
+                vk::ImageLayout::eGeneral,
+                vk::AccessFlagBits::eNone,
+                vk::AccessFlagBits::eShaderRead,
+                barriers
+            );
+        }
+    }
     transitionImage(
         *stageOut,
         vk::ImageLayout::eGeneral,
         vk::AccessFlagBits::eNone,
-        vk::AccessFlagBits::eTransferWrite,
+        vk::AccessFlagBits::eShaderWrite,
         barriers
     );
-
     flushBarriers(
-        barriers, vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer
+        barriers, vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eComputeShader
     );
 
-    vk::ImageSubresourceLayers subresLayout {
-        .aspectMask = vk::ImageAspectFlagBits::eColor,
-        .mipLevel = 0,
-        .baseArrayLayer = 0,
-        .layerCount = 1,
-    };
-
-    vk::ImageCopy2KHR leftCopy {
-        .srcSubresource = subresLayout,
-        .srcOffset = {},
-        .dstSubresource = subresLayout,
-        .dstOffset = {},
-        .extent = {
-            .width = eyeExtent.width,
-            .height = eyeExtent.height,
-            .depth = 1,
-        },
-    };
-    vk::CopyImageInfo2KHR leftCopyInfo {
-        .srcImage = inputImages[leftIdx].image,
-        .srcImageLayout = inputImages[leftIdx].layout,
-        .dstImage = stageOut->image,
-        .dstImageLayout = stageOut->layout,
-        .regionCount = 1,
-        .pRegions = &leftCopy,
-    };
-    cmdBuf.copyImage2KHR(leftCopyInfo, vkCtx.dispatch);
-
-    auto rightCopy = leftCopy;
-    rightCopy.dstOffset = vk::Offset3D {
-        .x = static_cast<int32_t>(eyeExtent.width),
-        .y = 0,
-        .z = 0,
-    };
-    vk::CopyImageInfo2KHR rightCopyInfo {
-        .srcImage = inputImages[rightIdx].image,
-        .srcImageLayout = inputImages[rightIdx].layout,
-        .dstImage = stageOut->image,
-        .dstImageLayout = stageOut->layout,
-        .regionCount = 1,
-        .pRegions = &rightCopy,
-    };
-    cmdBuf.copyImage2KHR(rightCopyInfo, vkCtx.dispatch);
-
-    prev = stageOut;
+    cmdBuf.bindPipeline(vk::PipelineBindPoint::eCompute, layerPipe);
+    for (usize layerIdx = 0; layerIdx < layers.size(); ++layerIdx) {
+        if (layerIdx > 0) {
+            // A blend reads what the previous layer wrote.
+            vk::MemoryBarrier memBarrier {
+                .srcAccessMask = vk::AccessFlagBits::eShaderWrite,
+                .dstAccessMask = vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite,
+            };
+            cmdBuf.pipelineBarrier(
+                vk::PipelineStageFlagBits::eComputeShader,
+                vk::PipelineStageFlagBits::eComputeShader,
+                {},
+                memBarrier,
+                {},
+                {}
+            );
+        }
+        for (int eye = 0; eye < 2; ++eye) {
+            drawLayerEye(
+                vkCtx, *sources[layerIdx][eye], eye, layers[layerIdx].eyes[eye], layerIdx == 0
+            );
+        }
+    }
+    Image* prev = stageOut;
 
     PushConstants const pushConstants {
         .warp = warpParams,
@@ -774,30 +765,98 @@ void Renderer::render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx, int const wai
 
     cmdBuf.end();
 
-    // vk::TimelineSemaphoreSubmitInfo timelineInfo {
-    //     .waitSemaphoreValueCount = 1,
-    //     .pWaitSemaphoreValues = &waitValue,
-    // };
-    vk::PipelineStageFlags waitStages[2] = {
-        vk::PipelineStageFlagBits::eTransfer,
-        vk::PipelineStageFlagBits::eTransfer,
-    };
     vk::SubmitInfo submitInfo {
-        // .pNext = &timelineInfo,
-        .waitSemaphoreCount = importedCount, .pWaitSemaphores = importedSems,
-        .pWaitDstStageMask = waitStages,     .commandBufferCount = 1,
+        .commandBufferCount = 1,
         .pCommandBuffers = &cmdBuf,
     };
 
     vkCtx.useQueue([&](auto& queue) { queue.submit(submitInfo, fence); });
-    // The fence wait below also orders the destruction of the temporary
-    // imported semaphores: the queue waits on them until the submission
-    // finishes, so destroying them earlier would be a use after free.
     assert(vkCtx.dev.waitForFences(fence, true, UINT64_MAX) == vk::Result::eSuccess);
     vkCtx.dev.resetFences(fence);
+}
 
-    for (u32 i = 0; i < importedCount; ++i) {
-        vkCtx.dev.destroy(importedSems[i]);
+// Imports one of SteamVR's textures the first time its handle is seen, the
+// way the textures were always imported here: OPAQUE_FD memory, SteamVR's
+// real format with MUTABLE_FORMAT and no format list (as the driver created
+// it in CreateSwapTextureSet, so the memory layout matches the exporter's),
+// and a UNORM view of an sRGB format. No new requirement on any vendor.
+Image& Renderer::importTexture(VkContext& vkCtx, Layer const& layer, LayerEye const& eye) {
+    auto it = textures.find(eye.handle);
+    if (it != textures.end()) {
+        return it->second;
+    }
+    int fd = dup(eye.fd);
+    if (fd < 0) {
+        throw std::runtime_error("Could not duplicate a SteamVR texture fd");
+    }
+    vk::Format unormFormat = layer.format;
+    if (unormFormat == vk::Format::eR8G8B8A8Srgb)
+        unormFormat = vk::Format::eR8G8B8A8Unorm;
+    if (unormFormat == vk::Format::eB8G8R8A8Srgb)
+        unormFormat = vk::Format::eB8G8R8A8Unorm;
+    vk::ImageCreateInfo textureCI {
+        .flags = vk::ImageCreateFlagBits::eMutableFormat,
+        .imageType = vk::ImageType::e2D,
+        .format = layer.format,
+        .extent = { .width = layer.extent.width, .height = layer.extent.height, .depth = 1 },
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = vk::SampleCountFlagBits::e1,
+        .usage = vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eInputAttachment
+            | vk::ImageUsageFlagBits::eSampled,
+        .sharingMode = vk::SharingMode::eExclusive,
+        .initialLayout = vk::ImageLayout::eUndefined,
+    };
+    return textures.emplace(eye.handle, createImage(vkCtx, textureCI, fd, unormFormat))
+        .first->second;
+}
+
+void Renderer::drawLayerEye(
+    VkContext& vkCtx, Image& source, int eye, LayerEye const& rect, bool opaque
+) {
+    vk::DescriptorImageInfo sourceInfo {
+        .imageView = source.view,
+        .imageLayout = vk::ImageLayout::eGeneral,
+    };
+    vk::DescriptorImageInfo targetInfo {
+        .imageView = stagingImgs[0].view,
+        .imageLayout = vk::ImageLayout::eGeneral,
+    };
+    vk::WriteDescriptorSet writes[2];
+    writes[0] = {
+        .dstBinding = 0,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+        .pImageInfo = &sourceInfo,
+    };
+    writes[1] = {
+        .dstBinding = 1,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eStorageImage,
+        .pImageInfo = &targetInfo,
+    };
+    cmdBuf.pushDescriptorSetKHR(
+        vk::PipelineBindPoint::eCompute, layerPipeLayout, 0, writes, vkCtx.dispatch
+    );
+    LayerPush push {
+        .dstOffset = { int32_t(eye * eyeExtent.width), 0 },
+        .dstSize = { int32_t(eyeExtent.width), int32_t(eyeExtent.height) },
+        .uvRect = { rect.uMin, rect.vMin, rect.uMax, rect.vMax },
+        .opaque = opaque ? 1 : 0,
+    };
+    cmdBuf.pushConstants(
+        layerPipeLayout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(push), &push
+    );
+    cmdBuf.dispatch((eyeExtent.width + 7) / 8, (eyeExtent.height + 7) / 8, 1);
+}
+
+void Renderer::releaseTextures(VkContext const& vkCtx, std::vector<u64> const& handles) {
+    for (u64 handle : handles) {
+        auto it = textures.find(handle);
+        if (it != textures.end()) {
+            it->second.destroy(vkCtx);
+            textures.erase(it);
+        }
     }
 }
 
@@ -821,9 +880,13 @@ void Renderer::destroy(VkContext const& ctx) {
         img.destroy(ctx);
     }
 
-    for (auto& img : inputImages) {
+    for (auto& [handle, img] : textures) {
         img.destroy(ctx);
     }
+    textures.clear();
+    ctx.dev.destroy(layerPipe);
+    ctx.dev.destroy(layerPipeLayout);
+    ctx.dev.destroy(layerShader);
 }
 
 }

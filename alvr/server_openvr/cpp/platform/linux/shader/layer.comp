@@ -1,0 +1,39 @@
+#version 450
+
+// Draws one eye of a submitted layer into the working image (both eyes side
+// by side). The layer's valid sub-rectangle (uvRect) is stretched over the
+// whole eye. Layer 0 is copied (opaque); later layers, such as SteamVR's
+// dashboard, are blended over what is already there with straight alpha.
+//
+// Values stay sRGB-encoded end to end: SteamVR's sRGB textures are sampled
+// through UNORM views, as the copy this replaces moved raw bytes, so colours
+// are unchanged; the blend is done on encoded values (fine for the menu, not
+// exact). With matching sizes and full bounds each pixel samples its own
+// texel centre, so layer 0 comes out identical to a copy.
+
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout (binding = 0) uniform sampler2D layerEye;
+layout (binding = 1, rgba8) uniform image2D target;
+
+layout (push_constant) uniform Params {
+    ivec2 dstOffset; // the eye's origin in the working image
+    ivec2 dstSize;   // the eye's size in the working image
+    vec4 uvRect;     // uMin, vMin, uMax, vMax
+    int opaque;      // 1: layer 0, copy; 0: blend over
+} p;
+
+void main() {
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    if (pos.x >= p.dstSize.x || pos.y >= p.dstSize.y) {
+        return;
+    }
+    vec2 t = (vec2(pos) + 0.5) / vec2(p.dstSize);
+    vec4 src = texture(layerEye, mix(p.uvRect.xy, p.uvRect.zw, t));
+    ivec2 dst = pos + p.dstOffset;
+    if (p.opaque != 0) {
+        imageStore(target, dst, vec4(src.rgb, 1.0));
+        return;
+    }
+    vec4 base = imageLoad(target, dst);
+    imageStore(target, dst, vec4(mix(base.rgb, src.rgb, src.a), 1.0));
+}

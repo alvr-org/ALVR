@@ -2,6 +2,8 @@
 
 #define VULKAN_HPP_NO_CONSTRUCTORS
 #include <cstddef>
+#include <map>
+#include <vector>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_core.h>
@@ -16,7 +18,6 @@
 
 namespace alvr::render {
 
-constexpr u32 ImageCount = 6;
 constexpr usize StagingImgCount = 2;
 
 enum class HandleType {
@@ -64,7 +65,27 @@ struct RendererCreateInfo {
     vk::Format format;
     vk::Extent2D inputEyeExtent;
     vk::Extent2D outputExtent;
-    std::array<int, ImageCount> inputImgFds;
+};
+
+// One eye of a submitted layer: SteamVR's texture by its shared handle, the
+// fd it was received with (owned by the driver, dup'd for the import), and
+// the valid sub-rectangle SteamVR submitted (normalized; reversed endpoints
+// flip the image).
+struct LayerEye {
+    u64 handle = 0;
+    int fd = -1;
+    float uMin = 0.f;
+    float vMin = 0.f;
+    float uMax = 1.f;
+    float vMax = 1.f;
+};
+
+// A submitted layer. Layer 0 is the scene; later layers (SteamVR's dashboard,
+// other overlays) are blended over it in order.
+struct Layer {
+    vk::Format format = vk::Format::eUndefined;
+    vk::Extent2D extent {};
+    LayerEye eyes[2];
 };
 
 // Push-constant payload for the rotational reprojection fold in the sampling
@@ -131,7 +152,6 @@ class Renderer {
     vk::Extent2D eyeExtent;
     vk::Extent2D outExtent;
 
-    Image inputImages[ImageCount];
     Image stagingImgs[StagingImgCount];
     Output output;
 
@@ -143,6 +163,17 @@ class Renderer {
     vk::Fence fence;
 
     std::vector<detail::RenderPipeline> pipes;
+
+    // SteamVR's textures, imported on first use by handle and kept until
+    // SteamVR destroys them (releaseTextures) or the renderer goes.
+    std::map<u64, Image> textures;
+    // layer.comp: draws one eye of a layer into the working image.
+    vk::ShaderModule layerShader;
+    vk::PipelineLayout layerPipeLayout;
+    vk::Pipeline layerPipe;
+
+    Image& importTexture(VkContext& vkCtx, Layer const& layer, LayerEye const& eye);
+    void drawLayerEye(VkContext& vkCtx, Image& source, int eye, LayerEye const& rect, bool opaque);
 
     // vk::Semaphore renderFinishedSem;
 
@@ -157,11 +188,14 @@ public:
 
     // NOTE: Use the output immediately afterwards, as this synchronizes to the end of gpu
     // operations
-    // waitFds, when given, are sync_file fds imported as temporary semaphores
-    // the submission waits on before the eye copies. Ownership transfers to
-    // this call: a successful import hands the fd to Vulkan, a failed one is
-    // closed here.
-    void render(VkContext& vkCtx, u32 leftIdx, u32 rightIdx, int const waitFds[2] = nullptr);
+    // Draws layers[0] into the working image, blends the other layers over
+    // it, then runs the pass chain. The caller has already waited for the
+    // writers of every texture.
+    void render(VkContext& vkCtx, std::vector<Layer> const& layers);
+
+    // Frees the imports of textures SteamVR destroyed. The GPU is idle
+    // between frames (render waits for its submission).
+    void releaseTextures(VkContext const& vkCtx, std::vector<u64> const& handles);
 
     WarpParams warpParams {};
 

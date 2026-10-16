@@ -13,6 +13,7 @@
 
 #include "alvr_server/Logger.h"
 #include "alvr_server/include/openvr_math.h"
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <vector>
@@ -509,11 +510,25 @@ void OvrDirectModeComponent::ForgetTextures(std::vector<vr::SharedTextureHandle_
     // pending one, then take the encoder lock (waits for a frame being read)
     // and move the generation so a job the worker already holds is dropped
     // instead of importing an fd that is about to be closed.
+    {
+        std::lock_guard<std::mutex> lock(m_destroyedMutex);
+        for (auto texture : textures) {
+            m_destroyed.push_back(texture);
+        }
+        while (m_destroyed.size() > MaxDestroyedRemembered) {
+            m_destroyed.pop_front();
+        }
+    }
     DrainPendingJob();
     std::vector<uint64_t> semaphores = steamvrsync::Sync::Get().Forget(textures);
     std::lock_guard<std::mutex> encLock(m_encMutex);
     m_encGeneration++;
     enc.releaseTextures(textures, semaphores);
+}
+
+bool OvrDirectModeComponent::WasDestroyed(vr::SharedTextureHandle_t texture) {
+    std::lock_guard<std::mutex> lock(m_destroyedMutex);
+    return std::find(m_destroyed.begin(), m_destroyed.end(), texture) != m_destroyed.end();
 }
 
 void OvrDirectModeComponent::CleanupProcessResource(ProcessResource* processResource) {
@@ -633,6 +648,18 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
 
     std::optional<alvr::render::Layer> layer0 = SubmittedLayer(0);
     if (!layer0) {
+        // When an application exits, SteamVR destroys its texture sets and
+        // the compositor still presents one last frame naming them. That
+        // frame is skipped quietly; textures never seen are still an error.
+        if (WasDestroyed(m_submitLayers[0][0].hTexture)
+            || WasDestroyed(m_submitLayers[0][1].hTexture)) {
+            Debug(
+                "Skipping a frame whose textures SteamVR just destroyed %llu, %llu\n",
+                m_submitLayers[0][0].hTexture,
+                m_submitLayers[0][1].hTexture
+            );
+            return;
+        }
         Error(
             "Textures not found in handle map %llu, %llu\n",
             m_submitLayers[0][0].hTexture,

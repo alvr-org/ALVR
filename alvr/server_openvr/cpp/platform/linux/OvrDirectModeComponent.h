@@ -9,6 +9,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <deque>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -95,6 +96,13 @@ private:
     // Frees what the encoder and the semaphore lookup kept for textures
     // SteamVR is destroying. Called before CleanupProcessResource.
     void ForgetTextures(std::vector<vr::SharedTextureHandle_t> const& textures);
+    // The textures of the last few sets SteamVR destroyed, to tell the one
+    // frame the compositor presents with them after an application exits
+    // from a texture that was never ours.
+    static constexpr size_t MaxDestroyedRemembered = 64;
+    std::mutex m_destroyedMutex;
+    std::deque<vr::SharedTextureHandle_t> m_destroyed;
+    bool WasDestroyed(vr::SharedTextureHandle_t texture);
     // Layer i of the frame being presented, or nothing when one of its
     // textures is not one of ours or its bounds are invalid.
     std::optional<alvr::render::Layer> SubmittedLayer(int i);

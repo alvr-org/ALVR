@@ -524,6 +524,7 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t (&perEye)[2])
 
 /** Submits queued layers for display. */
 void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
+    int const layerCount = std::min(m_submitLayer, MAX_LAYERS);
     m_submitLayer = 0;
 
     switch (m_encoderState.load()) {
@@ -601,6 +602,14 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
 
     FrameJob job {};
     job.layers.push_back(*layer0);
+    // Layers 1..n (SteamVR's dashboard and other overlays while a scene
+    // application runs) are blended over layer 0. A layer whose textures are
+    // not ours is skipped rather than dropping the frame.
+    for (int i = 1; i < layerCount; ++i) {
+        if (auto layer = SubmittedLayer(i)) {
+            job.layers.push_back(*layer);
+        }
+    }
     job.targetTimestampNs = m_targetTimestampNs;
     job.renderOrientation = m_framePoseRotation;
     job.generation = m_encGeneration;

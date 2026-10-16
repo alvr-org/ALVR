@@ -235,21 +235,21 @@ public:
         encoderMissingLogged = false;
     }
 
-    // waitFds are sync_file fds the render submission must wait on before
-    // sampling the eye textures; ownership transfers here on every path.
+    // Frees what was imported for textures SteamVR destroyed. Call between
+    // frames, with the worker kept out (m_encMutex).
+    void releaseTextures(std::vector<u64> const& textures) {
+        if (renderer.hasValue()) {
+            renderer.get().releaseTextures(vkCtx, textures);
+        }
+    }
+
+    // layers[0] is the scene, later layers are blended over it.
     void present(
-        u32 leftIdx,
-        u32 rightIdx,
         u64 targetTimestampNs,
         render::WarpParams const& warp,
-        int const waitFds[2]
+        std::vector<render::Layer> const& layers
     ) {
         if (!encoder) {
-            for (int e = 0; e < 2; ++e) {
-                if (waitFds[e] >= 0) {
-                    close(waitFds[e]);
-                }
-            }
             // Say it once instead of at frame rate.
             if (!encoderMissingLogged) {
                 Error("Encoder not initialized, skipping frames until it is rebuilt.\n");
@@ -260,7 +260,7 @@ public:
         renderer.get().warpParams = warp;
         ReportPresent(targetTimestampNs, 0);
         updateFoveationCenters(targetTimestampNs);
-        renderer.get().render(vkCtx, leftIdx, rightIdx, waitFds);
+        renderer.get().render(vkCtx, layers);
         ReportComposed(targetTimestampNs, 0);
 
         encoder->SetParams(GetDynamicEncoderParams());

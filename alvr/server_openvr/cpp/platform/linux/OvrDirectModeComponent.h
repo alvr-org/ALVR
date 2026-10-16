@@ -11,7 +11,9 @@
 #include <condition_variable>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <thread>
+#include <vector>
 
 #include <vulkan/vulkan.h>
 
@@ -86,6 +88,12 @@ private:
     };
     std::map<vr::SharedTextureHandle_t, std::pair<ProcessResource*, int>> m_handleMap;
     void CleanupProcessResource(ProcessResource* processResource);
+    // Frees what the encoder imported for textures SteamVR is destroying.
+    // Called before CleanupProcessResource.
+    void ForgetTextures(std::vector<vr::SharedTextureHandle_t> const& textures);
+    // Layer i of the frame being presented, or nothing when one of its
+    // textures is not one of ours.
+    std::optional<alvr::render::Layer> SubmittedLayer(int i);
 
     static const int MAX_LAYERS = 10;
     int m_submitLayer;
@@ -97,7 +105,9 @@ private:
     // Track current texture index for each eye to avoid UB with uninitialized data
     std::map<ProcessResource*, uint32_t> m_swapchainIndices;
 
-    std::array<vr::SharedTextureHandle_t, 6> layer0Texts {};
+    // The renderer and encoder are built from the first layer 0 texture set
+    // after a connect or rebuild; later sets are taken by handle.
+    bool m_encoderReady = false;
 
     alvr::Encoder enc;
 
@@ -116,8 +126,8 @@ private:
     // faster than frames arrive, and if it falls behind, the newest frame
     // replaces the stale pending one.
     struct FrameJob {
-        uint32_t leftIdx;
-        uint32_t rightIdx;
+        // The layers to draw; layer 0 only for now.
+        std::vector<alvr::render::Layer> layers;
         uint64_t targetTimestampNs;
         // Orientation the layer was rendered with, captured in Present. The
         // worker needs it to build the reprojection, and it cannot read
@@ -128,10 +138,14 @@ private:
         // discards the job if the generation moved (rebuild, shutdown, set
         // switch) between enqueue and processing.
         uint64_t generation;
-        // sync_file fds exported from the eye textures' write fences in
-        // Present. Owned by the job: every path that drops the job without
-        // presenting it must close them.
-        int waitFds[2] = { -1, -1 };
+        // What marks the end of the write into each texture the job reads: a
+        // sync_file fd exported from the dma-buf's implicit fences (-1 when
+        // there are none). The fds are owned by the job: every path that
+        // drops it must close them.
+        struct TextureWait {
+            int fenceFd = -1;
+        };
+        std::vector<TextureWait> waits;
         std::chrono::steady_clock::time_point enqueueTime;
     };
     void EncodeWorkerLoop();
@@ -154,10 +168,6 @@ private:
     // instead of presenting old indices against rebuilt state.
     uint64_t m_encGeneration = 0;
 
-    // A second dup of each imported texture fd, kept for exporting the
-    // writer's fences at Present. Replaced wholesale on every texture-set
-    // switch, so stale sets never accumulate.
-    int m_syncFds[6] = { -1, -1, -1, -1, -1, -1 };
     // Consecutive writer-fence poll timeouts; at the threshold the GPU wait
     // disarms for the session so a wedged writer degrades the stream once
     // instead of taxing every frame.

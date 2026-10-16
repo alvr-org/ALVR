@@ -302,11 +302,14 @@ public:
         }
     }
 
-    // layers[0] is the scene, later layers are blended over it.
+    // layers[0] is the scene, later layers are blended over it. afterRead
+    // runs once the GPU has finished reading SteamVR's textures, before the
+    // encode, so the driver can release a held PostPresent early.
     void present(
         u64 targetTimestampNs,
         render::WarpParams const& warp,
-        std::vector<render::Layer> const& layers
+        std::vector<render::Layer> const& layers,
+        std::function<void()> const& afterRead
     ) {
         if (!encoder) {
             // Say it once instead of at frame rate.
@@ -320,6 +323,7 @@ public:
         ReportPresent(targetTimestampNs, 0);
         updateFoveationCenters(targetTimestampNs);
         renderer.get().render(vkCtx, layers);
+        afterRead();
         ReportComposed(targetTimestampNs, 0);
 
         encoder->SetParams(GetDynamicEncoderParams());

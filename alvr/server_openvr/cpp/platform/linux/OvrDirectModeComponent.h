@@ -86,6 +86,9 @@ private:
         int fds[3];
         SwapTextureSetDesc_t textDesc;
         uint32_t pid;
+        // Created by vrcompositor itself rather than a scene application.
+        // Frames reading such a texture hold PostPresent until the read.
+        bool compositorOwned = false;
     };
     std::map<vr::SharedTextureHandle_t, std::pair<ProcessResource*, int>> m_handleMap;
     void CleanupProcessResource(ProcessResource* processResource);
@@ -129,6 +132,8 @@ private:
     // faster than frames arrive, and if it falls behind, the newest frame
     // replaces the stale pending one.
     struct FrameJob {
+        // Present's frame counter, for the PostPresent hold.
+        uint64_t frame = 0;
         // Layer 0 first, then the overlays to blend over it.
         std::vector<alvr::render::Layer> layers;
         uint64_t targetTimestampNs;
@@ -186,4 +191,17 @@ private:
     std::mutex m_viewParamsMutex;
     FfiViewParams m_viewParams[2] {};
     bool m_viewParamsValid = false;
+
+    // PostPresent hold: Present's frame counter, the frame it last queued and
+    // whether that frame must be read before SteamVR continues, and the
+    // newest frame the worker has read (or dropped).
+    uint64_t m_presentFrame = 0;
+    std::mutex m_readMutex;
+    std::condition_variable m_readCv;
+    uint64_t m_lastQueuedFrame = 0;
+    bool m_holdUntilRead = false;
+    // Whether the last Present queued a frame for the encoder.
+    bool m_queuedThisPresent = false;
+    uint64_t m_lastReadFrame = 0;
+    void MarkRead(uint64_t frame);
 };

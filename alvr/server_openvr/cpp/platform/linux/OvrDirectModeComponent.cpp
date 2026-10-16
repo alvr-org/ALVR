@@ -177,11 +177,26 @@ OvrDirectModeComponent::~OvrDirectModeComponent() {
 }
 
 void OvrDirectModeComponent::DrainPendingJob() {
-    std::lock_guard<std::mutex> lock(m_jobMutex);
-    if (m_jobPending) {
-        closeFenceFds(m_job.waits);
+    uint64_t dropped = 0;
+    {
+        std::lock_guard<std::mutex> lock(m_jobMutex);
+        if (m_jobPending) {
+            closeFenceFds(m_job.waits);
+            dropped = m_job.frame;
+        }
+        m_jobPending = false;
     }
-    m_jobPending = false;
+    if (dropped != 0) {
+        MarkRead(dropped);
+    }
+}
+
+void OvrDirectModeComponent::MarkRead(uint64_t frame) {
+    {
+        std::lock_guard<std::mutex> lock(m_readMutex);
+        m_lastReadFrame = std::max(m_lastReadFrame, frame);
+    }
+    m_readCv.notify_all();
 }
 
 void OvrDirectModeComponent::EncodeWorkerLoop() {
@@ -202,6 +217,7 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
         );
         if (std::chrono::steady_clock::now() - job.enqueueTime > ageLimit) {
             closeFenceFds(job.waits);
+            MarkRead(job.frame);
             continue;
         }
 
@@ -261,6 +277,7 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
             std::lock_guard<std::mutex> encLock(m_encMutex);
 
             if (job.generation != m_encGeneration) {
+                MarkRead(job.frame);
                 continue;
             }
 
@@ -325,13 +342,18 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
                 }
             }
 
-            enc.present(stampTimestampNs, warpParams, job.layers);
+            uint64_t const frame = job.frame;
+            enc.present(stampTimestampNs, warpParams, job.layers, [this, frame] {
+                MarkRead(frame);
+            });
+            MarkRead(frame);
         } catch (std::exception const& e) {
             // An exception escaping a thread's start function is
             // std::terminate, which takes vrserver with it. Same recovery as
             // the compositor-thread paths: log, tear the encoder down, go
             // idle until the next client connect.
             Error("Encode worker: %s. Tearing down encoder and going idle.\n", e.what());
+            MarkRead(job.frame);
             std::lock_guard<std::mutex> encLock(m_encMutex);
             // The try block's lock released when the exception left it, so a
             // rebuild may have swapped the encoder in between. A moved
@@ -370,6 +392,17 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
     ProcessResource* processResource = new ProcessResource();
     processResource->textDesc = *pSwapTextureSetDesc;
     processResource->pid = unPid;
+    {
+        char path[32];
+        snprintf(path, sizeof(path), "/proc/%u/comm", unPid);
+        if (FILE* comm = fopen(path, "r")) {
+            char name[32] = {};
+            if (fgets(name, sizeof(name), comm)) {
+                processResource->compositorOwned = strncmp(name, "vrcompositor", 12) == 0;
+            }
+            fclose(comm);
+        }
+    }
     m_swapchainIndices[processResource] = 0;
 
     {
@@ -565,6 +598,9 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t (&perEye)[2])
 void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
     int const layerCount = std::min(m_submitLayer, MAX_LAYERS);
     m_submitLayer = 0;
+    // Set below when this Present queues a frame (read by PostPresent).
+    m_holdUntilRead = false;
+    m_queuedThisPresent = false;
 
     switch (m_encoderState.load()) {
     case EncoderState::RebuildRequested: {
@@ -640,6 +676,7 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
     }
 
     FrameJob job {};
+    job.frame = ++m_presentFrame;
     job.layers.push_back(*layer0);
     // Layers 1..n (SteamVR's dashboard and other overlays while a scene
     // application runs) are blended over layer 0. A layer whose textures are
@@ -676,6 +713,17 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
                 }
             }
             job.waits.push_back(wait);
+
+            // vrcompositor's own textures: the value read here does not always
+            // cover the right eye's write yet, and without a hold SteamVR goes
+            // on and that write lands during the read (the right eye showed
+            // the next frame). Scene applications' textures need no hold, and
+            // holding for them would pass their late GPU frames on to the
+            // compositor (VRChat fell to 60 fps).
+            auto it = m_handleMap.find(eye.handle);
+            if (it != m_handleMap.end() && it->second.first->compositorOwned) {
+                m_holdUntilRead = true;
+            }
         }
     }
 
@@ -694,6 +742,11 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
         m_job = job;
         m_jobPending = true;
     }
+    {
+        std::lock_guard<std::mutex> lock(m_readMutex);
+        m_lastQueuedFrame = job.frame;
+    }
+    m_queuedThisPresent = true;
     m_jobCv.notify_one();
 }
 
@@ -749,7 +802,30 @@ void OvrDirectModeComponent::PostPresent(const Throttling_t* pThrottling) {
         }
     }
 
-    PaceAfterPresent(throttleFrames);
+    // Upstream's pacing against the vsync grid stays while nothing is being
+    // streamed (before a client connects, while the encoder is set up) and
+    // while SteamVR throttles an application, which is what honours the hint.
+    // Every test of this change ran that way, and the one run without any
+    // pacing from SteamVR's start hit an NVIDIA Xid 32 in vrcompositor before
+    // the client connected. While frames are streamed it does not hold every
+    // frame until the next tick: that is almost a whole frame, after which
+    // vrcompositor's WaitForAcquire times out and it draws into the texture
+    // being read (SteamVR Home shook). The vsync announcer alone kept the
+    // compositor at the refresh rate then (72.0 fps measured). A throttled
+    // application is untested with this change.
+    if (throttleFrames > 0 || !m_queuedThisPresent) {
+        PaceAfterPresent(throttleFrames);
+        return;
+    }
+
+    // Hold SteamVR's submit thread until the worker has read this frame, but
+    // only for frames that read vrcompositor's own textures (see Present),
+    // and at most one frame interval. Devices: Linux only.
+    if (m_holdUntilRead) {
+        std::unique_lock<std::mutex> lock(m_readMutex);
+        uint64_t const target = m_lastQueuedFrame;
+        m_readCv.wait_for(lock, frameInterval(), [&] { return m_lastReadFrame >= target; });
+    }
 }
 
 void OvrDirectModeComponent::GetFrameTiming(vr::DriverDirectMode_FrameTiming* pFrameTiming) {

@@ -36,6 +36,10 @@
 //  4. Semaphore state +0x00: the timeline value of the last write submitted
 //     on its image. Read at Present it is the value that write will signal.
 //     Steam Link reads it at Present and waits for it on the GPU.
+//     Observed limit: for vrcompositor's own textures the right eye's value
+//     is often already reached at Present while its write is still to come,
+//     so for frames that read them the driver also holds PostPresent until
+//     the read (see OvrDirectModeComponent::PostPresent).
 // The semaphore fd itself comes through the PUBLIC IVRIPCResourceManagerClient
 // (RefResource + ReceiveSharedFd), as an OPAQUE_FD timeline semaphore.
 //

@@ -371,7 +371,9 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
             pSwapTextureSetDesc->nHeight,
             true,
             false,
-            true,
+            // No compute access: sRGB formats cannot be storage images, and
+            // with it SteamVR's own scene arrives as linear values.
+            false,
             1,
             1,
             creationFlags,

@@ -1,0 +1,42 @@
+From f09def92cd1f445e656b9c0cf310f612d5afc0ff Mon Sep 17 00:00:00 2001
+From: Fabiano Tassotti <fabianotassotti@gmail.com>
+Date: Tue, 13 Oct 2026 19:14:41 -0300
+Subject: [PATCH] nvenc: Honour colorspace and color_range for RGB input with
+ AV1
+
+The same change as for H.264 and HEVC, applied to the AV1 configuration.
+
+UNTESTED: written by analogy with the H.264/HEVC change, which was tested
+with HEVC on an RTX 3060 and a Quest 2. That GPU cannot encode AV1 and that
+headset cannot decode it, so this code has only been compiled, never run.
+
+Testing wanted from anyone with an NVIDIA GPU that encodes AV1 (RTX 40
+series or newer) and a headset that decodes it: compare black, white and
+saturation with and without this file. Drop this file to keep the previous
+AV1 behaviour.
+---
+ libavcodec/nvenc.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/libavcodec/nvenc.c b/libavcodec/nvenc.c
+index 8f908cc019..9dc5fd9101 100644
+--- a/libavcodec/nvenc.c
++++ b/libavcodec/nvenc.c
+@@ -1671,10 +1671,12 @@ static av_cold int nvenc_setup_av1_config(AVCodecContext *avctx)
+     const AVPixFmtDescriptor *pixdesc = av_pix_fmt_desc_get(ctx->data_pix_fmt);
+ 
+     if ((pixdesc->flags & AV_PIX_FMT_FLAG_RGB) && !IS_GBRP(ctx->data_pix_fmt)) {
+-        av1->matrixCoefficients = to_nv_color_matrix(AVCOL_SPC_BT470BG);
++        // Same as for H.264 and HEVC: the encoder converts RGB input itself.
++        av1->matrixCoefficients = to_nv_color_matrix(avctx->colorspace == AVCOL_SPC_UNSPECIFIED
++                                                     ? AVCOL_SPC_BT470BG : avctx->colorspace);
+         av1->colorPrimaries = to_nv_color_pri(avctx->color_primaries);
+         av1->transferCharacteristics = to_nv_color_trc(avctx->color_trc);
+-        av1->colorRange = 0;
++        av1->colorRange = (avctx->color_range == AVCOL_RANGE_JPEG);
+     } else {
+         av1->matrixCoefficients = to_nv_color_matrix(IS_GBRP(ctx->data_pix_fmt) ? AVCOL_SPC_RGB : avctx->colorspace);
+         av1->colorPrimaries = to_nv_color_pri(avctx->color_primaries);
+-- 
+2.43.0
+

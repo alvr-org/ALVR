@@ -15,8 +15,9 @@ use alvr_common::{
 };
 use alvr_packets::{
     AUDIO, ClientConnectionResult, ClientControlPacket, ClientStatistics, ConnectionAcceptedInfo,
-    HAPTICS, Haptics, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData,
-    VIDEO, VideoPacketHeader, VideoStreamingCapabilities, VideoStreamingCapabilitiesExt,
+    DecoderInitializationConfig, HAPTICS, Haptics, STATISTICS, ServerControlPacket,
+    StreamConfigPacket, TRACKING, TrackingData, VIDEO, VideoPacketHeader,
+    VideoStreamingCapabilities, VideoStreamingCapabilitiesExt,
 };
 use alvr_session::{SocketProtocol, settings_schema::Switch};
 use alvr_sockets::{
@@ -64,7 +65,9 @@ pub struct ConnectionContext {
     pub tracking_sender: Mutex<Option<StreamSender<TrackingData>>>,
     pub statistics_sender: Mutex<Option<StreamSender<ClientStatistics>>>,
     pub statistics_manager: Mutex<Option<StatisticsManager>>,
+    pub decoder_config: Mutex<Option<DecoderInitializationConfig>>,
     pub decoder_callback: Mutex<Option<Box<DecoderCallback>>>,
+    pub decoder_callback_notifier: Condvar,
     pub video_frame_metadata_queue: Mutex<VecDeque<(Duration, VideoFrameMetadata)>>,
     pub max_prediction: RwLock<Duration>,
 }
@@ -80,6 +83,24 @@ fn set_hud_message(event_queue: &Mutex<VecDeque<ClientCoreEvent>>, message: &str
     event_queue
         .lock()
         .push_back(ClientCoreEvent::UpdateHudMessage(message));
+}
+
+fn notify_decoder_config(
+    ctx: &ConnectionContext,
+    event_queue: &Mutex<VecDeque<ClientCoreEvent>>,
+    config: DecoderInitializationConfig,
+) {
+    let mut current_config = ctx.decoder_config.lock();
+    if current_config.as_ref() != Some(&config) {
+        *current_config = Some(config.clone());
+        *ctx.decoder_callback.lock() = None;
+        event_queue
+            .lock()
+            .push_back(ClientCoreEvent::DecoderConfig {
+                codec: config.codec,
+                config_nal: config.config_buffer,
+            });
+    }
 }
 
 fn is_streaming(ctx: &ConnectionContext) -> bool {
@@ -273,9 +294,12 @@ fn connection_pipeline(
     let statistics_sender = stream_socket.request_stream(STATISTICS);
 
     ctx.video_frame_metadata_queue.lock().clear();
+    *ctx.decoder_config.lock() = None;
+    *ctx.decoder_callback.lock() = None;
 
     let video_receive_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
+        let event_queue = Arc::clone(&event_queue);
         move || {
             let mut stream_corrupted = true;
             while is_streaming(&ctx) {
@@ -290,6 +314,10 @@ fn connection_pipeline(
 
                 if let Some(stats) = &mut *ctx.statistics_manager.lock() {
                     stats.report_video_packet_received(header.timestamp);
+                }
+
+                if let Some(config) = header.decoder_config {
+                    notify_decoder_config(&ctx, &event_queue, config);
                 }
 
                 if header.is_idr {
@@ -319,11 +347,24 @@ fn connection_pipeline(
                         }
                     }
 
-                    let submitted = ctx
-                        .decoder_callback
-                        .lock()
+                    let mut decoder_callback_guard = ctx.decoder_callback.lock();
+                    if decoder_callback_guard.is_none() && is_streaming(&ctx) {
+                        let deadline = Instant::now() + STREAMING_RECV_TIMEOUT;
+                        while decoder_callback_guard.is_none() && is_streaming(&ctx) {
+                            let now = Instant::now();
+                            if now >= deadline {
+                                break;
+                            }
+                            ctx.decoder_callback_notifier
+                                .wait_for(&mut decoder_callback_guard, deadline - now);
+                        }
+                    }
+
+                    let submitted = decoder_callback_guard
                         .as_mut()
                         .is_some_and(|callback| callback(header.timestamp, nal));
+
+                    drop(decoder_callback_guard);
 
                     if !submitted {
                         stream_corrupted = true;
@@ -481,12 +522,7 @@ fn connection_pipeline(
 
                 match maybe_packet {
                     Ok(ServerControlPacket::DecoderConfig(config)) => {
-                        event_queue
-                            .lock()
-                            .push_back(ClientCoreEvent::DecoderConfig {
-                                codec: config.codec,
-                                config_nal: config.config_buffer,
-                            });
+                        notify_decoder_config(&ctx, &event_queue, config);
                     }
                     Ok(ServerControlPacket::Restarting) => {
                         info!("{SERVER_RESTART_MESSAGE}");
@@ -570,6 +606,9 @@ fn connection_pipeline(
     *ctx.tracking_sender.lock() = None;
     *ctx.statistics_sender.lock() = None;
     *LOG_CHANNEL_SENDER.lock() = None;
+    *ctx.decoder_config.lock() = None;
+    *ctx.decoder_callback.lock() = None;
+    ctx.decoder_callback_notifier.notify_all();
 
     event_queue
         .lock()

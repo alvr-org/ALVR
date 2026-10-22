@@ -149,7 +149,7 @@ impl StreamConfigPacket {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub struct DecoderInitializationConfig {
     pub codec: CodecType,
     pub config_buffer: Vec<u8>, // e.g. SPS + PPS NALs
@@ -247,6 +247,7 @@ pub struct VideoPacketHeader {
     /// Centers used to encode this frame, already aligned. Normally absent when FFR is disabled.
     pub foveation_center_shifts: Option<[[f32; 2]; 2]>,
     pub is_idr: bool,
+    pub decoder_config: Option<DecoderInitializationConfig>,
 }
 
 #[derive(Serialize, Deserialize)]

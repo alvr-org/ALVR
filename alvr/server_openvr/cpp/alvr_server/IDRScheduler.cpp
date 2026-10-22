@@ -8,15 +8,14 @@ IDRScheduler::IDRScheduler() { }
 IDRScheduler::~IDRScheduler() { }
 
 void IDRScheduler::OnStreamStart() {
+    std::unique_lock lock(m_mutex);
     m_minIDRFrameInterval = Settings_Instance()->m_minimumIdrIntervalMs * 1000;
-    m_scheduled = false;
-    InsertIDR();
+    m_lastIDRTime = 0;
+    m_scheduled = true;
 }
 
 void IDRScheduler::InsertIDR() {
     std::unique_lock lock(m_mutex);
-
-    m_insertIDRTime = GetTimestampUs() - MIN_IDR_FRAME_INTERVAL * 2;
     m_scheduled = true;
 }
 
@@ -24,8 +23,10 @@ bool IDRScheduler::CheckIDRInsertion() {
     std::unique_lock lock(m_mutex);
 
     if (m_scheduled) {
-        if (m_insertIDRTime <= GetTimestampUs()) {
+        uint64_t now = GetTimestampUs();
+        if (m_lastIDRTime == 0 || (now >= m_lastIDRTime + m_minIDRFrameInterval)) {
             m_scheduled = false;
+            m_lastIDRTime = now;
             return true;
         }
     }

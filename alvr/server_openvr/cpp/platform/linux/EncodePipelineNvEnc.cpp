@@ -250,6 +250,13 @@ void alvr::EncodePipelineNvEnc::PushFrame(uint64_t targetTimestampNs, bool idr) 
     }
 
     hw_frame->pict_type = idr ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_NONE;
+
+    if (idr) {
+        hw_frame->flags |= AV_FRAME_FLAG_KEY;
+    } else {
+        hw_frame->flags &= ~AV_FRAME_FLAG_KEY;
+    }
+
     hw_frame->pts = targetTimestampNs;
 
     if ((err = avcodec_send_frame(encoder_ctx, hw_frame)) < 0) {

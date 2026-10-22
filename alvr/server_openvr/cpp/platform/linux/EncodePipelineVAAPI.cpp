@@ -226,6 +226,8 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
         break;
     }
 
+    av_opt_set_int(encoder_ctx->priv_data, "idr_interval", 0, 0);
+
     av_opt_set_int(encoder_ctx->priv_data, "filler_data", settings->m_fillerData, 0);
 
     encoder_ctx->width = width;
@@ -421,6 +423,13 @@ void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr) 
     }
 
     encoder_frame->pict_type = idr ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_NONE;
+
+    if (idr) {
+        encoder_frame->flags |= AV_FRAME_FLAG_KEY;
+    } else {
+        encoder_frame->flags &= ~AV_FRAME_FLAG_KEY;
+    }
+
     encoder_frame->pts = targetTimestampNs;
 
     if ((err = avcodec_send_frame(encoder_ctx, encoder_frame)) < 0) {

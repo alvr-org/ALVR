@@ -101,7 +101,8 @@ public:
         if (!state) {
             return 0;
         }
-        uint64_t semaphore = *(const volatile uint64_t*)(state + ImageSemaphoreOffset);
+        uint64_t semaphore
+            = __atomic_load_n((const uint64_t*)(state + ImageSemaphoreOffset), __ATOMIC_ACQUIRE);
         if (semaphore != 0) {
             m_semaphoreOf[textureHandle] = semaphore;
         }
@@ -135,9 +136,12 @@ public:
             int fd = -1;
             uint64_t ipcHandle = 0;
             if (mgr->RefResource(semaphoreHandle, &ipcHandle)) {
-                if (mgr->ReceiveSharedFd(ipcHandle, &fd)) {
+                if (mgr->ReceiveSharedFd(ipcHandle, &fd) && fd >= 0) {
                     it = m_fds.emplace(semaphoreHandle, fd).first;
                 } else {
+                    if (fd >= 0) {
+                        close(fd);
+                    }
                     mgr->UnrefResource(semaphoreHandle);
                     return -1;
                 }

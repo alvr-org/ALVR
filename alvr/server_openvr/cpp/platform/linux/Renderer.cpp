@@ -1,4 +1,5 @@
 #include "Renderer.hpp"
+#include "SteamVrSync.h"
 
 #include <cstdint>
 #include <cstring>
@@ -52,7 +53,7 @@ RenderPipeline::RenderPipeline(
         .stage = stageCI,
         .layout = pipeLayout,
     };
-    auto [result, pipes] = ctx.dev.createComputePipelines({}, pipeCI);
+    auto [result, pipes] = ctx.dev.createComputePipelines({ }, pipeCI);
 
     assert(result == vk::Result::eSuccess);
     pipe = pipes[0];
@@ -182,7 +183,7 @@ inline Image createImage(
         .layout = imageCI.initialLayout,
     };
 
-    vk::MemoryDedicatedRequirements dedicatedReqs {};
+    vk::MemoryDedicatedRequirements dedicatedReqs { };
     vk::MemoryRequirements2 memReqs {
         .pNext = &dedicatedReqs,
     };
@@ -262,7 +263,7 @@ Output createOutputImage(
 
     img.layout = imgCI.initialLayout;
 
-    vk::ExternalMemoryImageCreateInfo extImgCI {};
+    vk::ExternalMemoryImageCreateInfo extImgCI { };
 
     // Lifetime
     std::vector<uint64_t> imageModifiers;
@@ -275,7 +276,7 @@ Output createOutputImage(
     if (haveDrmModifiers && handleType == HandleType::DmaBuf) {
         imgCI.tiling = vk::ImageTiling::eDrmFormatModifierEXT;
 
-        vk::DrmFormatModifierPropertiesListEXT modPropList {};
+        vk::DrmFormatModifierPropertiesListEXT modPropList { };
         vk::FormatProperties2 formatProps {
             .pNext = &modPropList,
         };
@@ -341,7 +342,7 @@ Output createOutputImage(
         img.image = ctx.dev.createImage(imgCI);
     }
 
-    vk::MemoryDedicatedRequirements dedicatedReqs {};
+    vk::MemoryDedicatedRequirements dedicatedReqs { };
     vk::MemoryRequirements2 memReqs {
         .pNext = &dedicatedReqs,
     };
@@ -574,7 +575,7 @@ Renderer::Renderer(
     };
     // renderFinishedSem = vkCtx.dev.createSemaphore(semCI);
 
-    fence = vkCtx.dev.createFence({});
+    fence = vkCtx.dev.createFence({ });
 
     // Copied out of the embedded bytes, which carry no 4-byte alignment.
     std::vector<u32> layerCode((LAYER_SHADER_COMP_SPV_LEN + 3) / 4);
@@ -604,25 +605,31 @@ Renderer::Renderer(
         },
         .layout = layerPipeLayout,
     };
-    auto [layerPipeResult, layerPipes] = vkCtx.dev.createComputePipelines({}, layerPipeCI);
+    auto [layerPipeResult, layerPipes] = vkCtx.dev.createComputePipelines({ }, layerPipeCI);
     if (layerPipeResult != vk::Result::eSuccess) {
         throw std::runtime_error("Could not create the layer pipeline");
     }
     layerPipe = layerPipes[0];
 }
 
-void Renderer::render(VkContext& vkCtx, std::vector<Layer> const& layers) {
+void Renderer::render(
+    VkContext& vkCtx,
+    std::vector<Layer> const& layers,
+    std::vector<SemaphoreWait> const& semaphoreWaits
+) {
     if (layers.empty()) {
         return;
     }
     // Imports happen before recording: they create Vulkan objects.
     std::vector<std::vector<Image*>> sources;
     for (auto const& layer : layers) {
-        sources.push_back({ &importTexture(vkCtx, layer, layer.eyes[0]),
-                            &importTexture(vkCtx, layer, layer.eyes[1]) });
+        sources.push_back(
+            { &importTexture(vkCtx, layer, layer.eyes[0]),
+              &importTexture(vkCtx, layer, layer.eyes[1]) }
+        );
     }
 
-    vk::CommandBufferBeginInfo beginInfo {};
+    vk::CommandBufferBeginInfo beginInfo { };
     cmdBuf.begin(beginInfo);
 
     cmdBuf.resetQueryPool(timestampPool, 0, 2);
@@ -632,7 +639,7 @@ void Renderer::render(VkContext& vkCtx, std::vector<Layer> const& layers) {
                              vk::PipelineStageFlags srcStage,
                              vk::PipelineStageFlags dstStage) {
         if (!barriers.empty()) {
-            cmdBuf.pipelineBarrier(srcStage, dstStage, {}, {}, {}, barriers);
+            cmdBuf.pipelineBarrier(srcStage, dstStage, { }, { }, { }, barriers);
             barriers.clear();
         }
     };
@@ -646,22 +653,24 @@ void Renderer::render(VkContext& vkCtx, std::vector<Layer> const& layers) {
             return;
         }
 
-        barriers.push_back(vk::ImageMemoryBarrier {
-            .srcAccessMask = srcAccessMask,
-            .dstAccessMask = dstAccessMask,
-            .oldLayout = image.layout,
-            .newLayout = newLayout,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = image.image,
-            .subresourceRange {
-                .aspectMask = vk::ImageAspectFlagBits::eColor,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-        });
+        barriers.push_back(
+            vk::ImageMemoryBarrier {
+                .srcAccessMask = srcAccessMask,
+                .dstAccessMask = dstAccessMask,
+                .oldLayout = image.layout,
+                .newLayout = newLayout,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = image.image,
+                .subresourceRange {
+                    .aspectMask = vk::ImageAspectFlagBits::eColor,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1,
+                },
+            }
+        );
         image.layout = newLayout;
     };
 
@@ -705,10 +714,10 @@ void Renderer::render(VkContext& vkCtx, std::vector<Layer> const& layers) {
             cmdBuf.pipelineBarrier(
                 vk::PipelineStageFlagBits::eComputeShader,
                 vk::PipelineStageFlagBits::eComputeShader,
-                {},
+                { },
                 memBarrier,
-                {},
-                {}
+                { },
+                { }
             );
         }
         for (int eye = 0; eye < 2; ++eye) {
@@ -765,7 +774,66 @@ void Renderer::render(VkContext& vkCtx, std::vector<Layer> const& layers) {
 
     cmdBuf.end();
 
+    std::vector<vk::Semaphore> waitSemaphores;
+    std::vector<uint64_t> waitValues;
+    std::vector<vk::PipelineStageFlags> waitStages;
+
+    // Deduplicate semaphores by handle, picking the highest target value
+    std::unordered_map<u64, u64> uniqueWaits;
+    for (auto const& w : semaphoreWaits) {
+        if (w.semaphore != 0) {
+            uniqueWaits[w.semaphore] = std::max(uniqueWaits[w.semaphore], w.value);
+        }
+    }
+
+    for (auto const& [semHandle, targetVal] : uniqueWaits) {
+        auto it = timelines.find(semHandle);
+        if (it == timelines.end()) {
+            int fd = steamvrsync::Sync::Get().DupFd(semHandle);
+            if (fd >= 0) {
+                vk::SemaphoreTypeCreateInfo typeInfo {
+                    .semaphoreType = vk::SemaphoreType::eTimeline,
+                    .initialValue = 0,
+                };
+                vk::SemaphoreCreateInfo semInfo {
+                    .pNext = &typeInfo,
+                };
+                try {
+                    vk::Semaphore sem = vkCtx.dev.createSemaphore(semInfo);
+                    vk::ImportSemaphoreFdInfoKHR importInfo {
+                        .semaphore = sem,
+                        .handleType = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueFd,
+                        .fd = fd,
+                    };
+                    if (vkCtx.dev.importSemaphoreFdKHR(&importInfo, vkCtx.dispatch)
+                        == vk::Result::eSuccess) {
+                        it = timelines.emplace(semHandle, sem).first;
+                    } else {
+                        close(fd);
+                        vkCtx.dev.destroy(sem);
+                    }
+                } catch (...) {
+                    close(fd);
+                }
+            }
+        }
+        if (it != timelines.end()) {
+            waitSemaphores.push_back(it->second);
+            waitValues.push_back(targetVal);
+            waitStages.push_back(vk::PipelineStageFlagBits::eAllCommands);
+        }
+    }
+
+    vk::TimelineSemaphoreSubmitInfo timelineSubmitInfo {
+        .waitSemaphoreValueCount = static_cast<uint32_t>(waitValues.size()),
+        .pWaitSemaphoreValues = waitValues.data(),
+    };
+
     vk::SubmitInfo submitInfo {
+        .pNext = waitValues.empty() ? nullptr : &timelineSubmitInfo,
+        .waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
+        .pWaitSemaphores = waitSemaphores.empty() ? nullptr : waitSemaphores.data(),
+        .pWaitDstStageMask = waitStages.empty() ? nullptr : waitStages.data(),
         .commandBufferCount = 1,
         .pCommandBuffers = &cmdBuf,
     };
@@ -867,7 +935,22 @@ void Renderer::releaseTextures(VkContext const& vkCtx, std::vector<u64> const& h
     }
 }
 
+void Renderer::releaseSemaphores(VkContext const& vkCtx, std::vector<u64> const& handles) {
+    for (u64 handle : handles) {
+        auto it = timelines.find(handle);
+        if (it != timelines.end()) {
+            vkCtx.dev.destroy(it->second);
+            timelines.erase(it);
+        }
+    }
+}
+
 void Renderer::destroy(VkContext const& ctx) {
+    for (auto& [handle, sem] : timelines) {
+        ctx.dev.destroy(sem);
+    }
+    timelines.clear();
+
     // ctx.dev.destroy(renderFinishedSem);
 
     for (auto& pipe : pipes) {

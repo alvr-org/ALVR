@@ -25,7 +25,7 @@ template <typename... T>
 auto makeSpecs(T... args)
     requires floats<T...>
 {
-    render::PipelineCreateInfo info {};
+    render::PipelineCreateInfo info { };
 
     constexpr auto Size = sizeof(float);
     u32 index = 0;
@@ -37,11 +37,13 @@ auto makeSpecs(T... args)
 
         auto const offset = static_cast<u32>(info.specData.size());
         info.specData.insert(info.specData.end(), arr.begin(), arr.end());
-        info.specs.push_back({
-            .constantID = index,
-            .offset = offset,
-            .size = Size,
-        });
+        info.specs.push_back(
+            {
+                .constantID = index,
+                .offset = offset,
+                .size = Size,
+            }
+        );
         ++index;
     };
 
@@ -116,15 +118,10 @@ class Encoder {
     // unwarped, which is worse than not warping at all.
     bool warpCapableChain = false;
 
-    // SteamVR's per-texture timeline semaphores (SteamVrSync.h), imported
-    // into this device once per handle and kept until SteamVR destroys their
-    // texture or the encoder goes.
-    std::map<u64, vk::Semaphore> timelines;
-
 public:
     // TODO: How are we supposed to match the physical device with direct mode?
     Encoder()
-        : vkCtx(std::vector<u8> {}) { }
+        : vkCtx(std::vector<u8> { }) { }
 
     void createImages(render::RendererCreateInfo rendererCI) {
         if (renderer.hasValue()) {
@@ -153,11 +150,14 @@ public:
         }
 
         if (pipeCIs.empty()) {
-            pipeCIs.push_back({
-                .shaderData = std::vector(
-                    QUAD_SHADER_COMP_SPV_PTR, QUAD_SHADER_COMP_SPV_PTR + QUAD_SHADER_COMP_SPV_LEN
-                ),
-            });
+            pipeCIs.push_back(
+                {
+                    .shaderData = std::vector(
+                        QUAD_SHADER_COMP_SPV_PTR,
+                        QUAD_SHADER_COMP_SPV_PTR + QUAD_SHADER_COMP_SPV_LEN
+                    ),
+                }
+            );
             warpCapableChain = true;
         } else {
             warpCapableChain = settings->m_enableFoveatedEncoding;
@@ -170,10 +170,10 @@ public:
     void initEncoding() {
         auto const& settings = Settings_Instance();
 
-        VkPhysicalDeviceDrmPropertiesEXT drmProps = {};
+        VkPhysicalDeviceDrmPropertiesEXT drmProps = { };
         drmProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT;
 
-        VkPhysicalDeviceProperties2 deviceProps = {};
+        VkPhysicalDeviceProperties2 deviceProps = { };
         deviceProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
         deviceProps.pNext = &drmProps;
         vkGetPhysicalDeviceProperties2(vkCtx.physDev, &deviceProps);
@@ -185,7 +185,7 @@ public:
             if (fd == -1) {
                 continue;
             }
-            struct stat s = {};
+            struct stat s = { };
             int ret = fstat(fd, &s);
             close(fd);
             if (ret != 0) {
@@ -239,56 +239,7 @@ public:
             renderer.get().destroy(vkCtx);
             renderer.reset();
         }
-        for (auto& [handle, sem] : timelines) {
-            vkCtx.dev.destroy(sem);
-        }
-        timelines.clear();
         encoderMissingLogged = false;
-    }
-
-    // Waits until SteamVR's timeline semaphore for a texture reaches value,
-    // the end of the write submitted into it before Present. The semaphore is
-    // imported on first use from dupFd() (Vulkan takes the fd). Returns false
-    // when it could not be imported or did not reach value within timeoutNs.
-    //
-    // A CPU wait with a cap, where Steam Link waits on the GPU: if a SteamVR
-    // change ever left the value unsignalled, this costs a capped stall per
-    // frame instead of a hung queue. Needs VK_KHR_external_semaphore_fd and
-    // timeline semaphores, which VkContext already requires on every vendor;
-    // the import only works on the GPU SteamVR renders on, like the texture
-    // imports. Tested on NVIDIA; RADV and ANV implement opaque-fd timeline
-    // import.
-    bool waitTimeline(u64 handle, std::function<int()> const& dupFd, u64 value, u64 timeoutNs) {
-        auto it = timelines.find(handle);
-        if (it == timelines.end()) {
-            int fd = dupFd();
-            if (fd < 0) {
-                return false;
-            }
-            vk::SemaphoreTypeCreateInfo typeInfo {
-                .semaphoreType = vk::SemaphoreType::eTimeline,
-                .initialValue = 0,
-            };
-            vk::Semaphore sem = vkCtx.dev.createSemaphore({ .pNext = &typeInfo });
-            vk::ImportSemaphoreFdInfoKHR importInfo {
-                .semaphore = sem,
-                .handleType = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueFd,
-                .fd = fd,
-            };
-            if (vkCtx.dev.importSemaphoreFdKHR(&importInfo, vkCtx.dispatch)
-                != vk::Result::eSuccess) {
-                close(fd);
-                vkCtx.dev.destroy(sem);
-                return false;
-            }
-            it = timelines.emplace(handle, sem).first;
-        }
-        vk::SemaphoreWaitInfo waitInfo {
-            .semaphoreCount = 1,
-            .pSemaphores = &it->second,
-            .pValues = &value,
-        };
-        return vkCtx.dev.waitSemaphores(waitInfo, timeoutNs) == vk::Result::eSuccess;
     }
 
     // Frees what was imported for textures and semaphores SteamVR destroyed.
@@ -296,24 +247,16 @@ public:
     void releaseTextures(std::vector<u64> const& textures, std::vector<u64> const& semaphores) {
         if (renderer.hasValue()) {
             renderer.get().releaseTextures(vkCtx, textures);
-        }
-        for (u64 handle : semaphores) {
-            auto it = timelines.find(handle);
-            if (it != timelines.end()) {
-                vkCtx.dev.destroy(it->second);
-                timelines.erase(it);
-            }
+            renderer.get().releaseSemaphores(vkCtx, semaphores);
         }
     }
 
-    // layers[0] is the scene, later layers are blended over it. afterRead
-    // runs once the GPU has finished reading SteamVR's textures, before the
-    // encode, so the driver can release a held PostPresent early.
+    // layers[0] is the scene, later layers are blended over it.
     void present(
         u64 targetTimestampNs,
         render::WarpParams const& warp,
         std::vector<render::Layer> const& layers,
-        std::function<void()> const& afterRead
+        std::vector<render::SemaphoreWait> const& semaphoreWaits
     ) {
         if (!encoder) {
             // Say it once instead of at frame rate.
@@ -326,8 +269,7 @@ public:
         renderer.get().warpParams = warp;
         ReportPresent(targetTimestampNs, 0);
         updateFoveationCenters(targetTimestampNs);
-        renderer.get().render(vkCtx, layers);
-        afterRead();
+        renderer.get().render(vkCtx, layers, semaphoreWaits);
         ReportComposed(targetTimestampNs, 0);
 
         encoder->SetParams(GetDynamicEncoderParams());
@@ -391,9 +333,6 @@ public:
         if (renderer.hasValue()) {
             renderer.get().destroy(vkCtx);
             renderer.reset();
-        }
-        for (auto& [handle, sem] : timelines) {
-            vkCtx.dev.destroy(sem);
         }
 
         vkCtx.destroy();

@@ -18,71 +18,14 @@
 #include <cstring>
 #include <vector>
 
-#include <linux/dma-buf.h>
-#include <poll.h>
-#include <sys/ioctl.h>
-
 // Multiples of the frame interval. A job older than this when the worker picks
 // it up is from a stall, and the swap texture sets are only three deep, so the
 // slot is close to its next writer.
 constexpr double JobAgeLimitFrames = 1.5;
 
-// Consecutive writer-fence poll timeouts before the GPU wait disarms for the
-// session, so a permanently wedged writer degrades the stream once instead of
-// taxing every frame.
-constexpr uint32_t GpuWaitDisarmThreshold = 30;
-
-// Cap on the writer-fence poll, in frame intervals. The render submission
-// waits on these fences unboundedly while holding the encoder mutex, which
-// Present's rebuild paths also take, so an unsignalled fence must be caught
-// here or it wedges SteamVR's frame loop through the worker built to keep it
-// free.
-constexpr int64_t GpuWaitPollCapFrames = 2;
-
-// Guard sleep before render, ms, only for a frame with a texture that has no
-// SteamVR timeline semaphore (see SteamVrSync.h). The compositor's own scene
-// writes carry only detached pre-signaled placeholder fences, and on NVIDIA
-// the dma-bufs carry none at all, so the fence wait cannot see them; this
-// bounds how fresh such a write can be when the read starts. Runs on the
-// worker, so it costs pipeline depth, not compositor-thread budget.
-constexpr int GuardSleepMs = 4;
-
-// Cap on the wait for a texture's timeline semaphore, in frame intervals.
-// On timeout the frame is read anyway, as it would have been without it.
-constexpr int64_t TimelineWaitCapFrames = 2;
-
 // The negotiated refresh rate expressed as a frame period.
 static std::chrono::nanoseconds frameInterval() {
     return std::chrono::nanoseconds((int64_t)(1e9 / Settings_Instance()->m_refreshRate));
-}
-
-// Export the sync file a reader must wait on (the writer's fences) from a
-// dma-buf fd. Returns the sync_file fd, or -1 when there is nothing to wait
-// on or the kernel lacks the ioctl. The caller owns the returned fd.
-static int exportReadSyncFile(int dmabufFd) {
-#if defined(DMA_BUF_IOCTL_EXPORT_SYNC_FILE)
-    struct dma_buf_export_sync_file exportInfo = {};
-    exportInfo.flags = DMA_BUF_SYNC_READ;
-    exportInfo.fd = -1;
-    if (ioctl(dmabufFd, DMA_BUF_IOCTL_EXPORT_SYNC_FILE, &exportInfo) != 0) {
-        return -1;
-    }
-    return exportInfo.fd;
-#else
-    (void)dmabufFd;
-    return -1;
-#endif
-}
-
-// Close whichever of a job's fence fds are open. Every path that drops a
-// job without presenting it owes this call.
-template <typename Waits> static void closeFenceFds(Waits& waits) {
-    for (auto& wait : waits) {
-        if (wait.fenceFd >= 0) {
-            close(wait.fenceFd);
-            wait.fenceFd = -1;
-        }
-    }
 }
 
 // Loose on purpose: it rejects zeroed and uninitialized poses, which miss by
@@ -156,14 +99,9 @@ OvrDirectModeComponent::OvrDirectModeComponent(std::shared_ptr<PoseHistory> pose
     : m_poseHistory(poseHistory)
     , m_submitLayer(0) {
     m_encodeWorker = std::thread(&OvrDirectModeComponent::EncodeWorkerLoop, this);
-    StartVsyncAnnouncer();
 }
 
 OvrDirectModeComponent::~OvrDirectModeComponent() {
-    // Stops before the encode worker: the announcer's grid is what
-    // PostPresent holds against, and a hold outliving the worker leaves a
-    // present waiting on a frame nothing will encode.
-    StopVsyncAnnouncer();
     {
         std::lock_guard<std::mutex> lock(m_jobMutex);
         m_workerExit = true;
@@ -173,31 +111,11 @@ OvrDirectModeComponent::~OvrDirectModeComponent() {
     if (m_encodeWorker.joinable()) {
         m_encodeWorker.join();
     }
-    // The worker is gone; whatever job was pending will never present.
-    closeFenceFds(m_job.waits);
 }
 
 void OvrDirectModeComponent::DrainPendingJob() {
-    uint64_t dropped = 0;
-    {
-        std::lock_guard<std::mutex> lock(m_jobMutex);
-        if (m_jobPending) {
-            closeFenceFds(m_job.waits);
-            dropped = m_job.frame;
-        }
-        m_jobPending = false;
-    }
-    if (dropped != 0) {
-        MarkRead(dropped);
-    }
-}
-
-void OvrDirectModeComponent::MarkRead(uint64_t frame) {
-    {
-        std::lock_guard<std::mutex> lock(m_readMutex);
-        m_lastReadFrame = std::max(m_lastReadFrame, frame);
-    }
-    m_readCv.notify_all();
+    std::lock_guard<std::mutex> lock(m_jobMutex);
+    m_jobPending = false;
 }
 
 void OvrDirectModeComponent::EncodeWorkerLoop() {
@@ -217,98 +135,14 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
             frameInterval() * JobAgeLimitFrames
         );
         if (std::chrono::steady_clock::now() - job.enqueueTime > ageLimit) {
-            closeFenceFds(job.waits);
-            MarkRead(job.frame);
             continue;
-        }
-
-        // Fallback for textures without a SteamVR semaphore: bounded gate on
-        // the writer's implicit fences, before the encoder lock. On timeout
-        // close the fds and present unguarded instead of wedging. Devices: on
-        // Mesa (AMD, Intel) these fences carry the writer's work; on NVIDIA
-        // the dma-bufs carry none and nothing is exported.
-        bool needsGuard = false;
-        std::vector<struct pollfd> pfds;
-        for (auto const& wait : job.waits) {
-            needsGuard = needsGuard || wait.semaphore == 0;
-            if (wait.fenceFd >= 0) {
-                pfds.push_back({ .fd = wait.fenceFd, .events = POLLIN, .revents = 0 });
-            }
-        }
-        if (!pfds.empty() && !m_gpuWaitPollDisarmed) {
-            auto const capNs = frameInterval() * GpuWaitPollCapFrames;
-            auto const deadline = std::chrono::steady_clock::now() + capNs;
-            bool allSignaled = false;
-            while (!allSignaled) {
-                int remainingMs = (int)std::chrono::duration_cast<std::chrono::milliseconds>(
-                                      deadline - std::chrono::steady_clock::now()
-                )
-                                      .count();
-                if (remainingMs < 0) {
-                    break;
-                }
-                if (poll(pfds.data(), pfds.size(), remainingMs) <= 0) {
-                    break;
-                }
-                allSignaled = true;
-                for (auto const& pfd : pfds) {
-                    if ((pfd.revents & POLLIN) == 0) {
-                        allSignaled = false;
-                    }
-                }
-            }
-            if (allSignaled) {
-                m_gpuWaitConsecTimeouts = 0;
-            } else if (++m_gpuWaitConsecTimeouts >= GpuWaitDisarmThreshold) {
-                m_gpuWaitPollDisarmed = true;
-                Info(
-                    "Encode worker: writer fences timed out %u frames in a row; "
-                    "GPU wait disarmed for this session\n",
-                    m_gpuWaitConsecTimeouts
-                );
-            }
-        }
-        closeFenceFds(job.waits);
-
-        if (needsGuard && GuardSleepMs > 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(GuardSleepMs));
         }
 
         try {
             std::lock_guard<std::mutex> encLock(m_encMutex);
 
             if (job.generation != m_encGeneration) {
-                MarkRead(job.frame);
                 continue;
-            }
-
-            // Wait for the exact end of SteamVR's write into each texture, as
-            // Steam Link does (SteamVrSync.h). Most textures are already
-            // finished here; on NVIDIA the waits measured reach ~4 ms in
-            // SteamVR Home and ~6 ms when a heavy application's frame ends
-            // late.
-            auto const timelineCapNs
-                = (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
-                      frameInterval() * TimelineWaitCapFrames
-                )
-                      .count();
-            for (auto const& wait : job.waits) {
-                if (wait.semaphore == 0) {
-                    continue;
-                }
-                uint64_t const semaphore = wait.semaphore;
-                if (!enc.waitTimeline(
-                        semaphore,
-                        [semaphore] { return steamvrsync::Sync::Get().DupFd(semaphore); },
-                        wait.value,
-                        timelineCapNs
-                    )) {
-                    Warn(
-                        "SteamVR texture semaphore %llx not reached or not importable; "
-                        "reading the frame anyway\n",
-                        (unsigned long long)semaphore
-                    );
-                }
             }
 
             // Rotationally reproject the frame from the pose it was rendered
@@ -318,7 +152,7 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
             // one without the other is what breaks world lock. Sampled here
             // rather than in Present so the target is as fresh as possible.
             uint64_t stampTimestampNs = job.targetTimestampNs;
-            alvr::render::WarpParams warpParams {};
+            alvr::render::WarpParams warpParams { };
             if (enc.warpCapable()) {
                 auto latest = m_poseHistory->GetLatestPose();
 
@@ -343,18 +177,13 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
                 }
             }
 
-            uint64_t const frame = job.frame;
-            enc.present(stampTimestampNs, warpParams, job.layers, [this, frame] {
-                MarkRead(frame);
-            });
-            MarkRead(frame);
+            enc.present(stampTimestampNs, warpParams, job.layers, job.waits);
         } catch (std::exception const& e) {
             // An exception escaping a thread's start function is
             // std::terminate, which takes vrserver with it. Same recovery as
             // the compositor-thread paths: log, tear the encoder down, go
             // idle until the next client connect.
             Error("Encode worker: %s. Tearing down encoder and going idle.\n", e.what());
-            MarkRead(job.frame);
             std::lock_guard<std::mutex> encLock(m_encMutex);
             // The try block's lock released when the exception left it, so a
             // rebuild may have swapped the encoder in between. A moved
@@ -393,17 +222,6 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
     ProcessResource* processResource = new ProcessResource();
     processResource->textDesc = *pSwapTextureSetDesc;
     processResource->pid = unPid;
-    {
-        char path[32];
-        snprintf(path, sizeof(path), "/proc/%u/comm", unPid);
-        if (FILE* comm = fopen(path, "r")) {
-            char name[32] = {};
-            if (fgets(name, sizeof(name), comm)) {
-                processResource->compositorOwned = strncmp(name, "vrcompositor", 12) == 0;
-            }
-            fclose(comm);
-        }
-    }
     m_swapchainIndices[processResource] = 0;
 
     {
@@ -457,9 +275,11 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
 
         {
             std::lock_guard<std::mutex> lock(m_presentMutex);
-            m_handleMap.insert(std::make_pair(
-                processResource->sharedHandles[i], std::make_pair(processResource, i)
-            ));
+            m_handleMap.insert(
+                std::make_pair(
+                    processResource->sharedHandles[i], std::make_pair(processResource, i)
+                )
+            );
         }
         pOutSwapTextureSet->rSharedTextureHandles[i] = myHandle;
         Info("Created Texture %d %p\n", i, processResource->sharedHandles[i]);
@@ -519,7 +339,8 @@ void OvrDirectModeComponent::DestroyAllSwapTextureSets(uint32_t unPid) {
     m_presentMutex.unlock();
 }
 
-void OvrDirectModeComponent::ForgetTextures(std::vector<vr::SharedTextureHandle_t> const& textures
+void OvrDirectModeComponent::ForgetTextures(
+    std::vector<vr::SharedTextureHandle_t> const& textures
 ) {
     // A pending or in-flight job may still name these textures. Drop the
     // pending one, then take the encoder lock (waits for a frame being read)
@@ -626,13 +447,8 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t (&perEye)[2])
 
 /** Submits queued layers for display. */
 void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
-    // Set below when this Present queues a frame (read by PostPresent).
-    m_holdUntilRead = false;
-    m_queuedThisPresent = false;
-
     std::optional<alvr::render::Layer> layer0;
     std::vector<alvr::render::Layer> overlayLayers;
-    bool anyCompositorOwned = false;
     vr::SharedTextureHandle_t layer0Handles[2] = { 0, 0 };
 
     {
@@ -648,20 +464,6 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
             for (int i = 1; i < layerCount; ++i) {
                 if (auto layer = SubmittedLayer(i)) {
                     overlayLayers.push_back(*layer);
-                }
-            }
-
-            auto isCompositorOwned = [&](vr::SharedTextureHandle_t handle) {
-                auto it = m_handleMap.find(handle);
-                return it != m_handleMap.end() && it->second.first->compositorOwned;
-            };
-
-            for (auto const& eye : layer0->eyes) {
-                anyCompositorOwned = anyCompositorOwned || isCompositorOwned(eye.handle);
-            }
-            for (auto const& layer : overlayLayers) {
-                for (auto const& eye : layer.eyes) {
-                    anyCompositorOwned = anyCompositorOwned || isCompositorOwned(eye.handle);
                 }
             }
         }
@@ -746,8 +548,7 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
         return;
     }
 
-    FrameJob job {};
-    job.frame = ++m_presentFrame;
+    FrameJob job { };
     job.layers.push_back(*layer0);
     // Layers 1..n (SteamVR's dashboard and other overlays while a scene
     // application runs) are blended over layer 0. A layer whose textures are
@@ -758,52 +559,29 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
     job.generation = m_encGeneration;
     job.enqueueTime = std::chrono::steady_clock::now();
 
-    // What marks the end of each texture's write. SteamVR's timeline
+    // What marks the end of each texture's write: SteamVR's timeline
     // semaphore and its value, read now (by the worker SteamVR may already
-    // have submitted the next write into the same texture); for a texture
-    // without one, the dma-buf's implicit fences as before.
+    // have submitted the next write into the same texture).
     auto& sync = steamvrsync::Sync::Get();
     for (auto const& layer : job.layers) {
         for (auto const& eye : layer.eyes) {
-            FrameJob::TextureWait wait;
-            wait.semaphore = sync.SemaphoreOf(eye.handle);
-            if (wait.semaphore == 0 || !sync.Value(wait.semaphore, &wait.value)) {
-                wait.semaphore = 0;
-                wait.fenceFd = exportReadSyncFile(eye.fd);
-                if (m_noSemaphoreLogged.insert(eye.handle).second) {
-                    Info(
-                        "SteamVR texture %llx has no timeline semaphore; using its implicit "
-                        "fences and a %d ms guard\n",
-                        (unsigned long long)eye.handle,
-                        GuardSleepMs
-                    );
-                }
+            uint64_t const semaphore = sync.SemaphoreOf(eye.handle);
+            uint64_t value = 0;
+            if (semaphore != 0 && sync.Value(semaphore, &value)) {
+                job.waits.push_back({ semaphore, value });
             }
-            job.waits.push_back(wait);
         }
     }
-    m_holdUntilRead = anyCompositorOwned;
 
     {
         std::lock_guard<std::mutex> lock(m_jobMutex);
         if (m_workerExit) {
             // Teardown already drained the mailbox; do not repopulate it.
-            closeFenceFds(job.waits);
             return;
-        }
-        // Latest wins: a still-pending job is replaced, and its fences will
-        // never be waited on, so close them here.
-        if (m_jobPending) {
-            closeFenceFds(m_job.waits);
         }
         m_job = job;
         m_jobPending = true;
     }
-    {
-        std::lock_guard<std::mutex> lock(m_readMutex);
-        m_lastQueuedFrame = job.frame;
-    }
-    m_queuedThisPresent = true;
     m_jobCv.notify_one();
 }
 
@@ -847,67 +625,25 @@ std::optional<alvr::render::Layer> OvrDirectModeComponent::SubmittedLayer(int i)
 }
 
 void OvrDirectModeComponent::PostPresent(const Throttling_t* pThrottling) {
-    // Prop_Hmd_SupportsAppThrottling_Bool is set, so SteamVR sends throttle
-    // hints here and predicts poses assuming we honor them. Ignoring them
-    // while it throttles an app predicts poses for a cadence we are not
-    // keeping, which reprojects the world against head motion.
-    uint32_t throttleFrames = 0;
-    if (pThrottling != nullptr) {
-        throttleFrames = pThrottling->nFramesToThrottle;
-        if (pThrottling->nFramesToThrottle != m_lastThrottleFrames
-            || pThrottling->nAdditionalFramesToPredict != m_lastPredictFrames) {
-            m_lastThrottleFrames = pThrottling->nFramesToThrottle;
-            m_lastPredictFrames = pThrottling->nAdditionalFramesToPredict;
-            Info(
-                "Throttling: framesToThrottle=%u additionalFramesToPredict=%u\n",
-                pThrottling->nFramesToThrottle,
-                pThrottling->nAdditionalFramesToPredict
-            );
-        }
+    WaitForVSync();
+    if (pThrottling) {
+        uint32_t const additional = std::min(pThrottling->nAdditionalFramesToPredict, 0xfu);
+        uint32_t const throttle = std::min(pThrottling->nFramesToThrottle, 0xfu);
+        m_reprojectionFlags.store(
+            vr::VRCompositor_ReprojectionMotion | (additional << 4) | (throttle << 8),
+            std::memory_order_relaxed
+        );
     }
-
-    // Upstream's pacing against the vsync grid stays while nothing is being
-    // streamed (before a client connects, while the encoder is set up) and
-    // while SteamVR throttles an application, which is what honours the hint.
-    // Every test of this change ran that way, and the one run without any
-    // pacing from SteamVR's start hit an NVIDIA Xid 32 in vrcompositor before
-    // the client connected. While frames are streamed it does not hold every
-    // frame until the next tick: that is almost a whole frame, after which
-    // vrcompositor's WaitForAcquire times out and it draws into the texture
-    // being read (SteamVR Home shook). The vsync announcer alone kept the
-    // compositor at the refresh rate then (72.0 fps measured). A throttled
-    // application is untested with this change.
-    if (throttleFrames > 0 || !m_queuedThisPresent) {
-        PaceAfterPresent(throttleFrames);
-        return;
-    }
-
-    // Hold SteamVR's submit thread until the worker has read this frame, but
-    // only for frames that read vrcompositor's own textures (see Present),
-    // and at most one frame interval. Devices: Linux only.
-    if (m_holdUntilRead) {
-        std::unique_lock<std::mutex> lock(m_readMutex);
-        uint64_t const target = m_lastQueuedFrame;
-        m_readCv.wait_for(lock, frameInterval(), [&] { return m_lastReadFrame >= target; });
-    }
+    vr::VRServerDriverHost()->VsyncEvent(0.0);
 }
 
 void OvrDirectModeComponent::GetFrameTiming(vr::DriverDirectMode_FrameTiming* pFrameTiming) {
-    if (pFrameTiming == nullptr
-        || pFrameTiming->m_nSize < sizeof(vr::DriverDirectMode_FrameTiming)) {
+    if (!pFrameTiming) {
         return;
     }
-
-    // Skipped ticks are not reported as dropped frames: the compositor reads a
-    // drop as GPU overload and enables interleaved reprojection, which halves
-    // the rate, so the grid then skips a tick every frame and reports another
-    // drop, throttled from then on. Consume the counter without reporting it
-    // until there is a channel that does not throttle.
-    (void)TakeSkippedVsyncs();
+    pFrameTiming->m_nSize = sizeof(vr::DriverDirectMode_FrameTiming);
     pFrameTiming->m_nNumFramePresents = 1;
     pFrameTiming->m_nNumMisPresented = 0;
     pFrameTiming->m_nNumDroppedFrames = 0;
-    // These bits overlap the throttle mask and must not be echoed back
-    // unhandled, per the interface header.
-    pFrameTiming->m_nReprojectionFlags = 0;
+    pFrameTiming->m_nReprojectionFlags = m_reprojectionFlags.load(std::memory_order_relaxed);
 }

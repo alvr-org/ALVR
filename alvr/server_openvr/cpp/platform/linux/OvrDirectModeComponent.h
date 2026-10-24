@@ -87,9 +87,6 @@ private:
         int fds[3];
         SwapTextureSetDesc_t textDesc;
         uint32_t pid;
-        // Created by vrcompositor itself rather than a scene application.
-        // Frames reading such a texture hold PostPresent until the read.
-        bool compositorOwned = false;
     };
     std::map<vr::SharedTextureHandle_t, std::pair<ProcessResource*, int>> m_handleMap;
     void CleanupProcessResource(ProcessResource* processResource);
@@ -120,8 +117,6 @@ private:
     // The renderer and encoder are built from the first layer 0 texture set
     // after a connect or rebuild; later sets are taken by handle.
     bool m_encoderReady = false;
-    // Textures already reported as having no SteamVR semaphore (logged once).
-    std::set<vr::SharedTextureHandle_t> m_noSemaphoreLogged;
 
     alvr::Encoder enc;
 
@@ -132,16 +127,10 @@ private:
 
     std::mutex m_presentMutex;
 
-    // Last throttle hints, for change logging only.
-    uint32_t m_lastThrottleFrames = 0;
-    uint32_t m_lastPredictFrames = 0;
-
     // Single-slot latest-wins mailbox: at steady state the worker drains
     // faster than frames arrive, and if it falls behind, the newest frame
     // replaces the stale pending one.
     struct FrameJob {
-        // Present's frame counter, for the PostPresent hold.
-        uint64_t frame = 0;
         // Layer 0 first, then the overlays to blend over it.
         std::vector<alvr::render::Layer> layers;
         uint64_t targetTimestampNs;
@@ -154,17 +143,8 @@ private:
         // discards the job if the generation moved (rebuild, shutdown, set
         // switch) between enqueue and processing.
         uint64_t generation;
-        // What marks the end of the write into each texture the job reads:
-        // SteamVR's timeline semaphore and the value read at Present, or,
-        // for a texture without one, a sync_file fd exported from the
-        // dma-buf's implicit fences (-1 when there are none). The fence fds
-        // are owned by the job: every path that drops it must close them.
-        struct TextureWait {
-            uint64_t semaphore = 0;
-            uint64_t value = 0;
-            int fenceFd = -1;
-        };
-        std::vector<TextureWait> waits;
+        // SteamVR's timeline semaphores and target values read at Present.
+        std::vector<alvr::render::SemaphoreWait> waits;
         std::chrono::steady_clock::time_point enqueueTime;
     };
     void EncodeWorkerLoop();
@@ -175,7 +155,7 @@ private:
     std::thread m_encodeWorker;
     std::mutex m_jobMutex;
     std::condition_variable m_jobCv;
-    FrameJob m_job {};
+    FrameJob m_job { };
     bool m_jobPending = false;
     bool m_workerExit = false;
     // Serializes encoder access: the worker's per-frame enc.present against
@@ -187,29 +167,12 @@ private:
     // instead of presenting old indices against rebuilt state.
     uint64_t m_encGeneration = 0;
 
-    // Consecutive writer-fence poll timeouts; at the threshold the GPU wait
-    // disarms for the session so a wedged writer degrades the stream once
-    // instead of taxing every frame.
-    uint32_t m_gpuWaitConsecTimeouts = 0;
-    bool m_gpuWaitPollDisarmed = false;
-
     // Written by the event loop thread in SetViewParams, read by the worker.
     // Invalid until the client's projection arrives, and the reprojection
     // stays off until then because it has no FOV to build a ray from.
     std::mutex m_viewParamsMutex;
-    FfiViewParams m_viewParams[2] {};
+    FfiViewParams m_viewParams[2] { };
     bool m_viewParamsValid = false;
 
-    // PostPresent hold: Present's frame counter, the frame it last queued and
-    // whether that frame must be read before SteamVR continues, and the
-    // newest frame the worker has read (or dropped).
-    uint64_t m_presentFrame = 0;
-    std::mutex m_readMutex;
-    std::condition_variable m_readCv;
-    uint64_t m_lastQueuedFrame = 0;
-    bool m_holdUntilRead = false;
-    // Whether the last Present queued a frame for the encoder.
-    bool m_queuedThisPresent = false;
-    uint64_t m_lastReadFrame = 0;
-    void MarkRead(uint64_t frame);
+    std::atomic<uint32_t> m_reprojectionFlags { vr::VRCompositor_ReprojectionMotion };
 };

@@ -373,7 +373,7 @@ void DeinitializeStreaming() {
     }
 }
 
-void SendVSync(double offsetSeconds) { vr::VRServerDriverHost()->VsyncEvent(offsetSeconds); }
+void SendVSync() { vr::VRServerDriverHost()->VsyncEvent(0.0); }
 
 void RequestIDR() {
 #ifdef _WIN32

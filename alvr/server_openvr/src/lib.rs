@@ -2,7 +2,6 @@ mod foveated_encoding;
 mod graphics;
 mod props;
 mod tracking;
-mod vsync;
 
 #[allow(
     non_camel_case_types,
@@ -146,10 +145,6 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
         } else {
             (0, 0, false, 0.0, false)
         };
-
-    // The vsync grid runs at the rate the driver is told about, set here so the announcer never
-    // has to read a setting back across the boundary.
-    vsync::set_refresh_rate(refresh_rate as f32);
 
     Settings {
         m_refreshRate: refresh_rate,
@@ -747,6 +742,13 @@ pub unsafe extern "C" fn HmdDriverFactory(
     interface_name: *const c_char,
     return_code: *mut i32,
 ) -> *mut c_void {
+    #[cfg(target_os = "linux")]
+    unsafe {
+        // SteamVR's linux compositor enables app throttling only when
+        // STEAMVR_MOTION_SMOOTHING=1 is set in the environment.
+        std::env::set_var("STEAMVR_MOTION_SMOOTHING", "1");
+    }
+
     let Ok(driver_dir) = alvr_server_io::get_driver_dir_from_registered() else {
         return ptr::null_mut();
     };
@@ -823,6 +825,11 @@ extern "C" fn set_openvr_props(instance_ptr: *mut c_void, device_id: u64) {
 pub extern "C" fn initialize_runtime() {
     static ONCE: Once = Once::new();
     ONCE.call_once(|| {
+        #[cfg(target_os = "linux")]
+        unsafe {
+            std::env::set_var("STEAMVR_MOTION_SMOOTHING", "1");
+        }
+
         let Some(init_data) = FACTORY_INIT_DATA.lock().take() else {
             return;
         };

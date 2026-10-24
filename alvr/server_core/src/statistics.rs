@@ -300,11 +300,18 @@ impl StatisticsManager {
     pub fn duration_until_next_vsync(&mut self) -> Duration {
         let now = Instant::now();
 
-        // update the last vsync if it's too old
-        while self.last_vsync_time + self.frame_interval < now {
-            self.last_vsync_time += self.frame_interval;
+        let target_vsync = self.last_vsync_time + self.frame_interval;
+        if now < target_vsync {
+            self.last_vsync_time = target_vsync;
+            target_vsync - now
+        } else {
+            // Already missed or at the vsync deadline. Advance last_vsync_time to catch up
+            // with the vsync grid, and return Duration::ZERO so PostPresent does not sleep
+            // an extra full frame.
+            while self.last_vsync_time + self.frame_interval <= now {
+                self.last_vsync_time += self.frame_interval;
+            }
+            Duration::ZERO
         }
-
-        (self.last_vsync_time + self.frame_interval).saturating_duration_since(now)
     }
 }

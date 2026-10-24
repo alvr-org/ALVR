@@ -266,6 +266,17 @@ impl StreamSocketBuilder {
         })
     }
 
+    /// The port this builder actually bound.
+    ///
+    /// Needed when binding port `0`, where the OS chooses the port and the peer has to be told
+    /// which one it got.
+    pub fn local_port(&self) -> Result<u16> {
+        Ok(match self {
+            StreamSocketBuilder::Udp(socket) => socket.local_addr()?.port(),
+            StreamSocketBuilder::Tcp(listener) => listener.local_addr()?.port(),
+        })
+    }
+
     pub fn accept_from_server(
         self,
         server_ip: IpAddr,
@@ -291,11 +302,17 @@ impl StreamSocketBuilder {
         })
     }
 
+    /// `local_port` is the port the server binds; `client_port` is the port it sends to.
+    ///
+    /// These are usually the same number, and were a single parameter until clients started being
+    /// able to move off the configured port. They must differ when server and client share a
+    /// machine, where one port cannot be bound twice.
     #[allow(clippy::too_many_arguments)]
     pub fn connect_to_client(
         timeout: Duration,
         client_ip: IpAddr,
-        port: u16,
+        local_port: u16,
+        client_port: u16,
         protocol: SocketProtocol,
         dscp: Option<DscpTos>,
         buffer_config: SocketBufferConfig,
@@ -303,12 +320,16 @@ impl StreamSocketBuilder {
     ) -> ConResult<StreamSocket> {
         let (send_socket, receive_socket) = match protocol {
             SocketProtocol::Udp => {
-                let socket = udp::bind(port, dscp, buffer_config).to_con()?;
-                udp::connect(&socket, client_ip, port, timeout).to_con()?;
+                // The server keeps the configured local port: the client dials it by number, so it
+                // is not free to move. Only the remote port varies, for clients that had to bind
+                // somewhere other than the configured port.
+                let socket = udp::bind(local_port, dscp, buffer_config).to_con()?;
+                udp::connect(&socket, client_ip, client_port, timeout).to_con()?;
                 udp::split_multiplexed(socket, max_packet_size).to_con()?
             }
             SocketProtocol::Tcp => {
-                let socket = tcp::connect_to_client(timeout, &[client_ip], port, buffer_config)?;
+                let socket =
+                    tcp::connect_to_client(timeout, &[client_ip], client_port, buffer_config)?;
                 tcp::split_multiplexed(socket, timeout).to_con()?
             }
         };

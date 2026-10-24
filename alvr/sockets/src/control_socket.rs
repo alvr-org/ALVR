@@ -54,17 +54,21 @@ pub fn accept_from_server(
     Ok((socket.try_clone().to_con()?, socket))
 }
 
+/// Connects to the first reachable client.
+///
+/// Each candidate carries its own port because clients sharing a machine cannot all listen on the
+/// well-known [`CONTROL_PORT`]; discovery reports the well-known port for clients that do not
+/// advertise anything else.
 pub fn connect_to_client(
     timeout: Duration,
-    client_ips: &[IpAddr],
-    port: u16,
+    client_addresses: &[(IpAddr, u16)],
     buffer_config: SocketBufferConfig,
 ) -> ConResult<(TcpStream, TcpStream)> {
-    let split_timeout = timeout / client_ips.len() as u32;
+    let split_timeout = timeout / client_addresses.len() as u32;
 
     let mut res = alvr_common::try_again();
-    for ip in client_ips {
-        res = TcpStream::connect_timeout(&SocketAddr::new(*ip, port), split_timeout)
+    for (ip, port) in client_addresses {
+        res = TcpStream::connect_timeout(&SocketAddr::new(*ip, *port), split_timeout)
             .handle_try_again();
 
         if res.is_ok() {
@@ -179,7 +183,16 @@ impl<R: DeserializeOwned> ControlSocketReceiver<R> {
 }
 
 pub fn get_server_listener(timeout: Duration) -> Result<TcpListener> {
-    let listener = bind(timeout, CONTROL_PORT, None, SocketBufferConfig::default())?;
+    get_server_listener_on_port(timeout, CONTROL_PORT)
+}
+
+/// Listens on an explicit control port instead of the well-known [`CONTROL_PORT`].
+///
+/// Pass `0` to let the OS assign a free port, then read it back with [`TcpListener::local_addr`]
+/// and advertise it over mDNS. Real headsets each have their own machine and keep using the
+/// well-known port through [`get_server_listener`].
+pub fn get_server_listener_on_port(timeout: Duration, port: u16) -> Result<TcpListener> {
+    let listener = bind(timeout, port, None, SocketBufferConfig::default())?;
 
     Ok(listener)
 }
@@ -191,15 +204,16 @@ pub struct ProtoControlSocket {
 }
 
 pub enum PeerType<'a> {
-    AnyClient(Vec<IpAddr>),
+    /// Candidate client addresses, each with the control port to dial it on.
+    AnyClient(Vec<(IpAddr, u16)>),
     Server(&'a TcpListener),
 }
 
 impl ProtoControlSocket {
     pub fn connect_to(timeout: Duration, peer: PeerType<'_>) -> ConResult<(Self, IpAddr)> {
         let socket = match peer {
-            PeerType::AnyClient(ips) => {
-                connect_to_client(timeout, &ips, CONTROL_PORT, SocketBufferConfig::default())?.0
+            PeerType::AnyClient(addresses) => {
+                connect_to_client(timeout, &addresses, SocketBufferConfig::default())?.0
             }
             PeerType::Server(listener) => accept_from_server(listener, None, timeout)?.0,
         };

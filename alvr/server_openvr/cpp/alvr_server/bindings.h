@@ -192,6 +192,8 @@ extern "C" const unsigned char* FFR_SHADER_COMP_SPV_PTR;
 extern "C" unsigned int FFR_SHADER_COMP_SPV_LEN;
 extern "C" const unsigned char* RGBTOYUV420_SHADER_COMP_SPV_PTR;
 extern "C" unsigned int RGBTOYUV420_SHADER_COMP_SPV_LEN;
+extern "C" const unsigned char* LAYER_SHADER_COMP_SPV_PTR;
+extern "C" unsigned int LAYER_SHADER_COMP_SPV_LEN;
 
 extern "C" const char* g_sessionPath;
 extern "C" const char* g_driverRootDir;

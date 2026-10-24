@@ -9,9 +9,13 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <deque>
 #include <map>
 #include <mutex>
+#include <optional>
+#include <set>
 #include <thread>
+#include <vector>
 
 #include <vulkan/vulkan.h>
 
@@ -83,11 +87,27 @@ private:
         int fds[3];
         SwapTextureSetDesc_t textDesc;
         uint32_t pid;
+        // Created by vrcompositor itself rather than a scene application.
+        // Frames reading such a texture hold PostPresent until the read.
+        bool compositorOwned = false;
     };
     std::map<vr::SharedTextureHandle_t, std::pair<ProcessResource*, int>> m_handleMap;
     void CleanupProcessResource(ProcessResource* processResource);
+    // Frees what the encoder and the semaphore lookup kept for textures
+    // SteamVR is destroying. Called before CleanupProcessResource.
+    void ForgetTextures(std::vector<vr::SharedTextureHandle_t> const& textures);
+    // The textures of the last few sets SteamVR destroyed, to tell the one
+    // frame the compositor presents with them after an application exits
+    // from a texture that was never ours.
+    static constexpr size_t MaxDestroyedRemembered = 64;
+    std::mutex m_destroyedMutex;
+    std::deque<vr::SharedTextureHandle_t> m_destroyed;
+    bool WasDestroyed(vr::SharedTextureHandle_t texture);
+    // Layer i of the frame being presented, or nothing when one of its
+    // textures is not one of ours or its bounds are invalid.
+    std::optional<alvr::render::Layer> SubmittedLayer(int i);
 
-    static const int MAX_LAYERS = 10;
+    static constexpr int MAX_LAYERS = 10;
     int m_submitLayer;
     SubmitLayerPerEye_t m_submitLayers[MAX_LAYERS][2];
     vr::HmdQuaternion_t m_prevFramePoseRotation;
@@ -97,7 +117,11 @@ private:
     // Track current texture index for each eye to avoid UB with uninitialized data
     std::map<ProcessResource*, uint32_t> m_swapchainIndices;
 
-    std::array<vr::SharedTextureHandle_t, 6> layer0Texts {};
+    // The renderer and encoder are built from the first layer 0 texture set
+    // after a connect or rebuild; later sets are taken by handle.
+    bool m_encoderReady = false;
+    // Textures already reported as having no SteamVR semaphore (logged once).
+    std::set<vr::SharedTextureHandle_t> m_noSemaphoreLogged;
 
     alvr::Encoder enc;
 
@@ -116,8 +140,10 @@ private:
     // faster than frames arrive, and if it falls behind, the newest frame
     // replaces the stale pending one.
     struct FrameJob {
-        uint32_t leftIdx;
-        uint32_t rightIdx;
+        // Present's frame counter, for the PostPresent hold.
+        uint64_t frame = 0;
+        // Layer 0 first, then the overlays to blend over it.
+        std::vector<alvr::render::Layer> layers;
         uint64_t targetTimestampNs;
         // Orientation the layer was rendered with, captured in Present. The
         // worker needs it to build the reprojection, and it cannot read
@@ -128,10 +154,17 @@ private:
         // discards the job if the generation moved (rebuild, shutdown, set
         // switch) between enqueue and processing.
         uint64_t generation;
-        // sync_file fds exported from the eye textures' write fences in
-        // Present. Owned by the job: every path that drops the job without
-        // presenting it must close them.
-        int waitFds[2] = { -1, -1 };
+        // What marks the end of the write into each texture the job reads:
+        // SteamVR's timeline semaphore and the value read at Present, or,
+        // for a texture without one, a sync_file fd exported from the
+        // dma-buf's implicit fences (-1 when there are none). The fence fds
+        // are owned by the job: every path that drops it must close them.
+        struct TextureWait {
+            uint64_t semaphore = 0;
+            uint64_t value = 0;
+            int fenceFd = -1;
+        };
+        std::vector<TextureWait> waits;
         std::chrono::steady_clock::time_point enqueueTime;
     };
     void EncodeWorkerLoop();
@@ -154,10 +187,6 @@ private:
     // instead of presenting old indices against rebuilt state.
     uint64_t m_encGeneration = 0;
 
-    // A second dup of each imported texture fd, kept for exporting the
-    // writer's fences at Present. Replaced wholesale on every texture-set
-    // switch, so stale sets never accumulate.
-    int m_syncFds[6] = { -1, -1, -1, -1, -1, -1 };
     // Consecutive writer-fence poll timeouts; at the threshold the GPU wait
     // disarms for the session so a wedged writer degrades the stream once
     // instead of taxing every frame.
@@ -170,4 +199,17 @@ private:
     std::mutex m_viewParamsMutex;
     FfiViewParams m_viewParams[2] {};
     bool m_viewParamsValid = false;
+
+    // PostPresent hold: Present's frame counter, the frame it last queued and
+    // whether that frame must be read before SteamVR continues, and the
+    // newest frame the worker has read (or dropped).
+    uint64_t m_presentFrame = 0;
+    std::mutex m_readMutex;
+    std::condition_variable m_readCv;
+    uint64_t m_lastQueuedFrame = 0;
+    bool m_holdUntilRead = false;
+    // Whether the last Present queued a frame for the encoder.
+    bool m_queuedThisPresent = false;
+    uint64_t m_lastReadFrame = 0;
+    void MarkRead(uint64_t frame);
 };

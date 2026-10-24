@@ -1,6 +1,8 @@
 #pragma once
 
 #include <fstream>
+#include <functional>
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
@@ -113,6 +115,11 @@ class Encoder {
     // and warping there would move the frame's stamp while leaving the pixels
     // unwarped, which is worse than not warping at all.
     bool warpCapableChain = false;
+
+    // SteamVR's per-texture timeline semaphores (SteamVrSync.h), imported
+    // into this device once per handle and kept until SteamVR destroys their
+    // texture or the encoder goes.
+    std::map<u64, vk::Semaphore> timelines;
 
 public:
     // TODO: How are we supposed to match the physical device with direct mode?
@@ -232,24 +239,83 @@ public:
             renderer.get().destroy(vkCtx);
             renderer.reset();
         }
+        for (auto& [handle, sem] : timelines) {
+            vkCtx.dev.destroy(sem);
+        }
+        timelines.clear();
         encoderMissingLogged = false;
     }
 
-    // waitFds are sync_file fds the render submission must wait on before
-    // sampling the eye textures; ownership transfers here on every path.
+    // Waits until SteamVR's timeline semaphore for a texture reaches value,
+    // the end of the write submitted into it before Present. The semaphore is
+    // imported on first use from dupFd() (Vulkan takes the fd). Returns false
+    // when it could not be imported or did not reach value within timeoutNs.
+    //
+    // A CPU wait with a cap, where Steam Link waits on the GPU: if a SteamVR
+    // change ever left the value unsignalled, this costs a capped stall per
+    // frame instead of a hung queue. Needs VK_KHR_external_semaphore_fd and
+    // timeline semaphores, which VkContext already requires on every vendor;
+    // the import only works on the GPU SteamVR renders on, like the texture
+    // imports. Tested on NVIDIA; RADV and ANV implement opaque-fd timeline
+    // import.
+    bool waitTimeline(u64 handle, std::function<int()> const& dupFd, u64 value, u64 timeoutNs) {
+        auto it = timelines.find(handle);
+        if (it == timelines.end()) {
+            int fd = dupFd();
+            if (fd < 0) {
+                return false;
+            }
+            vk::SemaphoreTypeCreateInfo typeInfo {
+                .semaphoreType = vk::SemaphoreType::eTimeline,
+                .initialValue = 0,
+            };
+            vk::Semaphore sem = vkCtx.dev.createSemaphore({ .pNext = &typeInfo });
+            vk::ImportSemaphoreFdInfoKHR importInfo {
+                .semaphore = sem,
+                .handleType = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueFd,
+                .fd = fd,
+            };
+            if (vkCtx.dev.importSemaphoreFdKHR(&importInfo, vkCtx.dispatch)
+                != vk::Result::eSuccess) {
+                close(fd);
+                vkCtx.dev.destroy(sem);
+                return false;
+            }
+            it = timelines.emplace(handle, sem).first;
+        }
+        vk::SemaphoreWaitInfo waitInfo {
+            .semaphoreCount = 1,
+            .pSemaphores = &it->second,
+            .pValues = &value,
+        };
+        return vkCtx.dev.waitSemaphores(waitInfo, timeoutNs) == vk::Result::eSuccess;
+    }
+
+    // Frees what was imported for textures and semaphores SteamVR destroyed.
+    // Call between frames, with the worker kept out (m_encMutex).
+    void releaseTextures(std::vector<u64> const& textures, std::vector<u64> const& semaphores) {
+        if (renderer.hasValue()) {
+            renderer.get().releaseTextures(vkCtx, textures);
+        }
+        for (u64 handle : semaphores) {
+            auto it = timelines.find(handle);
+            if (it != timelines.end()) {
+                vkCtx.dev.destroy(it->second);
+                timelines.erase(it);
+            }
+        }
+    }
+
+    // layers[0] is the scene, later layers are blended over it. afterRead
+    // runs once the GPU has finished reading SteamVR's textures, before the
+    // encode, so the driver can release a held PostPresent early.
     void present(
-        u32 leftIdx,
-        u32 rightIdx,
         u64 targetTimestampNs,
         render::WarpParams const& warp,
-        int const waitFds[2]
+        std::vector<render::Layer> const& layers,
+        std::function<void()> const& afterRead
     ) {
         if (!encoder) {
-            for (int e = 0; e < 2; ++e) {
-                if (waitFds[e] >= 0) {
-                    close(waitFds[e]);
-                }
-            }
             // Say it once instead of at frame rate.
             if (!encoderMissingLogged) {
                 Error("Encoder not initialized, skipping frames until it is rebuilt.\n");
@@ -260,7 +326,8 @@ public:
         renderer.get().warpParams = warp;
         ReportPresent(targetTimestampNs, 0);
         updateFoveationCenters(targetTimestampNs);
-        renderer.get().render(vkCtx, leftIdx, rightIdx, waitFds);
+        renderer.get().render(vkCtx, layers);
+        afterRead();
         ReportComposed(targetTimestampNs, 0);
 
         encoder->SetParams(GetDynamicEncoderParams());
@@ -324,6 +391,9 @@ public:
         if (renderer.hasValue()) {
             renderer.get().destroy(vkCtx);
             renderer.reset();
+        }
+        for (auto& [handle, sem] : timelines) {
+            vkCtx.dev.destroy(sem);
         }
 
         vkCtx.destroy();

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <unistd.h>
 #include <vulkan/vulkan_structs.hpp>
@@ -677,15 +678,37 @@ void Renderer::render(
     // sub-rectangle to the eye; with full bounds and the same size it is a
     // plain copy.
     Image* stageOut = &stagingImgs[0];
+    // SteamVR's textures belong to another process. Every frame they are
+    // acquired from the external queue family and released back after the
+    // reads, so drivers that compress images (AMD's DCC, Intel's CCS) make
+    // them consistent at the handover. Their content is kept: only a
+    // texture never used before starts from an undefined layout.
+    auto externalBarrier = [&](Image& image, bool acquire) {
+        u32 const external = VK_QUEUE_FAMILY_EXTERNAL;
+        barriers.push_back(vk::ImageMemoryBarrier {
+            .srcAccessMask = acquire ? vk::AccessFlagBits::eNone : vk::AccessFlagBits::eShaderRead,
+            .dstAccessMask = acquire ? vk::AccessFlagBits::eShaderRead : vk::AccessFlagBits::eNone,
+            .oldLayout = acquire ? image.layout : vk::ImageLayout::eGeneral,
+            .newLayout = vk::ImageLayout::eGeneral,
+            .srcQueueFamilyIndex = acquire ? external : vkCtx.meta.queueFamily,
+            .dstQueueFamilyIndex = acquire ? vkCtx.meta.queueFamily : external,
+            .image = image.image,
+            .subresourceRange {
+                .aspectMask = vk::ImageAspectFlagBits::eColor,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        });
+        image.layout = vk::ImageLayout::eGeneral;
+    };
+    std::set<Image*> acquired;
     for (auto const& eyes : sources) {
         for (Image* source : eyes) {
-            transitionImage(
-                *source,
-                vk::ImageLayout::eGeneral,
-                vk::AccessFlagBits::eNone,
-                vk::AccessFlagBits::eShaderRead,
-                barriers
-            );
+            if (acquired.insert(source).second) {
+                externalBarrier(*source, true);
+            }
         }
     }
     transitionImage(
@@ -722,6 +745,15 @@ void Renderer::render(
             );
         }
     }
+    for (Image* source : acquired) {
+        externalBarrier(*source, false);
+    }
+    flushBarriers(
+        barriers,
+        vk::PipelineStageFlagBits::eComputeShader,
+        vk::PipelineStageFlagBits::eBottomOfPipe
+    );
+
     Image* prev = stageOut;
 
     PushConstants const pushConstants {

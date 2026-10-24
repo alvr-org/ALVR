@@ -3,7 +3,8 @@
 // Draws one eye of a submitted layer into the working image (both eyes side
 // by side). The layer's valid sub-rectangle (uvRect) is stretched over the
 // whole eye. Layer 0 is copied (opaque); later layers, such as SteamVR's
-// dashboard, are blended over what is already there with straight alpha.
+// dashboard, are blended over what is already there. SteamVR submits them
+// with premultiplied alpha, so the colour is added as is.
 //
 // Values stay sRGB-encoded end to end: SteamVR's sRGB textures are sampled
 // through UNORM views, as the copy this replaces moved raw bytes, so colours
@@ -35,5 +36,5 @@ void main() {
         return;
     }
     vec4 base = imageLoad(target, dst);
-    imageStore(target, dst, vec4(mix(base.rgb, src.rgb, src.a), 1.0));
+    imageStore(target, dst, vec4(base.rgb * (1.0 - src.a) + src.rgb, 1.0));
 }

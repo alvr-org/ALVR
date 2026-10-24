@@ -128,13 +128,20 @@ public:
         std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_fds.find(semaphoreHandle);
         if (it == m_fds.end()) {
+            auto* mgr = vr::VRIPCResourceManager();
+            if (!mgr) {
+                return -1;
+            }
             int fd = -1;
             uint64_t ipcHandle = 0;
-            if (vr::VRIPCResourceManager()->RefResource(semaphoreHandle, &ipcHandle)
-                && vr::VRIPCResourceManager()->ReceiveSharedFd(ipcHandle, &fd)) {
-                it = m_fds.emplace(semaphoreHandle, fd).first;
+            if (mgr->RefResource(semaphoreHandle, &ipcHandle)) {
+                if (mgr->ReceiveSharedFd(ipcHandle, &fd)) {
+                    it = m_fds.emplace(semaphoreHandle, fd).first;
+                } else {
+                    mgr->UnrefResource(semaphoreHandle);
+                    return -1;
+                }
             } else {
-                m_fds.emplace(semaphoreHandle, -1);
                 return -1;
             }
         }
@@ -156,7 +163,10 @@ public:
                 if (fd != m_fds.end()) {
                     if (fd->second >= 0) {
                         close(fd->second);
-                        vr::VRIPCResourceManager()->UnrefResource(sem->second);
+                        auto* mgr = vr::VRIPCResourceManager();
+                        if (mgr) {
+                            mgr->UnrefResource(sem->second);
+                        }
                     }
                     m_fds.erase(fd);
                 }

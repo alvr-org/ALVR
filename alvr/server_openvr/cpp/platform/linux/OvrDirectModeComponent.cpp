@@ -61,7 +61,7 @@ static std::chrono::nanoseconds frameInterval() {
 // on or the kernel lacks the ioctl. The caller owns the returned fd.
 static int exportReadSyncFile(int dmabufFd) {
 #if defined(DMA_BUF_IOCTL_EXPORT_SYNC_FILE)
-    struct dma_buf_export_sync_file exportInfo = {};
+    struct dma_buf_export_sync_file exportInfo = { };
     exportInfo.flags = DMA_BUF_SYNC_READ;
     exportInfo.fd = -1;
     if (ioctl(dmabufFd, DMA_BUF_IOCTL_EXPORT_SYNC_FILE, &exportInfo) != 0) {
@@ -318,7 +318,7 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
             // one without the other is what breaks world lock. Sampled here
             // rather than in Present so the target is as fresh as possible.
             uint64_t stampTimestampNs = job.targetTimestampNs;
-            alvr::render::WarpParams warpParams {};
+            alvr::render::WarpParams warpParams { };
             if (enc.warpCapable()) {
                 auto latest = m_poseHistory->GetLatestPose();
 
@@ -397,7 +397,7 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
         char path[32];
         snprintf(path, sizeof(path), "/proc/%u/comm", unPid);
         if (FILE* comm = fopen(path, "r")) {
-            char name[32] = {};
+            char name[32] = { };
             if (fgets(name, sizeof(name), comm)) {
                 processResource->compositorOwned = strncmp(name, "vrcompositor", 12) == 0;
             }
@@ -455,9 +455,14 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
         processResource->fds[i] = fd;
         processResource->sharedHandles[i] = myHandle;
 
-        m_handleMap.insert(
-            std::make_pair(processResource->sharedHandles[i], std::make_pair(processResource, i))
-        );
+        {
+            std::lock_guard<std::mutex> lock(m_presentMutex);
+            m_handleMap.insert(
+                std::make_pair(
+                    processResource->sharedHandles[i], std::make_pair(processResource, i)
+                )
+            );
+        }
         pOutSwapTextureSet->rSharedTextureHandles[i] = myHandle;
         Info("Created Texture %d %p\n", i, processResource->sharedHandles[i]);
     }
@@ -472,7 +477,15 @@ void OvrDirectModeComponent::DestroySwapTextureSet(vr::SharedTextureHandle_t sha
     auto id = m_handleMap.find(sharedTextureHandle);
     if (id != m_handleMap.end()) {
         ProcessResource* p = id->second.first;
-        ForgetTextures({ p->sharedHandles[0], p->sharedHandles[1], p->sharedHandles[2] });
+        std::vector<vr::SharedTextureHandle_t> textures;
+        for (int i = 0; i < 3; ++i) {
+            if (p->sharedHandles[i] != 0) {
+                textures.push_back(p->sharedHandles[i]);
+            }
+        }
+        if (!textures.empty()) {
+            ForgetTextures(textures);
+        }
         CleanupProcessResource(p);
     } else {
         Debug("Requested to destroy not managing texture. handle:%p\n", sharedTextureHandle);
@@ -493,7 +506,11 @@ void OvrDirectModeComponent::DestroyAllSwapTextureSets(uint32_t unPid) {
     }
     std::vector<vr::SharedTextureHandle_t> textures;
     for (auto* p : resourcesToDestroy) {
-        textures.insert(textures.end(), p->sharedHandles, p->sharedHandles + 3);
+        for (int i = 0; i < 3; ++i) {
+            if (p->sharedHandles[i] != 0) {
+                textures.push_back(p->sharedHandles[i]);
+            }
+        }
     }
     if (!textures.empty()) {
         ForgetTextures(textures);
@@ -504,7 +521,8 @@ void OvrDirectModeComponent::DestroyAllSwapTextureSets(uint32_t unPid) {
     m_presentMutex.unlock();
 }
 
-void OvrDirectModeComponent::ForgetTextures(std::vector<vr::SharedTextureHandle_t> const& textures
+void OvrDirectModeComponent::ForgetTextures(
+    std::vector<vr::SharedTextureHandle_t> const& textures
 ) {
     // A pending or in-flight job may still name these textures. Drop the
     // pending one, then take the encoder lock (waits for a frame being read)
@@ -520,9 +538,9 @@ void OvrDirectModeComponent::ForgetTextures(std::vector<vr::SharedTextureHandle_
         }
     }
     DrainPendingJob();
-    std::vector<uint64_t> semaphores = steamvrsync::Sync::Get().Forget(textures);
     std::lock_guard<std::mutex> encLock(m_encMutex);
     m_encGeneration++;
+    std::vector<uint64_t> semaphores = steamvrsync::Sync::Get().Forget(textures);
     enc.releaseTextures(textures, semaphores);
 }
 
@@ -611,11 +629,46 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t (&perEye)[2])
 
 /** Submits queued layers for display. */
 void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
-    int const layerCount = std::min(m_submitLayer, MAX_LAYERS);
-    m_submitLayer = 0;
     // Set below when this Present queues a frame (read by PostPresent).
     m_holdUntilRead = false;
     m_queuedThisPresent = false;
+
+    std::optional<alvr::render::Layer> layer0;
+    std::vector<alvr::render::Layer> overlayLayers;
+    bool anyCompositorOwned = false;
+    vr::SharedTextureHandle_t layer0Handles[2] = { 0, 0 };
+
+    {
+        std::lock_guard<std::mutex> lock(m_presentMutex);
+        int const layerCount = std::min(m_submitLayer, MAX_LAYERS);
+        m_submitLayer = 0;
+
+        layer0Handles[0] = m_submitLayers[0][0].hTexture;
+        layer0Handles[1] = m_submitLayers[0][1].hTexture;
+
+        layer0 = SubmittedLayer(0);
+        if (layer0) {
+            for (int i = 1; i < layerCount; ++i) {
+                if (auto layer = SubmittedLayer(i)) {
+                    overlayLayers.push_back(*layer);
+                }
+            }
+
+            auto isCompositorOwned = [&](vr::SharedTextureHandle_t handle) {
+                auto it = m_handleMap.find(handle);
+                return it != m_handleMap.end() && it->second.first->compositorOwned;
+            };
+
+            for (auto const& eye : layer0->eyes) {
+                anyCompositorOwned = anyCompositorOwned || isCompositorOwned(eye.handle);
+            }
+            for (auto const& layer : overlayLayers) {
+                for (auto const& eye : layer.eyes) {
+                    anyCompositorOwned = anyCompositorOwned || isCompositorOwned(eye.handle);
+                }
+            }
+        }
+    }
 
     switch (m_encoderState.load()) {
     case EncoderState::RebuildRequested: {
@@ -646,25 +699,19 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
         break;
     }
 
-    std::optional<alvr::render::Layer> layer0 = SubmittedLayer(0);
     if (!layer0) {
         // When an application exits, SteamVR destroys its texture sets and
         // the compositor still presents one last frame naming them. That
         // frame is skipped quietly; textures never seen are still an error.
-        if (WasDestroyed(m_submitLayers[0][0].hTexture)
-            || WasDestroyed(m_submitLayers[0][1].hTexture)) {
+        if (WasDestroyed(layer0Handles[0]) || WasDestroyed(layer0Handles[1])) {
             Debug(
                 "Skipping a frame whose textures SteamVR just destroyed %llu, %llu\n",
-                m_submitLayers[0][0].hTexture,
-                m_submitLayers[0][1].hTexture
+                layer0Handles[0],
+                layer0Handles[1]
             );
             return;
         }
-        Error(
-            "Textures not found in handle map %llu, %llu\n",
-            m_submitLayers[0][0].hTexture,
-            m_submitLayers[0][1].hTexture
-        );
+        Error("Textures not found in handle map %llu, %llu\n", layer0Handles[0], layer0Handles[1]);
         return;
     }
 
@@ -702,17 +749,13 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
         return;
     }
 
-    FrameJob job {};
+    FrameJob job { };
     job.frame = ++m_presentFrame;
     job.layers.push_back(*layer0);
     // Layers 1..n (SteamVR's dashboard and other overlays while a scene
     // application runs) are blended over layer 0. A layer whose textures are
     // not ours is skipped rather than dropping the frame.
-    for (int i = 1; i < layerCount; ++i) {
-        if (auto layer = SubmittedLayer(i)) {
-            job.layers.push_back(*layer);
-        }
-    }
+    job.layers.insert(job.layers.end(), overlayLayers.begin(), overlayLayers.end());
     job.targetTimestampNs = m_targetTimestampNs;
     job.renderOrientation = m_framePoseRotation;
     job.generation = m_encGeneration;
@@ -740,19 +783,9 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
                 }
             }
             job.waits.push_back(wait);
-
-            // vrcompositor's own textures: the value read here does not always
-            // cover the right eye's write yet, and without a hold SteamVR goes
-            // on and that write lands during the read (the right eye showed
-            // the next frame). Scene applications' textures need no hold, and
-            // holding for them would pass their late GPU frames on to the
-            // compositor (VRChat fell to 60 fps).
-            auto it = m_handleMap.find(eye.handle);
-            if (it != m_handleMap.end() && it->second.first->compositorOwned) {
-                m_holdUntilRead = true;
-            }
         }
     }
+    m_holdUntilRead = anyCompositorOwned;
 
     {
         std::lock_guard<std::mutex> lock(m_jobMutex);
@@ -794,9 +827,16 @@ std::optional<alvr::render::Layer> OvrDirectModeComponent::SubmittedLayer(int i)
             return std::nullopt;
         }
         auto const* resource = it->second.first;
-        layer.format = (vk::Format)(VkFormat)resource->textDesc.nFormat;
-        layer.extent = vk::Extent2D { .width = resource->textDesc.nWidth,
-                                      .height = resource->textDesc.nHeight };
+        auto format = (vk::Format)(VkFormat)resource->textDesc.nFormat;
+        auto extent = vk::Extent2D { .width = resource->textDesc.nWidth,
+                                     .height = resource->textDesc.nHeight };
+        if (eye == 0) {
+            layer.format = format;
+            layer.extent = extent;
+        } else if (layer.format != format || layer.extent != extent) {
+            Warn("Mismatched format or extent between eyes for layer %d; skipping it\n", i);
+            return std::nullopt;
+        }
         layer.eyes[eye] = {
             .handle = submitted.hTexture,
             .fd = resource->fds[it->second.second],

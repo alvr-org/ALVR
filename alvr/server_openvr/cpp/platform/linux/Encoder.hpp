@@ -25,7 +25,7 @@ template <typename... T>
 auto makeSpecs(T... args)
     requires floats<T...>
 {
-    render::PipelineCreateInfo info { };
+    render::PipelineCreateInfo info {};
 
     constexpr auto Size = sizeof(float);
     u32 index = 0;
@@ -37,13 +37,11 @@ auto makeSpecs(T... args)
 
         auto const offset = static_cast<u32>(info.specData.size());
         info.specData.insert(info.specData.end(), arr.begin(), arr.end());
-        info.specs.push_back(
-            {
-                .constantID = index,
-                .offset = offset,
-                .size = Size,
-            }
-        );
+        info.specs.push_back({
+            .constantID = index,
+            .offset = offset,
+            .size = Size,
+        });
         ++index;
     };
 
@@ -121,7 +119,7 @@ class Encoder {
 public:
     // TODO: How are we supposed to match the physical device with direct mode?
     Encoder()
-        : vkCtx(std::vector<u8> { }) { }
+        : vkCtx(std::vector<u8> {}) { }
 
     void createImages(render::RendererCreateInfo rendererCI) {
         if (renderer.hasValue()) {
@@ -150,14 +148,11 @@ public:
         }
 
         if (pipeCIs.empty()) {
-            pipeCIs.push_back(
-                {
-                    .shaderData = std::vector(
-                        QUAD_SHADER_COMP_SPV_PTR,
-                        QUAD_SHADER_COMP_SPV_PTR + QUAD_SHADER_COMP_SPV_LEN
-                    ),
-                }
-            );
+            pipeCIs.push_back({
+                .shaderData = std::vector(
+                    QUAD_SHADER_COMP_SPV_PTR, QUAD_SHADER_COMP_SPV_PTR + QUAD_SHADER_COMP_SPV_LEN
+                ),
+            });
             warpCapableChain = true;
         } else {
             warpCapableChain = settings->m_enableFoveatedEncoding;
@@ -170,10 +165,10 @@ public:
     void initEncoding() {
         auto const& settings = Settings_Instance();
 
-        VkPhysicalDeviceDrmPropertiesEXT drmProps = { };
+        VkPhysicalDeviceDrmPropertiesEXT drmProps = {};
         drmProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT;
 
-        VkPhysicalDeviceProperties2 deviceProps = { };
+        VkPhysicalDeviceProperties2 deviceProps = {};
         deviceProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
         deviceProps.pNext = &drmProps;
         vkGetPhysicalDeviceProperties2(vkCtx.physDev, &deviceProps);
@@ -185,7 +180,7 @@ public:
             if (fd == -1) {
                 continue;
             }
-            struct stat s = { };
+            struct stat s = {};
             int ret = fstat(fd, &s);
             close(fd);
             if (ret != 0) {

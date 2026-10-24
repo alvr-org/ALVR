@@ -155,7 +155,7 @@ private:
     std::thread m_encodeWorker;
     std::mutex m_jobMutex;
     std::condition_variable m_jobCv;
-    FrameJob m_job { };
+    FrameJob m_job {};
     bool m_jobPending = false;
     bool m_workerExit = false;
     // Serializes encoder access: the worker's per-frame enc.present against
@@ -171,7 +171,7 @@ private:
     // Invalid until the client's projection arrives, and the reprojection
     // stays off until then because it has no FOV to build a ray from.
     std::mutex m_viewParamsMutex;
-    FfiViewParams m_viewParams[2] { };
+    FfiViewParams m_viewParams[2] {};
     bool m_viewParamsValid = false;
 
     std::atomic<uint32_t> m_reprojectionFlags { vr::VRCompositor_ReprojectionMotion };

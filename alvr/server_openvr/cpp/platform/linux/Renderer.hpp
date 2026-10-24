@@ -84,7 +84,7 @@ struct LayerEye {
 // other overlays) are blended over it in order.
 struct Layer {
     vk::Format format = vk::Format::eUndefined;
-    vk::Extent2D extent { };
+    vk::Extent2D extent {};
     LayerEye eyes[2];
 };
 
@@ -98,11 +98,11 @@ struct SemaphoreWait {
 // reproduces the unwarped sampling exactly, so a zero-initialized struct is a
 // correct passthrough.
 struct WarpParams {
-    float rotation[16] = { }; // column-major mat4, rotation in the upper-left 3x3
-    float leftTans[4] = { }; // tanLeft, tanRight, tanUp, tanDown
-    float rightTans[4] = { };
+    float rotation[16] = {}; // column-major mat4, rotation in the upper-left 3x3
+    float leftTans[4] = {}; // tanLeft, tanRight, tanUp, tanDown
+    float rightTans[4] = {};
     u32 enabled = 0;
-    u32 _padding[3] = { };
+    u32 _padding[3] = {};
 };
 static_assert(sizeof(WarpParams) == 112);
 static_assert(offsetof(WarpParams, rotation) == 0);
@@ -112,8 +112,8 @@ static_assert(offsetof(WarpParams, enabled) == 96);
 
 // Per-eye foveation center shifts for ffr.comp, updated every frame.
 struct FoveationCenterShifts {
-    float left[2] = { };
-    float right[2] = { };
+    float left[2] = {};
+    float right[2] = {};
 };
 static_assert(sizeof(FoveationCenterShifts) == 16);
 
@@ -200,7 +200,7 @@ public:
     void render(
         VkContext& vkCtx,
         std::vector<Layer> const& layers,
-        std::vector<SemaphoreWait> const& semaphoreWaits = { }
+        std::vector<SemaphoreWait> const& semaphoreWaits = {}
     );
 
     // Frees the imports of textures SteamVR destroyed. The GPU is idle
@@ -208,9 +208,9 @@ public:
     void releaseTextures(VkContext const& vkCtx, std::vector<u64> const& handles);
     void releaseSemaphores(VkContext const& vkCtx, std::vector<u64> const& handles);
 
-    WarpParams warpParams { };
+    WarpParams warpParams {};
 
-    FoveationCenterShifts foveationCenterShifts { };
+    FoveationCenterShifts foveationCenterShifts {};
 
     Output getOutput() { return output; }
 

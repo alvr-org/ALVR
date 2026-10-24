@@ -61,7 +61,7 @@ static std::chrono::nanoseconds frameInterval() {
 // on or the kernel lacks the ioctl. The caller owns the returned fd.
 static int exportReadSyncFile(int dmabufFd) {
 #if defined(DMA_BUF_IOCTL_EXPORT_SYNC_FILE)
-    struct dma_buf_export_sync_file exportInfo = { };
+    struct dma_buf_export_sync_file exportInfo = {};
     exportInfo.flags = DMA_BUF_SYNC_READ;
     exportInfo.fd = -1;
     if (ioctl(dmabufFd, DMA_BUF_IOCTL_EXPORT_SYNC_FILE, &exportInfo) != 0) {
@@ -318,7 +318,7 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
             // one without the other is what breaks world lock. Sampled here
             // rather than in Present so the target is as fresh as possible.
             uint64_t stampTimestampNs = job.targetTimestampNs;
-            alvr::render::WarpParams warpParams { };
+            alvr::render::WarpParams warpParams {};
             if (enc.warpCapable()) {
                 auto latest = m_poseHistory->GetLatestPose();
 
@@ -397,7 +397,7 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
         char path[32];
         snprintf(path, sizeof(path), "/proc/%u/comm", unPid);
         if (FILE* comm = fopen(path, "r")) {
-            char name[32] = { };
+            char name[32] = {};
             if (fgets(name, sizeof(name), comm)) {
                 processResource->compositorOwned = strncmp(name, "vrcompositor", 12) == 0;
             }
@@ -457,11 +457,9 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
 
         {
             std::lock_guard<std::mutex> lock(m_presentMutex);
-            m_handleMap.insert(
-                std::make_pair(
-                    processResource->sharedHandles[i], std::make_pair(processResource, i)
-                )
-            );
+            m_handleMap.insert(std::make_pair(
+                processResource->sharedHandles[i], std::make_pair(processResource, i)
+            ));
         }
         pOutSwapTextureSet->rSharedTextureHandles[i] = myHandle;
         Info("Created Texture %d %p\n", i, processResource->sharedHandles[i]);
@@ -521,8 +519,7 @@ void OvrDirectModeComponent::DestroyAllSwapTextureSets(uint32_t unPid) {
     m_presentMutex.unlock();
 }
 
-void OvrDirectModeComponent::ForgetTextures(
-    std::vector<vr::SharedTextureHandle_t> const& textures
+void OvrDirectModeComponent::ForgetTextures(std::vector<vr::SharedTextureHandle_t> const& textures
 ) {
     // A pending or in-flight job may still name these textures. Drop the
     // pending one, then take the encoder lock (waits for a frame being read)
@@ -749,7 +746,7 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
         return;
     }
 
-    FrameJob job { };
+    FrameJob job {};
     job.frame = ++m_presentFrame;
     job.layers.push_back(*layer0);
     // Layers 1..n (SteamVR's dashboard and other overlays while a scene

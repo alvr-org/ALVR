@@ -52,7 +52,7 @@ RenderPipeline::RenderPipeline(
         .stage = stageCI,
         .layout = pipeLayout,
     };
-    auto [result, pipes] = ctx.dev.createComputePipelines({ }, pipeCI);
+    auto [result, pipes] = ctx.dev.createComputePipelines({}, pipeCI);
 
     assert(result == vk::Result::eSuccess);
     pipe = pipes[0];
@@ -182,7 +182,7 @@ inline Image createImage(
         .layout = imageCI.initialLayout,
     };
 
-    vk::MemoryDedicatedRequirements dedicatedReqs { };
+    vk::MemoryDedicatedRequirements dedicatedReqs {};
     vk::MemoryRequirements2 memReqs {
         .pNext = &dedicatedReqs,
     };
@@ -262,7 +262,7 @@ Output createOutputImage(
 
     img.layout = imgCI.initialLayout;
 
-    vk::ExternalMemoryImageCreateInfo extImgCI { };
+    vk::ExternalMemoryImageCreateInfo extImgCI {};
 
     // Lifetime
     std::vector<uint64_t> imageModifiers;
@@ -275,7 +275,7 @@ Output createOutputImage(
     if (haveDrmModifiers && handleType == HandleType::DmaBuf) {
         imgCI.tiling = vk::ImageTiling::eDrmFormatModifierEXT;
 
-        vk::DrmFormatModifierPropertiesListEXT modPropList { };
+        vk::DrmFormatModifierPropertiesListEXT modPropList {};
         vk::FormatProperties2 formatProps {
             .pNext = &modPropList,
         };
@@ -341,7 +341,7 @@ Output createOutputImage(
         img.image = ctx.dev.createImage(imgCI);
     }
 
-    vk::MemoryDedicatedRequirements dedicatedReqs { };
+    vk::MemoryDedicatedRequirements dedicatedReqs {};
     vk::MemoryRequirements2 memReqs {
         .pNext = &dedicatedReqs,
     };
@@ -574,7 +574,7 @@ Renderer::Renderer(
     };
     // renderFinishedSem = vkCtx.dev.createSemaphore(semCI);
 
-    fence = vkCtx.dev.createFence({ });
+    fence = vkCtx.dev.createFence({});
 
     // Copied out of the embedded bytes, which carry no 4-byte alignment.
     std::vector<u32> layerCode((LAYER_SHADER_COMP_SPV_LEN + 3) / 4);
@@ -604,7 +604,7 @@ Renderer::Renderer(
         },
         .layout = layerPipeLayout,
     };
-    auto [layerPipeResult, layerPipes] = vkCtx.dev.createComputePipelines({ }, layerPipeCI);
+    auto [layerPipeResult, layerPipes] = vkCtx.dev.createComputePipelines({}, layerPipeCI);
     if (layerPipeResult != vk::Result::eSuccess) {
         throw std::runtime_error("Could not create the layer pipeline");
     }
@@ -618,13 +618,11 @@ void Renderer::render(VkContext& vkCtx, std::vector<Layer> const& layers) {
     // Imports happen before recording: they create Vulkan objects.
     std::vector<std::vector<Image*>> sources;
     for (auto const& layer : layers) {
-        sources.push_back(
-            { &importTexture(vkCtx, layer, layer.eyes[0]),
-              &importTexture(vkCtx, layer, layer.eyes[1]) }
-        );
+        sources.push_back({ &importTexture(vkCtx, layer, layer.eyes[0]),
+                            &importTexture(vkCtx, layer, layer.eyes[1]) });
     }
 
-    vk::CommandBufferBeginInfo beginInfo { };
+    vk::CommandBufferBeginInfo beginInfo {};
     cmdBuf.begin(beginInfo);
 
     cmdBuf.resetQueryPool(timestampPool, 0, 2);
@@ -634,7 +632,7 @@ void Renderer::render(VkContext& vkCtx, std::vector<Layer> const& layers) {
                              vk::PipelineStageFlags srcStage,
                              vk::PipelineStageFlags dstStage) {
         if (!barriers.empty()) {
-            cmdBuf.pipelineBarrier(srcStage, dstStage, { }, { }, { }, barriers);
+            cmdBuf.pipelineBarrier(srcStage, dstStage, {}, {}, {}, barriers);
             barriers.clear();
         }
     };
@@ -648,24 +646,22 @@ void Renderer::render(VkContext& vkCtx, std::vector<Layer> const& layers) {
             return;
         }
 
-        barriers.push_back(
-            vk::ImageMemoryBarrier {
-                .srcAccessMask = srcAccessMask,
-                .dstAccessMask = dstAccessMask,
-                .oldLayout = image.layout,
-                .newLayout = newLayout,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = image.image,
-                .subresourceRange {
-                    .aspectMask = vk::ImageAspectFlagBits::eColor,
-                    .baseMipLevel = 0,
-                    .levelCount = 1,
-                    .baseArrayLayer = 0,
-                    .layerCount = 1,
-                },
-            }
-        );
+        barriers.push_back(vk::ImageMemoryBarrier {
+            .srcAccessMask = srcAccessMask,
+            .dstAccessMask = dstAccessMask,
+            .oldLayout = image.layout,
+            .newLayout = newLayout,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = image.image,
+            .subresourceRange {
+                .aspectMask = vk::ImageAspectFlagBits::eColor,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        });
         image.layout = newLayout;
     };
 
@@ -709,10 +705,10 @@ void Renderer::render(VkContext& vkCtx, std::vector<Layer> const& layers) {
             cmdBuf.pipelineBarrier(
                 vk::PipelineStageFlagBits::eComputeShader,
                 vk::PipelineStageFlagBits::eComputeShader,
-                { },
+                {},
                 memBarrier,
-                { },
-                { }
+                {},
+                {}
             );
         }
         for (int eye = 0; eye < 2; ++eye) {

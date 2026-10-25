@@ -146,9 +146,7 @@ void OvrDirectModeComponent::Teardown() {
     steamvrsync::Sync::Get().ForgetAll();
 }
 
-OvrDirectModeComponent::~OvrDirectModeComponent() {
-    Teardown();
-}
+OvrDirectModeComponent::~OvrDirectModeComponent() { Teardown(); }
 
 void OvrDirectModeComponent::DrainPendingJob() {
     std::lock_guard<std::mutex> lock(m_jobMutex);
@@ -183,7 +181,8 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
             }
 
             constexpr double TimelineWaitBudgetFrames = 8.0;
-            auto const timelineCapNs = (uint64_t)(frameInterval().count() * TimelineWaitBudgetFrames);
+            auto const timelineCapNs
+                = (uint64_t)(frameInterval().count() * TimelineWaitBudgetFrames);
             bool const confirmed = alvr::waitForTextureTimelines(
                 job.waits,
                 std::chrono::nanoseconds(timelineCapNs),
@@ -211,7 +210,8 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
             if (!confirmed) {
                 ++m_unconfirmedSkips;
                 Warn(
-                    "Skipping an unconfirmed SteamVR frame (%llu in a row); the client keeps the last one\n",
+                    "Skipping an unconfirmed SteamVR frame (%llu in a row); the client keeps the "
+                    "last one\n",
                     (unsigned long long)m_unconfirmedSkips
                 );
                 continue;
@@ -724,6 +724,7 @@ void OvrDirectModeComponent::GetFrameTiming(vr::DriverDirectMode_FrameTiming* pF
     pFrameTiming->m_nNumDroppedFrames = 0;
     // Per openvr_driver.h: VRCompositor_ReprojectionMotion_XXX flags get passed in,
     // and since these overlap with VRCompositor_ThrottleMask, they need to be cleared out
-    // if not implemented/unhandled; otherwise, those settings get interpreted as forcing throttling.
+    // if not implemented/unhandled; otherwise, those settings get interpreted as forcing
+    // throttling.
     pFrameTiming->m_nReprojectionFlags = 0;
 }

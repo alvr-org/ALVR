@@ -168,7 +168,7 @@ public:
     }
 
     void initEncoding() {
-        VkPhysicalDeviceDrmPropertiesEXT drmProps = { };
+        VkPhysicalDeviceDrmPropertiesEXT drmProps = {};
         drmProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT;
 
         VkPhysicalDeviceProperties2 deviceProps = {};

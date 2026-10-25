@@ -19,9 +19,8 @@ bool waitForTextureTimelines(
         if (texture.semaphore == 0) {
             continue;
         }
-        auto const remaining = std::chrono::duration_cast<std::chrono::nanoseconds>(
-            deadline - now()
-        ).count();
+        auto const remaining
+            = std::chrono::duration_cast<std::chrono::nanoseconds>(deadline - now()).count();
         if (!wait(texture, remaining > 0 ? static_cast<uint64_t>(remaining) : 0)) {
             return false;
         }
@@ -30,13 +29,10 @@ bool waitForTextureTimelines(
 }
 
 template <typename Waits, typename Wait>
-bool waitForTextureTimelines(
-    Waits const& waits, std::chrono::nanoseconds budget, Wait&& wait
-) {
-    return waitForTextureTimelines(
-        waits, budget, wait, [] { return std::chrono::steady_clock::now(); }
-    );
+bool waitForTextureTimelines(Waits const& waits, std::chrono::nanoseconds budget, Wait&& wait) {
+    return waitForTextureTimelines(waits, budget, wait, [] {
+        return std::chrono::steady_clock::now();
+    });
 }
 
 } // namespace alvr
-

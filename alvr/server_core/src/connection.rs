@@ -815,31 +815,43 @@ fn connection_pipeline(
     #[cfg(not(target_os = "windows"))]
     let game_audio_sample_rate = 44100;
 
+    // Process loopback needs no output device; if this Windows does not have it the device loopback is used.
+    #[cfg(target_os = "windows")]
+    let use_process_loopback = matches!(
+        &initial_settings.audio.game_audio,
+        Switch::Enabled(config)
+            if config.capture == alvr_session::GameAudioCapture::ProcessLoopback
+    ) && alvr_audio::process_loopback_available();
+
     #[cfg(target_os = "windows")]
     let game_audio_sample_rate =
         if let Switch::Enabled(game_audio_config) = &initial_settings.audio.game_audio {
-            let game_audio_device =
-                alvr_audio::new_output(game_audio_config.device.as_ref()).to_con()?;
+            if use_process_loopback {
+                alvr_audio::PROCESS_LOOPBACK_SAMPLE_RATE
+            } else {
+                let game_audio_device =
+                    alvr_audio::new_output(game_audio_config.device.as_ref()).to_con()?;
 
-            if let Switch::Enabled(microphone_config) = &initial_settings.audio.microphone
-                && matches!(
-                    microphone_config.devices,
-                    alvr_session::MicrophoneDevicesConfig::VAC
-                        | alvr_session::MicrophoneDevicesConfig::VBCable
-                )
-            {
-                let (sink, _) =
-                    alvr_audio::new_virtual_microphone_pair(microphone_config.devices.clone())
-                        .to_con()?;
+                if let Switch::Enabled(microphone_config) = &initial_settings.audio.microphone
+                    && matches!(
+                        microphone_config.devices,
+                        alvr_session::MicrophoneDevicesConfig::VAC
+                            | alvr_session::MicrophoneDevicesConfig::VBCable
+                    )
+                {
+                    let (sink, _) =
+                        alvr_audio::new_virtual_microphone_pair(microphone_config.devices.clone())
+                            .to_con()?;
 
-                // VoiceMeeter and Custom devices may have arbitrary internal routing.
-                // Therefore, we cannot detect the loopback issue without knowing the routing.
-                if alvr_audio::is_same_device(&game_audio_device, &sink) {
-                    con_bail!("Game audio and microphone cannot point to the same device!");
+                    // VoiceMeeter and Custom devices may have arbitrary internal routing.
+                    // Therefore, we cannot detect the loopback issue without knowing the routing.
+                    if alvr_audio::is_same_device(&game_audio_device, &sink) {
+                        con_bail!("Game audio and microphone cannot point to the same device!");
+                    }
                 }
-            }
 
-            alvr_audio::input_sample_rate(&game_audio_device).to_con()?
+                alvr_audio::input_sample_rate(&game_audio_device).to_con()?
+            }
         } else {
             0
         };
@@ -978,6 +990,22 @@ fn connection_pipeline(
         thread::spawn(move || {
             #[cfg(not(target_os = "linux"))]
             while is_streaming(&client_hostname) {
+                #[cfg(windows)]
+                if use_process_loopback {
+                    if let Err(e) = alvr_audio::record_process_loopback_blocking(
+                        Arc::new({
+                            let client_hostname = client_hostname.clone();
+                            move || is_streaming(&client_hostname)
+                        }),
+                        game_audio_sender.clone(),
+                    ) {
+                        error!("Audio record error: {e:?}");
+                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                    }
+
+                    continue;
+                }
+
                 {
                     let device = match alvr_audio::new_output(config.device.as_ref()) {
                         Ok(data) => data,

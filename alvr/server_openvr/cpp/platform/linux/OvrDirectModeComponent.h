@@ -28,6 +28,8 @@ public:
     );
     ~OvrDirectModeComponent();
 
+    void Teardown();
+
     void RequestIdr() { enc.requestIdr(); }
 
     // Called from the event loop thread when negotiated settings arrive.
@@ -173,6 +175,10 @@ private:
     std::mutex m_viewParamsMutex;
     FfiViewParams m_viewParams[2] {};
     bool m_viewParamsValid = false;
+
+    // Consecutive frames skipped because SteamVR had not confirmed their
+    // textures (worker thread only).
+    uint64_t m_unconfirmedSkips = 0;
 
     std::atomic<uint32_t> m_reprojectionFlags { vr::VRCompositor_ReprojectionMotion };
 };

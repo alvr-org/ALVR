@@ -1,4 +1,6 @@
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include <link.h>
 #include <stdio.h>
 #include <sys/socket.h>
@@ -10,6 +12,7 @@
 
 #include "OvrDirectModeComponent.h"
 #include "SteamVrSync.h"
+#include "TextureTimelineWait.h"
 
 #include "alvr_server/Logger.h"
 #include "alvr_server/include/openvr_math.h"
@@ -101,7 +104,12 @@ OvrDirectModeComponent::OvrDirectModeComponent(std::shared_ptr<PoseHistory> pose
     m_encodeWorker = std::thread(&OvrDirectModeComponent::EncodeWorkerLoop, this);
 }
 
-OvrDirectModeComponent::~OvrDirectModeComponent() {
+void OvrDirectModeComponent::Teardown() {
+    static std::atomic<bool> tornDown { false };
+    if (tornDown.exchange(true)) {
+        return;
+    }
+    Info("OvrDirectModeComponent::Teardown: cleaning up resources\n");
     {
         std::lock_guard<std::mutex> lock(m_jobMutex);
         m_workerExit = true;
@@ -111,6 +119,35 @@ OvrDirectModeComponent::~OvrDirectModeComponent() {
     if (m_encodeWorker.joinable()) {
         m_encodeWorker.join();
     }
+
+    m_presentMutex.lock();
+    std::vector<ProcessResource*> resourcesToDestroy;
+    for (auto it = m_handleMap.begin(); it != m_handleMap.end(); ++it) {
+        if (it->second.second == 0) {
+            resourcesToDestroy.push_back(it->second.first);
+        }
+    }
+    std::vector<vr::SharedTextureHandle_t> textures;
+    for (auto* p : resourcesToDestroy) {
+        for (int i = 0; i < 3; ++i) {
+            if (p->sharedHandles[i] != 0) {
+                textures.push_back(p->sharedHandles[i]);
+            }
+        }
+    }
+    if (!textures.empty()) {
+        ForgetTextures(textures);
+    }
+    for (auto* p : resourcesToDestroy) {
+        CleanupProcessResource(p);
+    }
+    m_handleMap.clear();
+    m_presentMutex.unlock();
+    steamvrsync::Sync::Get().ForgetAll();
+}
+
+OvrDirectModeComponent::~OvrDirectModeComponent() {
+    Teardown();
 }
 
 void OvrDirectModeComponent::DrainPendingJob() {
@@ -145,6 +182,48 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
                 continue;
             }
 
+            constexpr double TimelineWaitBudgetFrames = 8.0;
+            auto const timelineCapNs = (uint64_t)(frameInterval().count() * TimelineWaitBudgetFrames);
+            bool const confirmed = alvr::waitForTextureTimelines(
+                job.waits,
+                std::chrono::nanoseconds(timelineCapNs),
+                [&](auto const& wait, uint64_t timeoutNs) {
+                    uint64_t const semaphore = wait.semaphore;
+                    auto const result = enc.waitTimeline(
+                        semaphore,
+                        [semaphore] { return steamvrsync::Sync::Get().DupFd(semaphore); },
+                        wait.value,
+                        timeoutNs
+                    );
+                    if (result == alvr::Encoder::TimelineWait::Reached) {
+                        return true;
+                    }
+                    Warn(
+                        "SteamVR texture semaphore %llx %s\n",
+                        (unsigned long long)semaphore,
+                        result == alvr::Encoder::TimelineWait::NotImportable
+                            ? "could not be imported"
+                            : "not reached within the wait cap"
+                    );
+                    return false;
+                }
+            );
+            if (!confirmed) {
+                ++m_unconfirmedSkips;
+                Warn(
+                    "Skipping an unconfirmed SteamVR frame (%llu in a row); the client keeps the last one\n",
+                    (unsigned long long)m_unconfirmedSkips
+                );
+                continue;
+            }
+            if (m_unconfirmedSkips != 0) {
+                Info(
+                    "SteamVR texture timeline recovered after %llu skipped frames\n",
+                    (unsigned long long)m_unconfirmedSkips
+                );
+            }
+            m_unconfirmedSkips = 0;
+
             // Rotationally reproject the frame from the pose it was rendered
             // with to the newest tracking pose, then stamp it with that pose's
             // timestamp: after the warp the newest pose is the image's pose,
@@ -177,7 +256,7 @@ void OvrDirectModeComponent::EncodeWorkerLoop() {
                 }
             }
 
-            enc.present(stampTimestampNs, warpParams, job.layers, job.waits);
+            enc.present(stampTimestampNs, warpParams, job.layers);
         } catch (std::exception const& e) {
             // An exception escaping a thread's start function is
             // std::terminate, which takes vrserver with it. Same recovery as
@@ -252,14 +331,14 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
             &myHandle
         );
 
-        uint64_t ipcHandle = 0;
-        vr::VRIPCResourceManager()->RefResource(myHandle, &ipcHandle);
-
         if (!success) {
             Error("VRCIPCResourceManager: Failed to create shared texture\n");
             CleanupProcessResource(processResource);
             return;
         }
+
+        uint64_t ipcHandle = 0;
+        vr::VRIPCResourceManager()->RefResource(myHandle, &ipcHandle);
 
         int fd = 0;
         auto ret = vr::VRIPCResourceManager()->ReceiveSharedFd(ipcHandle, &fd);
@@ -444,6 +523,7 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t (&perEye)[2])
 
 /** Submits queued layers for display. */
 void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
+    (void)syncTexture;
     std::optional<alvr::render::Layer> layer0;
     std::vector<alvr::render::Layer> overlayLayers;
     vr::SharedTextureHandle_t layer0Handles[2] = { 0, 0 };
@@ -517,8 +597,8 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
             .format = layer0->format,
             .inputEyeExtent = layer0->extent,
             .outputExtent {
-                .width = settings->m_recommendedTargetWidth,
-                .height = settings->m_recommendedTargetHeight,
+                .width = static_cast<uint32_t>(settings->m_recommendedTargetWidth),
+                .height = static_cast<uint32_t>(settings->m_recommendedTargetHeight),
             },
         };
 
@@ -642,5 +722,8 @@ void OvrDirectModeComponent::GetFrameTiming(vr::DriverDirectMode_FrameTiming* pF
     pFrameTiming->m_nNumFramePresents = 1;
     pFrameTiming->m_nNumMisPresented = 0;
     pFrameTiming->m_nNumDroppedFrames = 0;
-    pFrameTiming->m_nReprojectionFlags = m_reprojectionFlags.load(std::memory_order_relaxed);
+    // Per openvr_driver.h: VRCompositor_ReprojectionMotion_XXX flags get passed in,
+    // and since these overlap with VRCompositor_ThrottleMask, they need to be cleared out
+    // if not implemented/unhandled; otherwise, those settings get interpreted as forcing throttling.
+    pFrameTiming->m_nReprojectionFlags = 0;
 }

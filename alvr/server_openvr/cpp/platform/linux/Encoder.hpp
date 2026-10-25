@@ -110,6 +110,11 @@ class Encoder {
     bool encoderMissingLogged = false;
     IDRScheduler idrScheduler;
 
+    // SteamVR's per-texture timeline semaphores (SteamVrSync.h), imported
+    // into this device once per handle and kept until SteamVR destroys their
+    // texture or the encoder goes.
+    std::map<u64, vk::Semaphore> timelines;
+
     // Whether the current pass chain ends in a shader carrying the warp fold,
     // which is ffr.comp or quad.comp. A colour-correction-only chain does not,
     // and warping there would move the frame's stamp while leaving the pixels
@@ -163,9 +168,7 @@ public:
     }
 
     void initEncoding() {
-        auto const& settings = Settings_Instance();
-
-        VkPhysicalDeviceDrmPropertiesEXT drmProps = {};
+        VkPhysicalDeviceDrmPropertiesEXT drmProps = { };
         drmProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT;
 
         VkPhysicalDeviceProperties2 deviceProps = {};
@@ -234,7 +237,63 @@ public:
             renderer.get().destroy(vkCtx);
             renderer.reset();
         }
+        for (auto& [handle, sem] : timelines) {
+            vkCtx.dev.destroy(sem);
+        }
+        timelines.clear();
         encoderMissingLogged = false;
+    }
+
+    // Waits until SteamVR's timeline semaphore for a texture reaches value,
+    // the end of the write submitted into it before Present. The semaphore is
+    // imported on first use from dupFd() (Vulkan takes the fd; a failed
+    // import is retried on the next call). Says whether value was reached,
+    // not reached within timeoutNs, or the semaphore could not be imported.
+    enum class TimelineWait { Reached, TimedOut, NotImportable };
+
+    TimelineWait
+    waitTimeline(u64 handle, std::function<int()> const& dupFd, u64 value, u64 timeoutNs) {
+        auto it = timelines.find(handle);
+        if (it == timelines.end()) {
+            int fd = dupFd();
+            if (fd < 0) {
+                return TimelineWait::NotImportable;
+            }
+            vk::SemaphoreTypeCreateInfo typeInfo {
+                .semaphoreType = vk::SemaphoreType::eTimeline,
+                .initialValue = 0,
+            };
+            vk::SemaphoreCreateInfo semInfo {
+                .pNext = &typeInfo,
+            };
+            vk::Semaphore sem;
+            try {
+                sem = vkCtx.dev.createSemaphore(semInfo);
+            } catch (...) {
+                close(fd);
+                return TimelineWait::NotImportable;
+            }
+            vk::ImportSemaphoreFdInfoKHR importInfo {
+                .semaphore = sem,
+                .handleType = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueFd,
+                .fd = fd,
+            };
+            if (vkCtx.dev.importSemaphoreFdKHR(&importInfo, vkCtx.dispatch)
+                != vk::Result::eSuccess) {
+                close(fd);
+                vkCtx.dev.destroy(sem);
+                return TimelineWait::NotImportable;
+            }
+            it = timelines.emplace(handle, sem).first;
+        }
+        vk::SemaphoreWaitInfo waitInfo {
+            .semaphoreCount = 1,
+            .pSemaphores = &it->second,
+            .pValues = &value,
+        };
+        return vkCtx.dev.waitSemaphores(waitInfo, timeoutNs) == vk::Result::eSuccess
+            ? TimelineWait::Reached
+            : TimelineWait::TimedOut;
     }
 
     // Frees what was imported for textures and semaphores SteamVR destroyed.
@@ -244,14 +303,20 @@ public:
             renderer.get().releaseTextures(vkCtx, textures);
             renderer.get().releaseSemaphores(vkCtx, semaphores);
         }
+        for (u64 handle : semaphores) {
+            auto it = timelines.find(handle);
+            if (it != timelines.end()) {
+                vkCtx.dev.destroy(it->second);
+                timelines.erase(it);
+            }
+        }
     }
 
     // layers[0] is the scene, later layers are blended over it.
     void present(
         u64 targetTimestampNs,
         render::WarpParams const& warp,
-        std::vector<render::Layer> const& layers,
-        std::vector<render::SemaphoreWait> const& semaphoreWaits
+        std::vector<render::Layer> const& layers
     ) {
         if (!encoder) {
             // Say it once instead of at frame rate.
@@ -264,7 +329,7 @@ public:
         renderer.get().warpParams = warp;
         ReportPresent(targetTimestampNs, 0);
         updateFoveationCenters(targetTimestampNs);
-        renderer.get().render(vkCtx, layers, semaphoreWaits);
+        renderer.get().render(vkCtx, layers);
         ReportComposed(targetTimestampNs, 0);
 
         encoder->SetParams(GetDynamicEncoderParams());
@@ -329,6 +394,11 @@ public:
             renderer.get().destroy(vkCtx);
             renderer.reset();
         }
+
+        for (auto& [handle, sem] : timelines) {
+            vkCtx.dev.destroy(sem);
+        }
+        timelines.clear();
 
         vkCtx.destroy();
     }

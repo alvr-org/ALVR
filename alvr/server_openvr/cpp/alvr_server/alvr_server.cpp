@@ -164,6 +164,11 @@ public:
         if (vr::VRServerDriverHost()->IsExiting() && !shutdown_called) {
             Debug("DriverProvider: Received shutdown event");
 
+#ifdef __linux__
+            if (this->hmd && this->hmd->m_directModeComponent) {
+                this->hmd->m_directModeComponent->Teardown();
+            }
+#endif
             shutdown_called = true;
             ShutdownRuntime();
         }

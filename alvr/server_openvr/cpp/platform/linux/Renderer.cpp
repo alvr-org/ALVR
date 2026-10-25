@@ -292,7 +292,11 @@ Output createOutputImage(
                 continue;
             }
 
+            vk::PhysicalDeviceExternalImageFormatInfo extFormatInfo {
+                .handleType = vk::ExternalMemoryHandleTypeFlagBits::eDmaBufEXT,
+            };
             vk::PhysicalDeviceImageDrmFormatModifierInfoEXT modInfo {
+                .pNext = &extFormatInfo,
                 .drmFormatModifier = prop.drmFormatModifier,
                 .sharingMode = imgCI.sharingMode,
                 .queueFamilyIndexCount = imgCI.queueFamilyIndexCount,
@@ -314,17 +318,24 @@ Output createOutputImage(
                 imageModifiers.push_back(prop.drmFormatModifier);
         }
 
-        extImgCI.handleTypes = vk::ExternalMemoryHandleTypeFlagBits::eDmaBufEXT;
+        if (!imageModifiers.empty()) {
+            extImgCI.handleTypes = vk::ExternalMemoryHandleTypeFlagBits::eDmaBufEXT;
 
-        vk::ImageDrmFormatModifierListCreateInfoEXT modListCI {
-            .pNext = &extImgCI,
-            .drmFormatModifierCount = static_cast<u32>(imageModifiers.size()),
-            .pDrmFormatModifiers = imageModifiers.data(),
-        };
+            vk::ImageDrmFormatModifierListCreateInfoEXT modListCI {
+                .pNext = &extImgCI,
+                .drmFormatModifierCount = static_cast<u32>(imageModifiers.size()),
+                .pDrmFormatModifiers = imageModifiers.data(),
+            };
 
-        imgCI.pNext = &modListCI;
+            imgCI.pNext = &modListCI;
 
-        img.image = ctx.dev.createImage(imgCI);
+            img.image = ctx.dev.createImage(imgCI);
+        } else {
+            extImgCI.handleTypes = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd;
+            imgCI.tiling = vk::ImageTiling::eOptimal;
+            imgCI.pNext = &extImgCI;
+            img.image = ctx.dev.createImage(imgCI);
+        }
     } else if (haveDmaBuf && handleType == HandleType::DmaBuf) {
         extImgCI.handleTypes = vk::ExternalMemoryHandleTypeFlagBits::eDmaBufEXT;
         imgCI.pNext = &extImgCI;
@@ -774,7 +785,7 @@ void Renderer::render(
         transitionImage(
             *prev,
             vk::ImageLayout::eShaderReadOnlyOptimal,
-            vk::AccessFlagBits::eTransferWrite | vk::AccessFlagBits::eShaderWrite,
+            vk::AccessFlagBits::eShaderWrite,
             vk::AccessFlagBits::eShaderRead,
             barriers
         );
@@ -788,7 +799,7 @@ void Renderer::render(
 
         flushBarriers(
             barriers,
-            vk::PipelineStageFlagBits::eTransfer | vk::PipelineStageFlagBits::eComputeShader,
+            vk::PipelineStageFlagBits::eComputeShader,
             vk::PipelineStageFlagBits::eComputeShader
         );
 

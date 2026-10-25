@@ -181,6 +181,25 @@ public:
         return semaphores;
     }
 
+    void ForgetAll() {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        auto* mgr = vr::VRIPCResourceManager();
+        for (auto& pair : m_fds) {
+            if (pair.second >= 0) {
+                close(pair.second);
+                if (mgr) {
+                    mgr->UnrefResource(pair.first);
+                }
+            }
+        }
+        m_fds.clear();
+        for (auto& pair : m_states) {
+            munmap((void*)pair.second, StateSize);
+        }
+        m_states.clear();
+        m_semaphoreOf.clear();
+    }
+
 private:
     std::mutex m_mutex;
     std::map<uint64_t, const volatile uint8_t*> m_states;

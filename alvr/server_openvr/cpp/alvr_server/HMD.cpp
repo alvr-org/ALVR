@@ -62,6 +62,10 @@ Hmd::~Hmd() {
         m_D3DRender->Shutdown();
         m_D3DRender.reset();
     }
+#elif __linux__
+    if (m_directModeComponent) {
+        m_directModeComponent->Teardown();
+    }
 #endif
 }
 

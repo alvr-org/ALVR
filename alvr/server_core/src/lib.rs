@@ -452,12 +452,19 @@ impl ServerCoreContext {
                     file.write_all(&nal_buffer).ok();
                 }
 
+                let decoder_config = if is_idr {
+                    self.connection_context.decoder_config.lock().clone()
+                } else {
+                    None
+                };
+
                 let sender_result = sender.try_send(VideoPacket {
                     header: VideoPacketHeader {
                         timestamp,
                         global_view_params,
                         foveation_center_shifts,
                         is_idr,
+                        decoder_config,
                     },
                     payload: nal_buffer,
                 });

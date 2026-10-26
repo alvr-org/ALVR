@@ -15,8 +15,8 @@ use alvr_common::{
 };
 use alvr_packets::{
     AUDIO, ClientConnectionResult, ClientControlPacket, ClientStatistics, ConnectionAcceptedInfo,
-    HAPTICS, Haptics, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TimeSyncPacket,
-    TrackingData, VIDEO, VideoPacketHeader, VideoStreamingCapabilities,
+    HAPTICS, Haptics, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING,
+    TimeSyncPacket, TrackingData, VIDEO, VideoPacketHeader, VideoStreamingCapabilities,
     VideoStreamingCapabilitiesExt,
 };
 use alvr_session::{SocketProtocol, settings_schema::Switch};
@@ -535,7 +535,8 @@ fn connection_pipeline(
                         let rtt_ns = (t4 - t1).saturating_sub(t3 - t2);
 
                         // Observe drift BEFORE applying correction
-                        if let Some(predicted_offset) = estimator.predict_offset_at(client_recv_ns) {
+                        if let Some(predicted_offset) = estimator.predict_offset_at(client_recv_ns)
+                        {
                             let drift_ns = raw_sample_offset - predicted_offset;
                             let drift_ppm = (drift_ns as f64 / 15e9) * 1e6;
 

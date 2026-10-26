@@ -8,7 +8,10 @@ const MAX_SKEW_PPM: f64 = 200.0 * 1e-6; // Clamp to +/- 200 ppm
 pub fn monotonic_ns() -> u64 {
     #[cfg(unix)]
     {
-        let mut ts = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+        let mut ts = libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        };
         unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts) };
         (ts.tv_sec as u64) * 1_000_000_000 + (ts.tv_nsec as u64)
     }
@@ -28,8 +31,7 @@ pub fn monotonic_ns() -> u64 {
         unsafe { QueryPerformanceCounter(&mut count) };
         ((count as u128 * 1_000_000_000) / (*FREQ as u128)) as u64
     }
- }
-
+}
 
 struct Sample {
     rtt_ns: i128,
@@ -40,7 +42,7 @@ pub struct TimeSyncEstimator {
     samples: VecDeque<Sample>,
     base_client_time_ns: u64,
     base_offset_ns: Option<f64>,
-    skew: f64,                   // ppm ratio
+    skew: f64, // ppm ratio
     last_skew_client_time_ns: u64,
     last_skew_offset_ns: f64,
 }
@@ -63,14 +65,27 @@ impl TimeSyncEstimator {
         }
     }
 
-    pub fn push_sample(&mut self, client_send_ns: u64, server_recv_ns: u64, server_send_ns: u64, client_recv_ns: u64) {
-        let rtt_ns = (client_recv_ns as i128 - client_send_ns as i128) - (server_send_ns as i128 - server_recv_ns as i128);
-        let sample_offset = (((server_recv_ns as i128 - client_send_ns as i128) + (server_send_ns as i128 - client_recv_ns as i128)) / 2) as i64;
+    pub fn push_sample(
+        &mut self,
+        client_send_ns: u64,
+        server_recv_ns: u64,
+        server_send_ns: u64,
+        client_recv_ns: u64,
+    ) {
+        let rtt_ns = (client_recv_ns as i128 - client_send_ns as i128)
+            - (server_send_ns as i128 - server_recv_ns as i128);
+        let sample_offset = (((server_recv_ns as i128 - client_send_ns as i128)
+            + (server_send_ns as i128 - client_recv_ns as i128))
+            / 2) as i64;
 
         if self.samples.len() >= WINDOW_SIZE {
             self.samples.pop_front();
         }
-        self.samples.push_back(Sample { rtt_ns, offset_ns: sample_offset, client_time_ns: client_send_ns });
+        self.samples.push_back(Sample {
+            rtt_ns,
+            offset_ns: sample_offset,
+            client_time_ns: client_send_ns,
+        });
 
         if let Some(best) = self.samples.iter().min_by_key(|s| s.rtt_ns) {
             match self.base_offset_ns {
@@ -85,12 +100,16 @@ impl TimeSyncEstimator {
                     // Project previous offset forward by current skew rate
                     let projected_offset = prev_offset + self.skew * dt;
                     // Blend residual error with EMA
-                    let updated_offset = projected_offset + EMA_ALPHA * ((best.offset_ns as f64) - projected_offset);
+                    let updated_offset =
+                        projected_offset + EMA_ALPHA * ((best.offset_ns as f64) - projected_offset);
 
                     // Skew estimation over multi-second baseline
-                    let skew_dt = best.client_time_ns.saturating_sub(self.last_skew_client_time_ns);
+                    let skew_dt = best
+                        .client_time_ns
+                        .saturating_sub(self.last_skew_client_time_ns);
                     if skew_dt >= 2_000_000_000 {
-                        let raw_skew = ((best.offset_ns as f64) - self.last_skew_offset_ns) / (skew_dt as f64);
+                        let raw_skew =
+                            ((best.offset_ns as f64) - self.last_skew_offset_ns) / (skew_dt as f64);
                         let clamped_skew = raw_skew.clamp(-MAX_SKEW_PPM, MAX_SKEW_PPM);
                         if self.skew == 0.0 {
                             self.skew = clamped_skew;
@@ -138,8 +157,8 @@ impl TimeSyncEstimator {
 fn test_time_sync_ground_truth() {
     let mut estimator = TimeSyncEstimator::new();
     let true_offset: i128 = 15_000_000_000; // Server is 15s ahead
-    let one_way_delay: i128 = 2_000_000;    // 2ms network flight time
-    let server_hold: i128 = 500_000;        // 0.5ms turnaround
+    let one_way_delay: i128 = 2_000_000; // 2ms network flight time
+    let server_hold: i128 = 500_000; // 0.5ms turnaround
 
     for i in 0..16 {
         let t1 = 1_000_000_000 + i * 200_000_000; // Ping every 200ms
@@ -179,7 +198,11 @@ fn test_wi_fi_spike_rejection() {
     for i in 0..20 {
         let t1 = 10_000_000_000 + i * 200_000_000;
         // Inject 60ms spikes on samples 5 and 12, 2ms baseline otherwise
-        let delay = if i == 5 || i == 12 { 30_000_000 } else { 1_000_000 };
+        let delay = if i == 5 || i == 12 {
+            30_000_000
+        } else {
+            1_000_000
+        };
         let t2 = t1 + true_offset + delay;
         let t3 = t2 + 200_000;
         let t4 = t3 - true_offset + delay;
@@ -189,7 +212,10 @@ fn test_wi_fi_spike_rejection() {
 
     let diff = (estimator.get_offset().unwrap() - true_offset as i64).abs();
     // Offset must not get pulled by the 60ms spikes (error must stay under 0.1ms)
-    assert!(diff < 100_000, "Spike leaked into estimator! Error: {diff}ns");
+    assert!(
+        diff < 100_000,
+        "Spike leaked into estimator! Error: {diff}ns"
+    );
 }
 
 #[test]
@@ -218,7 +244,9 @@ fn test_time_sync_skew_correction() {
     let future_true_offset = initial_offset + (future_client_time as f64 * skew_ratio) as i128;
     let true_server_time = (future_client_time as i128 + future_true_offset) as u64;
 
-    let predicted_server_time = estimator.client_to_server_ns(future_client_time as u64).unwrap();
+    let predicted_server_time = estimator
+        .client_to_server_ns(future_client_time as u64)
+        .unwrap();
     let error_ns = (predicted_server_time as i128 - true_server_time as i128).abs();
 
     // With skew correction, error stays under 50 microseconds (0.05ms) even when extrapolating!

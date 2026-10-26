@@ -1381,11 +1381,15 @@ fn connection_pipeline(
 
                         // Store the client's converged offset on the server
                         if let Some(offset) = packet.client_to_server_offset_ns {
-                            ctx.client_to_server_offset_ns.store(offset, Ordering::Relaxed);
+                            ctx.client_to_server_offset_ns
+                                .store(offset, Ordering::Relaxed);
                         }
 
                         packet.server_send_ns = alvr_common::time::monotonic_ns();
-                        control_sender.lock().send(&ServerControlPacket::TimeSync(packet)).ok();
+                        control_sender
+                            .lock()
+                            .send(&ServerControlPacket::TimeSync(packet))
+                            .ok();
                     }
                     ClientControlPacket::Reserved(_) | ClientControlPacket::ReservedBuffer(_) => (),
                 }

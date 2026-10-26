@@ -265,7 +265,10 @@ impl ClientCoreContext {
     }
 
     pub fn get_time_sync_offset(&self) -> Option<i64> {
-        self.connection_context.time_sync_estimator.lock().get_offset()
+        self.connection_context
+            .time_sync_estimator
+            .lock()
+            .get_offset()
     }
 
     /// The callback should return true if the frame was successfully submitted to the decoder

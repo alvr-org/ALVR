@@ -544,12 +544,18 @@ impl ServerCoreContext {
     }
 
     pub fn client_time_to_server_ns(&self, client_time_ns: u64) -> Option<u64> {
-        let offset = self.connection_context.client_to_server_offset_ns.load(Ordering::Relaxed);
+        let offset = self
+            .connection_context
+            .client_to_server_offset_ns
+            .load(Ordering::Relaxed);
         (offset != i64::MIN).then(|| client_time_ns.saturating_add_signed(offset))
     }
 
     pub fn get_time_sync_offset(&self) -> Option<i64> {
-        let offset = self.connection_context.client_to_server_offset_ns.load(Ordering::Relaxed);
+        let offset = self
+            .connection_context
+            .client_to_server_offset_ns
+            .load(Ordering::Relaxed);
         (offset != i64::MIN).then_some(offset)
     }
 }

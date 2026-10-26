@@ -38,7 +38,7 @@ use std::{
     hash::{Hash, Hasher},
     net::{IpAddr, Ipv4Addr},
     process::Command,
-    sync::{Arc, mpsc::RecvTimeoutError},
+    sync::{Arc, atomic::Ordering, mpsc::RecvTimeoutError},
     thread,
     time::{Duration, Instant},
 };
@@ -1375,6 +1375,17 @@ fn connection_pipeline(
                         ctx.events_sender
                             .send(ServerCoreEvent::ProximityState(headset_is_worn))
                             .ok();
+                    }
+                    ClientControlPacket::TimeSync(mut packet) => {
+                        packet.server_recv_ns = alvr_common::time::monotonic_ns();
+
+                        // Store the client's converged offset on the server
+                        if let Some(offset) = packet.client_to_server_offset_ns {
+                            ctx.client_to_server_offset_ns.store(offset, Ordering::Relaxed);
+                        }
+
+                        packet.server_send_ns = alvr_common::time::monotonic_ns();
+                        control_sender.lock().send(&ServerControlPacket::TimeSync(packet)).ok();
                     }
                     ClientControlPacket::Reserved(_) | ClientControlPacket::ReservedBuffer(_) => (),
                 }

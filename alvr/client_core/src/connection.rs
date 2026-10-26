@@ -9,14 +9,15 @@ use crate::{
 };
 use alvr_common::{
     ALVR_VERSION, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState,
-    dbg_connection, debug, error, info,
+    TimeSyncEstimator, dbg_connection, debug, error, info, monotonic_ns,
     parking_lot::{Condvar, Mutex, RwLock},
     wait_rwlock, warn,
 };
 use alvr_packets::{
     AUDIO, ClientConnectionResult, ClientControlPacket, ClientStatistics, ConnectionAcceptedInfo,
-    HAPTICS, Haptics, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData,
-    VIDEO, VideoPacketHeader, VideoStreamingCapabilities, VideoStreamingCapabilitiesExt,
+    HAPTICS, Haptics, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TimeSyncPacket,
+    TrackingData, VIDEO, VideoPacketHeader, VideoStreamingCapabilities,
+    VideoStreamingCapabilitiesExt,
 };
 use alvr_session::{SocketProtocol, settings_schema::Switch};
 use alvr_sockets::{
@@ -50,6 +51,7 @@ const SOCKET_INIT_RETRY_INTERVAL: Duration = Duration::from_millis(500);
 const CONNECTION_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 const HANDSHAKE_ACTION_TIMEOUT: Duration = Duration::from_secs(2);
 const STREAMING_RECV_TIMEOUT: Duration = Duration::from_millis(500);
+const TIME_SYNC_INTERVAL: Duration = Duration::from_secs(15);
 
 const MAX_UNREAD_PACKETS: usize = 10; // Applies per stream
 const VIDEO_FRAME_METADATA_HISTORY_SIZE: usize = 128;
@@ -64,6 +66,7 @@ pub struct ConnectionContext {
     pub tracking_sender: Mutex<Option<StreamSender<TrackingData>>>,
     pub statistics_sender: Mutex<Option<StreamSender<ClientStatistics>>>,
     pub statistics_manager: Mutex<Option<StatisticsManager>>,
+    pub time_sync_estimator: Mutex<TimeSyncEstimator>,
     pub decoder_callback: Mutex<Option<Box<DecoderCallback>>>,
     pub video_frame_metadata_queue: Mutex<VecDeque<(Duration, VideoFrameMetadata)>>,
     pub max_prediction: RwLock<Duration>,
@@ -426,6 +429,7 @@ fn connection_pipeline(
         let disconnect_notif = Arc::clone(&disconnect_notif);
         move || {
             let mut keepalive_deadline = Instant::now();
+            let mut timesync_deadline = Instant::now();
 
             #[cfg(target_os = "android")]
             let mut battery_deadline = Instant::now();
@@ -447,6 +451,22 @@ fn connection_pipeline(
                     sender.send(&ClientControlPacket::KeepAlive).ok();
 
                     keepalive_deadline = Instant::now() + KEEPALIVE_INTERVAL;
+                }
+
+                if Instant::now() > timesync_deadline
+                    && let Some(sender) = &mut *ctx.control_sender.lock()
+                {
+                    let offset = ctx.time_sync_estimator.lock().get_offset();
+                    sender
+                        .send(&ClientControlPacket::TimeSync(TimeSyncPacket {
+                            client_send_ns: monotonic_ns(),
+                            server_recv_ns: 0,
+                            server_send_ns: 0,
+                            client_to_server_offset_ns: offset,
+                        }))
+                        .ok();
+
+                    timesync_deadline = Instant::now() + TIME_SYNC_INTERVAL;
                 }
 
                 #[cfg(target_os = "android")]
@@ -502,6 +522,48 @@ fn connection_pipeline(
                         error!("Unexpected StartStream paceket");
                     }
                     Ok(ServerControlPacket::KeepAlive) => (),
+                    Ok(ServerControlPacket::TimeSync(packet)) => {
+                        let client_recv_ns = monotonic_ns();
+                        let mut estimator = ctx.time_sync_estimator.lock();
+
+                        let t1 = packet.client_send_ns as i128;
+                        let t2 = packet.server_recv_ns as i128;
+                        let t3 = packet.server_send_ns as i128;
+                        let t4 = client_recv_ns as i128;
+
+                        let raw_sample_offset = (((t2 - t1) + (t3 - t4)) / 2) as i64;
+                        let rtt_ns = (t4 - t1).saturating_sub(t3 - t2);
+
+                        // Observe drift BEFORE applying correction
+                        if let Some(predicted_offset) = estimator.predict_offset_at(client_recv_ns) {
+                            let drift_ns = raw_sample_offset - predicted_offset;
+                            let drift_ppm = (drift_ns as f64 / 15e9) * 1e6;
+
+                            info!(
+                                "[TIME_SYNC 15s] RTT: {:.2}ms | Measured: {:+.3}ms | Model Pred: {:+.3}ms | Drift over 15s: {:+.3}ms ({:+.1} ppm) | Learned Skew: {:+.1} ppm",
+                                rtt_ns as f64 / 1e6,
+                                raw_sample_offset as f64 / 1e6,
+                                predicted_offset as f64 / 1e6,
+                                drift_ns as f64 / 1e6,
+                                drift_ppm,
+                                estimator.get_skew_ppm(),
+                            );
+                        } else {
+                            info!(
+                                "[TIME_SYNC Init] Baseline offset established: {:+.3}ms | RTT: {:.2}ms",
+                                raw_sample_offset as f64 / 1e6,
+                                rtt_ns as f64 / 1e6,
+                            );
+                        }
+
+                        // Apply correction
+                        estimator.push_sample(
+                            packet.client_send_ns,
+                            packet.server_recv_ns,
+                            packet.server_send_ns,
+                            client_recv_ns,
+                        );
+                    }
                     Ok(
                         ServerControlPacket::Reserved(_) | ServerControlPacket::ReservedBuffer(_),
                     ) => {}

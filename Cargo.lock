@@ -276,6 +276,7 @@ dependencies = [
  "anyhow",
  "backtrace",
  "glam",
+ "libc",
  "log",
  "parking_lot",
  "pastey",

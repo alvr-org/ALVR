@@ -257,6 +257,17 @@ impl ClientCoreContext {
         }
     }
 
+    pub fn client_time_to_server_ns(&self, client_time_ns: u64) -> Option<u64> {
+        self.connection_context
+            .time_sync_estimator
+            .lock()
+            .client_to_server_ns(client_time_ns)
+    }
+
+    pub fn get_time_sync_offset(&self) -> Option<i64> {
+        self.connection_context.time_sync_estimator.lock().get_offset()
+    }
+
     /// The callback should return true if the frame was successfully submitted to the decoder
     pub fn set_decoder_input_callback(&self, callback: Box<DecoderCallback>) {
         dbg_client_core!("set_decoder_input_callback");

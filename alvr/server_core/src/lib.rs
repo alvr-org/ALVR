@@ -43,7 +43,7 @@ use std::{
     io::Write,
     sync::{
         Arc, LazyLock, OnceLock,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicI64, Ordering},
         mpsc::{self, SyncSender, TrySendError},
     },
     thread::{self, JoinHandle},
@@ -116,6 +116,7 @@ pub struct ConnectionContext {
     clients_to_be_removed: Mutex<HashSet<String>>,
     video_channel_sender: Mutex<Option<SyncSender<VideoPacket>>>,
     haptics_sender: Mutex<Option<StreamSender<Haptics>>>,
+    pub client_to_server_offset_ns: AtomicI64,
 }
 
 pub fn create_recording_file(connection_context: &ConnectionContext, settings: &Settings) {
@@ -234,6 +235,7 @@ impl ServerCoreContext {
             clients_to_be_removed: Mutex::new(HashSet::new()),
             video_channel_sender: Mutex::new(None),
             haptics_sender: Mutex::new(None),
+            client_to_server_offset_ns: AtomicI64::new(i64::MIN),
         });
 
         let webserver_runtime = Runtime::new().unwrap();
@@ -539,6 +541,16 @@ impl ServerCoreContext {
             .write()
             .as_mut()
             .map(|stats| stats.duration_until_next_vsync())
+    }
+
+    pub fn client_time_to_server_ns(&self, client_time_ns: u64) -> Option<u64> {
+        let offset = self.connection_context.client_to_server_offset_ns.load(Ordering::Relaxed);
+        (offset != i64::MIN).then(|| client_time_ns.saturating_add_signed(offset))
+    }
+
+    pub fn get_time_sync_offset(&self) -> Option<i64> {
+        let offset = self.connection_context.client_to_server_offset_ns.load(Ordering::Relaxed);
+        (offset != i64::MIN).then_some(offset)
     }
 }
 

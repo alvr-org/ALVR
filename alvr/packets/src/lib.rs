@@ -31,6 +31,14 @@ pub struct VideoStreamingCapabilitiesExt {
     // Nothing for now
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TimeSyncPacket {
+    pub client_send_ns: u64,
+    pub server_recv_ns: u64,
+    pub server_send_ns: u64,
+    pub client_to_server_offset_ns: Option<i64>,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct VideoStreamingCapabilities {
     pub default_view_resolution: UVec2,
@@ -163,6 +171,7 @@ pub enum ServerControlPacket {
     Restarting,
     KeepAlive,
     RealTimeConfig(RealTimeConfig),
+    TimeSync(TimeSyncPacket),
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }
@@ -205,6 +214,7 @@ pub enum ClientControlPacket {
         message: String,
     },
     ProximityState(bool),
+    TimeSync(TimeSyncPacket),
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }

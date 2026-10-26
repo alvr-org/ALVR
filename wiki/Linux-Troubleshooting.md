@@ -52,7 +52,7 @@ For other distros (e.g. Manjaro):
 
 ## Nvidia driver version requirements
 
-ALVR requires the Nvidia driver version 535 or newer and CUDA version 12.1 or newer. If your configuration doesn't meet these requirements, SteamVR or the encoder might not work.
+ALVR requires the Nvidia driver version 570 or newer and CUDA version 12.1 or newer. If your configuration doesn't meet these requirements, SteamVR or the encoder might not work.
 
 ### Fix
 

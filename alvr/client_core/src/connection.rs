@@ -276,6 +276,7 @@ fn connection_pipeline(
     let statistics_sender = stream_socket.request_stream(STATISTICS);
 
     ctx.video_frame_metadata_queue.lock().clear();
+    *ctx.time_sync_estimator.lock() = TimeSyncEstimator::new();
 
     let video_receive_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
@@ -534,19 +535,18 @@ fn connection_pipeline(
                         let raw_sample_offset = (((t2 - t1) + (t3 - t4)) / 2) as i64;
                         let rtt_ns = (t4 - t1).saturating_sub(t3 - t2);
 
-                        // Observe drift BEFORE applying correction
-                        if let Some(predicted_offset) = estimator.predict_offset_at(client_recv_ns)
-                        {
-                            let drift_ns = raw_sample_offset - predicted_offset;
-                            let drift_ppm = (drift_ns as f64 / 15e9) * 1e6;
+                        // Observe residual error BEFORE applying correction
+                        if let Some(predicted_offset) = estimator.predict_offset_at(client_recv_ns) {
+                            let residual_ns = raw_sample_offset - predicted_offset;
+                            let residual_ppm = (residual_ns as f64 / 15e9) * 1e6;
 
                             info!(
-                                "[TIME_SYNC 15s] RTT: {:.2}ms | Measured: {:+.3}ms | Model Pred: {:+.3}ms | Drift over 15s: {:+.3}ms ({:+.1} ppm) | Learned Skew: {:+.1} ppm",
+                                "[TIME_SYNC 15s] RTT: {:.2}ms | Measured: {:+.3}ms | Model Pred: {:+.3}ms | Residual: {:+.3}ms ({:+.1} ppm) | Learned Skew: {:+.1} ppm",
                                 rtt_ns as f64 / 1e6,
                                 raw_sample_offset as f64 / 1e6,
                                 predicted_offset as f64 / 1e6,
-                                drift_ns as f64 / 1e6,
-                                drift_ppm,
+                                residual_ns as f64 / 1e6,
+                                residual_ppm,
                                 estimator.get_skew_ppm(),
                             );
                         } else {

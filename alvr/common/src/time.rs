@@ -4,14 +4,18 @@ const WINDOW_SIZE: usize = 16;
 const EMA_ALPHA: f64 = 0.1;
 const SKEW_ALPHA: f64 = 0.05;
 const MAX_SKEW_PPM: f64 = 200.0 * 1e-6; // Clamp to +/- 200 ppm
+const STEP_THRESHOLD_NS: f64 = 250_000_000.0; // 250ms threshold to trigger a hard baseline reset
 
 pub fn monotonic_ns() -> u64 {
-    #[cfg(unix)]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     {
-        let mut ts = libc::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        };
+        let mut ts = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+        unsafe { libc::clock_gettime(libc::CLOCK_BOOTTIME, &mut ts) };
+        (ts.tv_sec as u64) * 1_000_000_000 + (ts.tv_nsec as u64)
+    }
+    #[cfg(all(unix, not(any(target_os = "linux", target_os = "android"))))]
+    {
+        let mut ts = libc::timespec { tv_sec: 0, tv_nsec: 0 };
         unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts) };
         (ts.tv_sec as u64) * 1_000_000_000 + (ts.tv_nsec as u64)
     }
@@ -65,18 +69,36 @@ impl TimeSyncEstimator {
         }
     }
 
-    pub fn push_sample(
-        &mut self,
-        client_send_ns: u64,
-        server_recv_ns: u64,
-        server_send_ns: u64,
-        client_recv_ns: u64,
-    ) {
-        let rtt_ns = (client_recv_ns as i128 - client_send_ns as i128)
-            - (server_send_ns as i128 - server_recv_ns as i128);
-        let sample_offset = (((server_recv_ns as i128 - client_send_ns as i128)
-            + (server_send_ns as i128 - client_recv_ns as i128))
-            / 2) as i64;
+    pub fn push_sample(&mut self, client_send_ns: u64, server_recv_ns: u64, server_send_ns: u64, client_recv_ns: u64) {
+        let rtt_ns = (client_recv_ns as i128 - client_send_ns as i128) - (server_send_ns as i128 - server_recv_ns as i128);
+        let sample_offset = (((server_recv_ns as i128 - client_send_ns as i128) + (server_send_ns as i128 - client_recv_ns as i128)) / 2) as i64;
+
+        // If a sudden step-change in clock offset is detected (e.g. system resume,
+        // clock discontinuity, or reconnect after pause), reset the baseline immediately
+        // instead of slowly filtering over dozens of minutes with EMA.
+        if let Some(prev_offset) = self.base_offset_ns {
+            let dt = (client_send_ns as f64) - (self.base_client_time_ns as f64);
+            let projected_offset = prev_offset + self.skew * dt;
+            if ((sample_offset as f64) - projected_offset).abs() > STEP_THRESHOLD_NS {
+                log::warn!(
+                    "[TIME_SYNC] Clock step-change detected ({:+.3}ms error). Resetting baseline offset to {:+.3}ms",
+                    ((sample_offset as f64) - projected_offset) / 1e6,
+                    sample_offset as f64 / 1e6
+                );
+                self.samples.clear();
+                self.samples.push_back(Sample {
+                    rtt_ns,
+                    offset_ns: sample_offset,
+                    client_time_ns: client_send_ns,
+                });
+                self.base_offset_ns = Some(sample_offset as f64);
+                self.base_client_time_ns = client_send_ns;
+                self.last_skew_client_time_ns = client_send_ns;
+                self.last_skew_offset_ns = sample_offset as f64;
+                self.skew = 0.0;
+                return;
+            }
+        }
 
         if self.samples.len() >= WINDOW_SIZE {
             self.samples.pop_front();
@@ -251,4 +273,71 @@ fn test_time_sync_skew_correction() {
 
     // With skew correction, error stays under 50 microseconds (0.05ms) even when extrapolating!
     assert!(error_ns < 50_000, "Error was too large: {error_ns}ns");
+}
+
+#[test]
+fn test_time_sync_step_change_recovery() {
+    let mut estimator = TimeSyncEstimator::new();
+    let initial_offset: i128 = 10_000_000_000; // 10s
+    let delay: i128 = 2_000_000; // 2ms
+
+    // Settle estimator on initial 10s offset
+    for i in 0..16 {
+        let t1 = 1_000_000_000 + i * 200_000_000;
+        let t2 = t1 + initial_offset + delay;
+        let t3 = t2 + 100_000;
+        let t4 = t3 - initial_offset + delay;
+        estimator.push_sample(t1 as u64, t2 as u64, t3 as u64, t4 as u64);
+    }
+    assert_eq!(estimator.get_offset().unwrap(), initial_offset as i64);
+
+    // Simulate an 18-second jump in clock offset (e.g. device sleep or step change)
+    let jumped_offset: i128 = 28_000_000_000; // 28s (+18s jump)
+    let t1 = 1_000_000_000 + 16 * 200_000_000;
+    let t2 = t1 + jumped_offset + delay;
+    let t3 = t2 + 100_000;
+    let t4 = t3 - jumped_offset + delay;
+
+    estimator.push_sample(t1 as u64, t2 as u64, t3 as u64, t4 as u64);
+
+    // Must snap immediately to the new offset without taking dozens of EMA cycles
+    let new_offset = estimator.get_offset().unwrap();
+    assert!(
+        (new_offset - jumped_offset as i64).abs() < 1_000,
+        "Failed to snap to new offset, got: {new_offset}ns"
+    );
+}
+
+
+#[test]
+fn test_time_sync_step_change_recovery() {
+    let mut estimator = TimeSyncEstimator::new();
+    let initial_offset: i128 = 10_000_000_000; // 10s
+    let delay: i128 = 2_000_000; // 2ms
+
+    // Settle estimator on initial 10s offset
+    for i in 0..16 {
+        let t1 = 1_000_000_000 + i * 200_000_000;
+        let t2 = t1 + initial_offset + delay;
+        let t3 = t2 + 100_000;
+        let t4 = t3 - initial_offset + delay;
+        estimator.push_sample(t1 as u64, t2 as u64, t3 as u64, t4 as u64);
+    }
+    assert_eq!(estimator.get_offset().unwrap(), initial_offset as i64);
+
+    // Simulate an 18-second jump in clock offset (e.g. device sleep or step change)
+    let jumped_offset: i128 = 28_000_000_000; // 28s (+18s jump)
+    let t1 = 1_000_000_000 + 16 * 200_000_000;
+    let t2 = t1 + jumped_offset + delay;
+    let t3 = t2 + 100_000;
+    let t4 = t3 - jumped_offset + delay;
+
+    estimator.push_sample(t1 as u64, t2 as u64, t3 as u64, t4 as u64);
+
+    // Must snap immediately to the new offset without taking dozens of EMA cycles
+    let new_offset = estimator.get_offset().unwrap();
+    assert!(
+        (new_offset - jumped_offset as i64).abs() < 1_000,
+        "Failed to snap to new offset, got: {new_offset}ns"
+    );
 }

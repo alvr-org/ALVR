@@ -9,13 +9,19 @@ const STEP_THRESHOLD_NS: f64 = 250_000_000.0; // 250ms threshold to trigger a ha
 pub fn monotonic_ns() -> u64 {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     {
-        let mut ts = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+        let mut ts = libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        };
         unsafe { libc::clock_gettime(libc::CLOCK_BOOTTIME, &mut ts) };
         (ts.tv_sec as u64) * 1_000_000_000 + (ts.tv_nsec as u64)
     }
     #[cfg(all(unix, not(any(target_os = "linux", target_os = "android"))))]
     {
-        let mut ts = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+        let mut ts = libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        };
         unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts) };
         (ts.tv_sec as u64) * 1_000_000_000 + (ts.tv_nsec as u64)
     }
@@ -69,9 +75,18 @@ impl TimeSyncEstimator {
         }
     }
 
-    pub fn push_sample(&mut self, client_send_ns: u64, server_recv_ns: u64, server_send_ns: u64, client_recv_ns: u64) {
-        let rtt_ns = (client_recv_ns as i128 - client_send_ns as i128) - (server_send_ns as i128 - server_recv_ns as i128);
-        let sample_offset = (((server_recv_ns as i128 - client_send_ns as i128) + (server_send_ns as i128 - client_recv_ns as i128)) / 2) as i64;
+    pub fn push_sample(
+        &mut self,
+        client_send_ns: u64,
+        server_recv_ns: u64,
+        server_send_ns: u64,
+        client_recv_ns: u64,
+    ) {
+        let rtt_ns = (client_recv_ns as i128 - client_send_ns as i128)
+            - (server_send_ns as i128 - server_recv_ns as i128);
+        let sample_offset = (((server_recv_ns as i128 - client_send_ns as i128)
+            + (server_send_ns as i128 - client_recv_ns as i128))
+            / 2) as i64;
 
         // If a sudden step-change in clock offset is detected (e.g. system resume,
         // clock discontinuity, or reconnect after pause), reset the baseline immediately
@@ -307,7 +322,6 @@ fn test_time_sync_step_change_recovery() {
         "Failed to snap to new offset, got: {new_offset}ns"
     );
 }
-
 
 #[test]
 fn test_time_sync_step_change_recovery() {

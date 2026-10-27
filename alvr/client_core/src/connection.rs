@@ -536,7 +536,8 @@ fn connection_pipeline(
                         let rtt_ns = (t4 - t1).saturating_sub(t3 - t2);
 
                         // Observe residual error BEFORE applying correction
-                        if let Some(predicted_offset) = estimator.predict_offset_at(client_recv_ns) {
+                        if let Some(predicted_offset) = estimator.predict_offset_at(client_recv_ns)
+                        {
                             let residual_ns = raw_sample_offset - predicted_offset;
                             let residual_ppm = (residual_ns as f64 / 15e9) * 1e6;
 

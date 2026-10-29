@@ -816,33 +816,19 @@ fn connection_pipeline(
     let game_audio_sample_rate = 44100;
 
     #[cfg(target_os = "windows")]
-    let game_audio_sample_rate =
+    let game_audio_device =
         if let Switch::Enabled(game_audio_config) = &initial_settings.audio.game_audio {
-            let game_audio_device =
-                alvr_audio::new_output(game_audio_config.device.as_ref()).to_con()?;
-
-            if let Switch::Enabled(microphone_config) = &initial_settings.audio.microphone
-                && matches!(
-                    microphone_config.devices,
-                    alvr_session::MicrophoneDevicesConfig::VAC
-                        | alvr_session::MicrophoneDevicesConfig::VBCable
-                )
-            {
-                let (sink, _) =
-                    alvr_audio::new_virtual_microphone_pair(microphone_config.devices.clone())
-                        .to_con()?;
-
-                // VoiceMeeter and Custom devices may have arbitrary internal routing.
-                // Therefore, we cannot detect the loopback issue without knowing the routing.
-                if alvr_audio::is_same_device(&game_audio_device, &sink) {
-                    con_bail!("Game audio and microphone cannot point to the same device!");
-                }
-            }
-
-            alvr_audio::input_sample_rate(&game_audio_device).to_con()?
+            Some(alvr_audio::new_output(game_audio_config.device.as_ref()).to_con()?)
         } else {
-            0
+            None
         };
+
+    #[cfg(target_os = "windows")]
+    let game_audio_sample_rate = if let Some(device) = &game_audio_device {
+        alvr_audio::input_sample_rate(device).to_con()?
+    } else {
+        0
+    };
 
     let wired = client_ip.is_loopback();
 
@@ -904,6 +890,36 @@ fn connection_pipeline(
             dscp: initial_settings.connection.dscp,
         },
     )?;
+
+    #[cfg(not(target_os = "linux"))]
+    let microphone_devices = if let Switch::Enabled(config) = &initial_settings.audio.microphone {
+        // VoiceMeeter and Custom devices may have arbitrary internal routing.
+        // Therefore, we cannot detect the loopback issue without knowing the routing.
+        #[cfg(windows)]
+        let can_detect_loopback = matches!(
+            config.devices,
+            alvr_session::MicrophoneDevicesConfig::VAC
+                | alvr_session::MicrophoneDevicesConfig::VBCable
+        );
+
+        let (sink, source) =
+            alvr_audio::new_virtual_microphone_pair(config.devices.clone()).to_con()?;
+
+        #[cfg(windows)]
+        if can_detect_loopback
+            && let Some(game_audio_device) = &game_audio_device
+            && alvr_audio::is_same_device(game_audio_device, &sink)
+        {
+            con_bail!("Game audio and microphone cannot point to the same device!");
+        }
+
+        Some((sink, source))
+    } else {
+        None
+    };
+
+    #[cfg(target_os = "windows")]
+    drop(game_audio_device);
 
     dbg_connection!("connection_pipeline: Handshake successful, spawning threads");
 
@@ -1042,9 +1058,10 @@ fn connection_pipeline(
     #[cfg(not(target_os = "linux"))]
     let microphone_thread = if let Switch::Enabled(config) =
         initial_settings.audio.microphone.clone()
+        && let Some(devices) = microphone_devices
     {
         #[allow(unused_variables)]
-        let (sink, source) = alvr_audio::new_virtual_microphone_pair(config.devices).to_con()?;
+        let (sink, source) = devices;
 
         #[cfg(windows)]
         if let Ok(id) = alvr_audio::get_windows_device_id(&source) {

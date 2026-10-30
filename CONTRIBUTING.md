@@ -10,14 +10,12 @@ Everybody is welcome to contribute to ALVR. We have some rules:
 - If you contributed a reasonably sized PR, you can request the contributor role on our Discord server.
 
 ## AI policy
-We follow roughly the policy of the [`rustc` project](https://rustfoundation.org/policy/internal-ai-usage-policy/).
 
-Integrating and remarking some points:
+We don't allow the output of LLMs or other AIs in the ALVR repository. This includes code, commends, documentation, images, artifacts, but also PRs/issues/commits descriptions and discussions.
 
-- AI contributions are allowed, but contributors must completely understand and "own" the coding decisions made.
-- Contributors must be able to discuss without using AI copy-pasted responses. This applies both to GitHub issues/PRs **and Discord messages in development channels**
-- The PRs description must at least contain some human written summary of the content of the code.
-- We reserve the right to ignore and close big PRs that show no human effort.
+An exception to this is the use of AI for translation during communication, and only if preemptively communicated.
+
+Any assistance of AI during development is allowed as long as no direct output is submitted to the repository.
 
 ## Style
 

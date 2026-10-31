@@ -11,8 +11,7 @@ CONTRIBUTING RULES (see CONTRIBUTING.md for the full rules):
 ## Summary
 <!-- A human-written summary of the content of the code. This is required. -->
 
+---
 
-- [ ] This PR respects our AI policy: I completely understand and "own" the coding decisions made, and can discuss them without relying on AI copy-pasted responses.
-- [ ] This PR's description contains a human-written summary of the content of the code.
+- [ ] The PR content and description are not generated with AI.
 - [ ] Testing: ...
-

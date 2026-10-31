@@ -11,11 +11,9 @@ Everybody is welcome to contribute to ALVR. We have some rules:
 
 ## AI policy
 
-We don't allow the output of LLMs or other AIs in the ALVR repository. This includes code, commends, documentation, images, artifacts, but also PRs/issues/commits descriptions and discussions.
+We do not allow the use of LLMs or other AIs, across code, comments, documentation, descriptions, discussions, and artifacts in the ALVR repository, alvr-org GitHub organization and Discord server.
 
-An exception to this is the use of AI for translation during communication, and only if preemptively communicated.
-
-Any assistance of AI during development is allowed as long as no direct output is submitted to the repository.
+We encourage non-native English speakers to do their best at communicating without the use of LLM-based translators.
 
 ## Style
 

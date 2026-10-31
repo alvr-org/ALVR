@@ -13,7 +13,7 @@ override UPSCALE_EDGE_SHARPNESS: f32 = 2.0;
 
 override ENABLE_FFE: bool = false;
 
-struct PushConstant {
+struct Immediate {
     reprojection_transform: mat4x4f,
     view_idx: u32,
     passthrough_mode: u32, // 0: Blend, 1: RGB chroma key, 2: HSV chroma key
@@ -23,7 +23,7 @@ struct PushConstant {
     ck_channel1: vec4f,
     ck_channel2: vec4f,
 }
-var<push_constant> pc: PushConstant;
+var<immediate> imm: Immediate;
 
 @group(0) @binding(0) var stream_texture: texture_2d<f32>;
 @group(0) @binding(1) var stream_sampler: sampler;
@@ -51,7 +51,7 @@ fn vertex_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     var result: VertexOutput;
 
     result.uv = vec2f(f32(vertex_index & 1), f32(vertex_index >> 1));
-    result.position = pc.reprojection_transform * vec4f(result.uv.x - 0.5, 0.5 - result.uv.y, 0.0, 1.0);
+    result.position = imm.reprojection_transform * vec4f(result.uv.x - 0.5, 0.5 - result.uv.y, 0.0, 1.0);
 
     return result;
 }
@@ -64,7 +64,7 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
     if ENABLE_FFE {
         let view_size_ratio = foveation.view_ratio_edge_ratio.xy;
         let edge_ratio = foveation.view_ratio_edge_ratio.zw;
-        let eye = foveation.eyes[pc.view_idx];
+        let eye = foveation.eyes[imm.view_idx];
 
         let c1 = eye.c1_c2.xy;
         let c2 = eye.c1_c2.zw;
@@ -78,7 +78,7 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         let b_right = eye.a_right_b_right.zw;
         let c_right = eye.c_right.xy;
 
-        if pc.view_idx == 1 {
+        if imm.view_idx == 1 {
             corrected_uv.x = 1.0 - corrected_uv.x;
         }
 
@@ -108,7 +108,7 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
 
         corrected_uv = corrected_uv * view_size_ratio;
 
-        if pc.view_idx == 1 {
+        if imm.view_idx == 1 {
             corrected_uv.x = 1.0 - corrected_uv.x;
         }
     }
@@ -134,10 +134,10 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         color = enc_condition * enc_lowValues + (1.0 - enc_condition) * enc_highValues;
     }
 
-    var alpha = pc.blend_alpha; // Default to Blend passthrough mode
-    if pc.passthrough_mode != 0 { // Chroma key
+    var alpha = imm.blend_alpha; // Default to Blend passthrough mode
+    if imm.passthrough_mode != 0 { // Chroma key
         var current = color;
-        if pc.passthrough_mode == 2 { // HSV mode
+        if imm.passthrough_mode == 2 { // HSV mode
             current = rgb_to_hsv(color);
         }
         let mask = chroma_key_mask(current);
@@ -151,10 +151,10 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
 }
 
 fn chroma_key_mask(color: vec3f) -> f32 {
-    let start_max = vec3f(pc.ck_channel0.x, pc.ck_channel1.x, pc.ck_channel2.x);
-    let start_min = vec3f(pc.ck_channel0.y, pc.ck_channel1.y, pc.ck_channel2.y);
-    let end_min = vec3f(pc.ck_channel0.z, pc.ck_channel1.z, pc.ck_channel2.z);
-    let end_max = vec3f(pc.ck_channel0.w, pc.ck_channel1.w, pc.ck_channel2.w);
+    let start_max = vec3f(imm.ck_channel0.x, imm.ck_channel1.x, imm.ck_channel2.x);
+    let start_min = vec3f(imm.ck_channel0.y, imm.ck_channel1.y, imm.ck_channel2.y);
+    let end_min = vec3f(imm.ck_channel0.z, imm.ck_channel1.z, imm.ck_channel2.z);
+    let end_max = vec3f(imm.ck_channel0.w, imm.ck_channel1.w, imm.ck_channel2.w);
 
     let start_mask = smoothstep(start_min.yz, start_max.yz, color.yz);
     let end_mask = smoothstep(end_min.yz, end_max.yz, color.yz);

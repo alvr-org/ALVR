@@ -1,4 +1,4 @@
-use super::{GraphicsContext, MAX_PUSH_CONSTANTS_SIZE, SDR_FORMAT};
+use super::{GraphicsContext, MAX_IMMEDIATE_SIZE, SDR_FORMAT};
 use crate::HandData;
 use alvr_common::{
     BodySkeleton, DeviceMotion, ViewParams,
@@ -14,7 +14,7 @@ use wgpu::{
     BindGroupLayoutEntry, BindingResource, BindingType, BlendComponent, BlendFactor,
     BlendOperation, BlendState, Color, ColorTargetState, ColorWrites, CommandEncoderDescriptor,
     Device, Extent3d, FilterMode, FragmentState, LoadOp, Operations, Origin3d,
-    PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, PushConstantRange, RenderPass,
+    PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, RenderPass,
     RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor,
     SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor, ShaderStages, StoreOp,
     TexelCopyBufferLayout, TexelCopyTextureInfo, Texture, TextureAspect, TextureSampleType,
@@ -26,13 +26,13 @@ const OBJECT_TYPE_CONST_SIZE: u32 = mem::size_of::<u32>() as u32;
 const FLOOR_SIDE_CONST_SIZE: u32 = mem::size_of::<f32>() as u32;
 const COLOR_CONST_SIZE: u32 = mem::size_of::<u32>() as u32;
 
-const QUAD_PUSH_CONTANTS_SIZE: u32 =
+const QUAD_IMMEDIATE_SIZE: u32 =
     TRANSFORM_CONST_SIZE + OBJECT_TYPE_CONST_SIZE + FLOOR_SIDE_CONST_SIZE;
-const LINE_PUSH_CONTANTS_SIZE: u32 = TRANSFORM_CONST_SIZE + COLOR_CONST_SIZE;
+const LINE_IMMEDIATE_SIZE: u32 = TRANSFORM_CONST_SIZE + COLOR_CONST_SIZE;
 const _: () = assert!(
-    QUAD_PUSH_CONTANTS_SIZE <= MAX_PUSH_CONSTANTS_SIZE
-        && LINE_PUSH_CONTANTS_SIZE <= MAX_PUSH_CONSTANTS_SIZE,
-    "Push constants size exceeds the maximum size"
+    QUAD_IMMEDIATE_SIZE <= MAX_IMMEDIATE_SIZE
+        && LINE_IMMEDIATE_SIZE <= MAX_IMMEDIATE_SIZE,
+    "Immediate size exceeds the maximum size"
 );
 
 const TRANSFORM_CONST_OFFSET: u32 = 0;
@@ -157,8 +157,8 @@ const BODY_JOINT_RELATIONS_BD: [(usize, usize); 23] = [
 fn create_pipeline(
     device: &Device,
     label: &str,
-    bind_group_layouts: &[&BindGroupLayout],
-    push_constants_len: u32,
+    bind_group_layouts: &[Option<&BindGroupLayout>],
+    immediate_len: u32,
     shader: ShaderModuleDescriptor,
     topology: PrimitiveTopology,
 ) -> RenderPipeline {
@@ -169,10 +169,7 @@ fn create_pipeline(
         layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some(label),
             bind_group_layouts,
-            push_constant_ranges: &[PushConstantRange {
-                stages: ShaderStages::VERTEX_FRAGMENT,
-                range: 0..push_constants_len,
-            }],
+            immediate_size: immediate_len,
         })),
         vertex: VertexState {
             module: &shader_module,
@@ -207,7 +204,7 @@ fn create_pipeline(
                 write_mask: ColorWrites::ALL,
             })],
         }),
-        multiview: None,
+        multiview_mask: None,
         cache: None,
     })
 }
@@ -263,8 +260,8 @@ impl LobbyRenderer {
         let quad_pipeline = create_pipeline(
             device,
             "lobby_quad",
-            &[&bind_group_layout],
-            QUAD_PUSH_CONTANTS_SIZE,
+            &[Some(&bind_group_layout)],
+            QUAD_IMMEDIATE_SIZE,
             include_wgsl!("../resources/lobby_quad.wgsl"),
             PrimitiveTopology::TriangleStrip,
         );
@@ -273,7 +270,7 @@ impl LobbyRenderer {
             device,
             "lobby_line",
             &[],
-            LINE_PUSH_CONTANTS_SIZE,
+            LINE_IMMEDIATE_SIZE,
             include_wgsl!("../resources/lobby_line.wgsl"),
             PrimitiveTopology::LineList,
         );
@@ -439,6 +436,7 @@ impl LobbyRenderer {
                 label: Some(&format!("lobby_view_{view_idx}")),
                 color_attachments: &[Some(RenderPassColorAttachment {
                     view: &self.render_targets[view_idx][view_input.swapchain_index as usize],
+                    depth_slice: None,
                     resolve_target: None,
                     ops: Operations {
                         load: LoadOp::Clear(clear_color),
@@ -454,8 +452,7 @@ impl LobbyRenderer {
                     .iter()
                     .flat_map(|v| v.to_le_bytes())
                     .collect::<Vec<u8>>();
-                pass.set_push_constants(
-                    ShaderStages::VERTEX_FRAGMENT,
+                pass.set_immediates(
                     TRANSFORM_CONST_OFFSET,
                     &data,
                 );
@@ -470,13 +467,11 @@ impl LobbyRenderer {
 
             if render_background {
                 // Render ground
-                pass.set_push_constants(
-                    ShaderStages::VERTEX_FRAGMENT,
+                pass.set_immediates(
                     OBJECT_TYPE_CONST_OFFSET,
                     &0_u32.to_le_bytes(),
                 );
-                pass.set_push_constants(
-                    ShaderStages::VERTEX_FRAGMENT,
+                pass.set_immediates(
                     FLOOR_SIDE_CONST_OFFSET,
                     &FLOOR_SIDE.to_le_bytes(),
                 );
@@ -487,8 +482,7 @@ impl LobbyRenderer {
             }
 
             // Render HUD
-            pass.set_push_constants(
-                ShaderStages::VERTEX_FRAGMENT,
+            pass.set_immediates(
                 OBJECT_TYPE_CONST_OFFSET,
                 &1_u32.to_le_bytes(),
             );
@@ -518,7 +512,7 @@ impl LobbyRenderer {
                     Mat4::from_rotation_y(FRAC_PI_2),
                     Mat4::from_rotation_x(FRAC_PI_2),
                 ];
-                pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, COLOR_CONST_OFFSET, color);
+                pass.set_immediates(COLOR_CONST_OFFSET, color);
                 for rot in &segment_rotations {
                     let transform = hand_transform
                         * *rot
@@ -534,8 +528,7 @@ impl LobbyRenderer {
                         Quat::from_rotation_arc(-Vec3::Z, motion.linear_velocity.normalize()),
                         motion.pose.position,
                     );
-                    pass.set_push_constants(
-                        ShaderStages::VERTEX_FRAGMENT,
+                    pass.set_immediates(
                         COLOR_CONST_OFFSET,
                         &[255, 0, 0, 255],
                     );
@@ -547,8 +540,7 @@ impl LobbyRenderer {
                         Quat::from_rotation_arc(-Vec3::Z, motion.angular_velocity.normalize()),
                         motion.pose.position,
                     );
-                    pass.set_push_constants(
-                        ShaderStages::VERTEX_FRAGMENT,
+                    pass.set_immediates(
                         COLOR_CONST_OFFSET,
                         &[0, 255, 0, 255],
                     );
@@ -560,8 +552,7 @@ impl LobbyRenderer {
             pass.set_pipeline(&self.line_pipeline);
             for data in &hand_data {
                 if let Some(skeleton) = data.skeleton_joints {
-                    pass.set_push_constants(
-                        ShaderStages::VERTEX_FRAGMENT,
+                    pass.set_immediates(
                         COLOR_CONST_OFFSET,
                         &[255, 255, 255, 255],
                     );

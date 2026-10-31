@@ -20,7 +20,7 @@ use wgpu::{
 pub const SDR_FORMAT: TextureFormat = TextureFormat::Rgba8Unorm;
 pub const SDR_FORMAT_GL: u32 = gl::RGBA8;
 pub const GL_TEXTURE_EXTERNAL_OES: u32 = 0x8D65;
-pub const MAX_PUSH_CONSTANTS_SIZE: u32 = 128;
+pub const MAX_IMMEDIATE_SIZE: u32 = 128;
 
 type CreateImageFn = unsafe extern "C" fn(
     egl::EGLDisplay,
@@ -148,8 +148,8 @@ fn create_texture_from_gles(
     };
 
     unsafe {
-        let hal_texture = device.as_hal::<api::Gles, _, _>(|device| {
-            device.unwrap().texture_from_raw(
+        let hal_device = device.as_hal::<hal::api::Gles>();
+            let hal_texture = hal_device.unwrap().texture_from_raw(
                 NonZeroU32::new(texture).unwrap(),
                 &hal::TextureDescriptor {
                     label: None,
@@ -163,8 +163,7 @@ fn create_texture_from_gles(
                     view_formats: vec![],
                 },
                 Some(Box::new(|| ())),
-            )
-        });
+            );
 
         device.create_texture_from_hal::<api::Gles>(
             hal_texture,
@@ -245,20 +244,23 @@ impl GraphicsContext {
             InstanceFlags::empty()
         };
 
-        let instance = Instance::new(&InstanceDescriptor {
+        let instance = Instance::new(InstanceDescriptor {
             backends: Backends::GL,
             flags,
-            ..Default::default()
+            memory_budget_thresholds: Default::default(),
+            backend_options: Default::default(),
+            display: Default::default(),
         });
 
-        let adapter = instance.enumerate_adapters(Backends::GL).remove(0);
+        let adapter = futures::executor::block_on(instance.enumerate_adapters(Backends::GL)).remove(0);
         let (device, queue) = pollster::block_on(adapter.request_device(&DeviceDescriptor {
             label: None,
-            required_features: Features::PUSH_CONSTANTS,
+            required_features: Features::IMMEDIATES,
             required_limits: Limits {
-                max_push_constant_size: MAX_PUSH_CONSTANTS_SIZE,
+                max_immediate_size: MAX_IMMEDIATE_SIZE,
                 ..adapter.limits()
             },
+            experimental_features: unsafe { wgpu::ExperimentalFeatures::enabled() }, // Vulkan Video, might need this???
             memory_hints: MemoryHints::Performance,
             trace: Trace::Off,
         }))
@@ -278,8 +280,8 @@ impl GraphicsContext {
             get_native_client_buffer,
             image_target_texture_2d,
         ) = unsafe {
-            adapter.as_hal::<api::Gles, _, _>(|raw_adapter| {
-                let adapter_context = raw_adapter.unwrap().adapter_context();
+            let raw_adapter = adapter.as_hal::<api::Gles>().unwrap();
+                let adapter_context = raw_adapter.adapter_context();
                 let egl_instance = adapter_context.egl_instance().unwrap();
 
                 let egl_context = egl::Context::from_ptr(adapter_context.raw_context());
@@ -327,7 +329,6 @@ impl GraphicsContext {
                     get_native_client_buffer,
                     image_target_texture_2d,
                 )
-            })
         };
 
         Self {
@@ -355,10 +356,8 @@ impl GraphicsContext {
     pub fn make_current(&self) {
         #[cfg(not(any(windows, target_os = "macos", target_os = "ios")))]
         unsafe {
-            self.adapter
-                .as_hal::<wgpu::hal::api::Gles, _, _>(|raw_adapter| {
+            let raw_adapter = self.adapter.as_hal::<wgpu::hal::api::Gles>().unwrap();
                     let egl_instance = raw_adapter
-                        .unwrap()
                         .adapter_context()
                         .egl_instance()
                         .unwrap();
@@ -371,7 +370,6 @@ impl GraphicsContext {
                             Some(self.egl_context),
                         )
                         .unwrap();
-                })
         };
     }
 

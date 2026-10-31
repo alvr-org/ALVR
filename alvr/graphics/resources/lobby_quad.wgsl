@@ -1,9 +1,9 @@
-struct PushConstant {
+struct Immediate {
     transform: mat4x4f,
     object_type: u32,
     floor_side: f32,
 }
-var<push_constant> pc: PushConstant;
+var<immediate> imm: Immediate;
 
 @group(0) @binding(0) var hud_texture: texture_2d<f32>;
 @group(0) @binding(1) var hud_sampler: sampler;
@@ -18,15 +18,15 @@ fn vertex_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     var result: VertexOutput;
 
     result.uv = vec2f(f32(vertex_index & 1), f32(vertex_index >> 1));
-    result.position = pc.transform * vec4f(result.uv.x - 0.5, 0.5 - result.uv.y, 0.0, 1.0);
+    result.position = imm.transform * vec4f(result.uv.x - 0.5, 0.5 - result.uv.y, 0.0, 1.0);
 
     return result;
 }
 
 @fragment
 fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
-    if pc.object_type == 0 { // Ground
-        let world_xz = (uv - 0.5) * pc.floor_side;
+    if imm.object_type == 0 { // Ground
+        let world_xz = (uv - 0.5) * imm.floor_side;
 
         let ground_center = vec3f(0.0, 0.0, 0.0);
         let ground_horizon = vec3f(0.0, 0.0, 0.015);

@@ -69,13 +69,16 @@ enum DeviceInfo {
 }
 
 pub fn linux_hardware_checks() {
-    let wgpu_adapters = futures::executor::block_on(wgpu::Instance::new(wgpu::InstanceDescriptor {
-        backends: wgpu::Backends::VULKAN,
-        flags: Default::default(),
-        memory_budget_thresholds: Default::default(),
-        backend_options: Default::default(),
-        display: Default::default(),
-    }).enumerate_adapters(wgpu::Backends::VULKAN));
+    let wgpu_adapters = futures::executor::block_on(
+        wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::VULKAN,
+            flags: Default::default(),
+            memory_budget_thresholds: Default::default(),
+            backend_options: Default::default(),
+            display: Default::default(),
+        })
+        .enumerate_adapters(wgpu::Backends::VULKAN),
+    );
     let device_infos = wgpu_adapters
         .iter()
         .filter(|adapter| {

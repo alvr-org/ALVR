@@ -149,21 +149,21 @@ fn create_texture_from_gles(
 
     unsafe {
         let hal_device = device.as_hal::<hal::api::Gles>();
-            let hal_texture = hal_device.unwrap().texture_from_raw(
-                NonZeroU32::new(texture).unwrap(),
-                &hal::TextureDescriptor {
-                    label: None,
-                    size,
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: TextureDimension::D2,
-                    format,
-                    usage: TextureUses::COLOR_TARGET,
-                    memory_flags: MemoryFlags::empty(),
-                    view_formats: vec![],
-                },
-                Some(Box::new(|| ())),
-            );
+        let hal_texture = hal_device.unwrap().texture_from_raw(
+            NonZeroU32::new(texture).unwrap(),
+            &hal::TextureDescriptor {
+                label: None,
+                size,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format,
+                usage: TextureUses::COLOR_TARGET,
+                memory_flags: MemoryFlags::empty(),
+                view_formats: vec![],
+            },
+            Some(Box::new(|| ())),
+        );
 
         device.create_texture_from_hal::<api::Gles>(
             hal_texture,
@@ -252,7 +252,8 @@ impl GraphicsContext {
             display: Default::default(),
         });
 
-        let adapter = futures::executor::block_on(instance.enumerate_adapters(Backends::GL)).remove(0);
+        let adapter =
+            futures::executor::block_on(instance.enumerate_adapters(Backends::GL)).remove(0);
         let (device, queue) = pollster::block_on(adapter.request_device(&DeviceDescriptor {
             label: None,
             required_features: Features::IMMEDIATES,
@@ -281,54 +282,53 @@ impl GraphicsContext {
             image_target_texture_2d,
         ) = unsafe {
             let raw_adapter = adapter.as_hal::<api::Gles>().unwrap();
-                let adapter_context = raw_adapter.adapter_context();
-                let egl_instance = adapter_context.egl_instance().unwrap();
+            let adapter_context = raw_adapter.adapter_context();
+            let egl_instance = adapter_context.egl_instance().unwrap();
 
-                let egl_context = egl::Context::from_ptr(adapter_context.raw_context());
+            let egl_context = egl::Context::from_ptr(adapter_context.raw_context());
 
-                const PBUFFER_ATTRIBS: [i32; 5] = [egl::WIDTH, 16, egl::HEIGHT, 16, egl::NONE];
-                let dummy_surface = egl_instance
-                    .create_pbuffer_surface(egl_display, egl_config, &PBUFFER_ATTRIBS)
-                    .unwrap();
+            const PBUFFER_ATTRIBS: [i32; 5] = [egl::WIDTH, 16, egl::HEIGHT, 16, egl::NONE];
+            let dummy_surface = egl_instance
+                .create_pbuffer_surface(egl_display, egl_config, &PBUFFER_ATTRIBS)
+                .unwrap();
 
-                egl_instance
-                    .make_current(
-                        egl_display,
-                        Some(dummy_surface),
-                        Some(dummy_surface),
-                        Some(egl_context),
-                    )
-                    .unwrap();
-
-                let gl_context = gl::Context::from_loader_function(|fn_name| {
-                    egl_instance
-                        .get_proc_address(fn_name)
-                        .map_or(ptr::null(), |f| f as *const c_void)
-                });
-
-                let get_fn_ptr = |fn_name| {
-                    egl_instance
-                        .get_proc_address(fn_name)
-                        .map_or(ptr::null(), |f| f as *const c_void)
-                };
-
-                let create_image: CreateImageFn = mem::transmute(get_fn_ptr(CREATE_IMAGE_FN_STR));
-                let destroy_image: DestroyImageFn =
-                    mem::transmute(get_fn_ptr(DESTROY_IMAGE_FN_STR));
-                let get_native_client_buffer: GetNativeClientBufferFn =
-                    mem::transmute(get_fn_ptr(GET_NATIVE_CLIENT_BUFFER_FN_STR));
-                let image_target_texture_2d: ImageTargetTexture2DFn =
-                    mem::transmute(get_fn_ptr(IMAGE_TARGET_TEXTURE_2D_FN_STR));
-
-                (
-                    egl_context,
-                    gl_context,
-                    dummy_surface,
-                    create_image,
-                    destroy_image,
-                    get_native_client_buffer,
-                    image_target_texture_2d,
+            egl_instance
+                .make_current(
+                    egl_display,
+                    Some(dummy_surface),
+                    Some(dummy_surface),
+                    Some(egl_context),
                 )
+                .unwrap();
+
+            let gl_context = gl::Context::from_loader_function(|fn_name| {
+                egl_instance
+                    .get_proc_address(fn_name)
+                    .map_or(ptr::null(), |f| f as *const c_void)
+            });
+
+            let get_fn_ptr = |fn_name| {
+                egl_instance
+                    .get_proc_address(fn_name)
+                    .map_or(ptr::null(), |f| f as *const c_void)
+            };
+
+            let create_image: CreateImageFn = mem::transmute(get_fn_ptr(CREATE_IMAGE_FN_STR));
+            let destroy_image: DestroyImageFn = mem::transmute(get_fn_ptr(DESTROY_IMAGE_FN_STR));
+            let get_native_client_buffer: GetNativeClientBufferFn =
+                mem::transmute(get_fn_ptr(GET_NATIVE_CLIENT_BUFFER_FN_STR));
+            let image_target_texture_2d: ImageTargetTexture2DFn =
+                mem::transmute(get_fn_ptr(IMAGE_TARGET_TEXTURE_2D_FN_STR));
+
+            (
+                egl_context,
+                gl_context,
+                dummy_surface,
+                create_image,
+                destroy_image,
+                get_native_client_buffer,
+                image_target_texture_2d,
+            )
         };
 
         Self {
@@ -357,19 +357,16 @@ impl GraphicsContext {
         #[cfg(not(any(windows, target_os = "macos", target_os = "ios")))]
         unsafe {
             let raw_adapter = self.adapter.as_hal::<wgpu::hal::api::Gles>().unwrap();
-                    let egl_instance = raw_adapter
-                        .adapter_context()
-                        .egl_instance()
-                        .unwrap();
+            let egl_instance = raw_adapter.adapter_context().egl_instance().unwrap();
 
-                    egl_instance
-                        .make_current(
-                            self.egl_display,
-                            Some(self.dummy_surface),
-                            Some(self.dummy_surface),
-                            Some(self.egl_context),
-                        )
-                        .unwrap();
+            egl_instance
+                .make_current(
+                    self.egl_display,
+                    Some(self.dummy_surface),
+                    Some(self.dummy_surface),
+                    Some(self.egl_context),
+                )
+                .unwrap();
         };
     }
 

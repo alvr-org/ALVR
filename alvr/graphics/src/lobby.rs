@@ -30,8 +30,7 @@ const QUAD_IMMEDIATE_SIZE: u32 =
     TRANSFORM_CONST_SIZE + OBJECT_TYPE_CONST_SIZE + FLOOR_SIDE_CONST_SIZE;
 const LINE_IMMEDIATE_SIZE: u32 = TRANSFORM_CONST_SIZE + COLOR_CONST_SIZE;
 const _: () = assert!(
-    QUAD_IMMEDIATE_SIZE <= MAX_IMMEDIATE_SIZE
-        && LINE_IMMEDIATE_SIZE <= MAX_IMMEDIATE_SIZE,
+    QUAD_IMMEDIATE_SIZE <= MAX_IMMEDIATE_SIZE && LINE_IMMEDIATE_SIZE <= MAX_IMMEDIATE_SIZE,
     "Immediate size exceeds the maximum size"
 );
 
@@ -452,10 +451,7 @@ impl LobbyRenderer {
                     .iter()
                     .flat_map(|v| v.to_le_bytes())
                     .collect::<Vec<u8>>();
-                pass.set_immediates(
-                    TRANSFORM_CONST_OFFSET,
-                    &data,
-                );
+                pass.set_immediates(TRANSFORM_CONST_OFFSET, &data);
                 pass.draw(0..vertices_count, 0..1);
             }
 
@@ -467,14 +463,8 @@ impl LobbyRenderer {
 
             if render_background {
                 // Render ground
-                pass.set_immediates(
-                    OBJECT_TYPE_CONST_OFFSET,
-                    &0_u32.to_le_bytes(),
-                );
-                pass.set_immediates(
-                    FLOOR_SIDE_CONST_OFFSET,
-                    &FLOOR_SIDE.to_le_bytes(),
-                );
+                pass.set_immediates(OBJECT_TYPE_CONST_OFFSET, &0_u32.to_le_bytes());
+                pass.set_immediates(FLOOR_SIDE_CONST_OFFSET, &FLOOR_SIDE.to_le_bytes());
                 let transform = view_proj
                     * Mat4::from_rotation_x(-FRAC_PI_2)
                     * Mat4::from_scale(Vec3::ONE * FLOOR_SIDE);
@@ -482,10 +472,7 @@ impl LobbyRenderer {
             }
 
             // Render HUD
-            pass.set_immediates(
-                OBJECT_TYPE_CONST_OFFSET,
-                &1_u32.to_le_bytes(),
-            );
+            pass.set_immediates(OBJECT_TYPE_CONST_OFFSET, &1_u32.to_le_bytes());
             for i in 0..4 {
                 let transform = Mat4::from_rotation_y(FRAC_PI_2 * i as f32)
                     * Mat4::from_translation(Vec3::new(0.0, HUD_SIDE / 2.0, -HUD_DIST))
@@ -528,10 +515,7 @@ impl LobbyRenderer {
                         Quat::from_rotation_arc(-Vec3::Z, motion.linear_velocity.normalize()),
                         motion.pose.position,
                     );
-                    pass.set_immediates(
-                        COLOR_CONST_OFFSET,
-                        &[255, 0, 0, 255],
-                    );
+                    pass.set_immediates(COLOR_CONST_OFFSET, &[255, 0, 0, 255]);
                     transform_draw(pass, view_proj * transform, 2);
 
                     // Draw angular velocity
@@ -540,10 +524,7 @@ impl LobbyRenderer {
                         Quat::from_rotation_arc(-Vec3::Z, motion.angular_velocity.normalize()),
                         motion.pose.position,
                     );
-                    pass.set_immediates(
-                        COLOR_CONST_OFFSET,
-                        &[0, 255, 0, 255],
-                    );
+                    pass.set_immediates(COLOR_CONST_OFFSET, &[0, 255, 0, 255]);
                     transform_draw(pass, view_proj * transform, 2);
                 }
             }
@@ -552,10 +533,7 @@ impl LobbyRenderer {
             pass.set_pipeline(&self.line_pipeline);
             for data in &hand_data {
                 if let Some(skeleton) = data.skeleton_joints {
-                    pass.set_immediates(
-                        COLOR_CONST_OFFSET,
-                        &[255, 255, 255, 255],
-                    );
+                    pass.set_immediates(COLOR_CONST_OFFSET, &[255, 255, 255, 255]);
 
                     for (joint1_idx, joint2_idx) in HAND_SKELETON_BONES {
                         let j1_pose = skeleton[joint1_idx];

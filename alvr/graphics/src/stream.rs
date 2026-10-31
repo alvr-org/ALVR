@@ -171,7 +171,7 @@ impl StreamRenderer {
             layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
                 label: None,
                 bind_group_layouts: &[Some(&bind_group_layout)],
-                immediate_size: IMMEDIATE_SIZE
+                immediate_size: IMMEDIATE_SIZE,
             })),
             vertex: VertexState {
                 module: &shader_module,
@@ -253,11 +253,11 @@ impl StreamRenderer {
             {
                 let staging_texture_gl = unsafe {
                     let tex = staging_texture.as_hal::<wgpu::hal::api::Gles>();
-                        let wgpu::hal::gles::TextureInner::Texture { raw, .. } = tex.unwrap().inner
-                        else {
-                            panic!("invalid texture type");
-                        };
-                        raw
+                    let wgpu::hal::gles::TextureInner::Texture { raw, .. } = tex.unwrap().inner
+                    else {
+                        panic!("invalid texture type");
+                    };
+                    raw
                 };
                 staging_textures_gl.push(staging_texture_gl);
             }
@@ -374,14 +374,8 @@ impl StreamRenderer {
                 .collect::<Vec<u8>>();
 
             render_pass.set_pipeline(&self.pipeline);
-            render_pass.set_immediates(
-                TRANSFORM_CONST_OFFSET,
-                &transform_bytes,
-            );
-            render_pass.set_immediates(
-                VIEW_INDEX_CONST_OFFSET,
-                &(view_idx as u32).to_le_bytes(),
-            );
+            render_pass.set_immediates(TRANSFORM_CONST_OFFSET, &transform_bytes);
+            render_pass.set_immediates(VIEW_INDEX_CONST_OFFSET, &(view_idx as u32).to_le_bytes());
             render_pass.set_bind_group(0, &self.views_objects[view_idx].bind_group, &[]);
             set_passthrough_immediates(&mut render_pass, passthrough);
             render_pass.draw(0..4, 0..1);
@@ -403,22 +397,10 @@ fn set_passthrough_immediates(render_pass: &mut RenderPass, config: Option<&Pass
     }
 
     fn set_vec4(render_pass: &mut RenderPass, offset: u32, value: Vec4) {
-        render_pass.set_immediates(
-            offset,
-            &value.x.to_le_bytes(),
-        );
-        render_pass.set_immediates(
-            offset + FLOAT_SIZE,
-            &value.y.to_le_bytes(),
-        );
-        render_pass.set_immediates(
-            offset + 2 * FLOAT_SIZE,
-            &value.z.to_le_bytes(),
-        );
-        render_pass.set_immediates(
-            offset + 3 * FLOAT_SIZE,
-            &value.w.to_le_bytes(),
-        );
+        render_pass.set_immediates(offset, &value.x.to_le_bytes());
+        render_pass.set_immediates(offset + FLOAT_SIZE, &value.y.to_le_bytes());
+        render_pass.set_immediates(offset + 2 * FLOAT_SIZE, &value.z.to_le_bytes());
+        render_pass.set_immediates(offset + 3 * FLOAT_SIZE, &value.w.to_le_bytes());
     }
 
     match config {

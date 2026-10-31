@@ -1,4 +1,4 @@
-use super::{GraphicsContext, MAX_PUSH_CONSTANTS_SIZE, staging::StagingRenderer};
+use super::{GraphicsContext, MAX_IMMEDIATE_SIZE, staging::StagingRenderer};
 use alvr_common::{
     AlvrFoveatedEncodingParams, ViewParams,
     glam::{Mat4, UVec2, Vec2, Vec3, Vec4},
@@ -10,7 +10,7 @@ use wgpu::{
     BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType,
     BufferDescriptor, BufferUsages, Color, ColorTargetState, ColorWrites, FragmentState, LoadOp,
     PipelineCompilationOptions, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology,
-    PushConstantRange, RenderPass, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
+    RenderPass, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
     RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages, StoreOp,
     TextureSampleType, TextureView, TextureViewDescriptor, TextureViewDimension, VertexState,
     include_wgsl,
@@ -28,13 +28,13 @@ const ALPHA_CONST_OFFSET: u32 = PASSTHROUGH_MODE_OFFSET + U32_SIZE;
 const CK_CHANNEL0_CONST_OFFSET: u32 = ALPHA_CONST_OFFSET + FLOAT_SIZE + U32_SIZE;
 const CK_CHANNEL1_CONST_OFFSET: u32 = CK_CHANNEL0_CONST_OFFSET + VEC4_SIZE;
 const CK_CHANNEL2_CONST_OFFSET: u32 = CK_CHANNEL1_CONST_OFFSET + VEC4_SIZE;
-const PUSH_CONSTANTS_SIZE: u32 = CK_CHANNEL2_CONST_OFFSET + VEC4_SIZE;
+const IMMEDIATE_SIZE: u32 = CK_CHANNEL2_CONST_OFFSET + VEC4_SIZE;
 const FOVEATION_EYE_UNIFORM_VEC4_COUNT: usize = 5;
 const FOVEATION_UNIFORM_VEC4_COUNT: usize = 1 + FOVEATION_EYE_UNIFORM_VEC4_COUNT * 2;
 const FOVEATION_UNIFORM_SIZE: usize = FOVEATION_UNIFORM_VEC4_COUNT * mem::size_of::<Vec4>();
 const _: () = assert!(
-    PUSH_CONSTANTS_SIZE <= MAX_PUSH_CONSTANTS_SIZE,
-    "Push constants size exceeds the maximum size"
+    IMMEDIATE_SIZE <= MAX_IMMEDIATE_SIZE,
+    "Immediate size exceeds the maximum size"
 );
 
 pub struct StreamViewParams {
@@ -170,11 +170,8 @@ impl StreamRenderer {
             // Note: Layout cannot be inferred because of a bug with push constants
             layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
                 label: None,
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[PushConstantRange {
-                    stages: ShaderStages::VERTEX_FRAGMENT,
-                    range: 0..PUSH_CONSTANTS_SIZE,
-                }],
+                bind_group_layouts: &[Some(&bind_group_layout)],
+                immediate_size: IMMEDIATE_SIZE,
             })),
             vertex: VertexState {
                 module: &shader_module,
@@ -204,7 +201,7 @@ impl StreamRenderer {
                     write_mask: ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -255,13 +252,12 @@ impl StreamRenderer {
             #[cfg(not(any(target_os = "macos", target_os = "ios")))]
             {
                 let staging_texture_gl = unsafe {
-                    staging_texture.as_hal::<wgpu::hal::api::Gles, _, _>(|tex| {
-                        let wgpu::hal::gles::TextureInner::Texture { raw, .. } = tex.unwrap().inner
-                        else {
-                            panic!("invalid texture type");
-                        };
-                        raw
-                    })
+                    let tex = staging_texture.as_hal::<wgpu::hal::api::Gles>();
+                    let wgpu::hal::gles::TextureInner::Texture { raw, .. } = tex.unwrap().inner
+                    else {
+                        panic!("invalid texture type");
+                    };
+                    raw
                 };
                 staging_textures_gl.push(staging_texture_gl);
             }
@@ -327,6 +323,7 @@ impl StreamRenderer {
                 color_attachments: &[Some(RenderPassColorAttachment {
                     view: &self.views_objects[view_idx].render_target
                         [view_params.swapchain_index as usize],
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: LoadOp::Clear(Color::BLACK),
@@ -377,18 +374,10 @@ impl StreamRenderer {
                 .collect::<Vec<u8>>();
 
             render_pass.set_pipeline(&self.pipeline);
-            render_pass.set_push_constants(
-                ShaderStages::VERTEX_FRAGMENT,
-                TRANSFORM_CONST_OFFSET,
-                &transform_bytes,
-            );
-            render_pass.set_push_constants(
-                ShaderStages::VERTEX_FRAGMENT,
-                VIEW_INDEX_CONST_OFFSET,
-                &(view_idx as u32).to_le_bytes(),
-            );
+            render_pass.set_immediates(TRANSFORM_CONST_OFFSET, &transform_bytes);
+            render_pass.set_immediates(VIEW_INDEX_CONST_OFFSET, &(view_idx as u32).to_le_bytes());
             render_pass.set_bind_group(0, &self.views_objects[view_idx].bind_group, &[]);
-            set_passthrough_push_constants(&mut render_pass, passthrough);
+            set_passthrough_immediates(&mut render_pass, passthrough);
             render_pass.draw(0..4, 0..1);
         }
 
@@ -396,38 +385,22 @@ impl StreamRenderer {
     }
 }
 
-fn set_passthrough_push_constants(render_pass: &mut RenderPass, config: Option<&PassthroughMode>) {
+fn set_passthrough_immediates(render_pass: &mut RenderPass, config: Option<&PassthroughMode>) {
     const DEG_TO_NORM: f32 = 1. / 360.;
 
     fn set_u32(render_pass: &mut RenderPass, offset: u32, value: u32) {
-        render_pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, offset, &value.to_le_bytes());
+        render_pass.set_immediates(offset, &value.to_le_bytes());
     }
 
     fn set_float(render_pass: &mut RenderPass, offset: u32, value: f32) {
-        render_pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, offset, &value.to_le_bytes());
+        render_pass.set_immediates(offset, &value.to_le_bytes());
     }
 
     fn set_vec4(render_pass: &mut RenderPass, offset: u32, value: Vec4) {
-        render_pass.set_push_constants(
-            ShaderStages::VERTEX_FRAGMENT,
-            offset,
-            &value.x.to_le_bytes(),
-        );
-        render_pass.set_push_constants(
-            ShaderStages::VERTEX_FRAGMENT,
-            offset + FLOAT_SIZE,
-            &value.y.to_le_bytes(),
-        );
-        render_pass.set_push_constants(
-            ShaderStages::VERTEX_FRAGMENT,
-            offset + 2 * FLOAT_SIZE,
-            &value.z.to_le_bytes(),
-        );
-        render_pass.set_push_constants(
-            ShaderStages::VERTEX_FRAGMENT,
-            offset + 3 * FLOAT_SIZE,
-            &value.w.to_le_bytes(),
-        );
+        render_pass.set_immediates(offset, &value.x.to_le_bytes());
+        render_pass.set_immediates(offset + FLOAT_SIZE, &value.y.to_le_bytes());
+        render_pass.set_immediates(offset + 2 * FLOAT_SIZE, &value.z.to_le_bytes());
+        render_pass.set_immediates(offset + 3 * FLOAT_SIZE, &value.w.to_le_bytes());
     }
 
     match config {

@@ -16,6 +16,7 @@ alvr_sockets.workspace = true
 alvr_gui_common.workspace = true
 alvr_audio.workspace = true
 
+futures = "0.3"
 chrono = "0.4"
 eframe = "0.35"
 env_logger = "0.11"
@@ -33,7 +34,7 @@ tungstenite = "0.29"
 ureq = { version = "3", features = ["json"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-wgpu = "25"
+wgpu = "29.0.4"
 libva = { package = "cros-libva", version = "0.0.7" } # Latest that works on Ubuntu 22.04
 nvml-wrapper = "0.12"
 

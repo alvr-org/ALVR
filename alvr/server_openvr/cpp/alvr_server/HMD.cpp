@@ -19,7 +19,7 @@
 Hmd::Hmd()
     : TrackedDevice(
           HEAD_ID,
-          Settings_Instance()->m_TrackingRefOnly ? vr::TrackedDeviceClass_TrackingReference
+          Settings_Instance()->m_trackingRefOnly ? vr::TrackedDeviceClass_TrackingReference
                                                  : vr::TrackedDeviceClass_HMD
       )
     , m_baseComponentsInitialized(false)
@@ -28,10 +28,10 @@ Hmd::Hmd()
 
     auto dummy_fov = FfiFov { -1.0, 1.0, 1.0, -1.0 };
     auto dummy_pose = FfiPose { { 0, 0, 0, 1 }, { 0, 0, 0 } };
-    auto dummy_view_params = FfiViewParams { dummy_pose, dummy_fov };
+    auto dummy_m_viewParams = FfiViewParams { dummy_pose, dummy_fov };
 
-    this->view_params[0] = dummy_view_params;
-    this->view_params[1] = dummy_view_params;
+    this->m_viewParams[0] = dummy_m_viewParams;
+    this->m_viewParams[1] = dummy_m_viewParams;
 
     m_poseHistory = std::make_shared<PoseHistory>();
 
@@ -269,8 +269,8 @@ void Hmd::StopStreaming() {
 void Hmd::SetViewParams(const FfiViewParams params[2]) {
     Debug("Hmd::SetViewParams");
 
-    this->view_params[0] = params[0];
-    this->view_params[1] = params[1];
+    this->m_viewParams[0] = params[0];
+    this->m_viewParams[1] = params[1];
 
     // The OpenXR spec defines the HMD position as the midpoint
     // between the eyes, so conversion to this is handled by the
@@ -345,7 +345,7 @@ void Hmd::GetEyeOutputViewport(
 }
 
 void Hmd::GetProjectionRaw(vr::EVREye eye, float* left, float* right, float* top, float* bottom) {
-    auto proj = fov_to_tangents(this->view_params[eye].fov);
+    auto proj = fov_to_tangents(this->m_viewParams[eye].fov);
     *left = proj.vTopLeft.v[0];
     *right = proj.vBottomRight.v[0];
     *top = proj.vTopLeft.v[1];

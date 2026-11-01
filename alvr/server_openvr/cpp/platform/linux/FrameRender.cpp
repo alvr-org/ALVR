@@ -31,7 +31,7 @@ FrameRender::FrameRender(alvr::VkContext& ctx, init_packet& init, int fds[])
 
     Info("FrameRender: Input size %ux%u", m_width, m_height);
 
-    if (Settings_Instance()->m_force_sw_encoding) {
+    if (Settings_Instance()->m_forceSwEncoding) {
         m_handle = ExternalHandle::None;
     } else if (ctx.amd || ctx.intel) {
         m_handle = ExternalHandle::DmaBuf;

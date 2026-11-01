@@ -131,7 +131,7 @@ struct Settings {
     unsigned int m_rateControlMode;
     bool m_fillerData;
     unsigned int m_entropyCoding;
-    bool m_force_sw_encoding;
+    bool m_forceSwEncoding;
     unsigned int m_swThreadCount;
 
     unsigned int m_nvencTuningPreset;
@@ -155,14 +155,14 @@ struct Settings {
     unsigned long long m_minimumIdrIntervalMs;
 
     bool m_enableViveTrackerProxy = false;
-    bool m_TrackingRefOnly = false;
+    bool m_trackingRefOnly = false;
     bool m_enableLinuxVulkanAsyncCompute;
     bool m_enableLinuxAsyncReprojection;
 
     bool m_enableControllers;
-    int m_controllerIsTracker = false;
-    int m_enableBodyTrackingFakeVive = false;
-    int m_bodyTrackingHasLegs = false;
+    bool m_controllerIsTracker = false;
+    bool m_enableBodyTrackingFakeVive = false;
+    bool m_bodyTrackingHasLegs = false;
     bool m_useSeparateHandTrackers = false;
 };
 

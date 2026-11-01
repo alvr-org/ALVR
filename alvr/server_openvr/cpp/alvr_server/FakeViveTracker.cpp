@@ -2,7 +2,6 @@
 
 #include "Logger.h"
 #include "Paths.h"
-#include "Settings.h"
 #include "Utils.h"
 #include "bindings.h"
 #include <cassert>

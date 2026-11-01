@@ -1,6 +1,5 @@
 #include "FFR.h"
 
-#include "alvr_server/Settings.h"
 #include "alvr_server/Utils.h"
 #include "alvr_server/bindings.h"
 
@@ -27,15 +26,15 @@ struct FoveationVars {
 };
 
 FoveationVars CalculateFoveationVars() {
-    float targetEyeWidth = (float)Settings::Instance().m_renderWidth / 2;
-    float targetEyeHeight = (float)Settings::Instance().m_renderHeight;
+    float targetEyeWidth = (float)Settings_Instance()->m_renderWidth / 2;
+    float targetEyeHeight = (float)Settings_Instance()->m_renderHeight;
 
-    float centerSizeX = (float)Settings::Instance().m_foveationCenterSizeX;
-    float centerSizeY = (float)Settings::Instance().m_foveationCenterSizeY;
-    float centerShiftX = (float)Settings::Instance().m_foveationCenterShiftX;
-    float centerShiftY = (float)Settings::Instance().m_foveationCenterShiftY;
-    float edgeRatioX = (float)Settings::Instance().m_foveationEdgeRatioX;
-    float edgeRatioY = (float)Settings::Instance().m_foveationEdgeRatioY;
+    float centerSizeX = (float)Settings_Instance()->m_foveationCenterSizeX;
+    float centerSizeY = (float)Settings_Instance()->m_foveationCenterSizeY;
+    float centerShiftX = (float)Settings_Instance()->m_foveationCenterShiftX;
+    float centerShiftY = (float)Settings_Instance()->m_foveationCenterShiftY;
+    float edgeRatioX = (float)Settings_Instance()->m_foveationEdgeRatioX;
+    float edgeRatioY = (float)Settings_Instance()->m_foveationEdgeRatioY;
 
     float edgeSizeX = targetEyeWidth - centerSizeX * targetEyeWidth;
     float edgeSizeY = targetEyeHeight - centerSizeY * targetEyeHeight;
@@ -103,11 +102,11 @@ void FFR::Initialize(ID3D11Texture2D* compositionTexture) {
         mDevice.Get(),
         fovVars.optimizedEyeWidth * 2,
         fovVars.optimizedEyeHeight,
-        Settings::Instance().m_enableHdr ? DXGI_FORMAT_R16G16B16A16_FLOAT
+        Settings_Instance()->m_enableHdr ? DXGI_FORMAT_R16G16B16A16_FLOAT
                                          : DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
     );
 
-    if (Settings::Instance().m_enableFoveatedEncoding) {
+    if (Settings_Instance()->m_enableFoveatedEncoding) {
         std::vector<uint8_t> compressAxisAlignedShaderCSO(
             COMPRESS_AXIS_ALIGNED_CSO_PTR,
             COMPRESS_AXIS_ALIGNED_CSO_PTR + COMPRESS_AXIS_ALIGNED_CSO_LEN

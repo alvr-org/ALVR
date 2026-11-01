@@ -1,7 +1,8 @@
 #include "VideoEncoderAMF.h"
+#include "ALVR-common/packet_types.h"
 
 #include "alvr_server/Logger.h"
-#include "alvr_server/Settings.h"
+#include "alvr_server/bindings.h"
 
 #define AMF_THROW_IF(expr)                                                                         \
     {                                                                                              \
@@ -98,15 +99,15 @@ void AMFPipeline::Run(bool hasQueryTimeout) {
 
 VideoEncoderAMF::VideoEncoderAMF(std::shared_ptr<CD3DRender> d3dRender, int width, int height)
     : m_d3dRender(d3dRender)
-    , m_codec(Settings::Instance().m_codec)
-    , m_refreshRate(Settings::Instance().m_refreshRate)
+    , m_codec(Settings_Instance()->m_codec)
+    , m_refreshRate(Settings_Instance()->m_refreshRate)
     , m_renderWidth(width)
     , m_renderHeight(height)
     , m_bitrateInMBits(30)
     , m_surfaceFormat(amf::AMF_SURFACE_RGBA)
-    , m_use10bit(Settings::Instance().m_use10bitEncoder)
+    , m_use10bit(Settings_Instance()->m_use10bitEncoder)
     , m_hasQueryTimeout(false) {
-    if (Settings::Instance().m_enableHdr) {
+    if (Settings_Instance()->m_enableHdr) {
         // Bypass preprocessor and converters for HDR, since it will already be YUV
         m_surfaceFormat = m_use10bit ? amf::AMF_SURFACE_P010 : amf::AMF_SURFACE_NV12;
     }
@@ -151,7 +152,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
     switch (codec) {
     case ALVR_CODEC_H264: {
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_USAGE, AMF_VIDEO_ENCODER_USAGE_ULTRA_LOW_LATENCY);
-        switch (Settings::Instance().m_h264Profile) {
+        switch (Settings_Instance()->m_h264Profile) {
         case ALVR_H264_PROFILE_BASELINE:
             amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE, AMF_VIDEO_ENCODER_PROFILE_BASELINE);
             break;
@@ -164,14 +165,14 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             break;
         }
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE_LEVEL, 42);
-        switch (Settings::Instance().m_rateControlMode) {
+        switch (Settings_Instance()->m_rateControlMode) {
         case ALVR_CBR:
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_CBR
             );
             // Required for CBR to work correctly
             amfEncoder->SetProperty(
-                AMF_VIDEO_ENCODER_FILLER_DATA_ENABLE, Settings::Instance().m_fillerData
+                AMF_VIDEO_ENCODER_FILLER_DATA_ENABLE, Settings_Instance()->m_fillerData
             );
             break;
         case ALVR_VBR:
@@ -182,7 +183,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             break;
         }
 
-        switch (Settings::Instance().m_entropyCoding) {
+        switch (Settings_Instance()->m_entropyCoding) {
         case ALVR_CABAC:
             amfEncoder->SetProperty(AMF_VIDEO_ENCODER_CABAC_ENABLE, AMF_VIDEO_ENCODER_CABAC);
             break;
@@ -197,7 +198,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_B_PIC_PATTERN, 0);
 
-        switch (Settings::Instance().m_encoderQualityPreset) {
+        switch (Settings_Instance()->m_encoderQualityPreset) {
         case ALVR_QUALITY:
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_QUALITY
@@ -222,8 +223,8 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
         }
 
-        if (Settings::Instance().m_enableAmfPreAnalysis) {
-            if (!Settings::Instance().m_useAmfPreproc || Settings::Instance().m_use10bitEncoder) {
+        if (Settings_Instance()->m_enableAmfPreAnalysis) {
+            if (!Settings_Instance()->m_useAmfPreproc || Settings_Instance()->m_use10bitEncoder) {
                 Warn("Pre-analysis could not be enabled because \"Use preproc\" is not enabled or "
                      "\"Reduce color banding\" is enabled.");
             } else if (m_hasPreAnalysis) {
@@ -231,7 +232,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
                      "enabled.");
                 amfEncoder->SetProperty(
                     AMF_VIDEO_ENCODER_PRE_ANALYSIS_ENABLE,
-                    Settings::Instance().m_enableAmfPreAnalysis
+                    Settings_Instance()->m_enableAmfPreAnalysis
                 );
             } else {
                 Warn("Pre-analysis could not be enabled because your GPU does not support it for "
@@ -243,7 +244,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FULL_RANGE_COLOR, true);
 
         // Use BT.2020 for HDR encoding, BT.709 otherwise.
-        if (Settings::Instance().m_enableHdr) {
+        if (Settings_Instance()->m_enableHdr) {
             // Also specify the input formats for HDR to prevent incorrect color conversions
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_INPUT_COLOR_PROFILE, AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020
@@ -281,11 +282,11 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 
         // No noticable performance difference and should improve subjective quality by allocating
         // more bits to smooth areas
-        amfEncoder->SetProperty(AMF_VIDEO_ENCODER_ENABLE_VBAQ, Settings::Instance().m_enableVbaq);
+        amfEncoder->SetProperty(AMF_VIDEO_ENCODER_ENABLE_VBAQ, Settings_Instance()->m_enableVbaq);
 
         // May impact performance but improves quality in high-motion areas
         amfEncoder->SetProperty(
-            AMF_VIDEO_ENCODER_HIGH_MOTION_QUALITY_BOOST_ENABLE, Settings::Instance().m_enableAmfHmqb
+            AMF_VIDEO_ENCODER_HIGH_MOTION_QUALITY_BOOST_ENABLE, Settings_Instance()->m_enableAmfHmqb
         );
 
         // Turns Off IDR/I Frames
@@ -307,7 +308,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
         amfEncoder->SetProperty(
             AMF_VIDEO_ENCODER_HEVC_USAGE, AMF_VIDEO_ENCODER_HEVC_USAGE_ULTRA_LOW_LATENCY
         );
-        switch (Settings::Instance().m_rateControlMode) {
+        switch (Settings_Instance()->m_rateControlMode) {
         case ALVR_CBR:
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD,
@@ -315,7 +316,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             );
             // Required for CBR to work correctly
             amfEncoder->SetProperty(
-                AMF_VIDEO_ENCODER_HEVC_FILLER_DATA_ENABLE, Settings::Instance().m_fillerData
+                AMF_VIDEO_ENCODER_HEVC_FILLER_DATA_ENABLE, Settings_Instance()->m_fillerData
             );
             break;
         case ALVR_VBR:
@@ -334,7 +335,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             AMF_VIDEO_ENCODER_HEVC_FRAMERATE, ::AMFConstructRate(frameRateIn, 1)
         );
 
-        switch (Settings::Instance().m_encoderQualityPreset) {
+        switch (Settings_Instance()->m_encoderQualityPreset) {
         case ALVR_QUALITY:
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_QUALITY
@@ -374,8 +375,8 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             );
         }
 
-        if (Settings::Instance().m_enableAmfPreAnalysis) {
-            if (!Settings::Instance().m_useAmfPreproc || Settings::Instance().m_use10bitEncoder) {
+        if (Settings_Instance()->m_enableAmfPreAnalysis) {
+            if (!Settings_Instance()->m_useAmfPreproc || Settings_Instance()->m_use10bitEncoder) {
                 Warn("Pre-analysis could not be enabled because \"Use preproc\" is not enabled or "
                      "\"Reduce color banding\" is enabled.");
             } else if (m_hasPreAnalysis) {
@@ -383,7 +384,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
                      "enabled.");
                 amfEncoder->SetProperty(
                     AMF_VIDEO_ENCODER_HEVC_PRE_ANALYSIS_ENABLE,
-                    Settings::Instance().m_enableAmfPreAnalysis
+                    Settings_Instance()->m_enableAmfPreAnalysis
                 );
             } else {
                 Warn("Pre-analysis could not be enabled because your GPU does not support it for "
@@ -397,7 +398,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
         );
 
         // Use BT.2020 for HDR encoding, BT.709 otherwise.
-        if (Settings::Instance().m_enableHdr) {
+        if (Settings_Instance()->m_enableHdr) {
             // Also specify the input formats for HDR to prevent incorrect color conversions
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_HEVC_INPUT_COLOR_PROFILE,
@@ -439,13 +440,13 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
         // No noticable performance difference and should improve subjective quality by allocating
         // more bits to smooth areas
         amfEncoder->SetProperty(
-            AMF_VIDEO_ENCODER_HEVC_ENABLE_VBAQ, Settings::Instance().m_enableVbaq
+            AMF_VIDEO_ENCODER_HEVC_ENABLE_VBAQ, Settings_Instance()->m_enableVbaq
         );
 
         // May impact performance but improves quality in high-motion areas
         amfEncoder->SetProperty(
             AMF_VIDEO_ENCODER_HEVC_HIGH_MOTION_QUALITY_BOOST_ENABLE,
-            Settings::Instance().m_enableAmfHmqb
+            Settings_Instance()->m_enableAmfHmqb
         );
 
         // Turns Off IDR/I Frames
@@ -471,7 +472,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
         amfEncoder->SetProperty(
             AMF_VIDEO_ENCODER_AV1_USAGE, AMF_VIDEO_ENCODER_AV1_USAGE_ULTRA_LOW_LATENCY
         );
-        switch (Settings::Instance().m_rateControlMode) {
+        switch (Settings_Instance()->m_rateControlMode) {
         case ALVR_CBR:
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_AV1_RATE_CONTROL_METHOD,
@@ -479,7 +480,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             );
             // Required for CBR to work correctly
             amfEncoder->SetProperty(
-                AMF_VIDEO_ENCODER_AV1_FILLER_DATA, Settings::Instance().m_fillerData
+                AMF_VIDEO_ENCODER_AV1_FILLER_DATA, Settings_Instance()->m_fillerData
             );
             break;
         case ALVR_VBR:
@@ -496,7 +497,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             AMF_VIDEO_ENCODER_AV1_FRAMERATE, ::AMFConstructRate(frameRateIn, 1)
         );
 
-        switch (Settings::Instance().m_encoderQualityPreset) {
+        switch (Settings_Instance()->m_encoderQualityPreset) {
         case ALVR_QUALITY:
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_AV1_QUALITY_PRESET, AMF_VIDEO_ENCODER_AV1_QUALITY_PRESET_QUALITY
@@ -530,7 +531,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
         }
 
         // There is no VBAQ option for AV1. Instead it has CAQ (Content adaptive quantization)
-        if (Settings::Instance().m_enableVbaq) {
+        if (Settings_Instance()->m_enableVbaq) {
             amfEncoder->SetProperty(
                 AMF_VIDEO_ENCODER_AV1_AQ_MODE, AMF_VIDEO_ENCODER_AV1_AQ_MODE_CAQ
             );
@@ -545,8 +546,8 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
             caps->GetProperty(AMF_VIDEO_ENCODER_AV1_CAP_PRE_ANALYSIS, &m_hasPreAnalysis);
         }
 
-        if (Settings::Instance().m_enableAmfPreAnalysis) {
-            if (!Settings::Instance().m_useAmfPreproc || Settings::Instance().m_use10bitEncoder) {
+        if (Settings_Instance()->m_enableAmfPreAnalysis) {
+            if (!Settings_Instance()->m_useAmfPreproc || Settings_Instance()->m_use10bitEncoder) {
                 Warn("Pre-analysis could not be enabled because \"Use preproc\" is not enabled or "
                      "\"Reduce color banding\" is enabled.");
             } else if (m_hasPreAnalysis) {
@@ -554,7 +555,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
                      "enabled.");
                 amfEncoder->SetProperty(
                     AMF_VIDEO_ENCODER_AV1_PRE_ANALYSIS_ENABLE,
-                    Settings::Instance().m_enableAmfPreAnalysis
+                    Settings_Instance()->m_enableAmfPreAnalysis
                 );
             } else {
                 Warn("Pre-analysis could not be enabled because your GPU does not support it for "
@@ -569,7 +570,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 
         // May impact performance but improves quality in high-motion areas
         amfEncoder->SetProperty(
-            AMF_VIDEO_ENCODER_AV1_HIGH_MOTION_QUALITY_BOOST, Settings::Instance().m_enableAmfHmqb
+            AMF_VIDEO_ENCODER_AV1_HIGH_MOTION_QUALITY_BOOST, Settings_Instance()->m_enableAmfHmqb
         );
 
         // Set infinite GOP length
@@ -627,10 +628,10 @@ VideoEncoderAMF::MakePreprocessor(amf::AMF_SURFACE_FORMAT inputFormat, int width
 
     AMF_THROW_IF(amfPreprocessor->SetProperty(AMF_PP_ENGINE_TYPE, amf::AMF_MEMORY_DX11));
     AMF_THROW_IF(amfPreprocessor->SetProperty(
-        AMF_PP_ADAPTIVE_FILTER_STRENGTH, Settings::Instance().m_amfPreProcSigma
+        AMF_PP_ADAPTIVE_FILTER_STRENGTH, Settings_Instance()->m_amfPreProcSigma
     ));
     AMF_THROW_IF(amfPreprocessor->SetProperty(
-        AMF_PP_ADAPTIVE_FILTER_SENSITIVITY, Settings::Instance().m_amfPreProcTor
+        AMF_PP_ADAPTIVE_FILTER_SENSITIVITY, Settings_Instance()->m_amfPreProcTor
     ));
 
     AMF_THROW_IF(amfPreprocessor->Init(inputFormat, width, height));
@@ -647,7 +648,7 @@ void VideoEncoderAMF::Initialize() {
     AMF_THROW_IF(m_amfContext->InitDX11(m_d3dRender->GetDevice()));
 
     amf::AMF_SURFACE_FORMAT inFormat = m_surfaceFormat;
-    if (Settings::Instance().m_enableHdr) {
+    if (Settings_Instance()->m_enableHdr) {
         // Bypass preprocessor and converters for HDR, since it will already be YUV
         ;
     } else if (m_use10bit) {
@@ -656,7 +657,7 @@ void VideoEncoderAMF::Initialize() {
             MakeConverter(m_surfaceFormat, m_renderWidth, m_renderHeight, inFormat)
         );
     } else {
-        if (Settings::Instance().m_useAmfPreproc) {
+        if (Settings_Instance()->m_useAmfPreproc) {
             inFormat = amf::AMF_SURFACE_NV12;
             m_amfComponents.emplace_back(
                 MakeConverter(m_surfaceFormat, m_renderWidth, m_renderHeight, inFormat)
@@ -735,7 +736,7 @@ void VideoEncoderAMF::Transmit(
             );
         }
 
-        if (Settings::Instance().m_amdBitrateCorruptionFix) {
+        if (Settings_Instance()->m_amdBitrateCorruptionFix) {
             RequestIDR();
         }
     }

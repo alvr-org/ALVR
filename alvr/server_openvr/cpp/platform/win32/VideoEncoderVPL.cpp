@@ -1,7 +1,7 @@
 #include "VideoEncoderVPL.h"
 #include "alvr_server/Logger.h"
-#include "alvr_server/Settings.h"
 #include "alvr_server/Utils.h"
+#include "alvr_server/bindings.h"
 
 #define VPLVERSION(major, minor) (major << 16 | minor)
 #define MAJOR_API_VERSION_REQUIRED 2
@@ -235,10 +235,10 @@ mfxFrameSurface1* VideoEncoderVPL::VplImportTexture(ID3D11Texture2D* texture) {
 }
 
 void VideoEncoderVPL::ChooseParams() {
-    Settings& s = Settings::Instance();
+    const Settings* s = Settings_Instance();
 
-    m_refreshRate = s.m_refreshRate;
-    m_codec = s.m_codec;
+    m_refreshRate = s->m_refreshRate;
+    m_codec = s->m_codec;
 
     // h264 encoding is currently broken due to an encoding
     // error when forcing the idr frame type:
@@ -253,8 +253,8 @@ void VideoEncoderVPL::ChooseParams() {
         m_codec = ALVR_CODEC_HEVC;
     }
 
-    if (s.m_enableHdr) {
-        if (s.m_use10bitEncoder) {
+    if (s->m_enableHdr) {
+        if (s->m_use10bitEncoder) {
             m_dxColorFormat = DXGI_FORMAT_P010;
             m_vplColorFormat = MFX_FOURCC_P010;
             m_vplChromaFormat = MFX_CHROMAFORMAT_YUV420;
@@ -280,12 +280,12 @@ void VideoEncoderVPL::ChooseParams() {
         m_vplCodec = MFX_CODEC_AV1;
         break;
     default:
-        ERROR_THROW("unsupported video encoding %d", s.m_codec);
+        ERROR_THROW("unsupported video encoding %d", s->m_codec);
     }
 
     m_vplCodecProfile = MFX_PROFILE_UNKNOWN;
     if (m_codec == ALVR_CODEC_H264) {
-        switch (s.m_h264Profile) {
+        switch (s->m_h264Profile) {
         case ALVR_H264_PROFILE_BASELINE:
             m_vplCodecProfile = MFX_PROFILE_AVC_BASELINE;
             break;
@@ -296,11 +296,11 @@ void VideoEncoderVPL::ChooseParams() {
             m_vplCodecProfile = MFX_PROFILE_AVC_HIGH;
             break;
         default:
-            ERROR_THROW("unsupported h264 profile %d", s.m_h264Profile);
+            ERROR_THROW("unsupported h264 profile %d", s->m_h264Profile);
         }
     }
 
-    if (s.m_use10bitEncoder) {
+    if (s->m_use10bitEncoder) {
         switch (m_codec) {
         case ALVR_CODEC_H264:
             m_vplCodecProfile = MFX_PROFILE_AVC_HIGH10;
@@ -311,7 +311,7 @@ void VideoEncoderVPL::ChooseParams() {
         }
     }
 
-    switch (s.m_encoderQualityPreset) {
+    switch (s->m_encoderQualityPreset) {
     case ALVR_QUALITY:
         m_vplQualityPreset = MFX_TARGETUSAGE_BEST_QUALITY;
         break;
@@ -325,7 +325,7 @@ void VideoEncoderVPL::ChooseParams() {
         ERROR_THROW("invalid encoder quality preset");
     }
 
-    switch (s.m_rateControlMode) {
+    switch (s->m_rateControlMode) {
     case ALVR_CBR:
         m_vplRateControlMode = MFX_RATECONTROL_CBR;
         break;

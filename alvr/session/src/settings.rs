@@ -42,7 +42,7 @@ pub enum FrameSize {
 }
 
 #[repr(u32)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub enum EncoderQualityPreset {
     Quality = 0,
     Balanced = 1,
@@ -50,7 +50,7 @@ pub enum EncoderQualityPreset {
 }
 
 #[repr(u32)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub enum EncoderQualityPresetNvidia {
     P1 = 1,
     P2 = 2,
@@ -62,7 +62,7 @@ pub enum EncoderQualityPresetNvidia {
 }
 
 #[repr(u32)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub enum NvencTuningPreset {
     HighQuality = 1,
     LowLatency = 2,
@@ -71,7 +71,7 @@ pub enum NvencTuningPreset {
 }
 
 #[repr(u32)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub enum NvencMultiPass {
     Disabled = 0,
     #[schema(strings(display_name = "1/4 resolution"))]
@@ -80,7 +80,7 @@ pub enum NvencMultiPass {
 }
 
 #[repr(u32)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub enum NvencAdaptiveQuantizationMode {
     Disabled = 0,
     Spatial = 1,
@@ -88,7 +88,7 @@ pub enum NvencAdaptiveQuantizationMode {
 }
 
 #[repr(u8)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy, PartialEq)]
 #[schema(gui = "button_group")]
 pub enum RateControlMode {
     #[schema(strings(display_name = "CBR"))]
@@ -98,7 +98,7 @@ pub enum RateControlMode {
 }
 
 #[repr(u8)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy, PartialEq)]
 #[schema(gui = "button_group")]
 pub enum EntropyCoding {
     #[schema(strings(display_name = "CAVLC"))]

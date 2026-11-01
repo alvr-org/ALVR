@@ -8,7 +8,7 @@ IDRScheduler::IDRScheduler() { }
 IDRScheduler::~IDRScheduler() { }
 
 void IDRScheduler::OnStreamStart() {
-    m_minIDRFrameInterval = Settings::Instance().m_minimumIdrIntervalMs * 1000;
+    m_minIDRFrameInterval = Settings_Instance()->m_minimumIdrIntervalMs * 1000;
     m_scheduled = false;
     InsertIDR();
 }

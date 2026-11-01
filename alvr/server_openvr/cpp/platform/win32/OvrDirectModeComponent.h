@@ -4,7 +4,7 @@
 #include "alvr_server/Utils.h"
 #include "alvr_server/openvr_driver_wrap.h"
 
-#include "alvr_server/Settings.h"
+#include "alvr_server/bindings.h"
 
 #include <mutex>
 

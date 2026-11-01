@@ -10,7 +10,7 @@ use alvr_common::{
     *,
 };
 use alvr_graphics::HandData;
-use alvr_packets::{ButtonEntry, ButtonValue, FaceData, FaceExpressions, StreamConfig};
+use alvr_packets::{ButtonEntry, ButtonValue, ClientStreamConfig, FaceData, FaceExpressions};
 use alvr_session::{BodyTrackingBDConfig, BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
 use std::{
@@ -147,7 +147,7 @@ pub struct InteractionSourcesConfig {
 }
 
 impl InteractionSourcesConfig {
-    pub fn new(config: &StreamConfig) -> Self {
+    pub fn new(config: &ClientStreamConfig) -> Self {
         Self {
             face_tracking: config
                 .settings

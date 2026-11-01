@@ -2,9 +2,10 @@
 
 #include <chrono>
 
+#include "ALVR-common/packet_types.h"
 #include "FormatConverter.h"
 #include "alvr_server/Logger.h"
-#include "alvr_server/Settings.h"
+#include "alvr_server/bindings.h"
 
 namespace {
 
@@ -32,7 +33,7 @@ void x264_log(void*, int level, const char* fmt, va_list args) {
 }
 
 alvr::EncodePipelineSW::EncodePipelineSW(Renderer* render, uint32_t width, uint32_t height) {
-    const auto& settings = Settings::Instance();
+    const auto* settings = Settings_Instance();
 
     x264_param_default_preset(&param, "ultrafast", "zerolatency");
 
@@ -40,14 +41,14 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer* render, uint32_t width, uint3
     param.i_log_level = X264_LOG_INFO;
 
     param.b_aud = 0;
-    param.b_cabac = settings.m_entropyCoding == ALVR_CABAC;
+    param.b_cabac = settings->m_entropyCoding == ALVR_CABAC;
     param.b_sliced_threads = true;
-    param.i_threads = settings.m_swThreadCount;
+    param.i_threads = settings->m_swThreadCount;
     param.i_width = width;
     param.i_height = height;
     param.rc.i_rc_method = X264_RC_ABR;
 
-    switch (settings.m_h264Profile) {
+    switch (settings->m_h264Profile) {
     case ALVR_H264_PROFILE_BASELINE:
         x264_param_apply_profile(&param, "baseline");
         break;
@@ -63,7 +64,7 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer* render, uint32_t width, uint3
     auto params = FfiDynamicEncoderParams {};
     params.updated = true;
     params.bitrate_bps = 30'000'000;
-    params.framerate = Settings::Instance().m_refreshRate;
+    params.framerate = Settings_Instance()->m_refreshRate;
     SetParams(params);
 
     enc = x264_encoder_open(&param);
@@ -129,7 +130,7 @@ void alvr::EncodePipelineSW::SetParams(FfiDynamicEncoderParams params) {
         return;
     }
     // x264 doesn't work well with adaptive bitrate/fps
-    param.i_fps_num = Settings::Instance().m_refreshRate;
+    param.i_fps_num = Settings_Instance()->m_refreshRate;
     param.i_fps_den = 1;
     param.rc.i_bitrate
         = params.bitrate_bps / 1'000 * 1.4; // needs higher value to hit target bitrate

@@ -1,7 +1,7 @@
 #include "EncodePipelineNvEnc.h"
 #include "ALVR-common/packet_types.h"
 #include "alvr_server/Logger.h"
-#include "alvr_server/Settings.h"
+#include "alvr_server/bindings.h"
 #include "ffmpeg_helper.h"
 #include <chrono>
 #include <memory>
@@ -82,9 +82,9 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
         throw alvr::AvException("Failed to create a CUDA device:", err);
     }
 
-    const auto& settings = Settings::Instance();
+    const auto* settings = Settings_Instance();
 
-    auto codec_id = ALVR_CODEC(settings.m_codec);
+    auto codec_id = ALVR_CODEC(settings->m_codec);
     const char* encoder_name = encoder(codec_id);
     const AVCodec* codec = avcodec_find_encoder_by_name(encoder_name);
     if (codec == nullptr) {
@@ -98,7 +98,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
 
     switch (codec_id) {
     case ALVR_CODEC_H264:
-        switch (settings.m_entropyCoding) {
+        switch (settings->m_entropyCoding) {
         case ALVR_CABAC:
             av_opt_set(encoder_ctx->priv_data, "coder", "ac", 0);
             break;
@@ -113,7 +113,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
         break;
     }
 
-    switch (settings.m_rateControlMode) {
+    switch (settings->m_rateControlMode) {
     case ALVR_CBR:
         av_opt_set(encoder_ctx->priv_data, "rc", "cbr", 0);
         break;
@@ -123,7 +123,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
     }
 
     if (codec_id == ALVR_CODEC_H264) {
-        switch (settings.m_h264Profile) {
+        switch (settings->m_h264Profile) {
         case ALVR_H264_PROFILE_BASELINE:
             av_opt_set(encoder_ctx->priv_data, "profile", "baseline", 0);
             break;
@@ -139,20 +139,20 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
 
     char preset[] = "p0";
     // replace 0 with preset number
-    preset[1] += settings.m_nvencQualityPreset;
+    preset[1] += settings->m_nvencQualityPreset;
     av_opt_set(encoder_ctx->priv_data, "preset", preset, 0);
 
-    if (settings.m_nvencAdaptiveQuantizationMode == 1) {
+    if (settings->m_nvencAdaptiveQuantizationMode == 1) {
         av_opt_set_int(encoder_ctx->priv_data, "spatial_aq", 1, 0);
-    } else if (settings.m_nvencAdaptiveQuantizationMode == 2) {
+    } else if (settings->m_nvencAdaptiveQuantizationMode == 2) {
         av_opt_set_int(encoder_ctx->priv_data, "temporal_aq", 1, 0);
     }
 
-    if (settings.m_nvencEnableWeightedPrediction) {
+    if (settings->m_nvencEnableWeightedPrediction) {
         av_opt_set_int(encoder_ctx->priv_data, "weighted_pred", 1, 0);
     }
 
-    av_opt_set_int(encoder_ctx->priv_data, "tune", settings.m_nvencTuningPreset, 0);
+    av_opt_set_int(encoder_ctx->priv_data, "tune", settings->m_nvencTuningPreset, 0);
     av_opt_set_int(encoder_ctx->priv_data, "zerolatency", 1, 0);
     // Delay isn't actually a delay instead its how many surfaces to encode at a time
     av_opt_set_int(encoder_ctx->priv_data, "delay", 1, 0);
@@ -164,7 +164,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
     encoder_ctx->width = width;
     encoder_ctx->height = height;
     encoder_ctx->time_base = { 1, (int)1e9 };
-    encoder_ctx->framerate = AVRational { settings.m_refreshRate, 1 };
+    encoder_ctx->framerate = AVRational { settings->m_refreshRate, 1 };
     encoder_ctx->sample_aspect_ratio = AVRational { 1, 1 };
     encoder_ctx->max_b_frames = 0;
     encoder_ctx->gop_size = INT16_MAX;

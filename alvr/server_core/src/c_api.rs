@@ -2,7 +2,8 @@
 #![allow(clippy::missing_safety_doc)]
 
 use crate::{
-    SESSION_MANAGER, ServerCoreContext, ServerCoreEvent, logging_backend, tracking::HandType,
+    SESSION_MANAGER, ServerCoreContext, ServerCoreEvent, ServerNegotiatedStreamingConfig,
+    logging_backend, tracking::HandType,
 };
 use alvr_common::{
     AlvrCodecType, AlvrPose, AlvrViewParams, log,
@@ -23,6 +24,7 @@ use std::{
 static SERVER_CORE_CONTEXT: RwLock<Option<ServerCoreContext>> = RwLock::new(None);
 static EVENTS_RECEIVER: Mutex<Option<mpsc::Receiver<ServerCoreEvent>>> = Mutex::new(None);
 static BUTTONS_QUEUE: Mutex<VecDeque<Vec<ButtonEntry>>> = Mutex::new(VecDeque::new());
+static NEGOTIATED_CONFIG: Mutex<Option<ServerNegotiatedStreamingConfig>> = Mutex::new(None);
 
 #[repr(C)]
 pub struct AlvrDeviceMotion {
@@ -92,6 +94,19 @@ pub struct AlvrDeviceConfig {
 pub struct AlvrDynamicEncoderParams {
     bitrate_bps: f32,
     framerate: f32,
+}
+
+#[repr(C)]
+pub struct AlvrNegotiatedConfig {
+    pub view_resolution: [u32; 2],
+    pub target_view_resolution: [u32; 2],
+    pub refresh_rate: f32,
+    pub enable_foveated_encoding: bool,
+    pub codec: AlvrCodecType,
+    pub h264_profile: u32,
+    pub use_10bit_encoder: bool,
+    pub encoding_gamma: f32,
+    pub enable_hdr: bool,
 }
 
 fn string_to_c_str(buffer: *mut c_char, value: &str) -> u64 {
@@ -184,6 +199,14 @@ pub extern "C" fn alvr_get_settings_json(buffer: *mut c_char) -> u64 {
     string_to_c_str(buffer, &serde_json::to_string(&crate::settings()).unwrap())
 }
 
+#[unsafe(no_mangle)]
+pub extern "C" fn alvr_get_steamvr_hmd_init_config_json(buffer: *mut c_char) -> u64 {
+    string_to_c_str(
+        buffer,
+        &serde_json::to_string(&crate::steamvr_hmd_init_config()).unwrap(),
+    )
+}
+
 /// This must be called before alvr_initialize()
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn alvr_initialize_environment(
@@ -230,7 +253,7 @@ pub extern "C" fn alvr_initialize() -> AlvrTargetConfig {
     *EVENTS_RECEIVER.lock() = Some(receiver);
 
     let session_manager_lock = SESSION_MANAGER.read();
-    let restart_settings = &session_manager_lock.session().openvr_config;
+    let restart_settings = &session_manager_lock.session().steamvr_hmd_init_config;
 
     AlvrTargetConfig {
         game_render_width: restart_settings.target_eye_resolution_width,
@@ -253,7 +276,8 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: 
         && let Ok(event) = receiver.recv_timeout(Duration::from_nanos(timeout_ns))
     {
         match event {
-            ServerCoreEvent::ClientConnected => unsafe {
+            ServerCoreEvent::ClientConnected(config) => unsafe {
+                *NEGOTIATED_CONFIG.lock() = Some(config);
                 *out_event = AlvrEvent::ClientConnected;
             },
             ServerCoreEvent::ClientDisconnected => unsafe {
@@ -380,6 +404,38 @@ pub unsafe extern "C" fn alvr_get_buttons(out_entries: *mut AlvrButtonEntry) -> 
         entries_count
     } else {
         0
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn alvr_get_negotiated_config(out_config: *mut AlvrNegotiatedConfig) -> bool {
+    if let Some(config) = &*NEGOTIATED_CONFIG.lock() {
+        unsafe {
+            *out_config = AlvrNegotiatedConfig {
+                view_resolution: [
+                    config.transcoding_view_resolution.x,
+                    config.transcoding_view_resolution.y,
+                ],
+                target_view_resolution: [
+                    config.emulated_headset_view_resolution.x,
+                    config.emulated_headset_view_resolution.y,
+                ],
+                refresh_rate: config.refresh_rate,
+                enable_foveated_encoding: config.enable_foveated_encoding,
+                codec: match config.codec {
+                    CodecType::H264 => AlvrCodecType::H264,
+                    CodecType::Hevc => AlvrCodecType::Hevc,
+                    CodecType::AV1 => AlvrCodecType::AV1,
+                },
+                h264_profile: config.h264_profile as u32,
+                use_10bit_encoder: config.use_10bit_encoder,
+                encoding_gamma: config.encoding_gamma,
+                enable_hdr: config.enable_hdr,
+            }
+        };
+        true
+    } else {
+        false
     }
 }
 

@@ -18,7 +18,7 @@ use crate::connection::VideoPacket;
 use alvr_common::{
     ConnectionState, DEVICE_ID_TO_PATH, DeviceMotion, LifecycleState, Pose, RelaxedAtomic,
     ViewParams, dbg_server_core, error,
-    glam::Vec2,
+    glam::{UVec2, Vec2},
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
     warn,
@@ -30,7 +30,7 @@ use alvr_packets::{
     VideoPacketHeader,
 };
 use alvr_server_io::ServerSessionManager;
-use alvr_session::{CodecType, OpenvrProperty, Settings};
+use alvr_session::{CodecType, H264Profile, OpenvrProperty, Settings, SteamvrHmdInitConfig};
 use alvr_sockets::StreamSender;
 use bitrate::{BitrateManager, DynamicEncoderParams};
 use statistics::StatisticsManager;
@@ -70,12 +70,24 @@ pub fn initialize_environment(layout: afs::Layout) {
     SESSION_MANAGER.write().session_mut();
 }
 
+pub struct ServerNegotiatedStreamingConfig {
+    pub transcoding_view_resolution: UVec2,
+    pub emulated_headset_view_resolution: UVec2,
+    pub refresh_rate: f32,
+    pub enable_foveated_encoding: bool,
+    pub codec: CodecType,
+    pub h264_profile: H264Profile,
+    pub use_10bit_encoder: bool,
+    pub encoding_gamma: f32,
+    pub enable_hdr: bool,
+}
+
 pub enum ServerCoreEvent {
     SetOpenvrProperty {
         device_id: u64,
         prop: OpenvrProperty,
     },
-    ClientConnected,
+    ClientConnected(ServerNegotiatedStreamingConfig),
     ClientDisconnected,
     Battery(BatteryInfo),
     PlayspaceSync(Vec2),
@@ -152,6 +164,14 @@ pub fn notify_restart_driver() {
 
 pub fn settings() -> Settings {
     SESSION_MANAGER.read().settings().clone()
+}
+
+pub fn steamvr_hmd_init_config() -> SteamvrHmdInitConfig {
+    SESSION_MANAGER
+        .read()
+        .session()
+        .steamvr_hmd_init_config
+        .clone()
 }
 
 pub fn registered_button_set() -> HashSet<u64> {
@@ -563,8 +583,16 @@ impl Drop for ServerCoreContext {
         dbg_server_core!("Setting restart settings chache");
         {
             let mut session_manager_lock = SESSION_MANAGER.write();
-            session_manager_lock.session_mut().openvr_config =
-                connection::contruct_openvr_config(session_manager_lock.session());
+            let new_steamvr_hmd_init_config = session_manager_lock
+                .session()
+                .steamvr_hmd_init_config
+                .clone();
+            let settings = session_manager_lock.session().to_settings();
+            let new_hash =
+                connection::compute_restart_settings_hash(&new_steamvr_hmd_init_config, &settings);
+            let mut session = session_manager_lock.session_mut();
+            session.steamvr_hmd_init_config = new_steamvr_hmd_init_config;
+            session.restart_settings_hash = new_hash;
         }
 
         // todo: check if this is still needed

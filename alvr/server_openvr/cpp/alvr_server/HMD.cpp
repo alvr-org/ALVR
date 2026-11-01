@@ -4,7 +4,6 @@
 #include "Logger.h"
 #include "Paths.h"
 #include "PoseHistory.h"
-#include "Settings.h"
 #include "Utils.h"
 #include "ViveTrackerProxy.h"
 #include "bindings.h"
@@ -20,7 +19,7 @@
 Hmd::Hmd()
     : TrackedDevice(
           HEAD_ID,
-          Settings::Instance().m_TrackingRefOnly ? vr::TrackedDeviceClass_TrackingReference
+          Settings_Instance()->m_TrackingRefOnly ? vr::TrackedDeviceClass_TrackingReference
                                                  : vr::TrackedDeviceClass_HMD
       )
     , m_baseComponentsInitialized(false)
@@ -36,7 +35,7 @@ Hmd::Hmd()
 
     m_poseHistory = std::make_shared<PoseHistory>();
 
-    if (Settings::Instance().m_enableViveTrackerProxy) {
+    if (Settings_Instance()->m_enableViveTrackerProxy) {
         m_viveTrackerProxy = std::make_unique<ViveTrackerProxy>(*this);
         if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
                 m_viveTrackerProxy->GetSerialNumber(),
@@ -75,7 +74,7 @@ bool Hmd::activate() {
     vr_properties->SetFloatProperty(
         this->prop_container,
         vr::Prop_DisplayFrequency_Float,
-        static_cast<float>(Settings::Instance().m_refreshRate)
+        static_cast<float>(Settings_Instance()->m_refreshRate)
     );
 
     vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/proximity", &m_proximity);
@@ -96,12 +95,12 @@ bool Hmd::activate() {
     vr::VRSettings()->SetBool(
         vr::k_pch_SteamVR_Section,
         vr::k_pch_SteamVR_EnableLinuxVulkanAsync_Bool,
-        Settings::Instance().m_enableLinuxVulkanAsyncCompute
+        Settings_Instance()->m_enableLinuxVulkanAsyncCompute
     );
     vr::VRSettings()->SetBool(
         vr::k_pch_SteamVR_Section,
         vr::k_pch_SteamVR_DisableAsyncReprojection_Bool,
-        !Settings::Instance().m_enableLinuxAsyncReprojection
+        !Settings_Instance()->m_enableLinuxAsyncReprojection
     );
 #endif
 
@@ -119,11 +118,11 @@ bool Hmd::activate() {
             // Prop_GraphicsAdapterLuid_Uint64 is only for redirect display and is ignored on direct
             // mode driver. So we can't specify an adapter for vrcompositor. m_nAdapterIndex is set
             // 0 on the dashboard.
-            if (!m_D3DRender->Initialize(Settings::Instance().m_nAdapterIndex)) {
+            if (!m_D3DRender->Initialize(Settings_Instance()->m_nAdapterIndex)) {
                 Error(
                     "Could not create graphics device for adapter %d.  Requires a minimum of two "
                     "graphics cards.\n",
-                    Settings::Instance().m_nAdapterIndex
+                    Settings_Instance()->m_nAdapterIndex
                 );
                 return false;
             }
@@ -215,7 +214,7 @@ void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
         vr::VRProperties()->SetFloatProperty(
             this->prop_container,
             vr::Prop_DisplayFrequency_Float,
-            static_cast<float>(Settings::Instance().m_refreshRate)
+            static_cast<float>(Settings_Instance()->m_refreshRate)
         );
     }
 #endif
@@ -305,14 +304,14 @@ void Hmd::GetWindowBounds(int32_t* pnX, int32_t* pnY, uint32_t* pnWidth, uint32_
         "Hmd::GetWindowBounds %dx%d - %dx%d\n",
         0,
         0,
-        Settings::Instance().m_renderWidth,
-        Settings::Instance().m_renderHeight
+        Settings_Instance()->m_renderWidth,
+        Settings_Instance()->m_renderHeight
     );
 
     *pnX = 0;
     *pnY = 0;
-    *pnWidth = Settings::Instance().m_renderWidth;
-    *pnHeight = Settings::Instance().m_renderHeight;
+    *pnWidth = Settings_Instance()->m_renderWidth;
+    *pnHeight = Settings_Instance()->m_renderHeight;
 }
 
 bool Hmd::IsDisplayRealDisplay() {
@@ -324,8 +323,8 @@ bool Hmd::IsDisplayRealDisplay() {
 }
 
 void Hmd::GetRecommendedRenderTargetSize(uint32_t* pnWidth, uint32_t* pnHeight) {
-    *pnWidth = Settings::Instance().m_recommendedTargetWidth / 2;
-    *pnHeight = Settings::Instance().m_recommendedTargetHeight;
+    *pnWidth = Settings_Instance()->m_recommendedTargetWidth / 2;
+    *pnHeight = Settings_Instance()->m_recommendedTargetHeight;
     Debug("Hmd::GetRecommendedRenderTargetSize %dx%d\n", *pnWidth, *pnHeight);
 }
 
@@ -333,13 +332,13 @@ void Hmd::GetEyeOutputViewport(
     vr::EVREye eEye, uint32_t* pnX, uint32_t* pnY, uint32_t* pnWidth, uint32_t* pnHeight
 ) {
     *pnY = 0;
-    *pnWidth = Settings::Instance().m_renderWidth / 2;
-    *pnHeight = Settings::Instance().m_renderHeight;
+    *pnWidth = Settings_Instance()->m_renderWidth / 2;
+    *pnHeight = Settings_Instance()->m_renderHeight;
 
     if (eEye == vr::Eye_Left) {
         *pnX = 0;
     } else {
-        *pnX = Settings::Instance().m_renderWidth / 2;
+        *pnX = Settings_Instance()->m_renderWidth / 2;
     }
 
     Debug("Hmd::GetEyeOutputViewport Eye=%d %dx%d %dx%d\n", eEye, *pnX, *pnY, *pnWidth, *pnHeight);

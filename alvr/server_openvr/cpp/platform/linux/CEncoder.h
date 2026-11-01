@@ -5,6 +5,7 @@
 #include <atomic>
 #include <memory>
 #include <poll.h>
+#include <string>
 #include <sys/types.h>
 
 class PoseHistory;

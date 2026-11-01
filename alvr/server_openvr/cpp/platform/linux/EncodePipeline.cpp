@@ -4,7 +4,7 @@
 #include "EncodePipelineSW.h"
 #include "EncodePipelineVAAPI.h"
 #include "alvr_server/Logger.h"
-#include "alvr_server/Settings.h"
+#include "alvr_server/bindings.h"
 #include "ffmpeg_helper.h"
 
 extern "C" {
@@ -29,7 +29,7 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(
     uint32_t width,
     uint32_t height
 ) {
-    if (Settings::Instance().m_force_sw_encoding == false) {
+    if (Settings_Instance()->m_force_sw_encoding == false) {
         if (vk_ctx.nvidia) {
             try {
                 auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(
@@ -85,4 +85,4 @@ bool alvr::EncodePipeline::GetEncoded(FramePacket& packet) {
     return true;
 }
 
-int alvr::EncodePipeline::GetCodec() { return Settings::Instance().m_codec; }
+int alvr::EncodePipeline::GetCodec() { return Settings_Instance()->m_codec; }

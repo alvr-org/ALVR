@@ -81,7 +81,7 @@ pub struct NegotiatedStreamingConfigExt {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct NegotiatedStreamingConfig {
+pub struct ClientNegotiatedStreamingConfig {
     pub view_resolution: UVec2,
     pub refresh_rate_hint: f32,
     pub game_audio_sample_rate: u32,
@@ -92,7 +92,7 @@ pub struct NegotiatedStreamingConfig {
     pub ext_str: String,
 }
 
-impl NegotiatedStreamingConfig {
+impl ClientNegotiatedStreamingConfig {
     pub fn with_ext(self, ext: NegotiatedStreamingConfigExt) -> Self {
         Self {
             ext_str: json::to_string(&ext).unwrap(),
@@ -112,30 +112,33 @@ impl NegotiatedStreamingConfig {
 #[derive(Serialize, Deserialize)]
 pub struct StreamConfigPacket {
     pub session: String, // JSON session that allows for extrapolation
-    pub negotiated: NegotiatedStreamingConfig,
+    pub negotiated: ClientNegotiatedStreamingConfig,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct StreamConfig {
+pub struct ClientStreamConfig {
     pub server_version: Version,
     pub settings: Settings,
-    pub negotiated_config: NegotiatedStreamingConfig,
+    pub negotiated_config: ClientNegotiatedStreamingConfig,
 }
 
 impl StreamConfigPacket {
-    pub fn new(session: &SessionConfig, negotiated: NegotiatedStreamingConfig) -> Result<Self> {
+    pub fn new(
+        session: &SessionConfig,
+        negotiated: ClientNegotiatedStreamingConfig,
+    ) -> Result<Self> {
         Ok(Self {
             session: json::to_string(session)?,
             negotiated,
         })
     }
 
-    pub fn to_stream_config(self) -> Result<StreamConfig> {
+    pub fn to_stream_config(self) -> Result<ClientStreamConfig> {
         let mut session_config = SessionConfig::default();
         session_config.merge_from_json(&json::from_str(&self.session)?)?;
         let settings = session_config.to_settings();
 
-        Ok(StreamConfig {
+        Ok(ClientStreamConfig {
             server_version: session_config.server_version,
             settings,
             negotiated_config: self.negotiated,

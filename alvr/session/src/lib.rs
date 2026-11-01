@@ -20,99 +20,16 @@ use std::{
 // the settings representation that the UI uses.
 pub type SessionSettings = settings::SettingsDefault;
 
-// This structure is used to store the minimum configuration data that ALVR driver needs to
-// initialize OpenVR before having the chance to communicate with a client. When a client is
-// connected, a new OpenvrConfig instance is generated, then the connection is accepted only if that
-// instance is equivalent to the one stored in the session, otherwise SteamVR is restarted.
-// Other components (like the encoder, audio recorder) don't need this treatment and are initialized
-// dynamically.
-// todo: properties that can be set after the OpenVR initialization should be removed and set with
-// UpdateForStream.
-#[expect(clippy::pub_underscore_fields)]
-#[derive(Serialize, Deserialize, PartialEq, Default, Clone, Debug)]
-pub struct OpenvrConfig {
+// Stores client-negotiated streaming parameters that are needed by C++ before
+// InitializeStreaming() is called (HMD device registration). Settings-derived fields are read
+// directly from the settings section of session.json and do not need to be duplicated here.
+#[derive(Serialize, Deserialize, Default, Clone, Debug)]
+pub struct SteamvrHmdInitConfig {
     pub eye_resolution_width: u32,
     pub eye_resolution_height: u32,
     pub target_eye_resolution_width: u32,
     pub target_eye_resolution_height: u32,
-    pub tracking_ref_only: bool,
-    pub enable_vive_tracker_proxy: bool,
-    pub minimum_idr_interval_ms: u64,
-    pub adapter_index: u32,
-    pub codec: u8,
-    pub h264_profile: u32,
     pub refresh_rate: u32,
-    pub use_10bit_encoder: bool,
-    pub encoding_gamma: f32,
-    pub enable_hdr: bool,
-    pub force_hdr_srgb_correction: bool,
-    pub clamp_hdr_extended_range: bool,
-    pub enable_amf_pre_analysis: bool,
-    pub enable_vbaq: bool,
-    pub enable_amf_hmqb: bool,
-    pub use_amf_preproc: bool,
-    pub amf_preproc_sigma: u32,
-    pub amf_preproc_tor: u32,
-    pub encoder_quality_preset: u32,
-    pub rate_control_mode: u32,
-    pub filler_data: bool,
-    pub entropy_coding: u32,
-    pub force_sw_encoding: bool,
-    pub sw_thread_count: u32,
-    pub controller_is_tracker: bool,
-    pub controllers_enabled: bool,
-    pub body_tracking_vive_enabled: bool,
-    pub body_tracking_has_legs: bool,
-    pub enable_foveated_encoding: bool,
-    pub foveation_center_size_x: f32,
-    pub foveation_center_size_y: f32,
-    pub foveation_center_shift_x: f32,
-    pub foveation_center_shift_y: f32,
-    pub foveation_edge_ratio_x: f32,
-    pub foveation_edge_ratio_y: f32,
-    pub enable_color_correction: bool,
-    pub brightness: f32,
-    pub contrast: f32,
-    pub saturation: f32,
-    pub gamma: f32,
-    pub sharpening: f32,
-    pub linux_async_compute: bool,
-    pub linux_async_reprojection: bool,
-    pub nvenc_quality_preset: u32,
-    pub nvenc_tuning_preset: u32,
-    pub nvenc_multi_pass: u32,
-    pub nvenc_adaptive_quantization_mode: u32,
-    pub nvenc_low_delay_key_frame_scale: i64,
-    pub nvenc_refresh_rate: i64,
-    pub enable_intra_refresh: bool,
-    pub intra_refresh_period: i64,
-    pub intra_refresh_count: i64,
-    pub max_num_ref_frames: i64,
-    pub gop_length: i64,
-    pub p_frame_strategy: i64,
-    pub nvenc_rate_control_mode: i64,
-    pub rc_buffer_size: i64,
-    pub rc_initial_delay: i64,
-    pub rc_max_bitrate: i64,
-    pub rc_average_bitrate: i64,
-    pub nvenc_enable_weighted_prediction: bool,
-    pub capture_frame_dir: String,
-    pub amd_bitrate_corruption_fix: bool,
-    pub use_separate_hand_trackers: bool,
-
-    // these settings are not used on the C++ side, but we need them to correctly trigger a SteamVR
-    // restart
-    pub _controller_profile: i32,
-    pub _server_impl_debug: bool,
-    pub _client_impl_debug: bool,
-    pub _server_core_debug: bool,
-    pub _client_core_debug: bool,
-    pub _connection_debug: bool,
-    pub _sockets_debug: bool,
-    pub _server_gfx_debug: bool,
-    pub _client_gfx_debug: bool,
-    pub _encoder_debug: bool,
-    pub _decoder_debug: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -127,35 +44,29 @@ pub struct ClientConnectionConfig {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SessionConfig {
     pub server_version: Version,
-    pub openvr_config: OpenvrConfig,
     // The hashmap key is the hostname
     pub client_connections: HashMap<String, ClientConnectionConfig>,
     pub session_settings: SessionSettings,
+    pub restart_settings_hash: u64,
+    pub steamvr_hmd_init_config: SteamvrHmdInitConfig,
 }
 
 impl Default for SessionConfig {
     fn default() -> Self {
         Self {
             server_version: ALVR_VERSION.clone(),
-            openvr_config: OpenvrConfig {
+            client_connections: HashMap::new(),
+            session_settings: settings::session_settings_default(),
+            restart_settings_hash: 0,
+            steamvr_hmd_init_config: SteamvrHmdInitConfig {
                 // avoid realistic resolutions, as on first start, on Linux, it
                 // could trigger direct mode on an existing monitor
                 eye_resolution_width: 800,
                 eye_resolution_height: 900,
                 target_eye_resolution_width: 800,
                 target_eye_resolution_height: 900,
-                adapter_index: 0,
                 refresh_rate: 60,
-                controllers_enabled: false,
-                body_tracking_vive_enabled: false,
-                enable_foveated_encoding: false,
-                enable_color_correction: false,
-                linux_async_reprojection: false,
-                capture_frame_dir: "/tmp".into(),
-                ..<_>::default()
             },
-            client_connections: HashMap::new(),
-            session_settings: settings::session_settings_default(),
         }
     }
 }

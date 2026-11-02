@@ -563,13 +563,6 @@ pub unsafe extern "C" fn alvr_duration_until_next_vsync(out_ns: *mut u64) -> boo
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn alvr_restart() {
-    if let Some(context) = SERVER_CORE_CONTEXT.write().take() {
-        context.restart();
-    }
-}
-
-#[unsafe(no_mangle)]
 pub extern "C" fn alvr_shutdown() {
     SERVER_CORE_CONTEXT.write().take();
 }

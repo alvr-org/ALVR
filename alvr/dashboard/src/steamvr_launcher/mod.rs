@@ -25,6 +25,19 @@ use std::{
 use sysinfo::{ProcessesToUpdate, System};
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
+
+// On Linux, spawned processes are children of the current process.
+// We need to make sure to reap SteamVR processes spawned by us or they would not be able to be
+// relaunched.
+pub(super) fn spawn_and_reap(command: &mut Command) -> Result<()> {
+    let mut child = command.spawn()?;
+
+    thread::spawn(move || {
+        child.wait().ok();
+    });
+
+    Ok(())
+}
 const DRIVER_KEY: &str = "driver_alvr_server";
 const BLOCKED_KEY: &str = "blocked_by_safe_mode";
 
@@ -168,7 +181,7 @@ impl Launcher {
             if start_script.exists() {
                 debug!("Running VR server start script: {}", start_script.display());
 
-                if let Err(e) = Command::new(&start_script).spawn() {
+                if let Err(e) = spawn_and_reap(&mut Command::new(&start_script)) {
                     error!("Failed to run VR server start script: {e}");
                 }
             } else if let Ok(steamvr_bin_dir) =
@@ -182,7 +195,7 @@ impl Launcher {
 
                 debug!("Launching SteamVR from path: {}", steamvr_path.display());
 
-                if let Err(e) = Command::new(&steamvr_path).spawn() {
+                if let Err(e) = spawn_and_reap(&mut Command::new(&steamvr_path)) {
                     error!(
                         "Failed to run SteamVR from automatically detected path {} with error: {e}",
                         steamvr_path.display()

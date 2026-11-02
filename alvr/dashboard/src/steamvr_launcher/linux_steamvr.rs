@@ -7,10 +7,10 @@ use alvr_common::{debug, error, info, warn};
 use sysinfo::Process;
 
 pub fn launch_steamvr_with_steam() {
-    Command::new("steam")
-        .args(["steam://rungameid/250820"])
-        .spawn()
-        .ok();
+    if let Err(e) = super::spawn_and_reap(Command::new("steam").args(["steam://rungameid/250820"]))
+    {
+        error!("Failed to launch SteamVR through Steam: {e}");
+    }
 }
 
 pub fn terminate_process(process: &Process) {

@@ -180,7 +180,9 @@ async fn update_session(Json(config): Json<SessionConfig>) {
 }
 
 async fn set_session_values(Json(descs): Json<Vec<PathValuePair>>) {
-    SESSION_MANAGER.write().set_session_values(descs).ok();
+    if let Err(e) = SESSION_MANAGER.write().set_session_values(descs) {
+        error!("Failed to set session values: {e}");
+    }
 }
 
 async fn update_client_connections(

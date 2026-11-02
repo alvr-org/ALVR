@@ -159,21 +159,16 @@ impl ServerSessionManager {
         for desc in descs {
             let mut session_ref = &mut session_json;
             for segment in &desc.path {
-                session_ref = match segment {
-                    PathSegment::Name(name) => {
-                        if let Some(name) = session_ref.get_mut(name) {
-                            name
-                        } else {
-                            bail!("From path {:?}: segment \"{name}\" not found", desc.path);
-                        }
-                    }
-                    PathSegment::Index(index) => {
-                        if let Some(index) = session_ref.get_mut(index) {
-                            index
-                        } else {
-                            bail!("From path {:?}: segment [{index}] not found", desc.path);
-                        }
-                    }
+                let next = match segment {
+                    PathSegment::Name(name) => session_ref.get_mut(name),
+                    PathSegment::Index(index) => session_ref.get_mut(index),
+                };
+                session_ref = match next {
+                    Some(value) => value,
+                    None => bail!(
+                        "path \"{}\": segment {segment} not found",
+                        alvr_packets::path_to_string(&desc.path)
+                    ),
                 };
             }
             *session_ref = desc.value.clone();

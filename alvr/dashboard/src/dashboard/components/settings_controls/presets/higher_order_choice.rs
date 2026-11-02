@@ -1,5 +1,6 @@
 use super::schema::{HigherOrderChoiceSchema, PresetModifierOperation};
 use crate::dashboard::components::{self, NestingInfo, SettingControl};
+use alvr_common::debug;
 use alvr_packets::{PathSegment, PathValuePair};
 use eframe::egui::Ui;
 use serde_json as json;
@@ -26,7 +27,10 @@ impl Control {
                         .iter()
                         .map(|modifier| match &modifier.operation {
                             PresetModifierOperation::Assign(value) => PathValuePair {
-                                path: alvr_packets::parse_path(&modifier.target_path),
+                                path: alvr_common::show_err(alvr_packets::parse_path(
+                                    &modifier.target_path,
+                                ))
+                                .unwrap_or_default(),
                                 value: value.clone(),
                             },
                         })
@@ -94,24 +98,23 @@ impl Control {
             for desc in descs {
                 let mut session_ref = session_setting_json;
 
-                // Note: the first path segment is always "settings_schema". Skip that.
-                for segment in &desc.path[1..] {
-                    session_ref = match segment {
-                        PathSegment::Name(name) => {
-                            if let Some(name) = session_ref.get(name) {
-                                name
-                            } else {
-                                continue 'outer;
-                            }
-                        }
-                        PathSegment::Index(index) => {
-                            if let Some(index) = session_ref.get(index) {
-                                index
-                            } else {
-                                continue 'outer;
-                            }
-                        }
+                // Note: the first path segment should be "settings_schema". Skip that.
+                let Some(segments) = desc.path.get(1..) else {
+                    continue 'outer;
+                };
+                for segment in segments {
+                    let next = match segment {
+                        PathSegment::Name(name) => session_ref.get(name),
+                        PathSegment::Index(index) => session_ref.get(index),
                     };
+                    let Some(next) = next else {
+                        debug!(
+                            "Preset modifier targets \"{}\", which is not in the current session",
+                            alvr_packets::path_to_string(&desc.path)
+                        );
+                        continue 'outer;
+                    };
+                    session_ref = next;
                 }
 
                 if !components::json_values_eq(session_ref, &desc.value) {

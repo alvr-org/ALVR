@@ -94,7 +94,8 @@ impl NewVersionPopup {
                     ServerRequest::SetSessionValues(vec![PathValuePair {
                         path: alvr_packets::parse_path(
                             "session_settings.extra.new_version_popup.content.hide_while_version",
-                        ),
+                        )
+                        .unwrap(),
                         value: serde_json::Value::String(self.version.clone()),
                     }]),
                 ))

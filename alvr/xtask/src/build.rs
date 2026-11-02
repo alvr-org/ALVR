@@ -4,7 +4,7 @@ use std::{
     env,
     fmt::{self, Display, Formatter},
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     vec,
 };
 use xshell::{cmd, Shell};
@@ -69,6 +69,132 @@ pub fn build_server_lib(profile: Profile, root: Option<String>, reproducible: bo
 
     let out = build_dir.join("alvr_server_core.h");
     cmd!(sh, "cbindgen --output {out}").run().unwrap();
+}
+
+pub fn cross_build_windows_streamer(
+    profile: Profile,
+    root: Option<String>,
+    reproducible: bool,
+    profiling: bool,
+    keep_config: bool,
+) {
+    let sh = Shell::new().unwrap();
+
+    let cargo_target = "x86_64-pc-windows-msvc";
+    let target_dir = afs::target_dir().join(cargo_target);
+
+    println!("Cross compiling for Windows using target {cargo_target}");
+    println!("Target dir: {}", target_dir.display());
+
+    let mut common_flags = vec!["--target", cargo_target];
+    match profile {
+        Profile::Distribution => {
+            common_flags.push("--profile");
+            common_flags.push("distribution");
+        }
+        Profile::Release => common_flags.push("--release"),
+        Profile::Debug => (),
+    }
+    if reproducible {
+        common_flags.push("--locked");
+    }
+
+    let streamer_build_dir = afs::build_dir().join("alvr_streamer_windows");
+    println!("Streamer build dir: {}", streamer_build_dir.display());
+    let build_layout = Layout::new_cross_windows(&streamer_build_dir);
+
+    let artifacts_dir = afs::target_dir()
+        .join(cargo_target)
+        .join(profile.to_string());
+    println!("Artifacts dir: {}", artifacts_dir.display());
+
+    let common_flags_ref = &common_flags;
+
+    let maybe_config = if keep_config {
+        fs::read_to_string(build_layout.session()).ok()
+    } else {
+        None
+    };
+
+    sh.remove_path(afs::streamer_build_dir()).ok();
+    sh.create_dir(build_layout.openvr_driver_lib_dir()).unwrap();
+    sh.create_dir(&build_layout.executables_dir).unwrap();
+
+    if let Some(config) = maybe_config {
+        fs::write(build_layout.session(), config).ok();
+    }
+
+    if let Some(root) = root {
+        sh.set_var("ALVR_ROOT_DIR", root);
+    }
+
+    // build server
+    {
+        let profiling_flag = if profiling {
+            vec!["--features", "alvr_server_core/trace-performance"]
+        } else {
+            vec![]
+        };
+
+        let _push_guard = sh.push_dir(afs::crate_dir("server_openvr"));
+        cmd!(sh, "cargo build {common_flags_ref...} {profiling_flag...}")
+            .run()
+            .unwrap();
+
+        sh.copy_file(
+            artifacts_dir.join("alvr_server_openvr.dll"),
+            build_layout
+                .openvr_driver_lib_dir()
+                .join("driver_alvr_server.dll"),
+        )
+        .unwrap();
+
+        sh.copy_file(
+            artifacts_dir.join("alvr_server_openvr.pdb"),
+            build_layout
+                .openvr_driver_lib_dir()
+                .join("alvr_server_openvr.pdb"),
+        )
+        .unwrap();
+
+        sh.copy_file(
+            afs::workspace_dir().join("openvr/bin/win64/openvr_api.dll"),
+            build_layout.openvr_driver_lib_dir(),
+        )
+        .unwrap();
+
+        // Bring along the c++ runtime
+        command::copy_recursive(
+            &sh,
+            &afs::crate_dir("server_openvr").join("cpp/bin/windows"),
+            &build_layout.openvr_driver_lib_dir(),
+        )
+        .unwrap();
+    }
+
+    // Build dashboard
+    {
+        let _push_guard = sh.push_dir(afs::crate_dir("dashboard"));
+        cmd!(sh, "cargo build {common_flags_ref...}").run().unwrap();
+
+        let dashboard_fname = "ALVR Dashboard.exe";
+
+        sh.copy_file(
+            artifacts_dir.join("alvr_dashboard.exe"),
+            build_layout.executables_dir.join(dashboard_fname),
+        )
+        .unwrap();
+    }
+
+    // copy static resources
+    {
+        // copy driver manifest
+        sh.copy_file(
+            afs::crate_dir("xtask").join("resources/driver.vrdrivermanifest"),
+            build_layout.openvr_driver_manifest(),
+        )
+        .unwrap();
+    }
 }
 
 pub fn build_streamer(

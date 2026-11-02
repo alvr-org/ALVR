@@ -1,6 +1,6 @@
 #include "RenderUtils.h"
 
-#include <D3d11_4.h>
+#include <d3d11_4.h>
 
 using namespace std::string_literals;
 using Microsoft::WRL::ComPtr;

@@ -193,6 +193,8 @@ fn main() {
             "android" => BuildPlatform::Android,
             _ => print_help_and_exit("Unrecognized platform"),
         });
+        let cross_to_windows =
+            cfg!(not(target_os = "windows")) && matches!(platform, Some(BuildPlatform::Windows));
 
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
         let root: Option<String> = args.opt_value_from_str("--root").unwrap();
@@ -229,7 +231,17 @@ fn main() {
                     }
                 }
                 "build-streamer" => {
-                    build::build_streamer(profile, gpl, None, false, profiling, keep_config)
+                    if cross_to_windows {
+                        build::cross_build_windows_streamer(
+                            profile,
+                            None,
+                            false,
+                            profiling,
+                            keep_config,
+                        )
+                    } else {
+                        build::build_streamer(profile, gpl, None, false, profiling, keep_config)
+                    }
                 }
                 "build-launcher" => build::build_launcher(profile, false),
                 "build-server-lib" => build::build_server_lib(profile, None, false),

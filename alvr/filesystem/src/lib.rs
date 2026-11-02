@@ -106,6 +106,8 @@ pub struct Layout {
     // (linux only) directory where the vulkan layer manifest is saved
     pub vulkan_layer_manifest_dir: PathBuf,
     pub launcher_root: Option<PathBuf>,
+
+    pub platform: Option<&'static str>,
 }
 
 impl Layout {
@@ -154,6 +156,7 @@ impl Layout {
                     .and_then(|p| p.parent())
                     .and_then(|p| p.parent())
                     .map(|p| p.to_owned()),
+                platform: None,
             }
         }
         #[cfg(not(target_os = "linux"))]
@@ -170,6 +173,25 @@ impl Layout {
             ufw_config_dir: root.to_owned(),
             vulkan_layer_manifest_dir: root.to_owned(),
             launcher_root: root.parent().and_then(|p| p.parent()).map(|p| p.to_owned()),
+            platform: None,
+        }
+    }
+
+    pub fn new_cross_windows(root: &Path) -> Self {
+        Self {
+            executables_dir: root.to_owned(),
+            libraries_dir: root.to_owned(),
+            static_resources_dir: root.to_owned(),
+            config_dir: root.to_owned(),
+            log_dir: root.to_owned(),
+            openvr_driver_root_dir: root.to_owned(),
+            vrcompositor_wrapper_dir: root.to_owned(),
+            firewall_script_dir: root.to_owned(),
+            firewalld_config_dir: root.to_owned(),
+            ufw_config_dir: root.to_owned(),
+            vulkan_layer_manifest_dir: root.to_owned(),
+            launcher_root: root.parent().and_then(|p| p.parent()).map(|p| p.to_owned()),
+            platform: Some("win64"),
         }
     }
 
@@ -228,15 +250,19 @@ impl Layout {
     }
 
     pub fn openvr_driver_lib_dir(&self) -> PathBuf {
-        let platform = if cfg!(windows) {
-            "win64"
-        } else if cfg!(target_os = "linux") {
-            "linux64"
-        } else if cfg!(target_os = "macos") {
-            "macos"
-        } else {
-            unimplemented!()
-        };
+        let platform = self.platform.unwrap_or_else(|| {
+            // Those tests aren't "working" while cross compiling
+            // since this is called in build.rs, which is a host tool
+            if cfg!(windows) {
+                "win64"
+            } else if cfg!(target_os = "linux") {
+                "linux64"
+            } else if cfg!(target_os = "macos") {
+                "macos"
+            } else {
+                unimplemented!()
+            }
+        });
 
         self.openvr_driver_root_dir.join("bin").join(platform)
     }

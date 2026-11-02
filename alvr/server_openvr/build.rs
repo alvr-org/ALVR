@@ -21,8 +21,90 @@ fn get_linux_x264_path() -> PathBuf {
     alvr_filesystem::deps_dir().join("linux/x264/alvr_build")
 }
 
+fn cross_windows_build() {
+    let platform_name = "windows";
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+
+    let platform_subpath = "cpp/platform/win32";
+
+    let common_iter = walkdir::WalkDir::new("cpp")
+        .into_iter()
+        .filter_entry(|entry| {
+            entry.file_name() != "tools"
+                && entry.file_name() != "platform"
+                && (platform_name != "macos" || entry.file_name() != "amf")
+                && (platform_name != "linux" || entry.file_name() != "amf")
+        });
+
+    let platform_iter = walkdir::WalkDir::new(platform_subpath).into_iter();
+
+    let cpp_paths = common_iter
+        .chain(platform_iter)
+        .filter_map(|maybe_entry| maybe_entry.ok())
+        .map(|entry| entry.into_path())
+        .collect::<Vec<_>>();
+
+    let source_files_paths = cpp_paths.iter().filter(|path| {
+        path.extension()
+            .filter(|ext| {
+                let ext_str = ext.to_string_lossy();
+                ext_str == "c" || ext_str == "cpp"
+            })
+            .is_some()
+    });
+
+    let mut build = cc::Build::new();
+    build
+        .cpp(true)
+        .std("c++17")
+        .files(source_files_paths)
+        .include(alvr_filesystem::workspace_dir().join("openvr/headers"))
+        .include("cpp")
+        .flag("/MD")
+        .flag("/EHsc")
+        .debug(false) // This is because we cannot link to msvcrtd (see below)
+        .flag("/permissive-")
+        .define("NOMINMAX", None)
+        .define("_WINSOCKAPI_", None)
+        .define("_MBCS", None)
+        .define("_MT", None);
+
+    #[cfg(debug_assertions)]
+    build.define("ALVR_DEBUG_LOG", None);
+
+    build.compile("bindings");
+
+    bindgen::builder()
+        .clang_arg("-xc++")
+        .header("cpp/alvr_server/bindings.h")
+        .derive_default(true)
+        .generate()
+        .unwrap()
+        .write_to_file(out_dir.join("bindings.rs"))
+        .unwrap();
+
+    println!(
+        "cargo:rustc-link-search=native={}",
+        alvr_filesystem::workspace_dir()
+            .join("openvr/lib/win64")
+            .to_string_lossy()
+    );
+    println!("cargo:rustc-link-lib=openvr_api");
+
+    for path in cpp_paths {
+        println!("cargo:rerun-if-changed={}", path.to_string_lossy());
+    }
+}
+
 fn main() {
     let platform_name = env::var("CARGO_CFG_TARGET_OS").unwrap();
+
+    let cross_to_windows = cfg!(not(target_os = "windows")) && platform_name == "windows";
+    if cross_to_windows {
+        cross_windows_build();
+        return;
+    }
+
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
     let platform_subpath = match platform_name.as_str() {

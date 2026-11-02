@@ -11,4 +11,4 @@ rename_variants = "QualifiedScreamingSnakeCase"
 
 [parse]
 parse_deps = true
-include = ["alvr_common"]
+include = ["alvr_common", "alvr_packets"]

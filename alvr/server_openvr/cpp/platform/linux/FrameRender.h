@@ -29,10 +29,15 @@ private:
         float eyeHeightRatio;
         float centerSizeX;
         float centerSizeY;
-        float centerShiftX;
-        float centerShiftY;
         float edgeRatioX;
         float edgeRatioY;
+    };
+
+    struct FoveationCenterShifts {
+        float leftX;
+        float leftY;
+        float rightX;
+        float rightY;
     };
 
     void setupColorCorrection();
@@ -44,5 +49,6 @@ private:
     ExternalHandle m_handle = ExternalHandle::None;
     ColorCorrection m_colorCorrectionConstants;
     FoveationVars m_foveatedRenderingConstants;
+    FoveationCenterShifts m_foveationCenterShifts;
     std::vector<RenderPipeline*> m_pipelines;
 };

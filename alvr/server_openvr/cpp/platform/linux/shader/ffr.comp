@@ -8,14 +8,16 @@ layout (constant_id = 0) const float eyeSizeRatioX = 0.;
 layout (constant_id = 1) const float eyeSizeRatioY = 0.;
 layout (constant_id = 2) const float centerSizeX = 0.;
 layout (constant_id = 3) const float centerSizeY = 0.;
-layout (constant_id = 4) const float centerShiftX = 0.;
-layout (constant_id = 5) const float centerShiftY = 0.;
-layout (constant_id = 6) const float edgeRatioX = 0.;
-layout (constant_id = 7) const float edgeRatioY = 0.;
+layout (constant_id = 4) const float edgeRatioX = 0.;
+layout (constant_id = 5) const float edgeRatioY = 0.;
+
+layout (push_constant) uniform FoveationCenterShifts {
+    vec2 centerShiftLeft;
+    vec2 centerShiftRight;
+};
 
 const vec2 eyeSizeRatio = vec2(eyeSizeRatioX, eyeSizeRatioY);
 const vec2 centerSize = vec2(centerSizeX, centerSizeY);
-const vec2 centerShift = vec2(centerShiftX, centerShiftY);
 const vec2 edgeRatio = vec2(edgeRatioX, edgeRatioY);
 
 vec2 TextureToEyeUV(vec2 textureUV, bool isRightEye)
@@ -35,6 +37,31 @@ vec2 EyeToTextureUV(vec2 eyeUV, bool isRightEye)
     return vec2(eyeUV.x * .5 + float(isRightEye) * (1. - eyeUV.x), eyeUV.y);
 }
 
+float CompressAxis(float eyeUV, float centerSizeAxis, float centerShiftAxis, float edgeRatioAxis)
+{
+    float c0 = (1. - centerSizeAxis) * .5;
+    float c1 = (edgeRatioAxis - 1.) * c0 * (centerShiftAxis + 1.) / edgeRatioAxis;
+    float c2 = (edgeRatioAxis - 1.) * centerSizeAxis + 1.;
+
+    float loBound = c0 * (centerShiftAxis + 1.) / c2;
+    float hiBound = c0 * (centerShiftAxis - 1.) / c2 + 1.;
+    float center = eyeUV * c2 / edgeRatioAxis + c1;
+
+    if (eyeUV < loBound) {
+        float d2 = eyeUV * c2;
+        float g1 = eyeUV / max(loBound, 1e-6);
+        return g1 * center + (1. - g1) * d2;
+    }
+
+    if (eyeUV > hiBound) {
+        float d3 = (eyeUV - 1.) * c2 + 1.;
+        float g2 = (1. - eyeUV) / max(1. - hiBound, 1e-6);
+        return g2 * center + (1. - g2) * d3;
+    }
+
+    return center;
+}
+
 void main()
 {
     ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
@@ -42,29 +69,12 @@ void main()
 
     bool isRightEye = uv.x > 0.5;
     vec2 eyeUV = TextureToEyeUV(uv, isRightEye) / eyeSizeRatio;
+    vec2 centerShift = isRightEye ? centerShiftRight : centerShiftLeft;
 
-    vec2 c0 = (1. - centerSize) * .5;
-    vec2 c1 = (edgeRatio - 1.) * c0 * (centerShift + 1.) / edgeRatio;
-    vec2 c2 = (edgeRatio - 1.) * centerSize + 1.;
-
-    vec2 loBound = c0 * (centerShift + 1.) / c2;
-    vec2 hiBound = c0 * (centerShift - 1.) / c2 + 1.;
-    vec2 underBound = vec2(eyeUV.x < loBound.x, eyeUV.y < loBound.y);
-    vec2 inBound = vec2(loBound.x < eyeUV.x && eyeUV.x < hiBound.x,
-                        loBound.y < eyeUV.y && eyeUV.y < hiBound.y);
-    vec2 overBound = vec2(eyeUV.x > hiBound.x, eyeUV.y > hiBound.y);
-
-    vec2 center = eyeUV * c2 / edgeRatio + c1;
-
-    vec2 d2 = eyeUV * c2;
-    vec2 d3 = (eyeUV - 1.) * c2 + 1.;
-    vec2 g1 = eyeUV / loBound;
-    vec2 g2 = (1. - eyeUV) / (1. - hiBound);
-
-    vec2 leftEdge = g1 * center + (1. - g1) * d2;
-    vec2 rightEdge = g2 * center + (1. - g2) * d3;
-
-    vec2 compressedUV = underBound * leftEdge + inBound * center + overBound * rightEdge;
+    vec2 compressedUV = vec2(
+        CompressAxis(eyeUV.x, centerSize.x, centerShift.x, edgeRatio.x),
+        CompressAxis(eyeUV.y, centerSize.y, centerShift.y, edgeRatio.y)
+    );
 
     imageStore(out_img, pos, texture(in_img, EyeToTextureUV(compressedUV, isRightEye)));
 }

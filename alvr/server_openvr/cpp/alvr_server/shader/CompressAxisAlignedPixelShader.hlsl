@@ -12,31 +12,39 @@ SamplerState trilinearSampler {
 	//AddressV = Wrap;
 };
 
+float CompressAxis(float eyeUV, float centerSizeAxis, float centerShiftAxis, float edgeRatioAxis) {
+	float c0 = (1. - centerSizeAxis) / 2.;
+	float c1 = (edgeRatioAxis - 1.) * c0 * (centerShiftAxis + 1.) / edgeRatioAxis;
+	float c2 = (edgeRatioAxis - 1.) * centerSizeAxis + 1.;
+
+	float loBound = c0 * (centerShiftAxis + 1.) / c2;
+	float hiBound = c0 * (centerShiftAxis - 1.) / c2 + 1.;
+	float center = eyeUV * c2 / edgeRatioAxis + c1;
+
+	if (eyeUV < loBound) {
+		float d2 = eyeUV * c2;
+		float g1 = eyeUV / max(loBound, 1e-6);
+		return g1 * center + (1. - g1) * d2;
+	}
+
+	if (eyeUV > hiBound) {
+		float d3 = (eyeUV - 1.) * c2 + 1.;
+		float g2 = (1. - eyeUV) / max(1. - hiBound, 1e-6);
+		return g2 * center + (1. - g2) * d3;
+	}
+
+	return center;
+}
+
 float4 main(float2 uv : TEXCOORD0) : SV_Target {
 	bool isRightEye = uv.x > 0.5;
 	float2 eyeUV = TextureToEyeUV(uv, isRightEye) / eyeSizeRatio;
+	float2 centerShift = isRightEye ? centerShiftRight : centerShiftLeft;
 
-	float2 c0 = (1. - centerSize) / 2.;
-	float2 c1 = (edgeRatio - 1.) * c0 * (centerShift + 1.) / edgeRatio;
-	float2 c2 = (edgeRatio - 1.) * centerSize + 1.;
-
-	float2 loBound = c0 * (centerShift + 1.) / c2;
-	float2 hiBound = c0 * (centerShift - 1.) / c2 + 1.;
-	float2 underBound = float2(eyeUV.x < loBound.x, eyeUV.y < loBound.y);
-	float2 inBound = float2(loBound.x < eyeUV.x && eyeUV.x < hiBound.x,
-							loBound.y < eyeUV.y && eyeUV.y < hiBound.y);
-	float2 overBound = float2(eyeUV.x > hiBound.x, eyeUV.y > hiBound.y);
-
-	float2 center = eyeUV * c2 / edgeRatio + c1;
-	float2 d2 = eyeUV * c2;
-	float2 d3 = (eyeUV - 1.) * c2 + 1.;
-	float2 g1 = eyeUV / loBound;
-	float2 g2 = (1. - eyeUV) / (1. - hiBound);
-
-	float2 leftEdge = g1 * center + (1. - g1) * d2;
-	float2 rightEdge = g2 * center + (1. - g2) * d3;
-
-	float2 compressedUV = underBound * leftEdge + inBound * center + overBound * rightEdge;
+	float2 compressedUV = float2(
+		CompressAxis(eyeUV.x, centerSize.x, centerShift.x, edgeRatio.x),
+		CompressAxis(eyeUV.y, centerSize.y, centerShift.y, edgeRatio.y)
+	);
 
 	return compositionTexture.Sample(trilinearSampler, EyeToTextureUV(compressedUV, isRightEye));
 }

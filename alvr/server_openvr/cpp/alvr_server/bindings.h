@@ -88,6 +88,14 @@ struct FfiDynamicEncoderParams {
     float framerate;
 };
 
+struct FfiFoveatedEncodingParams {
+    unsigned int encodedViewResolution[2];
+    float viewRatio[2];
+    float centerSize[2];
+    float centerShifts[2][2];
+    float edgeRatio[2];
+};
+
 struct Settings {
     int m_refreshRate;
     unsigned int m_renderWidth;
@@ -98,12 +106,7 @@ struct Settings {
     char m_captureFrameDir[1024];
 
     bool m_enableFoveatedEncoding;
-    float m_foveationCenterSizeX;
-    float m_foveationCenterSizeY;
-    float m_foveationCenterShiftX;
-    float m_foveationCenterShiftY;
-    float m_foveationEdgeRatioX;
-    float m_foveationEdgeRatioY;
+    FfiFoveatedEncodingParams m_foveatedEncoding;
 
     bool m_enableColorCorrection;
     float m_brightness;

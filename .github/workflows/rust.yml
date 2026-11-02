@@ -79,8 +79,8 @@ jobs:
           submodules: true
 
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-linux-android
+
+      - run: rustup target add aarch64-linux-android
 
       - uses: Swatinem/rust-cache@v2
 

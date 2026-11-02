@@ -65,7 +65,7 @@ impl VideoStreamingCapabilities {
 pub struct ConnectionAcceptedInfo {
     pub client_protocol_id: u64,
     pub platform_string: String,
-    pub server_ip: IpAddr,
+    pub server_ip: IpAddr, // must be unused for now
     pub streaming_capabilities: Option<VideoStreamingCapabilities>,
 }
 

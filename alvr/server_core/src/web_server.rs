@@ -18,7 +18,11 @@ use axum::{
     routing,
 };
 use serde_json as json;
-use std::{net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{
+    net::{Ipv4Addr, SocketAddr},
+    path::PathBuf,
+    sync::Arc,
+};
 use tokio::{net::TcpListener, sync::broadcast::error::RecvError};
 use tower_http::{
     cors::{self, CorsLayer},
@@ -46,13 +50,21 @@ async fn ensure_preflight(request: Request, next: middleware::Next) -> Response 
 
 pub async fn web_server(connection_context: Arc<ConnectionContext>) -> Result<()> {
     let allow_untrusted_http;
+    let allow_remote_dashboard;
     let web_server_port;
 
     {
         let session_manager = SESSION_MANAGER.read();
         allow_untrusted_http = session_manager.settings().connection.allow_untrusted_http;
+        allow_remote_dashboard = session_manager.settings().connection.allow_remote_dashboard;
         web_server_port = session_manager.settings().connection.web_server_port;
     }
+
+    let bind_address = if allow_remote_dashboard {
+        Ipv4Addr::UNSPECIFIED
+    } else {
+        Ipv4Addr::LOCALHOST
+    };
 
     let mut cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST])
@@ -120,7 +132,7 @@ pub async fn web_server(connection_context: Arc<ConnectionContext>) -> Result<()
         .with_state(connection_context);
 
     axum::serve(
-        TcpListener::bind(SocketAddr::new([0, 0, 0, 0].into(), web_server_port))
+        TcpListener::bind(SocketAddr::new(bind_address.into(), web_server_port))
             .await
             .unwrap(),
         router,

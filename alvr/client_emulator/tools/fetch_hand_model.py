@@ -9,12 +9,14 @@ these particular files -- the loader matches joints by name and corrects for wha
 convention a rig uses -- so any rigged, skinned hand can replace them by pointing `left_model` and
 `right_model` in `hands.json` somewhere else.
 
-They are downloaded rather than vendored so this repository does not carry third-party art.
+They are committed in `alvr/client_emulator/models/`, which `build.rs` copies beside the
+executable, where `hands.json` looks for them. This script is how they were obtained, and
+refreshes them:
 
-    python alvr/client_emulator/tools/fetch_hand_model.py
+    python alvr/client_emulator/tools/fetch_hand_model.py --force
 
-Writes `hand_left.gltf` and `hand_right.gltf` into `target/debug/models/` by default, which is
-where `hands.json` looks for them. Pass a directory to write somewhere else.
+Writes `hand_left.gltf` and `hand_right.gltf` into `alvr/client_emulator/models/` by default.
+Pass a directory to write somewhere else.
 """
 
 import argparse
@@ -76,8 +78,8 @@ def main() -> int:
     parser.add_argument(
         "directory",
         nargs="?",
-        default="target/debug/models",
-        help="where to write the models (default: target/debug/models)",
+        default=str(Path(__file__).resolve().parent.parent / "models"),
+        help="where to write the models (default: alvr/client_emulator/models)",
     )
     parser.add_argument(
         "--force",

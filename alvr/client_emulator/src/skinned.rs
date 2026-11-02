@@ -95,9 +95,9 @@ impl SkinnedModel {
     ) -> Result<Self> {
         if !path.exists() {
             bail!(
-                "Hand model not found: {}. Run `python \
-                 alvr/client_emulator/tools/fetch_hand_model.py` to download it, or point \
-                 `left_model` / `right_model` in {} at your own rigged hand.",
+                "Hand model not found: {}. The build copies the bundled models there from \
+                 alvr/client_emulator/models; rebuild, or point `left_model` / `right_model` in \
+                 {} at your own rigged hand.",
                 path.display(),
                 crate::hands::SETTINGS_FILE_NAME
             );

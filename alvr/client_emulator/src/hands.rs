@@ -950,9 +950,8 @@ struct SettingsFile {
     transition_seconds: f32,
     /// Base colour of the hand model, linear RGB.
     model_color: [f32; 3],
-    /// Colour of the glove on a fingerless-glove model such as the one the fetch script
-    /// downloads, whose cuff ridge sits at the second knuckle. Everything from there to the
-    /// fingertips takes `model_color` instead, blended across the weights so the seam is clean.
+    /// Colour of the glove on a fingerless-glove model such as the bundled one, whose cuff ridge
+    /// sits at the second knuckle. Everything from there to the fingertips takes `model_color` instead, blended across the weights so the seam is clean.
     /// Set to `null` for a plain hand model, which draws entirely in `model_color`.
     ///
     /// Defaulted rather than optional so a settings file written before this existed picks the
@@ -1021,7 +1020,7 @@ struct KeyframeEntry {
 }
 
 /// The glove tint a settings file gets when it does not mention one, which is the colour that
-/// suits the model the fetch script downloads.
+/// suits the bundled model.
 fn default_glove_color() -> Option<[f32; 3]> {
     Some([0.20, 0.22, 0.28])
 }

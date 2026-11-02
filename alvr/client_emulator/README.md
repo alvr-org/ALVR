@@ -317,7 +317,7 @@ distance while Point keeps the index out of it, and that the two hands are exact
 - `transition_seconds` — how long a change of pose takes, unless the pose overrides it.
 - `model_color` — what the hand model is tinted with. A hand model usually carries no material, so
   without this it would draw plain white; set it to `[1, 1, 1]` for a model that is textured.
-- `glove_color` — the model the fetch script downloads is a *fingerless glove*, with a modelled
+- `glove_color` — the bundled model is a *fingerless glove*, with a modelled
   cuff ridge at the second knuckle. Drawn in one colour that ridge reads as an unexplained seam
   across every finger, so the glove is tinted separately from the bare fingertips; the blend
   follows the skin weights, so the seam lands on the ridge. Set it to `null` for a plain hand
@@ -337,18 +337,19 @@ that no edit can change.
 
 ### Hand models
 
-The models are downloaded rather than committed, so this repository carries no third-party art:
+A left and a right hand from [Godot XR Tools](https://github.com/GodotVR/godot-xr-tools) are
+committed in `alvr/client_emulator/models/`, and the build copies them into
+`target/<profile>/models/`, where `hands.json` looks for them. Nothing needs downloading. The glTF
+files declare themselves CC0 Public Domain in their own `asset.copyright` (the surrounding project
+is MIT licensed), and they suit this exactly: one skinned mesh each, rigged to twenty-six joints
+named after the same OpenXR layout ALVR carries.
+
+`tools/fetch_hand_model.py` is how they were obtained, and refreshes them: it pins the upstream
+commit and checks a SHA-256, so a refresh yields the same art.
 
 ```sh
-python alvr/client_emulator/tools/fetch_hand_model.py
+python alvr/client_emulator/tools/fetch_hand_model.py --force
 ```
-
-That fetches a left and a right hand from [Godot XR
-Tools](https://github.com/GodotVR/godot-xr-tools) into `target/debug/models/`, where `hands.json`
-looks for them. The glTF files declare themselves CC0 Public Domain in their own `asset.copyright`
-(the surrounding project is MIT licensed), and they suit this exactly: one skinned mesh each,
-rigged to twenty-six joints named after the same OpenXR layout ALVR carries. The script pins the
-upstream commit and checks a SHA-256, so a rebuild fetches the same art.
 
 Nothing depends on those particular files. Any rigged, skinned glTF hand works: joints are matched
 by name, ignoring case, separators and a trailing `_L` / `_R`, and `joint_names` covers a rig whose
@@ -792,7 +793,7 @@ enabled.
 | `src/hand.wgsl` | Skinned, normal-shaded hand shader |
 | `tools/make_environment.py` | Generates a test environment |
 | `tools/convert_rendermodel.py` | Converts a local SteamVR render model into a loadable glTF |
-| `tools/fetch_hand_model.py` | Downloads the CC0 hand models the hand renderer draws |
+| `tools/fetch_hand_model.py` | Refreshes the committed CC0 hand models in `models/` |
 
 `Scene` is deliberately a geometry container rather than a renderer, so an alternative source such as
 a Gaussian splat capture can be added without changing the code that consumes it.

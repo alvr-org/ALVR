@@ -82,7 +82,8 @@ Two properties are worth stating because a lot follows from them:
 | `src/render.rs` | — | `HandRenderer`, `SkinPipeline`, `HandTint`, `DeviceModels` |
 | `src/client.rs` | — | `TrackedHand`, skeleton interpolation, `hand_skeletons` on the wire |
 | `src/api.rs`, `src/main.rs` | — | `HandCommand`, `HandsResponse`, state ownership and wiring |
-| `tools/fetch_hand_model.py` | — | Downloads the CC0 hand models |
+| `models/hand_*.gltf` | — | The CC0 hand models, copied beside the executable by `build.rs` |
+| `tools/fetch_hand_model.py` | — | Refreshes those models from upstream |
 
 `overlay.rs` is shared on purpose: the brief called for hands to be posed identically to
 controllers, and two copies would have drifted. It has four slots — a controller and a hand per
@@ -135,8 +136,9 @@ leaving the user with built-ins no edit can change. The API renamed the pose sel
 
 ## Rendering
 
-The model is fetched, not vendored: `tools/fetch_hand_model.py` pulls two CC0 hands from Godot XR
-Tools (pinned commit, SHA-256 checked), rigged to 26 joints named after the OpenXR layout.
+The models are committed in `models/` and copied beside the executable by `build.rs`: two CC0
+hands from Godot XR Tools, rigged to 26 joints named after the OpenXR layout.
+`tools/fetch_hand_model.py` refreshes them (pinned commit, SHA-256 checked).
 
 **Retargeting assumes nothing about the rig.** That model runs bones along +Y (Blender armature
 default) where OpenXR runs along -Z, and its bind pose is a relaxed hand, not a flat one. Both

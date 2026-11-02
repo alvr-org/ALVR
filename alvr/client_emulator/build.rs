@@ -1,13 +1,27 @@
-//! Checks that ffmpeg is available and puts its DLLs next to the executable on Windows.
+//! Puts the bundled models next to the executable, checks that ffmpeg is available and, on
+//! Windows, puts its DLLs next to the executable too.
 //!
-//! The path itself is supplied by `FFMPEG_DIR` in `.cargo/config.toml`, because `ffmpeg-sys-next`
-//! reads that from the process environment and a build script cannot influence a sibling one.
+//! The ffmpeg path itself is supplied by `FFMPEG_DIR` in `.cargo/config.toml`, because
+//! `ffmpeg-sys-next` reads that from the process environment and a build script cannot influence a
+//! sibling one.
 
-use std::{env, fs, path::PathBuf};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+};
+
+/// The repository directory whose files are copied into `<target>/<profile>/models/`, which is
+/// where the settings files' relative model paths resolve.
+const MODELS_DIR: &str = "models";
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed={MODELS_DIR}");
     println!("cargo:rerun-if-env-changed=FFMPEG_DIR");
+
+    if let Some(target_dir) = target_dir() {
+        copy_models(&target_dir.join(MODELS_DIR));
+    }
 
     let Ok(ffmpeg_dir) = env::var("FFMPEG_DIR") else {
         // Nothing to check: on Linux pkg-config locates ffmpeg without a directory hint.
@@ -43,20 +57,39 @@ fn main() {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.extension().is_some_and(|ext| ext == "dll") {
-                let destination = target_dir.join(path.file_name().unwrap());
-
-                // Only copy when missing or stale, so incremental builds stay quick.
-                let up_to_date = fs::metadata(&destination)
-                    .ok()
-                    .zip(fs::metadata(&path).ok())
-                    .and_then(|(dst, src)| Some((dst.modified().ok()?, src.modified().ok()?)))
-                    .is_some_and(|(dst, src)| dst >= src);
-
-                if !up_to_date {
-                    fs::copy(&path, &destination).ok();
-                }
+                copy_if_stale(&path, &target_dir.join(path.file_name().unwrap()));
             }
         }
+    }
+}
+
+/// Copies the bundled models beside the executable, leaving any other file there alone, so models
+/// a user converted or downloaded into the same directory survive a rebuild.
+fn copy_models(destination: &Path) {
+    let Ok(entries) = fs::read_dir(MODELS_DIR) else {
+        return;
+    };
+
+    fs::create_dir_all(destination).ok();
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_file() {
+            copy_if_stale(&path, &destination.join(path.file_name().unwrap()));
+        }
+    }
+}
+
+/// Only copies when the destination is missing or older, so incremental builds stay quick.
+fn copy_if_stale(source: &Path, destination: &Path) {
+    let up_to_date = fs::metadata(destination)
+        .ok()
+        .zip(fs::metadata(source).ok())
+        .and_then(|(dst, src)| Some((dst.modified().ok()?, src.modified().ok()?)))
+        .is_some_and(|(dst, src)| dst >= src);
+
+    if !up_to_date {
+        fs::copy(source, destination).ok();
     }
 }
 
@@ -64,7 +97,6 @@ fn main() {
 ///
 /// Cargo exposes no variable for it, so it is derived from `OUT_DIR`, which sits at
 /// `<target>/<profile>/build/<crate>-<hash>/out`.
-#[cfg(windows)]
 fn target_dir() -> Option<PathBuf> {
     let out_dir = PathBuf::from(env::var("OUT_DIR").ok()?);
 

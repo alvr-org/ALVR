@@ -272,7 +272,7 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
     m_presentMutex.unlock();
 }
 
-void OvrDirectModeComponent::PostPresent() {
+void OvrDirectModeComponent::PostPresent(const vr::IVRDriverDirectModeComponent::Throttling_t*) {
     Debug("OvrDirectModeComponent::PostPresent");
 
     WaitForVSync();

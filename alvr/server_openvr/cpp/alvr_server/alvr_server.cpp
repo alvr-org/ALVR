@@ -144,7 +144,7 @@ public:
             }
 #ifdef __linux__
             else if (event.eventType == vr::VREvent_ChaperoneUniverseHasChanged
-                     || event.eventType == vr::VREvent_ChaperoneRoomSetupFinished
+                     || event.eventType == vr::VREvent_ChaperoneRoomSetupCommitted
                      || event.eventType == vr::VREvent_ChaperoneFlushCache
                      || event.eventType == vr::VREvent_ChaperoneSettingsHaveChanged
                      || event.eventType == vr::VREvent_SeatedZeroPoseReset

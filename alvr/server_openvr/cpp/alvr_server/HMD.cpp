@@ -357,3 +357,11 @@ void Hmd::GetProjectionRaw(vr::EVREye eye, float* left, float* right, float* top
 vr::DistortionCoordinates_t Hmd::ComputeDistortion(vr::EVREye, float u, float v) {
     return { { u, v }, { u, v }, { u, v } };
 }
+
+bool Hmd::ComputeInverseDistortion(
+    vr::HmdVector2_t* pResult, vr::EVREye, uint32_t, float fU, float fV
+) {
+    pResult->v[0] = fU;
+    pResult->v[1] = fV;
+    return true;
+}

@@ -26,8 +26,8 @@ use alvr_common::{
 use alvr_events::{EventType, HapticsEvent};
 use alvr_filesystem as afs;
 use alvr_packets::{
-    BatteryInfo, ButtonEntry, ClientConnectionsAction, DecoderInitializationConfig, Haptics,
-    VideoPacketHeader,
+    BatteryInfo, ButtonEntry, ClientConnectionsAction, DecoderInitializationConfig,
+    FoveatedEncodingParams, Haptics, VideoPacketHeader,
 };
 use alvr_server_io::ServerSessionManager;
 use alvr_session::{CodecType, H264Profile, OpenvrProperty, Settings, SteamvrHmdInitConfig};
@@ -74,7 +74,7 @@ pub struct ServerNegotiatedStreamingConfig {
     pub transcoding_view_resolution: UVec2,
     pub emulated_headset_view_resolution: UVec2,
     pub refresh_rate: f32,
-    pub enable_foveated_encoding: bool,
+    pub foveated_encoding: Option<FoveatedEncodingParams>,
     pub codec: CodecType,
     pub h264_profile: H264Profile,
     pub use_10bit_encoder: bool,

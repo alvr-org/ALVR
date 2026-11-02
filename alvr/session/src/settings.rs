@@ -460,35 +460,26 @@ pub struct FoveatedEncodingConfig {
     #[schema(strings(help = "Force enable on smartphone clients"))]
     pub force_enable: bool,
 
-    #[schema(strings(display_name = "Center region width"))]
+    #[schema(strings(
+        display_name = "Center region size",
+        help = "Width and height, in X/Y order"
+    ))]
     #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
     #[schema(flag = "steamvr-restart")]
-    pub center_size_x: f32,
+    pub center_size: [f32; 2],
 
-    #[schema(strings(display_name = "Center region height"))]
-    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
-    #[schema(flag = "steamvr-restart")]
-    pub center_size_y: f32,
-
-    #[schema(strings(display_name = "Center shift X"))]
+    #[schema(strings(
+        display_name = "Center shift",
+        help = "Horizontal and vertical shift, in X/Y order"
+    ))]
     #[schema(gui(slider(min = -1.0, max = 1.0, step = 0.01)))]
     #[schema(flag = "steamvr-restart")]
-    pub center_shift_x: f32,
+    pub center_shift: [f32; 2],
 
-    #[schema(strings(display_name = "Center shift Y"))]
-    #[schema(gui(slider(min = -1.0, max = 1.0, step = 0.01)))]
-    #[schema(flag = "steamvr-restart")]
-    pub center_shift_y: f32,
-
-    #[schema(strings(display_name = "Horizontal edge ratio"))]
+    #[schema(strings(help = "Horizontal and vertical compression ratios, in X/Y order"))]
     #[schema(gui(slider(min = 1.0, max = 10.0, step = 1.0)))]
     #[schema(flag = "steamvr-restart")]
-    pub edge_ratio_x: f32,
-
-    #[schema(strings(display_name = "Vertical edge ratio"))]
-    #[schema(gui(slider(min = 1.0, max = 10.0, step = 1.0)))]
-    #[schema(flag = "steamvr-restart")]
-    pub edge_ratio_y: f32,
+    pub edge_ratio: [f32; 2],
 }
 
 #[repr(C)]
@@ -1878,12 +1869,18 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: FoveatedEncodingConfigDefault {
                     gui_collapsed: true,
                     force_enable: false,
-                    center_size_x: 0.45,
-                    center_size_y: 0.4,
-                    center_shift_x: 0.4,
-                    center_shift_y: 0.1,
-                    edge_ratio_x: 4.,
-                    edge_ratio_y: 5.,
+                    center_size: ArrayDefault {
+                        gui_collapsed: false,
+                        content: [0.45, 0.4],
+                    },
+                    center_shift: ArrayDefault {
+                        gui_collapsed: false,
+                        content: [0.4, 0.1],
+                    },
+                    edge_ratio: ArrayDefault {
+                        gui_collapsed: false,
+                        content: [4., 5.],
+                    },
                 },
             },
             clientside_foveation: SwitchDefault {

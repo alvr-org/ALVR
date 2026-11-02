@@ -12,6 +12,8 @@ public:
 
 private:
     Microsoft::WRL::ComPtr<ID3D11Device> mDevice;
+    Microsoft::WRL::ComPtr<ID3D11DeviceContext> mImmediateContext;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> mFoveatedRenderingBuffer;
     Microsoft::WRL::ComPtr<ID3D11Texture2D> mOptimizedTexture;
     Microsoft::WRL::ComPtr<ID3D11VertexShader> mQuadVertexShader;
 

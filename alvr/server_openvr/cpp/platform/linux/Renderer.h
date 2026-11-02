@@ -167,6 +167,11 @@ public:
         m_constantEntries = std::move(entries);
     }
 
+    template <typename T> void SetPushConstants(const T* data) {
+        m_pushConstant = static_cast<const void*>(data);
+        m_pushConstantSize = sizeof(T);
+    }
+
 private:
     void Build();
     void Render(VkImageView in, VkImageView out, VkRect2D outSize);
@@ -176,6 +181,8 @@ private:
     const void* m_constant = nullptr;
     uint32_t m_constantSize = 0;
     std::vector<VkSpecializationMapEntry> m_constantEntries;
+    const void* m_pushConstant = nullptr;
+    uint32_t m_pushConstantSize = 0;
     VkPipeline m_pipeline = VK_NULL_HANDLE;
     VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
 

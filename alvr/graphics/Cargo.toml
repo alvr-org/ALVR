@@ -8,6 +8,7 @@ license.workspace = true
 
 [dependencies]
 alvr_common.workspace = true
+alvr_packets.workspace = true
 alvr_session.workspace = true
 
 glow = "0.16" # Needs to be update with wgpu

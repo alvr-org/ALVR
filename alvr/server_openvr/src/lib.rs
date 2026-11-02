@@ -98,25 +98,8 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
         .map(|c| c.sources.meta.prefer_full_body)
         .unwrap_or(false);
 
-    let (
-        fov_center_size_x,
-        fov_center_size_y,
-        fov_center_shift_x,
-        fov_center_shift_y,
-        fov_edge_ratio_x,
-        fov_edge_ratio_y,
-    ) = if let Switch::Enabled(config) = &video.foveated_encoding {
-        (
-            config.center_size_x,
-            config.center_size_y,
-            config.center_shift_x,
-            config.center_shift_y,
-            config.edge_ratio_x,
-            config.edge_ratio_y,
-        )
-    } else {
-        (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    };
+    let foveated_encoding = negotiated.and_then(|n| n.foveated_encoding);
+    let foveation_params = foveated_encoding.unwrap_or_default();
 
     let (enable_color_correction, brightness, contrast, saturation, gamma, sharpening) =
         if let Switch::Enabled(config) = &video.color_correction {
@@ -152,25 +135,18 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
             )
         };
 
-    let (
-        enable_foveated_encoding,
-        codec,
-        h264_profile,
-        use_10bit_encoder,
-        encoding_gamma,
-        enable_hdr,
-    ) = if let Some(n) = negotiated {
-        (
-            n.enable_foveated_encoding,
-            n.codec as i32,
-            n.h264_profile as i32,
-            n.use_10bit_encoder,
-            n.encoding_gamma as f64,
-            n.enable_hdr,
-        )
-    } else {
-        (false, 0, 0, false, 0.0, false)
-    };
+    let (codec, h264_profile, use_10bit_encoder, encoding_gamma, enable_hdr) =
+        if let Some(n) = negotiated {
+            (
+                n.codec as i32,
+                n.h264_profile as i32,
+                n.use_10bit_encoder,
+                n.encoding_gamma as f64,
+                n.enable_hdr,
+            )
+        } else {
+            (0, 0, false, 0.0, false)
+        };
 
     Settings {
         m_refreshRate: refresh_rate,
@@ -180,13 +156,14 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
         m_recommendedTargetHeight: target_height as i32,
         m_nAdapterIndex: video.adapter_index as i32,
         m_captureFrameDir: capture_frame_dir,
-        m_enableFoveatedEncoding: enable_foveated_encoding,
-        m_foveationCenterSizeX: fov_center_size_x,
-        m_foveationCenterSizeY: fov_center_size_y,
-        m_foveationCenterShiftX: fov_center_shift_x,
-        m_foveationCenterShiftY: fov_center_shift_y,
-        m_foveationEdgeRatioX: fov_edge_ratio_x,
-        m_foveationEdgeRatioY: fov_edge_ratio_y,
+        m_enableFoveatedEncoding: foveated_encoding.is_some(),
+        m_foveatedEncoding: FfiFoveatedEncodingParams {
+            encodedViewResolution: foveation_params.encoded_view_resolution,
+            viewRatio: foveation_params.view_ratio,
+            centerSize: foveation_params.center_size,
+            centerShifts: foveation_params.center_shifts,
+            edgeRatio: foveation_params.edge_ratio,
+        },
         m_enableColorCorrection: enable_color_correction,
         m_brightness: brightness,
         m_contrast: contrast,

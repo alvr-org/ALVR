@@ -221,7 +221,8 @@ impl eframe::App for Dashboard {
                                     PathValuePair {
                                         path: alvr_packets::parse_path(
                                             "session_settings.extra.open_setup_wizard",
-                                        ),
+                                        )
+                                        .unwrap(),
                                         value: serde_json::Value::Bool(false),
                                     },
                                 ]))

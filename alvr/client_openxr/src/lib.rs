@@ -307,10 +307,14 @@ pub fn entry_point() {
             views_config[0].recommended_image_rect_height,
         );
 
-        let max_view_resolution = UVec2::new(
+        let mut max_view_resolution = UVec2::new(
             views_config[0].max_image_rect_width,
             views_config[0].max_image_rect_height,
         );
+
+        if platform.is_pico() {
+            max_view_resolution = UVec2::new(u32::MAX, u32::MAX);
+        }
 
         let refresh_rates = if selected_exts.fb_display_refresh_rate {
             xr_session.enumerate_display_refresh_rates().unwrap()

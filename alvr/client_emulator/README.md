@@ -366,11 +366,11 @@ distance while Point keeps the index out of it, and that the two hands are exact
   names are not recognisable. Rarely needed; see below.
 - `poses` — the selectable articulations, each with a `name`, a `description` for the tooltip, the
   seven articulation fields (all defaulting to 0), and optionally `transition_seconds`. Idle,
-  Grasp, Point, Pinch and Plank (a flat hand, fingers together) are provided; a file written before
-  Plank existed lacks it, and gets it by adding the entry or deleting the file. Pinch was retuned when the thumb was reworked to curl
-  across the palm: a file written before that has `"thumb": 0.45, "index": 0.52,
-  "thumb_opposition": 0.72`, which no longer brings the tips together. Change those to `0.15`,
-  `0.45` and `0.7`, or delete the file to have it regenerated.
+  Grasp, Point, Pinch and Plank (a flat open hand) are provided; a file written before Plank
+  existed lacks it, and gets it by adding the entry or deleting the file. Pinch was retuned when
+  the thumb was reworked to curl across the palm: a file written before that has `"thumb": 0.45,
+  "index": 0.52, "thumb_opposition": 0.72`, which no longer brings the tips together. Change those
+  to `0.15`, `0.45` and `0.7`, or delete the file to have it regenerated.
 - `gestures` — the timed sequences, described above.
 
 Add as many of either as you like; the grids grow to fit. A settings file this cannot parse — one

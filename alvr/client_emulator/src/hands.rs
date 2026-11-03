@@ -1083,8 +1083,8 @@ fn load_file(path: &Path) -> Result<SettingsFile> {
     serde_json::from_str(&text).context("Cannot parse hand settings")
 }
 
-/// The default settings file: the four poses the design document calls for, and a few gestures
-/// built from them. More of either can be added by editing the file; nothing in the code
+/// The default settings file: the four poses the design document calls for, a flat hand, and a few
+/// gestures built from them. More of either can be added by editing the file; nothing in the code
 /// enumerates them.
 fn default_file() -> SettingsFile {
     let poses = vec![
@@ -1138,8 +1138,7 @@ fn default_file() -> SettingsFile {
         },
         PoseEntry {
             name: "Plank".into(),
-            description: "Flat hand, every finger straight and pressed together, thumb alongside"
-                .into(),
+            description: "Flat open hand, every finger and the thumb straight".into(),
             thumb: 0.0,
             index: 0.0,
             middle: 0.0,

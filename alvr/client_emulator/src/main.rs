@@ -614,7 +614,8 @@ impl EmulatorApp {
     /// World-space model matrices of the controllers whose 3D model should be drawn, composed
     /// with the given head pose (the live camera, or the displayed video frame's pose).
     ///
-    /// At the pose being sent, which is the frame controller models are authored around.
+    /// At the grip, which is the frame controller models are authored around: OpenXR's and WebXR's
+    /// own, and what `tools/convert_rendermodel.py` and `tools/fetch_controller_model.py` produce.
     fn controller_model_matrices(
         &self,
         head_position: Vec3,
@@ -626,11 +627,11 @@ impl EmulatorApp {
             (state.enabled && state.model_visible && self.loaded_models[index].is_some()).then(
                 || {
                     let profile = self.controller_settings.profiles.get(state.profile_index);
-                    let sent = state.sent_pose(profile, Hand::BOTH[index]);
+                    let grip = state.grip_pose(profile, Hand::BOTH[index]);
 
                     Mat4::from_rotation_translation(
-                        (head_orientation * sent.orientation).normalize(),
-                        head_position + head_orientation * sent.position,
+                        (head_orientation * grip.orientation).normalize(),
+                        head_position + head_orientation * grip.position,
                     )
                 },
             )
@@ -733,13 +734,11 @@ impl EmulatorApp {
                         None
                     }
                 })
-                // The placeholder is built pointing along its -Z, so it is moved into the sent
-                // frame it is drawn in by the inverse offsets: its nose then shows the aim.
+                // The placeholder is built in the aim's frame, so it is moved into the grip frame it
+                // is drawn in by the inverse offset: its nose then shows the aim.
                 .unwrap_or_else(|| {
-                    let sent_from_aim =
-                        profile.grip_from_aim[index] * profile.sent_from_grip[index];
                     Scene::placeholder_controller(profile.grip_from_aim[index])
-                        .transformed(sent_from_aim.inverse())
+                        .transformed(profile.grip_from_aim[index].inverse())
                 });
 
             renderer

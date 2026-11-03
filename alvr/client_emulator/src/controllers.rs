@@ -148,7 +148,7 @@ pub struct Profile {
     /// Supported inputs per hand, in canonical order. Left is index 0.
     pub inputs: [Vec<ProfileInput>; 2],
     /// Optional glTF models shown when the controller is set visible, one per hand since the
-    /// physical pair is mirrored. Left is index 0.
+    /// physical pair is mirrored, authored around the grip. Left is index 0.
     pub models: [Option<PathBuf>; 2],
     /// The grip pose in the aim pose's frame, per hand. Left is index 0.
     ///
@@ -229,6 +229,9 @@ struct ProfileEntry {
     path: String,
     left_inputs: Vec<String>,
     right_inputs: Vec<String>,
+    /// glTF models authored around the grip, relative to the executable's directory. A file
+    /// without one gets the bundled model for its profile path, if there is one, as with
+    /// `grip_offset`; an empty string asks for the placeholder instead.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     left_model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -281,6 +284,12 @@ fn default_grip_offset(path: &str) -> Option<GripOffset> {
         position: [0.0, -0.030, 0.095],
         rotation_degrees: [60.0, 0.0, 0.0],
     })
+}
+
+/// The bundled model for a profile, where there is one: the Quest 2 controllers from the WebXR
+/// Input Profiles, aligned to the emulator's grip by `tools/fetch_controller_model.py`.
+fn default_model(path: &str, hand: Hand) -> Option<String> {
+    (path == QUEST_CONTROLLER_PROFILE_PATH).then(|| format!("models/quest_controller_{}.glb", hand.side()))
 }
 
 /// The headset a profile's controller ships with, whose client-side pose correction is applied.
@@ -367,8 +376,8 @@ fn default_file() -> SettingsFile {
                 path: (*path).to_owned(),
                 left_inputs: inputs_for(Hand::Left),
                 right_inputs: inputs_for(Hand::Right),
-                left_model: None,
-                right_model: None,
+                left_model: default_model(path, Hand::Left),
+                right_model: default_model(path, Hand::Right),
                 grip_offset: default_grip_offset(path),
             })
         })
@@ -425,6 +434,13 @@ fn resolve(file: SettingsFile, directory: &Path) -> ControllerSettings {
                     alvr_client_core::controller_pose_offset(platform, hand == Hand::Right)
                 })
             };
+            let model = |configured: &Option<String>, hand: Hand| {
+                configured
+                    .clone()
+                    .or_else(|| default_model(&entry.path, hand))
+                    .filter(|model| !model.is_empty())
+                    .map(|model| directory.join(model))
+            };
 
             Profile {
                 id: hash_string(&entry.path),
@@ -433,8 +449,8 @@ fn resolve(file: SettingsFile, directory: &Path) -> ControllerSettings {
                     resolve_inputs(Hand::Right, &entry.right_inputs),
                 ],
                 models: [
-                    entry.left_model.as_ref().map(|model| directory.join(model)),
-                    entry.right_model.as_ref().map(|model| directory.join(model)),
+                    model(&entry.left_model, Hand::Left),
+                    model(&entry.right_model, Hand::Right),
                 ],
                 grip_from_aim: [grip_from_aim(Hand::Left), grip_from_aim(Hand::Right)],
                 sent_from_grip: [sent_from_grip(Hand::Left), sent_from_grip(Hand::Right)],
@@ -493,7 +509,7 @@ impl ControllerInteraction {
             Self::Sent => {
                 "What ALVR is sent: the grip with the headset's client-side correction, as a real \
                  client sends it. The server moves this forward by its controller offset to place \
-                 SteamVR's device, and controller models are drawn here."
+                 SteamVR's device."
             }
         }
     }
@@ -799,6 +815,29 @@ mod tests {
                 hand.side()
             );
         }
+    }
+
+    /// A settings file written before the bundled models existed names none, and still gets them;
+    /// an empty string is how to ask for the placeholder instead.
+    #[test]
+    fn quest_gets_the_bundled_model_unless_asked_not_to() {
+        let mut file = default_file();
+        let quest = file
+            .profiles
+            .iter_mut()
+            .find(|entry| entry.path == QUEST_CONTROLLER_PROFILE_PATH)
+            .expect("Quest profile");
+        quest.left_model = None;
+        quest.right_model = Some(String::new());
+
+        let settings = resolve(file, Path::new("."));
+        let quest = &settings.profiles[settings.find_profile("Quest").expect("Quest profile")];
+
+        assert_eq!(
+            quest.models[0].as_deref(),
+            Some(Path::new("./models/quest_controller_left.glb"))
+        );
+        assert_eq!(quest.models[1], None);
     }
 
     /// A settings file written before grip offsets existed has none, and must still get the

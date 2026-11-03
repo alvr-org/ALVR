@@ -14,10 +14,12 @@ Then point the matching profile in `controllers.json` at the outputs:
     "left_model": "models/quest_left.gltf",
     "right_model": "models/quest_right.gltf"
 
-Render models are authored around the SteamVR device pose, while the emulator places models at the
-controller grip pose it emulates. ALVR's driver maps grip to device pose by translating by its
-`left_controller_position_offset` setting (default 0, 0, -0.11), so the same translation is baked
-into the vertices here; pass --offset to match a customised setting.
+Render models are authored around the SteamVR device pose, while the emulator draws controller
+models at the OpenXR grip pose, the frame WebXR and runtime controller models are authored in. A
+SteamVR render model says where the grip sits on it, in the `openxr_grip` component of the JSON
+beside the OBJ, so the vertices are moved into that frame here. A model without the component falls
+back to translating by ALVR's `left_controller_position_offset` (default 0, 0, -0.11), which only
+approximates the grip; pass --offset to match a customised setting.
 
 The output is self-contained: geometry and the base colour texture are embedded as buffer views
 (not image data URIs, which the emulator's glTF loader cannot decode; see make_environment.py).
@@ -25,6 +27,7 @@ The output is self-contained: geometry and the base colour texture are embedded 
 
 import base64
 import json
+import math
 import struct
 import sys
 from pathlib import Path
@@ -83,6 +86,50 @@ def find_model_files(source):
     return obj_path, texture_path
 
 
+def grip_placement(obj_path, offset):
+    """The function taking a device-frame vertex into the frame the emulator draws models in.
+
+    The model's own `openxr_grip` component when its JSON has one, so the grip is exactly where
+    SteamVR's model puts it; otherwise the translation ALVR's driver applies between the pose it is
+    sent and the device pose, which leaves the model's grip only roughly at the emulator's.
+    """
+    json_path = obj_path.with_suffix(".json")
+    component = None
+    if json_path.exists():
+        components = json.loads(json_path.read_text(errors="replace")).get("components", {})
+        component = components.get("openxr_grip", {}).get("component_local")
+
+    if component is None:
+        print(f"No openxr_grip component beside {obj_path.name}; translating by {offset} instead")
+        return lambda x, y, z: (x + offset[0], y + offset[1], z + offset[2])
+
+    origin = component.get("origin", [0.0, 0.0, 0.0])
+    rx, ry, rz = (math.radians(angle) for angle in component.get("rotate_xyz", [0.0, 0.0, 0.0]))
+
+    # rotate_xyz composed as X, then Y, then Z. SteamVR's controller models only rotate their grip
+    # about X, where the order makes no difference.
+    def rotation(axis, angle):
+        c, s = math.cos(angle), math.sin(angle)
+        return {
+            "x": [[1, 0, 0], [0, c, -s], [0, s, c]],
+            "y": [[c, 0, s], [0, 1, 0], [-s, 0, c]],
+            "z": [[c, -s, 0], [s, c, 0], [0, 0, 1]],
+        }[axis]
+
+    def matmul(a, b):
+        return [[sum(a[i][k] * b[k][j] for k in range(3)) for j in range(3)] for i in range(3)]
+
+    grip = matmul(matmul(rotation("x", rx), rotation("y", ry)), rotation("z", rz))
+
+    def place(x, y, z):
+        # Into the grip's frame: the inverse of the component's transform, so R^T (v - origin).
+        d = (x - origin[0], y - origin[1], z - origin[2])
+        return tuple(sum(grip[k][i] * d[k] for k in range(3)) for i in range(3))
+
+    print(f"Placing {obj_path.name} at its openxr_grip component")
+    return place
+
+
 def load_texture_png(texture_path):
     """Returns PNG bytes for the texture, converting through Pillow when it is not already PNG."""
     if texture_path is None:
@@ -100,7 +147,7 @@ def load_texture_png(texture_path):
     return buffer.getvalue()
 
 
-def parse_obj(obj_path, offset):
+def parse_obj(obj_path, place):
     positions = []
     uvs = []
     vertices = []  # flat x, y, z, u, v
@@ -127,7 +174,7 @@ def parse_obj(obj_path, offset):
 
         index = len(vertices) // 5
         # glTF UV origin is top-left, OBJ is bottom-left.
-        vertices.extend([x + offset[0], y + offset[1], z + offset[2], u, 1.0 - v])
+        vertices.extend([*place(x, y, z), u, 1.0 - v])
         seen[key] = index
         return index
 
@@ -261,7 +308,7 @@ def main():
     obj_path, texture_path = find_model_files(source)
     png = load_texture_png(texture_path)
 
-    vertices, indices = parse_obj(obj_path, offset)
+    vertices, indices = parse_obj(obj_path, grip_placement(obj_path, offset))
     if not indices:
         sys.exit(f"No triangles found in {obj_path}")
 

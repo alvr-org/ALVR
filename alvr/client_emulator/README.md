@@ -191,8 +191,10 @@ documented by its own content. It holds:
 - `profiles` — the controller types offered for emulation. Each entry has a display `name`, the
   interaction profile `path`, the input path suffixes each hand supports (`left_inputs` /
   `right_inputs`, e.g. `"trigger/value"`), and optionally `left_model` / `right_model`, glTF files
-  (relative to the executable's directory) shown when the controller is visible. Without a model a
-  small procedural placeholder is drawn instead, its orange nose pointing along the aim.
+  (relative to the executable's directory) shown when the controller is visible. The Quest profile
+  uses the bundled Quest 2 models (see below), also in files written before they existed; set a
+  model to `""` to get the placeholder instead. Without a model a small procedural placeholder is
+  drawn, its orange nose tip on the aim.
   `grip_offset` places the grip relative to the aim; see below.
 
 **What you steer is the aim; what ALVR is sent is the grip.** OpenXR gives a controller two poses:
@@ -214,12 +216,22 @@ drift). The emulator reports itself as a desktop, so it applies the correction o
 profile belongs to: the Quest's for the Quest profile. That correction is itself a little short —
 it turns the grip 15° where SteamVR's model implies 20.6° — so SteamVR's laser leaves about 5.6°
 above where the emulator aims, exactly as it does for a real Quest. The gray placeholder's orange
-nose shows the emulator's aim; a controller model from `left_model` / `right_model` is drawn at
-the pose ALVR receives, which is the frame SteamVR's render models are authored around.
+nose shows the emulator's aim.
 
-Real controller models cannot be redistributed, but SteamVR ships them locally and
+**Controller models are drawn at the grip**, the frame OpenXR and WebXR controller models are
+authored in. The Quest profile's are committed as `models/quest_controller_{left,right}.glb` and
+copied beside the executable by `build.rs`: the Quest 2 Touch controllers from the W3C
+[WebXR Input Profiles](https://github.com/immersive-web/webxr-input-profiles), MIT licensed
+(`models/quest_controller_LICENSE.md`; the licence does not extend to Meta's trademarks).
+[`tools/fetch_controller_model.py`](tools/fetch_controller_model.py) is how they were obtained and
+refreshes them. WebXR models are authored around Meta's grip, which is not quite the SteamVR grip
+the emulator's is built on, so the script adds the measured difference as a parent node: fitting
+the mesh onto SteamVR's own Quest 2 model gives 15.7° about X and 2.5 cm, to 1.6 mm RMS, and the
+bundled models then sit within 1.3 mm (median) of where SteamVR draws its own.
+
+SteamVR's own render models cannot be redistributed, but SteamVR ships them locally and
 [`tools/convert_rendermodel.py`](tools/convert_rendermodel.py) converts one into a glTF the
-emulator loads:
+emulator loads, for controllers without a bundled model:
 
 ```sh
 python alvr/client_emulator/tools/convert_rendermodel.py \
@@ -228,9 +240,10 @@ python alvr/client_emulator/tools/convert_rendermodel.py \
 ```
 
 Run it once per hand and point the profile's `left_model` / `right_model` at the outputs. Render
-models are authored around the SteamVR device pose while the emulator poses the grip, so the
-converter bakes in ALVR's default grip-to-device translation (`0, 0, -0.11`); pass `--offset` if
-the server's controller position offset was customised. The models display in both the scene and
+models are authored around the SteamVR device pose, so the converter moves them into the frame of
+their own `openxr_grip` component. A render model without one falls back to ALVR's default
+grip-to-device translation (`0, 0, -0.11`, or `--offset`), which only approximates the grip. The
+models display in both the scene and
 the video view — over the video they overlap the application's own controller rendering, which is
 exactly the comparison the display toggle is for.
 
@@ -825,6 +838,7 @@ enabled.
 | `tools/make_environment.py` | Generates a test environment |
 | `tools/convert_rendermodel.py` | Converts a local SteamVR render model into a loadable glTF |
 | `tools/fetch_hand_model.py` | Refreshes the committed CC0 hand models in `models/` |
+| `tools/fetch_controller_model.py` | Refreshes the committed MIT Quest controller models in `models/`, aligned to the grip |
 
 `Scene` is deliberately a geometry container rather than a renderer, so an alternative source such as
 a Gaussian splat capture can be added without changing the code that consumes it.

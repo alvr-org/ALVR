@@ -496,6 +496,50 @@ pub fn aim_direction(hand: Hand) -> Vec3 {
     (flat[chain[4]].position - flat[chain[1]].position).normalize_or(Vec3::NEG_Z)
 }
 
+/// Where a held tube's axis runs through the hand, in the palm frame of `joints`: the centre of the
+/// loop the middle finger closes in a fist. OpenXR puts the grip pose here, "at the centroid of the
+/// user's palm when the user makes a fist or holds a tube-like object".
+///
+/// Constant for the same reason as [`aim_direction`] — a grip that moved as the fingers curled
+/// would shake whatever the hand holds — and scaled to `joints` by the middle metacarpal, the one
+/// bone no pose can change.
+pub fn fist_centre(joints: &[Pose; JOINT_COUNT]) -> Vec3 {
+    const FIST: HandPose = HandPose {
+        curl: [1.0; 5],
+        spread: 0.0,
+        thumb_opposition: 0.0,
+    };
+
+    // Mirroring only negates X, which the centre does not use, so either hand will do.
+    let fist = skeleton(&FIST, Hand::Left, NOMINAL_HAND_LENGTH);
+    let chain = Finger::Middle.joints();
+
+    // The loop in the palm's midplane, as (Z, Y): the palm, then out along the finger and round to
+    // its curled tip, closing back at the palm. Its area centroid, by the shoelace formula, rather
+    // than the mean of its corners, which crowd together at the curled end.
+    let corners: Vec<(f32, f32)> = std::iter::once(PALM)
+        .chain(chain[1..].iter().copied())
+        .map(|joint| (fist[joint].position.z, fist[joint].position.y))
+        .collect();
+
+    let (mut area, mut z, mut y) = (0.0, 0.0, 0.0);
+    for (index, &(z0, y0)) in corners.iter().enumerate() {
+        let (z1, y1) = corners[(index + 1) % corners.len()];
+        let cross = z0 * y1 - z1 * y0;
+
+        area += cross;
+        z += (z0 + z1) * cross;
+        y += (y0 + y1) * cross;
+    }
+    let centre = Vec3::new(0.0, y / (3.0 * area), z / (3.0 * area)) - fist[PALM].position;
+
+    let metacarpal = |joints: &[Pose; JOINT_COUNT]| {
+        joints[PALM].position.distance(joints[chain[1]].position)
+    };
+
+    joints[PALM].position + centre * (metacarpal(joints) / metacarpal(&fist))
+}
+
 /// Whether a joint lies beyond the second knuckle — the part of a finger that a fingerless glove
 /// leaves bare, which is where the model this ships against has its cuff ridge. Used only to
 /// two-tone such a model; see `glove_color` in the settings.
@@ -1297,58 +1341,6 @@ mod tests {
 
     fn distance(joints: &[Pose; JOINT_COUNT], a: usize, b: usize) -> f32 {
         joints[a].position.distance(joints[b].position)
-    }
-
-
-    /// The aim origin the driver derives must not move when the fingers do.
-    ///
-    /// `server_openvr`'s `tracking::hand_tip_offset` places SteamVR's `/pose/tip` — the origin of
-    /// the pointer ray and the poke cursor — at the index fingertip's *extended* position, built
-    /// from the knuckle and the bone lengths rather than the live fingertip. This mirrors that
-    /// construction against this model, because the failure it prevents is only visible end to end:
-    /// take the live fingertip instead and a pinch drags the aim off the target at the instant the
-    /// user commits to clicking it.
-    fn extended_index_tip(joints: &[Pose; JOINT_COUNT]) -> Vec3 {
-        let knuckle = joints[7].position;
-        let length = joints[7].position.distance(joints[8].position)
-            + joints[8].position.distance(joints[9].position)
-            + joints[9].position.distance(joints[10].position);
-
-        knuckle + (knuckle - joints[6].position).normalize() * length
-    }
-
-    #[test]
-    fn aim_origin_does_not_follow_the_fingers() {
-        for hand in [Hand::Left, Hand::Right] {
-            let reference = extended_index_tip(&joints("Point", hand));
-
-            for pose in ["Idle", "Grasp", "Point", "Pinch"] {
-                let joints = joints(pose, hand);
-                let drift = extended_index_tip(&joints).distance(reference);
-
-                assert!(
-                    drift < 1e-4,
-                    "{pose}: aim origin moved {:.1} mm from the pointing pose",
-                    drift * 1000.0
-                );
-
-                // The live fingertip is what this must not be, and the gap is the whole point:
-                // it is the distance the aim would jump between poses.
-                let live = joints[10].position.distance(reference);
-                let side = if hand == Hand::Left { "left " } else { "right" };
-                println!("{side} {pose:<6} live fingertip is {:.1} mm away", live * 1000.0);
-            }
-
-            // Pointing is when the aim has to be right: there the extended position and the real
-            // fingertip should agree closely.
-            let pointing = joints("Point", hand);
-            let error = pointing[10].position.distance(reference);
-            assert!(
-                error < 0.02,
-                "pointing: aim origin is {:.1} mm from the actual fingertip",
-                error * 1000.0
-            );
-        }
     }
 
     /// The hand is the size it says it is, and both hands are mirror images.

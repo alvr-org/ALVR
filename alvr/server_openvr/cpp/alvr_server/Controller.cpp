@@ -290,7 +290,7 @@ bool Controller::OnPoseUpdate(uint64_t targetTimestampNs, float predictionS, Ffi
 
     this->submit_pose(pose);
 
-    // Place the tip at the index fingertip, as an offset from the device pose in its own frame.
+    // Place the tip at the index knuckle, as an offset from the device pose in its own frame.
     // Position only: the identity rotation leaves the tip pointing where the device does, which the
     // rotation offset setting already aligns with the index finger. Deriving a direction from the
     // finger joints would make the ray swing about as the fingers curl.

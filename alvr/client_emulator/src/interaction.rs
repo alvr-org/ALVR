@@ -32,10 +32,9 @@ mod joint {
     pub const WRIST: usize = 1;
     pub const THUMB_PROXIMAL: usize = 3;
     pub const THUMB_TIP: usize = 5;
-    pub const INDEX_METACARPAL: usize = 6;
     pub const INDEX_PROXIMAL: usize = 7;
-    pub const INDEX_INTERMEDIATE: usize = 8;
     pub const INDEX_DISTAL: usize = 9;
+    pub const LITTLE_PROXIMAL: usize = 22;
     pub const INDEX_TIP: usize = 10;
 }
 
@@ -107,13 +106,14 @@ impl HandInteraction {
             }
             Self::Wrist => "The wrist joint, root of the 31-bone skeleton sent to SteamVR.",
             Self::Grip => {
-                "Holding an object in a full grip. Centred on the palm, -Z running across the hand \
-                 from the little finger to the index, +X to the user's right for both hands."
+                "Holding an object in a full grip. On the axis of a held tube, inside the closed \
+                 fingers, -Z running across the hand from the little finger to the index, +X to \
+                 the user's right for both hands."
             }
             Self::Aim => {
-                "Pointing at something out of reach. Ahead of the hand with -Z along the pointing \
-                 direction, and stabilised: it must not move when the fingers do, or a pinch drags \
-                 the aim off the target as you click it."
+                "Pointing at something out of reach. At the root of the index finger with -Z along \
+                 the pointing direction, and stabilised: it must not move when the fingers do, or a \
+                 pinch drags the aim off the target as you click it."
             }
             Self::Poke => {
                 "Pushing a small object with the fingertip. On the surface of the extended index \
@@ -148,10 +148,11 @@ impl HandInteraction {
             // goes through the center of the user's curled fingers, and the -Z direction (forward)
             // goes from the little finger to the index finger... The +X direction points away from
             // the palm of the left hand and into the palm of the right hand", which the spec then
-            // restates as +X pointing to the user's right for both hands. The palm joint is already
-            // at the centre of the middle metacarpal, which is the centroid the spec means.
+            // restates as +X pointing to the user's right for both hands. The spec's figure puts
+            // the origin on the axis of the held tube, inside the closed fingers, not at the palm
+            // joint in the middle of the hand; see `hands::fist_centre`.
             Self::Grip => Pose {
-                position: joints[joint::PALM].position,
+                position: hands::fist_centre(joints),
                 // +Z away from the index, and +Y towards the wrist, which together put +X out of
                 // the palm on the left hand and out of its back on the right — the same direction
                 // in the world for both, as the spec requires.
@@ -159,13 +160,15 @@ impl HandInteraction {
             },
 
             // "The position of an aim pose is typically in front of the user's hand... The -Z
-            // direction is the forward direction of the aiming gesture." Stabilised, per "the
-            // orientation of an aim pose is typically stabilized": both the origin and the
-            // direction are built from the hand alone, never from the fingers' articulation, so a
-            // pinch cannot move the aim. This mirrors what the driver publishes as SteamVR's
-            // /pose/tip; see `server_openvr::tracking::hand_tip_offset`.
+            // direction is the forward direction of the aiming gesture." The spec's figure puts the
+            // origin at the root of the index finger, with the ray running out along it, so that
+            // is the knuckle. Stabilised, per "the orientation of an aim pose is typically
+            // stabilized": the knuckle is rigid with the palm, since the metacarpal does not
+            // articulate, and the direction is a constant of the hand, so a pinch cannot move the
+            // aim. This mirrors what the driver publishes as SteamVR's /pose/tip; see
+            // `server_openvr::tracking::hand_tip_offset`.
             Self::Aim => Pose {
-                position: extended_index_tip(joints),
+                position: joints[joint::INDEX_PROXIMAL].position,
                 orientation: frame(-hands::aim_direction(hand), dorsal),
             },
 
@@ -205,25 +208,6 @@ impl HandInteraction {
         }
         .normalized()
     }
-}
-
-/// Where the index fingertip would be with the finger extended, from quantities that do not move
-/// when it curls: the knuckle, which is rigid with the palm because the metacarpal does not
-/// articulate, and the phalanx lengths, which are fixed.
-///
-/// Kept identical to `server_openvr::tracking::hand_tip_offset`, so the gizmo shows the aim origin
-/// the driver actually publishes rather than a second opinion about it.
-fn extended_index_tip(joints: &[Pose; JOINT_COUNT]) -> Vec3 {
-    let knuckle = joints[joint::INDEX_PROXIMAL].position;
-    let length = knuckle.distance(joints[joint::INDEX_INTERMEDIATE].position)
-        + joints[joint::INDEX_INTERMEDIATE]
-            .position
-            .distance(joints[joint::INDEX_DISTAL].position)
-        + joints[joint::INDEX_DISTAL]
-            .position
-            .distance(joints[joint::INDEX_TIP].position);
-
-    knuckle + (knuckle - joints[joint::INDEX_METACARPAL].position).normalize_or_zero() * length
 }
 
 /// A pose with a unit orientation, since a gizmo built from measured joints accumulates drift.
@@ -322,6 +306,82 @@ mod tests {
         );
     }
 
+    /// The spec's "Example grip pose" figure: fists held in front of the body, thumbs up, palms
+    /// facing each other, around a vertical tube. There +X points to the user's right and Z runs
+    /// down the tube for both hands, which leaves +Y pointing back at the user.
+    #[test]
+    fn grip_matches_the_spec_figure() {
+        for hand in Hand::BOTH {
+            // The palm frame's axes in the world for that hold. Fingers forward, so the palm's +Z
+            // (towards the wrist) points back at the user; the back of the hand faces outwards;
+            // and the thumb, on the palm's +X for the left hand and -X for the right, points up.
+            let (x, y) = match hand {
+                Hand::Left => (Vec3::Y, Vec3::NEG_X),
+                Hand::Right => (Vec3::NEG_Y, Vec3::X),
+            };
+            let palm = Quat::from_mat3(&alvr_common::glam::Mat3::from_cols(x, y, Vec3::Z));
+            let joints = joints("Grasp", hand);
+
+            // Anchors the hold in the skeleton itself rather than in this module's idea of which
+            // side the thumb is on: if that were mirrored, this hold would put the index knuckle
+            // below the little finger's. (Not the thumb tip, which a fist wraps across the front.)
+            let height = |index: usize| (palm * joints[index].position).y;
+            assert!(
+                height(joint::INDEX_PROXIMAL) > height(joint::LITTLE_PROXIMAL) + 0.04,
+                "{} hand is upside down in the figure's hold",
+                hand.side()
+            );
+
+            let grip = palm * HandInteraction::Grip.transform(&joints, hand).orientation;
+
+            for (axis, actual, expected) in [
+                ("+X", grip * Vec3::X, Vec3::X),
+                ("+Y", grip * Vec3::Y, Vec3::Z),
+                ("+Z", grip * Vec3::Z, Vec3::NEG_Y),
+            ] {
+                assert!(
+                    actual.dot(expected) > 0.99,
+                    "{} grip {axis} is {actual:?}, the figure has {expected:?}",
+                    hand.side()
+                );
+            }
+        }
+    }
+
+    /// The figure's other half: the grip sits on the held tube's axis, inside the closed fist —
+    /// on the palm side of the palm joint, and ringed by the curled middle finger.
+    #[test]
+    fn grip_is_inside_the_fist() {
+        const MIDDLE_LOOP: [usize; 5] = [joint::PALM, 12, 13, 14, 15];
+
+        for hand in Hand::BOTH {
+            let joints = joints("Grasp", hand);
+            let grip = HandInteraction::Grip.transform(&joints, hand).position;
+            let offset = grip - joints[joint::PALM].position;
+
+            println!(
+                "{} grip is {:.1} mm palmar and {:.1} mm distal of the palm joint",
+                hand.side(),
+                -offset.y * 1000.0,
+                -offset.z * 1000.0
+            );
+
+            assert!(
+                offset.y < -0.015,
+                "grip is not on the palm side of the hand"
+            );
+
+            for joint in MIDDLE_LOOP {
+                let distance = grip.distance(joints[joint].position);
+                assert!(
+                    distance < 0.045,
+                    "joint {joint} is {:.1} mm from the grip, so the fist does not ring it",
+                    distance * 1000.0
+                );
+            }
+        }
+    }
+
     /// Aim is the pose that must not move with the fingers, and poke is the one that must.
     #[test]
     fn aim_is_stable_and_poke_follows_the_finger() {
@@ -354,15 +414,25 @@ mod tests {
         }
     }
 
-    /// Pointing is when aim has to be right, and there it should sit on the real fingertip.
+    /// Pointing is when aim has to be right: the ray leaves the root of the index finger, as in the
+    /// spec's figure, and runs out along the extended finger, so the fingertip lies on it.
     #[test]
-    fn aim_meets_the_fingertip_when_pointing() {
+    fn aim_runs_along_the_finger_when_pointing() {
         for hand in Hand::BOTH {
             let joints = joints("Point", hand);
             let aim = HandInteraction::Aim.transform(&joints, hand);
-            let error = aim.position.distance(joints[joint::INDEX_TIP].position);
+            let direction = aim.orientation * Vec3::NEG_Z;
 
-            assert!(error < 0.01, "aim is {:.1} mm off the fingertip", error * 1000.0);
+            let to_tip = joints[joint::INDEX_TIP].position - aim.position;
+            let along = to_tip.dot(direction);
+            let off_ray = (to_tip - direction * along).length();
+
+            assert!(along > 0.05, "fingertip is not ahead of the aim origin");
+            assert!(
+                off_ray < 0.01,
+                "fingertip is {:.1} mm off the aim ray",
+                off_ray * 1000.0
+            );
         }
     }
 }

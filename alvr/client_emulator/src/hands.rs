@@ -325,8 +325,10 @@ const THUMB_BONES: [f32; 3] = [0.043, 0.032, 0.028];
 
 /// Flexion at full curl, in degrees: knuckle, middle joint, fingertip joint.
 const FLEXION: [f32; 3] = [85.0, 100.0, 68.0];
-/// The same for the thumb, whose knuckle and single interphalangeal joint bend far less.
-const THUMB_FLEXION: [f32; 2] = [55.0, 78.0];
+/// The same for the thumb, whose knuckle and single interphalangeal joint bend far less. In a fist
+/// the thumb lies across the curled fingers with its last joint only partly bent; bending it as far
+/// as a finger's hooks the tip back towards the wrist.
+const THUMB_FLEXION: [f32; 2] = [55.0, 45.0];
 /// Curling the ring and little fingers cups the palm by rotating their metacarpals, which a real
 /// hand does at the carpometacarpal joints and a flat palm cannot fake.
 const CUP: [f32; 4] = [0.0, 0.0, 8.0, 15.0];
@@ -345,17 +347,22 @@ const ABDUCTION_APART: [f32; 4] = [16.0, 3.0, -9.0, -22.0];
 // `THUMB_ALONG` is the direction of the metacarpal, and `THUMB_CURL_TOWARDS` is where flexing the
 // thumb takes its tip. Each pair is the value at opposition 0 and at opposition 1.
 
-/// Metacarpal direction: beside the index finger in the plane of the palm, then swung across.
+/// Metacarpal direction: beside the index finger in the plane of the palm, then swung down in
+/// front of the palm. Opposed, it points forward and into the palm, barely outwards: swinging it
+/// out to the side too splays the curled thumb away from the fist.
 const THUMB_ALONG: [Vec3; 2] = [
     Vec3::new(0.50, -0.10, -0.86),
-    Vec3::new(0.42, -0.60, -0.68),
+    Vec3::new(0.155, -0.65, -0.745),
 ];
 
-/// Where flexion takes the thumb: towards the palm like a finger, then across it towards the
-/// fingertips, which is what makes an opposed thumb able to pinch.
+/// Where flexion takes the thumb: across the palm towards the little finger, whether the thumb is
+/// opposed or not. A thumb's flexion runs parallel to the palm rather than into it, unlike a
+/// finger's; curling it straight into the palm carries it out of the hand instead of round the
+/// fist. The values are derived from where a real thumb's joints sit in a fist, against this
+/// hand's own knuckles.
 const THUMB_CURL_TOWARDS: [Vec3; 2] = [
-    Vec3::new(0.0, -1.0, 0.0),
-    Vec3::new(-0.80, -0.30, -0.52),
+    Vec3::new(-0.90, -0.40, 0.0),
+    Vec3::new(-0.85, -0.45, -0.25),
 ];
 
 fn degrees(value: f32) -> f32 {
@@ -1118,13 +1125,13 @@ fn default_file() -> SettingsFile {
         PoseEntry {
             name: "Pinch".into(),
             description: "Thumb and index fingertips touching, the rest curled".into(),
-            thumb: 0.45,
-            index: 0.52,
+            thumb: 0.15,
+            index: 0.45,
             middle: 0.95,
             ring: 1.0,
             little: 1.0,
             spread: 0.0,
-            thumb_opposition: 0.72,
+            thumb_opposition: 0.7,
             transition_seconds: None,
         },
     ];

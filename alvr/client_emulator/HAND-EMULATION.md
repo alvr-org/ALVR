@@ -167,27 +167,15 @@ bind pose's cross-sectional radius along each finger.
 | `headset.controllers.hand_skeleton` | Must be enabled or the skeleton is dropped before the driver |
 | `...hand_skeleton.steamvr_input_2_0` | **The big one.** On: hands are separate devices with SteamVR's `svl_hand_interaction_augmented` profile, hand icons, full skeletal level. Off: hands ride the controller device and bring its whole presentation — controller icons and models, a ray from the oculus_touch tip pose, and the skeleton in its "with controller" range, which curls the fingers around a controller that is not there. `steamvr-restart` flagged |
 | `...hand_tracking_interaction` | **Off by default.** While off, no gesture produces any button, so nothing can be clicked at any distance |
-| `left_hand_tracking_position_offset` / `rotation_offset` | Place the device pose relative to the palm. One transform, three consumers: the pointer ray, the render model, and the grip anchor applications attach held objects to |
+| `left_hand_tracking_position_offset` / `rotation_offset` | Place the device pose relative to the palm, which places the render model and the grip anchor applications attach held objects to. The pointer ray no longer follows them; see below |
 
-That last row is the live trade. Defaults `[0.04, -0.02, -0.13]` and `[0, -45, -90]` present a hand
-as a *held controller*: the ray leaves 45° off the fingers from 13 cm ahead of the palm. Measured
-with pyopenvr, the device orientation SteamVR reports is bit-for-bit that rotation offset — 0.0° of
-error — so the emulator is sending the palm exactly where ALVR expects. Only the middle value steers
-the ray: `-10` aims along the index finger (34.5° → **1.0°** measured), `0` along the middle. But
-moving the *position* to put the ray's origin on the index knuckle also moves the grip anchor about
-10 cm, and held objects then overlap the hand. There is no single constant that serves both, because
-a hand-tracking device should expose aim and grip as separate poses and ALVR derives everything from
-one.
-
-**Settings currently set on this machine** (in `build/alvr_streamer_windows/session.json`, changed
-during development, all revertible in the dashboard):
-
-| Setting | Now | ALVR default |
-|---|---|---|
-| `hand_skeleton.steamvr_input_2_0` | `true` | `true` |
-| `hand_tracking_interaction` | `true` | `false` |
-| `left_hand_tracking_rotation_offset` | `[0, -10, -90]` | `[0, -45, -90]` |
-| `left_hand_tracking_position_offset` | `[0.04, -0.02, -0.13]` | same |
+The pointer ray and poke cursor come from the profile's `/pose/tip`, which the driver sets from
+the joints (`tracking::hand_tip_offset`): at the index knuckle, pointing along the index metacarpal,
++Y out of the back of the hand. Both are rigid with the palm, so pinching does not move the ray, and
+they are independent of the offsets above. Defaults `[0.04, -0.02, -0.13]` and `[0, -45, -90]`
+therefore only present the hand as a *held controller* for the render model and the grip anchor.
+Before the tip had its own orientation it inherited the device's, and the ray left 45° off the
+fingers; the only cure then was a rotation offset that also moved the grip anchor.
 
 ## The driver change
 
@@ -284,8 +272,9 @@ Recorded because each cost real time or looked convincing.
 1. **Upstream the two driver changes** — both are real gaps rather than emulator accommodations.
    The input mapping is a gap for any hand-tracked headset; the `PoseHistory` tie-break costs a real
    user a 1.67-second-stale pose whenever they hold still. Neither is committed.
-2. **Aim and grip need separate poses.** The single offset device pose cannot serve both. The
-   profile already declares `/pose/grip`, `/pose/raw` and `/pose/tip`.
+2. **Aim and grip need separate poses.** Aim is now `/pose/tip`. The grip is still the offset
+   device pose; publishing the profile's `/pose/grip` at the spec's grip (`interaction.rs`) would
+   free the offsets from doing that job.
 3. **`middle/ring/pinky_pinch` are unpublished.** The gesture recogniser binds those to face-button
    *clicks* (binary) while the profile wants scalar values, so they were left out of the mapping.
 4. **Velocities are zero**, as for the controllers; see `HANDOVER.md` for why that is deliberate.

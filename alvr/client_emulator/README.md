@@ -366,7 +366,8 @@ distance while Point keeps the index out of it, and that the two hands are exact
   names are not recognisable. Rarely needed; see below.
 - `poses` — the selectable articulations, each with a `name`, a `description` for the tooltip, the
   seven articulation fields (all defaulting to 0), and optionally `transition_seconds`. Idle,
-  Grasp, Point and Pinch are provided. Pinch was retuned when the thumb was reworked to curl
+  Grasp, Point, Pinch and Plank (a flat hand, fingers together) are provided; a file written before
+  Plank existed lacks it, and gets it by adding the entry or deleting the file. Pinch was retuned when the thumb was reworked to curl
   across the palm: a file written before that has `"thumb": 0.45, "index": 0.52,
   "thumb_opposition": 0.72`, which no longer brings the tips together. Change those to `0.15`,
   `0.45` and `0.7`, or delete the file to have it regenerated.
@@ -423,32 +424,23 @@ curl.
 Two things about hand tracking in SteamVR are the server's doing rather than the emulator's, and
 both surprise people.
 
-**The ray does not run along the index finger by default.** SteamVR points from the device pose,
-and ALVR builds that from the palm joint plus `left_hand_tracking_rotation_offset` (default
+**The ray comes from the index knuckle, along the index finger.** SteamVR draws a hand's pointer
+from the hand profile's `/pose/tip`, which ALVR's driver sets from the joints it is sent: at the
+index knuckle, pointing along the index metacarpal with +Y out of the back of the hand. That is the
+aim pose of OpenXR's `XR_EXT_hand_interaction` figure, and it is rigid with the palm, so a pinch
+does not move the ray off its target. The emulator's **Aim** gizmo is the same pose, so the ray
+should leave exactly from the gizmo's origin along its -Z. SteamVR's poke cursor uses the same
+tip, so poking happens at the knuckle too.
+
+The device pose itself is still the palm joint plus `left_hand_tracking_rotation_offset` (default
 `[0, -45, -90]` degrees) and `left_hand_tracking_position_offset` (default `[0.04, -0.02, -0.13]`
-m, both mirrored for the right hand). Those exist to present a hand-tracked hand as a *held
-controller*, so the ray leaves 45° off the fingers from a point 13 cm ahead of the palm.
-
-That is the server's doing, not the emulator's, and it was measured rather than assumed: with the
-head and the palm both at identity, the device orientation SteamVR reports is *bit for bit* the
-rotation offset — 0.0° of error — so the emulator is sending the palm exactly where ALVR expects
-it. The palm is the OpenXR specification's: "at the center of the middle finger's metacarpal bone",
-"+Z parallel to the middle finger's metacarpal bone, pointing away from the finger tips", "+Y ...
-pointing towards the back of the hand", which a unit test asserts.
-
-To point along the index finger instead, change both offsets:
-
-| Setting | Default | For a finger ray |
-|---|---|---|
-| `left_hand_tracking_rotation_offset` | `[0, -45, -90]` | `[0, -10, -90]` |
-| `left_hand_tracking_position_offset` | `[0.04, -0.02, -0.13]` | `[0, 0.016, -0.036]` |
-
-Measured: 34.5° between the ray and the emulated index finger before, **1.0°** after. Only the
-middle value of the rotation steers the ray, within the plane of the palm; `0` would aim along the
-middle finger. The position puts the ray's origin at the index *knuckle* rather than the
-fingertip, deliberately — the offset is a constant applied to the palm, so an origin placed at the
-fingertip in one pose detaches from it in every other, while the knuckle barely moves as the
-fingers curl.
+m, both mirrored for the right hand). Those present a hand-tracked hand as a *held controller*, and
+now only place the render model and the grip anchor applications attach held objects to; the ray no
+longer depends on them. With the head and the palm both at identity, the device orientation SteamVR
+reports is *bit for bit* the rotation offset, so the emulator is sending the palm exactly where
+ALVR expects it. The palm is the OpenXR specification's: "at the center of the middle finger's
+metacarpal bone", "+Z parallel to the middle finger's metacarpal bone, pointing away from the
+finger tips", "+Y ... pointing towards the back of the hand", which a unit test asserts.
 
 **Clicking needs one switch.** `headset.controllers.hand_tracking_interaction` is **off by
 default**, and while it is off no hand gesture produces any button at all, so nothing can be

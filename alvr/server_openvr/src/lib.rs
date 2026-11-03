@@ -17,6 +17,7 @@ use bindings::*;
 use alvr_common::{
     BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
     Pose, ViewParams, error,
+    glam::Quat,
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
     warn,
@@ -426,7 +427,11 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                 && ffi_left_controller_motion.is_none()
                                 && ffi_left_hand_skeleton.is_some(),
                             predictHandSkeleton: predict_hand_skeleton,
-                            tipOffsetPosition: left_tip_offset.unwrap_or([0.0; 3]),
+                            tipOffsetPosition: left_tip_offset
+                                .map_or([0.0; 3], |tip| tip.position.to_array()),
+                            tipOffsetOrientation: tracking::to_ffi_quat(
+                                left_tip_offset.map_or(Quat::IDENTITY, |tip| tip.orientation),
+                            ),
                             hasTipOffset: left_tip_offset.is_some(),
                         };
                         let ffi_right_hand_data = FfiHandData {
@@ -444,7 +449,11 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                 && ffi_right_controller_motion.is_none()
                                 && ffi_right_hand_skeleton.is_some(),
                             predictHandSkeleton: predict_hand_skeleton,
-                            tipOffsetPosition: right_tip_offset.unwrap_or([0.0; 3]),
+                            tipOffsetPosition: right_tip_offset
+                                .map_or([0.0; 3], |tip| tip.position.to_array()),
+                            tipOffsetOrientation: tracking::to_ffi_quat(
+                                right_tip_offset.map_or(Quat::IDENTITY, |tip| tip.orientation),
+                            ),
                             hasTipOffset: right_tip_offset.is_some(),
                         };
 

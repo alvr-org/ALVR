@@ -290,15 +290,21 @@ bool Controller::OnPoseUpdate(uint64_t targetTimestampNs, float predictionS, Ffi
 
     this->submit_pose(pose);
 
-    // Place the tip at the index knuckle, as an offset from the device pose in its own frame.
-    // Position only: the identity rotation leaves the tip pointing where the device does, which the
-    // rotation offset setting already aligns with the index finger. Deriving a direction from the
-    // finger joints would make the ray swing about as the fingers curl.
+    // Place the tip at the index knuckle, pointing along the index finger, as an offset from the
+    // device pose in its own frame. Both are computed from joints rigid with the palm, so the ray
+    // does not swing about as the fingers curl.
     if (m_compTip != vr::k_ulInvalidInputComponentHandle && enabled && handData.hasTipOffset) {
+        const FfiQuat& q = handData.tipOffsetOrientation;
         vr::HmdMatrix34_t tip = {};
-        tip.m[0][0] = 1.f;
-        tip.m[1][1] = 1.f;
-        tip.m[2][2] = 1.f;
+        tip.m[0][0] = 1.f - 2.f * (q.y * q.y + q.z * q.z);
+        tip.m[0][1] = 2.f * (q.x * q.y - q.z * q.w);
+        tip.m[0][2] = 2.f * (q.x * q.z + q.y * q.w);
+        tip.m[1][0] = 2.f * (q.x * q.y + q.z * q.w);
+        tip.m[1][1] = 1.f - 2.f * (q.x * q.x + q.z * q.z);
+        tip.m[1][2] = 2.f * (q.y * q.z - q.x * q.w);
+        tip.m[2][0] = 2.f * (q.x * q.z - q.y * q.w);
+        tip.m[2][1] = 2.f * (q.y * q.z + q.x * q.w);
+        tip.m[2][2] = 1.f - 2.f * (q.x * q.x + q.y * q.y);
         tip.m[0][3] = handData.tipOffsetPosition[0];
         tip.m[1][3] = handData.tipOffsetPosition[1];
         tip.m[2][3] = handData.tipOffsetPosition[2];

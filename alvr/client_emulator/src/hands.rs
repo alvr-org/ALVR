@@ -491,16 +491,18 @@ fn forward(length: f32) -> Vec3 {
     Vec3::new(0.0, 0.0, -length)
 }
 
-/// The direction a hand points, in the palm frame: along the index finger of a flat hand.
+/// The direction a hand points, in the palm frame: along the index metacarpal, from its base to the
+/// knuckle, which is the line the extended index finger continues.
 ///
-/// Constant rather than read from the live pose, for the same reason the driver's own aim offset
-/// is a constant: an axis that swung about as the fingers curled would make the hand impossible to
-/// aim with. It is the axis the server's ray can be lined up against; see the README.
+/// Constant rather than read from the live pose: an axis that swung about as the fingers curled
+/// would make the hand impossible to aim with, and the metacarpal does not articulate. The driver
+/// points SteamVR's `/pose/tip` along the same bone (`server_openvr::tracking::hand_tip_offset`),
+/// so the Aim gizmo and the application's ray agree.
 pub fn aim_direction(hand: Hand) -> Vec3 {
     let flat = skeleton(&HandPose::FLAT, hand, NOMINAL_HAND_LENGTH);
     let chain = Finger::Index.joints();
 
-    (flat[chain[4]].position - flat[chain[1]].position).normalize_or(Vec3::NEG_Z)
+    (flat[chain[1]].position - flat[chain[0]].position).normalize_or(Vec3::NEG_Z)
 }
 
 /// Where a held tube's axis runs through the hand, in the palm frame of `joints`: the centre of the
@@ -1134,6 +1136,19 @@ fn default_file() -> SettingsFile {
             thumb_opposition: 0.7,
             transition_seconds: None,
         },
+        PoseEntry {
+            name: "Plank".into(),
+            description: "Flat hand, every finger straight and pressed together, thumb alongside"
+                .into(),
+            thumb: 0.0,
+            index: 0.0,
+            middle: 0.0,
+            ring: 0.0,
+            little: 0.0,
+            spread: 0.0,
+            thumb_opposition: 0.0,
+            transition_seconds: None,
+        },
     ];
 
     SettingsFile {
@@ -1353,7 +1368,7 @@ mod tests {
     /// The hand is the size it says it is, and both hands are mirror images.
     #[test]
     fn proportions_and_mirroring() {
-        for gesture in ["Idle", "Grasp", "Point", "Pinch"] {
+        for gesture in ["Idle", "Grasp", "Point", "Pinch", "Plank"] {
             let left = joints(gesture, Hand::Left);
             let right = joints(gesture, Hand::Right);
 
@@ -1433,7 +1448,7 @@ mod tests {
         );
 
         // The other gestures must not read as a pinch by accident.
-        for gesture in ["Idle", "Point"] {
+        for gesture in ["Idle", "Point", "Plank"] {
             let joints = joints(gesture, Hand::Left);
             let gap = distance(&joints, 5, 10);
 
@@ -1470,6 +1485,17 @@ mod tests {
             curl(&point, Finger::Index) > 0.07,
             "point does not extend the index finger"
         );
+
+        // A flat hand must not read as a grab on any finger.
+        let plank = joints("Plank", Hand::Left);
+        for finger in [Finger::Index, Finger::Middle, Finger::Ring, Finger::Little] {
+            let reach = curl(&plank, finger);
+            assert!(
+                reach > 0.07,
+                "plank leaves the {} finger only {reach} m from the palm",
+                JOINT_NAMES[finger.joints()[0]]
+            );
+        }
         for finger in [Finger::Middle, Finger::Ring, Finger::Little] {
             let reach = curl(&point, finger);
             assert!(

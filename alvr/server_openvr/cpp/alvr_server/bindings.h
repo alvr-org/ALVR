@@ -46,8 +46,10 @@ struct FfiHandData {
     // so this is what the pointer ray and the poke cursor come out of. Without it SteamVR falls
     // back to the raw device pose, which is the OpenXR palm joint: the centre of the *middle*
     // finger's metacarpal, so the pointer appears at the middle finger. Only meaningful when
-    // handSkeleton is set.
+    // handSkeleton is set. The orientation points the ray along the index finger rather than
+    // wherever the device's rotation offset happens to face.
     float tipOffsetPosition[3];
+    FfiQuat tipOffsetOrientation;
     bool hasTipOffset;
 };
 

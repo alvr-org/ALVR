@@ -968,9 +968,6 @@ pub const GIZMO_SLOTS: usize = 4;
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum GizmoDevice {
     Hand,
-    /// Not yet selected anywhere: the controller dropdown is the next step, and its slots are
-    /// already reserved so adding it needs no change here.
-    #[expect(dead_code, reason = "reserved for the controller pose selector")]
     Controller,
 }
 

@@ -10,7 +10,7 @@
 
 use crate::{
     client::HapticsEvent,
-    controllers::{ControllerSettings, ControllerState, Hand, Profile},
+    controllers::{ControllerInteraction, ControllerSettings, ControllerState, Hand, Profile},
     overlay::{hand_color, input_tooltip},
 };
 use alvr_packets::ButtonValue;
@@ -301,6 +301,7 @@ pub fn toolbar_row(
     controllers: &mut [ControllerState; 2],
     hands_enabled: &mut [bool; 2],
     settings: &ControllerSettings,
+    gizmo: &mut Option<ControllerInteraction>,
 ) {
     ui.label("Controller:");
 
@@ -358,11 +359,36 @@ pub fn toolbar_row(
         }
     }
 
+    pose_gizmo_selector(ui, gizmo);
+
     if ui.button("Reset").clicked() {
         for hand in Hand::BOTH {
             controllers[hand.index()].reset(settings, hand);
         }
     }
+}
+
+/// The controller pose to draw axes at, or nothing, which is the default. The controller
+/// counterpart of the hand's selector, and independent of it.
+fn pose_gizmo_selector(ui: &mut Ui, gizmo: &mut Option<ControllerInteraction>) {
+    let label = gizmo.map_or("Pose: off", |pose| pose.label());
+
+    ComboBox::from_id_salt("controller pose gizmo")
+        .selected_text(label)
+        .width(84.0)
+        .show_ui(ui, |ui| {
+            ui.selectable_value(gizmo, None, "off")
+                .on_hover_text("Draw no pose axes.");
+
+            for pose in ControllerInteraction::ALL {
+                ui.selectable_value(gizmo, Some(pose), pose.label())
+                    .on_hover_text(pose.describe());
+            }
+        })
+        .response
+        .on_hover_text(
+            "Draw a controller pose as RGB axes on both controllers: X red, Y green, Z blue.",
+        );
 }
 
 /// Lays out and runs one skeuomorphic controller panel.

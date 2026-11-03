@@ -7,6 +7,7 @@
 
 mod c_api;
 mod connection;
+mod controller_offset;
 mod logging_backend;
 mod sockets;
 mod statistics;
@@ -16,6 +17,8 @@ mod storage;
 mod audio;
 
 pub mod video_decoder;
+
+pub use controller_offset::controller_pose_offset;
 
 use alvr_common::{
     ConnectionState, LifecycleState, ViewParams, dbg_client_core, error,

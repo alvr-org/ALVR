@@ -6,13 +6,17 @@
 //! that consumes it.
 
 use alvr_common::{
+    Pose,
     anyhow::{Context, Result, anyhow, bail},
-    glam::Vec3,
+    glam::{Quat, Vec3},
     info, warn,
 };
 use bytemuck::{Pod, Zeroable};
 use easy_gltf::model::Mode;
-use std::path::{Path, PathBuf};
+use std::{
+    f32::consts::FRAC_PI_2,
+    path::{Path, PathBuf},
+};
 
 /// Name of the environment file loaded from the executable's directory.
 pub const ENVIRONMENT_FILE_NAME: &str = "environment.gltf";
@@ -95,15 +99,23 @@ fn push_box(
     }
 }
 
-/// Resolves the environment file next to the executable, which is where the emulator expects it.
+/// Folder next to the executable that the build copies the bundled models into.
+const BUNDLED_DIR_NAME: &str = "models";
+
+/// Resolves the environment file: one placed next to the executable wins, so a room of the user's
+/// own replaces the test room, which the build bundles otherwise.
 pub fn default_environment_path() -> Result<PathBuf> {
     let exe = std::env::current_exe().context("Cannot determine executable path")?;
-    let dir = exe
-        .parent()
-        .context("Executable has no parent directory")?
-        .to_owned();
+    let dir = exe.parent().context("Executable has no parent directory")?;
 
-    Ok(dir.join(ENVIRONMENT_FILE_NAME))
+    let own = dir.join(ENVIRONMENT_FILE_NAME);
+    let bundled = dir.join(BUNDLED_DIR_NAME).join(ENVIRONMENT_FILE_NAME);
+
+    Ok(if own.exists() || !bundled.exists() {
+        own
+    } else {
+        bundled
+    })
 }
 
 impl Scene {
@@ -193,34 +205,64 @@ impl Scene {
 
     /// A procedural stand-in controller model, used when a profile does not name a glTF file.
     ///
-    /// A grip-sized handle with a flat head and a bright nose marker on the forward (-Z) side, so
-    /// position and orientation can be judged without a real model. The shading is unlit, so each
-    /// face gets its own brightness to keep the silhouette readable.
-    pub fn placeholder_controller() -> Self {
+    /// Built in the aim pose's frame: a bright nose whose tip is the aim, pointing forward (-Z), so
+    /// position and orientation can be judged without a real model; a flat head behind it; and a
+    /// handle along the grip, `grip_from_aim`, so it sits where a real controller's handle does.
+    /// A profile with no known grip offset has the grip on the aim, so the handle then just hangs
+    /// below the head. The shading is unlit, so each face gets its own brightness to keep the
+    /// silhouette readable.
+    pub fn placeholder_controller(grip_from_aim: Pose) -> Self {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
 
-        // Handle below and slightly behind the grip origin, head plate above it, nose in front.
+        // The handle runs along the grip's Z axis, through the grip origin, which is the axis of
+        // the held handle by the spec's definition.
+        let handle = if grip_from_aim.position == Vec3::ZERO
+            && grip_from_aim.orientation == Quat::IDENTITY
+        {
+            Pose {
+                orientation: Quat::from_rotation_x(FRAC_PI_2),
+                position: Vec3::new(0.0, -0.04, 0.04),
+            }
+        } else {
+            grip_from_aim
+        };
+        let handle_half = Vec3::new(0.016, 0.016, 0.05);
         push_box(
             &mut vertices,
             &mut indices,
-            Vec3::new(0.0, -0.04, 0.03),
-            Vec3::new(0.016, 0.05, 0.016),
+            Vec3::ZERO,
+            handle_half,
             [0.35, 0.35, 0.38],
         );
+        for vertex in &mut vertices {
+            let position = Vec3::from_array(vertex.position);
+            vertex.position = (handle.position + handle.orientation * position).to_array();
+        }
+
+        // Nose with its front face exactly on the aim, so the application's pointer leaves from
+        // its tip and any offset between the two is visible.
+        let nose_half = Vec3::new(0.008, 0.008, 0.012);
         push_box(
             &mut vertices,
             &mut indices,
-            Vec3::new(0.0, 0.01, -0.02),
-            Vec3::new(0.035, 0.012, 0.03),
-            [0.55, 0.55, 0.58],
-        );
-        push_box(
-            &mut vertices,
-            &mut indices,
-            Vec3::new(0.0, 0.01, -0.06),
-            Vec3::new(0.008, 0.008, 0.012),
+            Vec3::new(0.0, 0.0, nose_half.z),
+            nose_half,
             [0.9, 0.55, 0.2],
+        );
+
+        // Head plate from behind the nose back over the top of the handle, the way a real
+        // controller's face joins the two. On a Quest the aim is at the front of the ring, nearly
+        // 10 cm ahead of the grip, so a plate only around the aim would leave the handle floating.
+        let handle_top = handle.position + handle.orientation * Vec3::new(0.0, 0.0, -handle_half.z);
+        let front = 2.0 * nose_half.z;
+        let back = (handle_top.z + handle_half.y).max(front + 0.02);
+        push_box(
+            &mut vertices,
+            &mut indices,
+            Vec3::new(0.0, 0.0, (front + back) / 2.0),
+            Vec3::new(0.03, 0.012, (back - front) / 2.0),
+            [0.55, 0.55, 0.58],
         );
 
         Self {
@@ -230,6 +272,16 @@ impl Scene {
                 texture: None,
             }],
         }
+    }
+
+    /// The same geometry with every vertex moved by `pose`.
+    pub fn transformed(mut self, pose: Pose) -> Self {
+        for vertex in &mut self.vertices {
+            let position = Vec3::from_array(vertex.position);
+            vertex.position = (pose.position + pose.orientation * position).to_array();
+        }
+
+        self
     }
 
     /// Axis-aligned bounds, used to pick a sensible starting position when the scene loads.

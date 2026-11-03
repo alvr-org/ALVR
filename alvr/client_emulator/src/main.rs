@@ -38,7 +38,7 @@ use crate::{
         TrackedState,
     },
     controller_ui::ControllerUi,
-    controllers::{ControllerSettings, ControllerState, Hand},
+    controllers::{ControllerInteraction, ControllerSettings, ControllerState, Hand},
     hands::{HandSettings, HandState},
     interaction::HandInteraction,
     overlay::{PoseOverlay, PoseTarget, Slot},
@@ -143,6 +143,8 @@ struct EmulatorApp {
     /// Which interaction pose to draw axes at on every enabled hand, if any. One selection for
     /// both hands: the poses are mirror images, so seeing them side by side is the comparison.
     hand_gizmo: Option<HandInteraction>,
+    /// Which pose to draw axes at on every enabled controller, if any; independent of the hands.
+    controller_gizmo: Option<ControllerInteraction>,
 }
 
 impl EmulatorApp {
@@ -244,6 +246,7 @@ impl EmulatorApp {
             loaded_models: [None, None],
             hand_models: [None, None],
             hand_gizmo: None,
+            controller_gizmo: None,
             hand_models_tried: [false; 2],
         }
     }
@@ -570,17 +573,17 @@ impl EmulatorApp {
                 continue;
             }
 
+            let profile = self.controller_settings.profiles.get(state.profile_index);
+
             // Head-relative: the tracking thread composes this with the head pose it sends in the
-            // same packet, which is what keeps the controllers rigid against the view.
+            // same packet, which is what keeps the controllers rigid against the view. Not the aim
+            // the state holds, but the corrected grip, because that is what a real client sends.
             tracked[index] = TrackedController {
                 enabled: true,
-                pose: Pose {
-                    orientation: state.orientation.normalize(),
-                    position: state.position,
-                },
+                pose: state.sent_pose(profile, hand),
             };
 
-            if let Some(profile) = self.controller_settings.profiles.get(state.profile_index) {
+            if let Some(profile) = profile {
                 for (id, value) in state.effective_entries(profile, hand) {
                     desired.insert(id, value);
                 }
@@ -610,6 +613,8 @@ impl EmulatorApp {
 
     /// World-space model matrices of the controllers whose 3D model should be drawn, composed
     /// with the given head pose (the live camera, or the displayed video frame's pose).
+    ///
+    /// At the pose being sent, which is the frame controller models are authored around.
     fn controller_model_matrices(
         &self,
         head_position: Vec3,
@@ -620,25 +625,24 @@ impl EmulatorApp {
 
             (state.enabled && state.model_visible && self.loaded_models[index].is_some()).then(
                 || {
+                    let profile = self.controller_settings.profiles.get(state.profile_index);
+                    let sent = state.sent_pose(profile, Hand::BOTH[index]);
+
                     Mat4::from_rotation_translation(
-                        (head_orientation * state.orientation).normalize(),
-                        head_position + head_orientation * state.position,
+                        (head_orientation * sent.orientation).normalize(),
+                        head_position + head_orientation * sent.position,
                     )
                 },
             )
         })
     }
 
-    /// Uploads controller models to the GPU when a visible controller's profile changed.
-    ///
-    /// Profiles name an optional glTF file; without one, or when loading fails, a procedural
-    /// placeholder shows position and orientation instead.
     /// Creates the gizmo renderer the first time a pose is selected for display.
     ///
     /// Lazy like the other renderers, and for the same reason: it costs a pipeline, and most runs
     /// never draw a gizmo at all.
     fn ensure_gizmo_renderer(&mut self, frame: &Frame) {
-        if self.hand_gizmo.is_none() {
+        if self.hand_gizmo.is_none() && self.controller_gizmo.is_none() {
             return;
         }
 
@@ -669,6 +673,10 @@ impl EmulatorApp {
             .insert(Arc::clone(&created));
     }
 
+    /// Uploads controller models to the GPU when a visible controller's profile changed.
+    ///
+    /// Profiles name an optional glTF file; without one, or when loading fails, a procedural
+    /// placeholder shows position and orientation instead.
     fn ensure_controller_models(&mut self, frame: &Frame) {
         let Some(state) = frame.wgpu_render_state() else {
             return;
@@ -725,7 +733,14 @@ impl EmulatorApp {
                         None
                     }
                 })
-                .unwrap_or_else(Scene::placeholder_controller);
+                // The placeholder is built pointing along its -Z, so it is moved into the sent
+                // frame it is drawn in by the inverse offsets: its nose then shows the aim.
+                .unwrap_or_else(|| {
+                    let sent_from_aim =
+                        profile.grip_from_aim[index] * profile.sent_from_grip[index];
+                    Scene::placeholder_controller(profile.grip_from_aim[index])
+                        .transformed(sent_from_aim.inverse())
+                });
 
             renderer
                 .lock()
@@ -803,6 +818,26 @@ impl EmulatorApp {
                 transforms[GizmoRenderer::slot(GizmoDevice::Hand, index)] = Some(
                     palm * Mat4::from_rotation_translation(pose.orientation, pose.position),
                 );
+            }
+        }
+
+        if let Some(interaction) = self.controller_gizmo {
+            for hand in Hand::BOTH {
+                let index = hand.index();
+                let state = &self.controllers[index];
+
+                if !state.enabled {
+                    continue;
+                }
+
+                let profile = self.controller_settings.profiles.get(state.profile_index);
+                let pose = interaction.pose(state, profile, hand);
+
+                transforms[GizmoRenderer::slot(GizmoDevice::Controller, index)] =
+                    Some(Mat4::from_rotation_translation(
+                        (head_orientation * pose.orientation).normalize(),
+                        head_position + head_orientation * pose.position,
+                    ));
             }
         }
 
@@ -1312,6 +1347,7 @@ impl EmulatorApp {
                 &mut self.controllers,
                 &mut hands_enabled,
                 &self.controller_settings,
+                &mut self.controller_gizmo,
             );
             for (state, enabled) in self.hands.iter_mut().zip(hands_enabled) {
                 state.enabled = enabled;
@@ -1432,7 +1468,7 @@ impl App for EmulatorApp {
                     ui.centered_and_justified(|ui| {
                         ui.label(
                             RichText::new(format!(
-                                "Could not load environment\n\n{message}\n\nPlace {} next to the executable.",
+                                "Could not load environment\n\n{message}\n\nRebuild to restore the bundled test room, or place your own {} next to the executable.",
                                 scene::ENVIRONMENT_FILE_NAME
                             ))
                             .color(Color32::LIGHT_RED),

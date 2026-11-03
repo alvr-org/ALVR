@@ -34,6 +34,7 @@ mod joint {
     pub const THUMB_TIP: usize = 5;
     pub const INDEX_PROXIMAL: usize = 7;
     pub const INDEX_DISTAL: usize = 9;
+    #[cfg(test)]
     pub const LITTLE_PROXIMAL: usize = 22;
     pub const INDEX_TIP: usize = 10;
 }
@@ -175,7 +176,10 @@ impl HandInteraction {
             // "The position of the poke pose is at the surface of the extended index fingertip...
             // The +Z direction points from the fingertip towards the knuckle and parallel to the
             // index finger distal bone... The poke pose must rotate together with the tip of the
-            // finger." The one pose that is *supposed* to follow the articulation.
+            // finger." The one pose that is *supposed* to follow the articulation. The tip joint
+            // already is that surface: the skeleton's distal bone runs to the end of the finger,
+            // and the bundled hand's mesh ends 1.4 mm past its own index tip bone, so pushing the
+            // pose further out would leave it in the air in front of the finger.
             Self::Poke => {
                 let tip = joints[joint::INDEX_TIP].position;
 

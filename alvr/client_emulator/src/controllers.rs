@@ -16,11 +16,13 @@ use alvr_common::{
     PICO_G3_CONTROLLER_PROFILE_PATH, PICO_NEO3_CONTROLLER_PROFILE_PATH,
     PSVR2_CONTROLLER_PROFILE_PATH, QUEST_CONTROLLER_PROFILE_PATH, VIVE_CONTROLLER_PROFILE_PATH,
     YVR_CONTROLLER_PROFILE_PATH,
+    Pose,
     anyhow::{Context, Result},
-    glam::{Quat, Vec3},
+    glam::{EulerRot, Quat, Vec3},
     hash_string, info, warn,
 };
 use alvr_packets::ButtonValue;
+use alvr_system_info::Platform;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
@@ -148,6 +150,21 @@ pub struct Profile {
     /// Optional glTF models shown when the controller is set visible, one per hand since the
     /// physical pair is mirrored. Left is index 0.
     pub models: [Option<PathBuf>; 2],
+    /// The grip pose in the aim pose's frame, per hand. Left is index 0.
+    ///
+    /// The emulator's controller state is the *aim* — where the controller points, which is what
+    /// the pads steer — but ALVR is sent the *grip*, as a real client sends it. The two differ by
+    /// the controller's shape: a Quest handle is tilted 60° up from where it points. Sending the
+    /// aim as though it were the grip tips the application's pointer away by that angle, and
+    /// rolling the controller then swings it off to the side.
+    pub grip_from_aim: [Pose; 2],
+    /// What ALVR is actually sent, in the grip pose's frame, per hand. Left is index 0.
+    ///
+    /// A real client does not send the runtime's grip as it is: it first applies a per-headset
+    /// correction ([`alvr_client_core::controller_pose_offset`]) that brings the grip into line
+    /// with what SteamVR's controller models expect. The emulator reports itself as a desktop, so
+    /// it applies the correction of the headset the profile's controller belongs to.
+    pub sent_from_grip: [Pose; 2],
 }
 
 impl Profile {
@@ -180,7 +197,7 @@ pub struct ControllerSettings {
     pub rotation_sensitivity: f32,
     /// Head-relative starting position per hand. Left is index 0.
     pub start_positions: [Vec3; 2],
-    /// Head-relative starting orientation, from the configured starting pitch.
+    /// Head-relative starting orientation of the aim, from the configured starting pitch.
     pub start_orientation: Quat,
     pub profiles: Vec<Profile>,
 }
@@ -191,17 +208,19 @@ struct SettingsFile {
     rotation_sensitivity: f32,
     left_start_position: [f32; 3],
     right_start_position: [f32; 3],
-    /// Upward pitch of the resting pose, in degrees. Aimed above the horizon on purpose: pointed
-    /// level or below, the controllers' laser rests on SteamVR's status panel, whose system UI
-    /// then captures input focus and replaces the application's controller rendering with the
-    /// laggy web-based ghost silhouettes.
+    /// Upward pitch of the resting aim, in degrees — the direction the pointer leaves in. Aimed
+    /// above the horizon on purpose: pointed level or below, the controllers' laser rests on
+    /// SteamVR's status panel, whose system UI then captures input focus and replaces the
+    /// application's controller rendering with the laggy web-based ghost silhouettes.
     #[serde(default = "default_start_pitch")]
     start_pitch_degrees: f32,
     profiles: Vec<ProfileEntry>,
 }
 
+/// Was 30° while the controller state was sent as the grip, which tilted the Quest's pointer about
+/// 40° below it; that pitch only cancelled the tilt. Now the state is the aim itself.
 fn default_start_pitch() -> f32 {
-    30.0
+    10.0
 }
 
 #[derive(Serialize, Deserialize)]
@@ -214,6 +233,60 @@ struct ProfileEntry {
     left_model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     right_model: Option<String>,
+    /// Where the grip sits relative to the aim. A file without one gets the built-in offset for
+    /// its profile path, if there is one, so settings files written before it existed still
+    /// work; `null` there means the grip and aim coincide.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    grip_offset: Option<GripOffset>,
+}
+
+/// The grip pose relative to the aim pose, for the left controller. The right controller is its
+/// mirror image, mirrored the way ALVR's server mirrors its own controller offsets: across X.
+#[derive(Clone, Copy, Serialize, Deserialize)]
+struct GripOffset {
+    /// Metres, in the aim pose's frame.
+    position: [f32; 3],
+    /// Degrees about the aim pose's X, Y and Z axes, applied in that order.
+    rotation_degrees: [f32; 3],
+}
+
+impl GripOffset {
+    fn pose(self, hand: Hand) -> Pose {
+        let [x, y, z] = self.rotation_degrees.map(f32::to_radians);
+        let [px, py, pz] = self.position;
+
+        match hand {
+            Hand::Left => Pose {
+                orientation: Quat::from_euler(EulerRot::XYZ, x, y, z),
+                position: Vec3::new(px, py, pz),
+            },
+            Hand::Right => Pose {
+                orientation: Quat::from_euler(EulerRot::XYZ, x, -y, -z),
+                position: Vec3::new(-px, py, pz),
+            },
+        }
+    }
+}
+
+/// The built-in grip offset for a profile, where one is known.
+///
+/// The Quest's comes from SteamVR's own model of the Quest 2 controller
+/// (`resources/rendermodels/oculus_quest2_controller_left`), whose `openxr_grip` and `openxr_aim`
+/// components place the two OpenXR poses against the controller: the grip 20.6° up from the
+/// device's axis in the handle, the aim 39.4° down from it at the ring. Composed, the grip is 60°
+/// up from the aim, 3 cm below it and 9.5 cm behind it. Other controllers have no known offset yet
+/// and send the aim unchanged, as before.
+fn default_grip_offset(path: &str) -> Option<GripOffset> {
+    (path == QUEST_CONTROLLER_PROFILE_PATH).then_some(GripOffset {
+        position: [0.0, -0.030, 0.095],
+        rotation_degrees: [60.0, 0.0, 0.0],
+    })
+}
+
+/// The headset a profile's controller ships with, whose client-side pose correction is applied.
+/// Only profiles with a known grip offset name one, since the correction is relative to the grip.
+fn headset_platform(path: &str) -> Option<Platform> {
+    (path == QUEST_CONTROLLER_PROFILE_PATH).then_some(Platform::Quest2)
 }
 
 impl ControllerSettings {
@@ -296,6 +369,7 @@ fn default_file() -> SettingsFile {
                 right_inputs: inputs_for(Hand::Right),
                 left_model: None,
                 right_model: None,
+                grip_offset: default_grip_offset(path),
             })
         })
         .collect();
@@ -339,6 +413,19 @@ fn resolve(file: SettingsFile, directory: &Path) -> ControllerSettings {
                     .collect()
             };
 
+            let grip_offset = entry
+                .grip_offset
+                .or_else(|| default_grip_offset(&entry.path));
+            let grip_from_aim = |hand: Hand| {
+                grip_offset.map_or(Pose::IDENTITY, |offset| offset.pose(hand))
+            };
+            let platform = headset_platform(&entry.path);
+            let sent_from_grip = |hand: Hand| {
+                platform.map_or(Pose::IDENTITY, |platform| {
+                    alvr_client_core::controller_pose_offset(platform, hand == Hand::Right)
+                })
+            };
+
             Profile {
                 id: hash_string(&entry.path),
                 inputs: [
@@ -349,6 +436,8 @@ fn resolve(file: SettingsFile, directory: &Path) -> ControllerSettings {
                     entry.left_model.as_ref().map(|model| directory.join(model)),
                     entry.right_model.as_ref().map(|model| directory.join(model)),
                 ],
+                grip_from_aim: [grip_from_aim(Hand::Left), grip_from_aim(Hand::Right)],
+                sent_from_grip: [sent_from_grip(Hand::Left), sent_from_grip(Hand::Right)],
                 name: entry.name,
                 path: entry.path,
             }
@@ -366,6 +455,59 @@ fn resolve(file: SettingsFile, directory: &Path) -> ControllerSettings {
     }
 }
 
+/// The controller poses the toolbar can draw as an axis gizmo: the two OpenXR poses, and what ALVR
+/// is actually sent, since that last step is where a controller is most easily off.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ControllerInteraction {
+    /// `/input/aim/pose`, which the pads steer.
+    Aim,
+    /// `/input/grip/pose`, derived from the aim by the profile's grip offset.
+    Grip,
+    /// The grip with the headset's client-side correction applied, as it goes on the wire.
+    Sent,
+}
+
+impl ControllerInteraction {
+    pub const ALL: [Self; 3] = [Self::Aim, Self::Grip, Self::Sent];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Aim => "Aim",
+            Self::Grip => "Grip",
+            Self::Sent => "Sent",
+        }
+    }
+
+    /// Shown as the dropdown entry's tooltip.
+    pub fn describe(self) -> &'static str {
+        match self {
+            Self::Aim => {
+                "Where the controller points, and where the application's pointer should start: \
+                 -Z forward. This is what the pads and the API steer; the orange nose of the \
+                 placeholder shows it too."
+            }
+            Self::Grip => {
+                "How the hand holds the controller: on the axis of the handle, -Z running up it \
+                 towards the index finger. Derived from the aim by the profile's grip_offset."
+            }
+            Self::Sent => {
+                "What ALVR is sent: the grip with the headset's client-side correction, as a real \
+                 client sends it. The server moves this forward by its controller offset to place \
+                 SteamVR's device, and controller models are drawn here."
+            }
+        }
+    }
+
+    /// Where this pose sits, head-relative, for the given controller.
+    pub fn pose(self, state: &ControllerState, profile: Option<&Profile>, hand: Hand) -> Pose {
+        match self {
+            Self::Aim => state.aim_pose(),
+            Self::Grip => state.grip_pose(profile, hand),
+            Self::Sent => state.sent_pose(profile, hand),
+        }
+    }
+}
+
 /// Live state of one emulated controller. Owned by the UI thread; the HTTP API mutates it through
 /// queued commands, so user input and API input merge in one place.
 pub struct ControllerState {
@@ -373,9 +515,10 @@ pub struct ControllerState {
     pub profile_index: usize,
     /// Show the 3D model in the scene view.
     pub model_visible: bool,
-    /// Head-relative position. See the module docs for the axes.
+    /// Head-relative position of the aim pose. See the module docs for the axes.
     pub position: Vec3,
-    /// Head-relative orientation.
+    /// Head-relative orientation of the aim pose: -Z is where the controller points. The grip
+    /// sent to ALVR is derived from it; see [`Profile::grip_from_aim`].
     pub orientation: Quat,
     /// Explicitly held inputs, keyed by input path suffix. Values equal to the resting state are
     /// removed rather than stored, so this map is exactly the set of active inputs.
@@ -392,6 +535,33 @@ impl ControllerState {
             orientation: settings.start_orientation,
             inputs: HashMap::new(),
         }
+    }
+
+    /// The head-relative aim pose this state holds.
+    pub fn aim_pose(&self) -> Pose {
+        Pose {
+            orientation: self.orientation.normalize(),
+            position: self.position,
+        }
+    }
+
+    /// The head-relative grip pose for this aim, under the given profile.
+    pub fn grip_pose(&self, profile: Option<&Profile>, hand: Hand) -> Pose {
+        let offset = profile.map_or(Pose::IDENTITY, |profile| {
+            profile.grip_from_aim[hand.index()]
+        });
+
+        self.aim_pose() * offset
+    }
+
+    /// The head-relative pose ALVR is sent for this aim: the grip with the headset's client-side
+    /// correction applied, as a real client sends it.
+    pub fn sent_pose(&self, profile: Option<&Profile>, hand: Hand) -> Pose {
+        let offset = profile.map_or(Pose::IDENTITY, |profile| {
+            profile.sent_from_grip[hand.index()]
+        });
+
+        self.grip_pose(profile, hand) * offset
     }
 
     /// Returns the pose and inputs to their defaults. Emulation stays enabled and the profile
@@ -537,5 +707,115 @@ fn coerce(value: ButtonValue, scalar: bool) -> ButtonValue {
         }
         (ButtonValue::Scalar(value), false) => ButtonValue::Binary(value > 0.5),
         (value, _) => value,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// SteamVR's Quest 2 controller model places the OpenXR grip and aim against the device pose
+    /// (`openxr_grip` and `openxr_aim` in `oculus_quest2_controller_{left,right}.json`). The
+    /// built-in offset must be the grip as seen from the aim, for both hands, or the pointer an
+    /// application draws leaves the controller at an angle to where it is being aimed.
+    #[test]
+    fn quest_grip_offset_matches_steamvr_model() {
+        let component = |x: f32, origin: [f32; 3], pitch_degrees: f32| Pose {
+            orientation: Quat::from_rotation_x(pitch_degrees.to_radians()),
+            position: Vec3::new(x, origin[1], origin[2]),
+        };
+
+        let settings = resolve(default_file(), Path::new("."));
+        let quest = &settings.profiles[settings.find_profile("Quest").expect("Quest profile")];
+
+        for (hand, x) in [(Hand::Left, 0.007), (Hand::Right, -0.007)] {
+            let grip = component(x, [0.0, -0.001_829_41, 0.101_948_2], 20.6);
+            let aim = component(x, [0.0, -0.038_947_66, 0.009_496_94], -39.4);
+            let expected = aim.inverse() * grip;
+            let actual = quest.grip_from_aim[hand.index()];
+
+            let position_error = actual.position.distance(expected.position);
+            let angle_error = actual.orientation.angle_between(expected.orientation);
+
+            assert!(
+                position_error < 0.001,
+                "{} grip offset is {:.1} mm off SteamVR's model",
+                hand.side(),
+                position_error * 1000.0
+            );
+            assert!(
+                angle_error.to_degrees() < 0.1,
+                "{} grip offset is {:.2}° off SteamVR's model",
+                hand.side(),
+                angle_error.to_degrees()
+            );
+        }
+    }
+
+    /// Follows a Quest aim all the way to SteamVR's pointer: the emulator sends the corrected grip,
+    /// the server moves it 11 cm forward to the device pose (its default controller offset), and
+    /// SteamVR's model puts its `openxr_aim` there. The pointer should leave where the emulator
+    /// aims, within the few degrees the real client's Quest correction is known to be off (it
+    /// rotates the grip by 15°, where SteamVR's model implies 20.6°).
+    #[test]
+    fn quest_pointer_follows_the_aim() {
+        let settings = resolve(default_file(), Path::new("."));
+        let profile_index = settings.find_profile("Quest").expect("Quest profile");
+        let quest = &settings.profiles[profile_index];
+
+        for (hand, x) in [(Hand::Left, 0.007), (Hand::Right, -0.007)] {
+            let mut state = ControllerState::new(&settings, hand);
+            state.profile_index = profile_index;
+            state.position = Vec3::ZERO;
+            state.orientation = Quat::IDENTITY;
+
+            let device = state.sent_pose(Some(quest), hand)
+                * Pose {
+                    orientation: Quat::IDENTITY,
+                    position: Vec3::new(0.0, 0.0, -0.11),
+                };
+            let steamvr_aim = device
+                * Pose {
+                    orientation: Quat::from_rotation_x((-39.4f32).to_radians()),
+                    position: Vec3::new(x, -0.038_947_66, 0.009_496_94),
+                };
+
+            let pointer = steamvr_aim.orientation * Vec3::NEG_Z;
+            let error = pointer.angle_between(Vec3::NEG_Z).to_degrees();
+            println!(
+                "{}: pointer {error:.1}° off the aim, origin {:.1} cm away",
+                hand.side(),
+                steamvr_aim.position.length() * 100.0
+            );
+
+            assert!(
+                error < 6.0,
+                "{} pointer is {error:.1}° off the aim",
+                hand.side()
+            );
+            assert!(
+                pointer.y > 0.0,
+                "{} pointer should err upwards, by the client correction's shortfall",
+                hand.side()
+            );
+        }
+    }
+
+    /// A settings file written before grip offsets existed has none, and must still get the
+    /// built-in one for its profile rather than silently sending the aim as the grip.
+    #[test]
+    fn older_settings_files_get_the_built_in_offset() {
+        let mut file = default_file();
+        for entry in &mut file.profiles {
+            entry.grip_offset = None;
+        }
+
+        let settings = resolve(file, Path::new("."));
+        let quest = &settings.profiles[settings.find_profile("Quest").expect("Quest profile")];
+
+        assert!(
+            quest.grip_from_aim[0].orientation.angle_between(Quat::IDENTITY) > 1.0,
+            "the Quest grip offset was not filled in"
+        );
     }
 }

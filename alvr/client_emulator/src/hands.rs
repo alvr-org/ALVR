@@ -19,7 +19,8 @@
 //! away from it on the right. The finger joints follow the spec's own convention too (-Z along the
 //! bone towards the tip, +Y out of the back of the finger nail), so the joints this produces need
 //! no conversion anywhere. The middle metacarpal therefore lies exactly on the palm frame's Z
-//! axis, and the wrist exactly behind it, which is what the constants below encode.
+//! axis, which is what the constants below encode; the wrist sits behind it, slightly off that
+//! axis, as a real one does.
 
 use crate::controllers::Hand;
 use alvr_common::{
@@ -275,28 +276,26 @@ impl Gesture {
     }
 }
 
-// Anatomy of the modelled hand, in metres, for a nominal hand 185 mm from wrist to middle
+// Anatomy of the modelled hand, in metres, for a nominal hand 190 mm from wrist to middle
 // fingertip. `hand_length` in the settings scales all of it. Values are approximate adult
 // measurements; what matters is that the proportions are right, since the gesture recognition on
 // the server measures real distances between fingertips.
 
 /// Wrist to middle fingertip of the built-in proportions, which `hand_length` scales against.
-const NOMINAL_HAND_LENGTH: f32 = 0.185;
+const NOMINAL_HAND_LENGTH: f32 = 0.190;
 
-/// Wrist joint, directly behind the palm on its Z axis, which is what makes the wrist's own
-/// spec-defined frame — "+Z parallel to the line from wrist joint to middle finger metacarpal
-/// joint" — the identity in the palm frame.
-const WRIST_POSITION: Vec3 = Vec3::new(0.0, 0.0, 0.0555);
+/// Wrist joint.
+const WRIST_POSITION: Vec3 = Vec3::new(-0.0015, 0.0027, 0.0605);
 
 /// Metacarpal bases (the carpometacarpal joints), where each finger's chain starts. Close
 /// together at the wrist; the knuckles below fan much wider, which is what gives the palm its
 /// shape. The middle finger's sits on the palm frame's axis, since the palm joint is defined as
 /// the centre of that bone.
 const METACARPAL_BASE: [Vec3; 4] = [
-    Vec3::new(0.011, 0.001, 0.0325),
-    Vec3::new(0.000, 0.000, 0.0328),
-    Vec3::new(-0.012, 0.001, 0.0320),
-    Vec3::new(-0.023, 0.000, 0.0300),
+    Vec3::new(0.0070, -0.0028, 0.0239),
+    Vec3::new(0.0000, 0.0000, 0.0328),
+    Vec3::new(-0.0106, -0.0013, 0.0334),
+    Vec3::new(-0.0257, -0.0032, 0.0264),
 ];
 
 /// Knuckles (the metacarpophalangeal joints) at rest, slightly arched so the index and middle sit
@@ -397,9 +396,12 @@ pub fn skeleton(pose: &HandPose, hand: Hand, length: f32) -> [Pose; JOINT_COUNT]
 
     let mut joints = [Pose::IDENTITY; JOINT_COUNT];
 
+    // The spec's wrist frame: "+Z parallel to the line from wrist joint to middle finger metacarpal
+    // joint", pointing away from the fingers like the palm's.
+    let wrist = mirrored(WRIST_POSITION);
     joints[WRIST] = Pose {
-        orientation: Quat::IDENTITY,
-        position: mirrored(WRIST_POSITION),
+        orientation: look_along(mirrored(METACARPAL_BASE[1]) - wrist),
+        position: wrist,
     };
 
     for finger in [Finger::Index, Finger::Middle, Finger::Ring, Finger::Little] {

@@ -97,9 +97,13 @@ impossible, so an API caller sweeping values would mostly produce non-hands.
 
 Built in the **palm frame**, which is OpenXR's palm joint verbatim: origin at the centre of the
 middle metacarpal, -Z towards the fingertips, +Y out of the back of the hand. The constants place
-the middle metacarpal exactly on the palm's Z axis and the wrist directly behind it, which
-`palm_and_wrist_match_the_spec` asserts. Being close is not the same as being right here: every
-offset downstream was tuned against the real convention.
+the middle metacarpal exactly on the palm's Z axis, which `palm_and_wrist_match_the_spec` asserts
+along with the wrist's frame. Being close is not the same as being right here: every offset
+downstream was tuned against the real convention.
+
+The wrist and the metacarpal bases, though, are deliberately *not* idealised: they are the WebXR
+generic hand's, the wrist a few millimetres off the middle finger's axis and the bases arched. See
+"the shaking wrist" below for why a tidy layout is a bug.
 
 Two refinements over the brief:
 
@@ -250,10 +254,22 @@ Recorded because each cost real time or looked convincing.
   accumulates `m_currentThumbTouch` / `m_triggerValue` / `m_gripValue` to fake finger curl for a
   hand *holding* a controller (there is a `todo: move to rust` above it). Presentational only;
   bindings read the buttons.
+- **The shaking wrist.** An OpenXR application's `XR_HAND_JOINT_WRIST_EXT` snapped between a fixed
+  set of orientations up to 180° apart, constantly and worst while moving, with the palm and the
+  fingers steady and every location flag valid. SteamVR does not take the wrist's orientation from
+  the skeleton the driver submits; its OpenXR runtime rebuilds it from joint positions. With the
+  wrist exactly on the middle finger's axis and the metacarpal bases in a flat row level with it,
+  that rebuild has several equally good answers, and float rounding of about 1e-7 picked a
+  different one each frame. A real hand's layout (`hands.rs`, the WebXR generic hand's) ended it:
+  zero jumps, moving and rotating through every pose. What did *not* explain it, each checked: the
+  application (it reads exactly what the runtime returns), the `/pose/tip` rotation (the old driver
+  shook the same), the wrist bone sitting at a 180° quaternion (moved off it through the rotation
+  offset; no change), and noise in general (0.03 mm of random per-joint noise also hides it, which
+  is why a real headset never shows it — but that would mask the degenerate layout, not fix it).
 
 ## How to verify
 
-- **Geometry:** `cargo test -p alvr_client_emulator` — 15 tests, including the palm/wrist spec
+- **Geometry:** `cargo test -p alvr_client_emulator` — 25 tests, including the palm/wrist spec
   conformance, mirroring, and that Click's midpoint lands inside the recogniser's pinch distance.
 - **What SteamVR actually sees:** pyopenvr is installed. Read
   `getDeviceToAbsoluteTrackingPose` and compare device orientation against the head to isolate the

@@ -396,12 +396,11 @@ pub fn skeleton(pose: &HandPose, hand: Hand, length: f32) -> [Pose; JOINT_COUNT]
 
     let mut joints = [Pose::IDENTITY; JOINT_COUNT];
 
-    // The spec's wrist frame: "+Z parallel to the line from wrist joint to middle finger metacarpal
-    // joint", pointing away from the fingers like the palm's.
-    let wrist = mirrored(WRIST_POSITION);
+    // Deliberately not the spec's frame (+Z towards the middle metacarpal): with that joint exactly
+    // on the wrist's axis, SteamVR snaps the wrist by up to 180° from frame to frame.
     joints[WRIST] = Pose {
-        orientation: look_along(mirrored(METACARPAL_BASE[1]) - wrist),
-        position: wrist,
+        orientation: Quat::IDENTITY,
+        position: mirrored(WRIST_POSITION),
     };
 
     for finger in [Finger::Index, Finger::Middle, Finger::Ring, Finger::Little] {
@@ -1568,13 +1567,30 @@ mod tests {
             "the middle metacarpal does not lie on the palm's -Z axis: {along:?}"
         );
 
-        // The wrist: "+Z parallel to the line from wrist joint to middle finger metacarpal joint".
-        let towards = (base - flat[WRIST].position).normalize();
-        let wrist_forward = flat[WRIST].orientation * Vec3::NEG_Z;
         assert!(
-            wrist_forward.distance(towards) < 1e-4,
-            "the wrist does not face the middle metacarpal: {wrist_forward:?} vs {towards:?}"
+            flat[WRIST].position.z > base.z,
+            "the wrist is not behind the metacarpals"
         );
+        assert!(
+            flat[WRIST].orientation.angle_between(Quat::IDENTITY) < 1e-4,
+            "the wrist is not oriented like the palm"
+        );
+    }
+
+    /// Exactly on the axis makes SteamVR's wrist snap; see `skeleton`.
+    #[test]
+    fn the_middle_metacarpal_is_off_the_wrist_axis() {
+        for (hand, name) in [(Hand::Left, "left"), (Hand::Right, "right")] {
+            let flat = skeleton(&HandPose::FLAT, hand, 0.185);
+            let wrist = flat[WRIST];
+            let base = flat[Finger::Middle.joints()[0]].position;
+            let towards = wrist.orientation.conjugate() * (base - wrist.position);
+            let off = towards.angle_between(Vec3::NEG_Z).to_degrees();
+            assert!(
+                (3.0..10.0).contains(&off),
+                "{name}: the middle metacarpal is {off:.2}° off the wrist's axis"
+            );
+        }
     }
 
     /// A fingerless glove model is two-toned at its cuff, which sits at the second knuckle.

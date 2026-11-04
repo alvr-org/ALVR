@@ -5,11 +5,13 @@ use alvr_common::{AnyhowToCon, ConResult, ToCon, anyhow::Result, con_bail, info}
 use alvr_packets::{ClientControlPacket, ServerControlPacket};
 use alvr_session::{DscpTos, SocketBufferConfig, SocketBufferSize, SocketProtocol};
 use serde::{Serialize, de::DeserializeOwned};
-use socket2::Socket;
+use socket2::{SockRef, Socket};
 use std::{
+    io,
     marker::PhantomData,
-    net::{IpAddr, Ipv4Addr, TcpListener},
-    time::Duration,
+    net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream},
+    thread,
+    time::{Duration, Instant},
 };
 
 pub use control_socket::*;
@@ -32,6 +34,8 @@ pub const MDNS_DEVICE_ID_KEY: &str = "device_id";
 pub const MDNS_CONTROL_PORT_KEY: &str = "control_port";
 
 pub const WIRED_CLIENT_HOSTNAME: &str = "client.wired";
+
+const ACCEPT_POLL_INTERVAL: Duration = Duration::from_millis(10);
 
 fn set_socket_buffers(socket: &socket2::Socket, buffer_config: SocketBufferConfig) -> Result<()> {
     info!(
@@ -95,6 +99,41 @@ fn set_dscp(socket: &Socket, dscp: Option<DscpTos>) {
         };
 
         socket.set_tos_v4((tos << 2) as u32).ok();
+    }
+}
+
+/// Accepts a connection within the receive timeout `bind()` set on the listener.
+///
+/// Linux, and so Android, applies that timeout to `accept()`. Windows ignores it there and blocks
+/// until a peer connects, so a client waiting for the server could never notice it was being shut
+/// down, and closing it hung.
+fn accept(listener: &TcpListener) -> io::Result<(TcpStream, SocketAddr)> {
+    if cfg!(not(windows)) {
+        return listener.accept();
+    }
+
+    let deadline = SockRef::from(listener)
+        .read_timeout()?
+        .map(|timeout| Instant::now() + timeout);
+
+    listener.set_nonblocking(true)?;
+
+    loop {
+        match listener.accept() {
+            Ok((socket, address)) => {
+                // Inherited from the listener.
+                socket.set_nonblocking(false)?;
+
+                return Ok((socket, address));
+            }
+            Err(e)
+                if e.kind() == io::ErrorKind::WouldBlock
+                    && deadline.is_none_or(|deadline| Instant::now() < deadline) =>
+            {
+                thread::sleep(ACCEPT_POLL_INTERVAL);
+            }
+            Err(e) => return Err(e),
+        }
     }
 }
 
@@ -272,5 +311,50 @@ impl SocketConnection {
 
     pub fn recv_poll(&mut self) -> ConResult<()> {
         self.stream_socket.recv()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Read;
+
+    /// With no peer connecting, accepting gives up after the listener's timeout. On Windows a plain
+    /// `accept()` would block here forever.
+    #[test]
+    fn accept_times_out() {
+        let listener = control_socket::bind(
+            Duration::from_millis(100),
+            0,
+            None,
+            SocketBufferConfig::default(),
+        )
+        .unwrap();
+
+        let start = Instant::now();
+        let error = accept(&listener).unwrap_err();
+
+        assert_eq!(error.kind(), io::ErrorKind::WouldBlock);
+        assert!(start.elapsed() < Duration::from_secs(2));
+    }
+
+    /// A connection that arrives in time is accepted, and in blocking mode like any other socket.
+    #[test]
+    fn accept_returns_a_blocking_socket() {
+        let listener =
+            control_socket::bind(Duration::from_secs(5), 0, None, SocketBufferConfig::default())
+                .unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let _client = TcpStream::connect((Ipv4Addr::LOCALHOST, port)).unwrap();
+
+        let (socket, _) = accept(&listener).unwrap();
+        socket.set_read_timeout(Some(Duration::from_millis(50))).unwrap();
+
+        // A non-blocking socket would fail at once instead of waiting out the read timeout.
+        let start = Instant::now();
+        let error = (&socket).read(&mut [0; 1]).unwrap_err();
+
+        assert!(matches!(error.kind(), io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock));
+        assert!(start.elapsed() >= Duration::from_millis(40));
     }
 }

@@ -92,9 +92,7 @@ enum LookRequest {
 }
 
 struct EmulatorApp {
-    /// `Option` so `on_exit` can take the client out and leak it. See `on_exit` for why running the
-    /// client core's destructor would hang the process.
-    client: Option<EmulatedClient>,
+    client: EmulatedClient,
     camera: Camera,
     scene: Option<Arc<Scene>>,
     /// Set when the environment failed to load, so the UI can explain why rather than show nothing.
@@ -220,7 +218,7 @@ impl EmulatorApp {
         ];
 
         Self {
-            client: Some(EmulatedClient::new()),
+            client: EmulatedClient::new(),
             camera,
             scene,
             scene_error,
@@ -251,17 +249,9 @@ impl EmulatorApp {
         }
     }
 
-    /// The client. Only `None` after `on_exit`, by which point nothing else runs.
-    fn client(&mut self) -> &mut EmulatedClient {
-        self.client.as_mut().expect("client used after shutdown")
-    }
-
-    /// Current connection status, or a default snapshot once the client has been shut down.
+    /// Current connection status.
     fn status(&self) -> ClientStatus {
-        self.client
-            .as_ref()
-            .map(|client| client.status().clone())
-            .unwrap_or_default()
+        self.client.status().clone()
     }
 
     /// Whether the mouse is currently driving the camera, by either route.
@@ -593,7 +583,7 @@ impl EmulatorApp {
             }
         }
 
-        let client = self.client();
+        let client = &mut self.client;
 
         client.set_tracking(TrackedState {
             head: TrackedPose {
@@ -1035,7 +1025,7 @@ impl EmulatorApp {
     /// can tell the server which frame was actually presented, and records the frame count and
     /// layout for the toolbar.
     fn upload_decoded_frame(&mut self, frame: &Frame) -> Option<Duration> {
-        let decoded = self.client().take_latest_frame();
+        let decoded = self.client.take_latest_frame();
 
         let state = frame.wgpu_render_state()?;
 
@@ -1197,7 +1187,7 @@ impl EmulatorApp {
     /// Publishes the current state for `GET /api/state`.
     fn publish_state(&mut self) {
         let status = self.status();
-        let timing = self.client().frame_timing();
+        let timing = self.client.frame_timing();
 
         *self.shared.state.lock() = StateResponse {
             // The client core reports a HUD message while not streaming; treat streaming as the
@@ -1228,7 +1218,7 @@ impl EmulatorApp {
     /// varies by is scene movement with nothing behind it.
     fn stats_entries(&mut self) -> Vec<(String, String)> {
         let refresh_rate = self.status().refresh_rate;
-        let timing = self.client().frame_timing();
+        let timing = self.client.frame_timing();
 
         let frames_per_second = if timing.world_ms.mean > 0.0 {
             1000.0 / timing.world_ms.mean
@@ -1393,8 +1383,8 @@ impl App for EmulatorApp {
         let delta_seconds = (now - self.last_frame).as_secs_f32().min(0.1);
         self.last_frame = now;
 
-        self.client().poll_events();
-        let haptics = self.client().take_haptics();
+        self.client.poll_events();
+        let haptics = self.client.take_haptics();
         self.controller_ui.apply_haptics(haptics);
 
         self.apply_pending_moves();
@@ -1417,7 +1407,7 @@ impl App for EmulatorApp {
         let displayed_frame = self.upload_decoded_frame(frame);
         // The world-space eye poses the displayed frame was rendered with. Also reports the
         // compositor start for the frame pacing statistics.
-        let video_views = self.client().displayed_frame_views(displayed_frame);
+        let video_views = self.client.displayed_frame_views(displayed_frame);
 
         self.draw_toolbar(ui);
 
@@ -1615,31 +1605,15 @@ impl App for EmulatorApp {
         self.publish_hands();
 
         // Completes the pacing report for the frame shown this repaint.
-        self.client().finish_frame();
+        self.client.finish_frame();
 
         // The scene is continuously interactive, so keep painting.
         ui_context.request_repaint();
     }
 
     /// Shuts the ALVR connection down on window close.
-    ///
-    /// The client is taken out of `self` and deliberately leaked when
-    /// [`EmulatedClient::shutdown`] reports that dropping it would block. `alvr_client_core` never
-    /// shuts down the mdns-sd service daemon it creates for discovery, so that daemon's thread parks
-    /// forever and `ClientCoreContext::drop` — which joins the connection thread owning it — never
-    /// returns. Leaking is the right trade here: the process is about to exit, so the OS reclaims
-    /// everything anyway, whereas running the destructor hangs the window on close.
-    ///
-    /// eframe drops the app inside this same event-loop callback, so returning from here without
-    /// removing the client would hit that destructor immediately.
     fn on_exit(&mut self) {
-        if let Some(mut client) = self.client.take() {
-            if client.shutdown() {
-                drop(client);
-            } else {
-                std::mem::forget(client);
-            }
-        }
+        self.client.shutdown();
     }
 }
 

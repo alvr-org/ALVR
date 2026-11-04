@@ -790,20 +790,11 @@ impl EmulatedClient {
         }
     }
 
-    /// Shuts the connection down, and reports whether the client core can then be dropped safely.
-    ///
-    /// `pause()` stops streaming and lets the server observe the disconnect rather than timing the
-    /// client out. It returns promptly, and the context is now safe to drop: `AnnouncerSocket` shuts
-    /// its mdns-sd daemon down on drop, so the connection thread that owns it can finish and the
-    /// join inside `ClientCoreContext::drop` completes. Before that fix this returned `false` and
-    /// the caller had to leak the context, because the daemon left a thread parked forever in a
-    /// blocking receive and the join never returned.
-    #[must_use = "the caller must leak the context when this returns false"]
-    pub fn shutdown(&mut self) -> bool {
+    /// Shuts the connection down. `pause()` lets the server observe the disconnect rather than
+    /// timing the client out.
+    pub fn shutdown(&mut self) {
         self.stop_tracking();
         self.context.pause();
-
-        true
     }
 }
 

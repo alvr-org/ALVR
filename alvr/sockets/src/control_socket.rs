@@ -37,7 +37,7 @@ pub fn accept_from_server(
     timeout: Duration,
 ) -> ConResult<(TcpStream, TcpStream)> {
     // Uses timeout set during bind()
-    let (socket, server_address) = listener.accept().handle_try_again()?;
+    let (socket, server_address) = crate::accept(listener).handle_try_again()?;
 
     if let Some(ip) = server_ip
         && server_address.ip() != ip

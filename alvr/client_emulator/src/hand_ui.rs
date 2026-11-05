@@ -50,6 +50,7 @@ pub fn toolbar_row(
     let tint = icons::HAND_TINT;
 
     icons::label(ui, Icon::Hand, Some(tint), "Hand tracking");
+    icons::title_divider(ui);
 
     for hand in Hand::BOTH {
         let index = hand.index();

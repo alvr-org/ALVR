@@ -27,7 +27,10 @@ pub const CONTROLLER_TINT: Color32 = Color32::from_rgb(30, 70, 165);
 ///
 /// The two section tints are the only colours the toolbar uses besides egui's own light blue for
 /// selection, and green and red for the connection state, so each colour keeps one meaning.
-pub const HAND_TINT: Color32 = Color32::from_rgb(105, 45, 175);
+///
+/// Kept muted: a fully saturated purple next to the dark blue was harsh, and the two only need to
+/// be told apart, not to stand out.
+pub const HAND_TINT: Color32 = Color32::from_rgb(112, 84, 160);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Icon {
@@ -243,6 +246,25 @@ pub fn group<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
         .inner_margin(Margin::same(margin.round() as i8))
         .show(ui, |ui| ui.horizontal(add_contents).inner)
         .inner
+}
+
+/// A short vertical hairline after a group's title icon, setting the title apart from the
+/// controls that follow it.
+pub fn title_divider(ui: &mut Ui) {
+    let height = ui.spacing().interact_size.y;
+    let (rect, _) = ui.allocate_exact_size(vec2(1.0, height), Sense::hover());
+    let inset = height * 0.2;
+    let color = if ui.visuals().dark_mode {
+        Color32::from_white_alpha(40)
+    } else {
+        Color32::from_black_alpha(38)
+    };
+
+    ui.painter().vline(
+        rect.center().x,
+        (rect.top() + inset)..=(rect.bottom() - inset),
+        Stroke::new(1.0, color),
+    );
 }
 
 /// Text for a toolbar dropdown: at egui's normal size even in the enlarged toolbar.

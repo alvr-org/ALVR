@@ -11,6 +11,7 @@
 use crate::{
     controllers::{ControllerState, Hand},
     hands::{self, Finger, HandPose, HandSettings, HandState},
+    icons::{self, Icon},
     interaction::HandInteraction,
     overlay::{hand_color, input_tooltip},
 };
@@ -45,17 +46,18 @@ pub fn toolbar_row(
     settings: &HandSettings,
     gizmo: &mut Option<HandInteraction>,
 ) {
-    ui.label("Hand:");
+    icons::label(ui, Icon::Hand, "Hand tracking");
 
     for hand in Hand::BOTH {
         let index = hand.index();
-        let label = match hand {
-            Hand::Left => "L",
-            Hand::Right => "R",
+        let (label, tooltip) = match hand {
+            Hand::Left => ("L", "Emulate the left hand"),
+            Hand::Right => ("R", "Emulate the right hand"),
         };
 
         if ui
             .toggle_value(&mut hands[index].enabled, label)
+            .on_hover_text(tooltip)
             .changed()
             && hands[index].enabled
         {
@@ -64,7 +66,7 @@ pub fn toolbar_row(
     }
 
     let mut visible = hands.iter().all(|state| state.model_visible);
-    if ui.toggle_value(&mut visible, "Display").changed() {
+    if icons::toggle(ui, &mut visible, Icon::Show, "Show the hand models in the view").changed() {
         for state in hands.iter_mut() {
             state.model_visible = visible;
         }
@@ -72,7 +74,7 @@ pub fn toolbar_row(
 
     pose_gizmo_selector(ui, gizmo);
 
-    if ui.button("Reset").clicked() {
+    if icons::button(ui, Icon::Reset, "Reset both hands' poses and gestures").clicked() {
         for hand in Hand::BOTH {
             hands[hand.index()].reset(settings, hand);
         }
@@ -85,11 +87,15 @@ pub fn toolbar_row(
 /// derivations from one to the other are where this project's bugs have lived. One selection drives
 /// both hands, so the two are always shown together and a sign error that mirrors is obvious.
 fn pose_gizmo_selector(ui: &mut Ui, gizmo: &mut Option<HandInteraction>) {
-    let label = gizmo.map_or("Pose: off", |pose| pose.label());
+    let label = gizmo.map_or("off", |pose| pose.label());
+    let tooltip =
+        "Draw an OpenXR interaction pose as RGB axes on both hands: X red, Y green, Z blue.";
+
+    icons::label(ui, Icon::Axes, tooltip);
 
     egui::ComboBox::from_id_salt("hand pose gizmo")
         .selected_text(label)
-        .width(84.0)
+        .width(56.0)
         .show_ui(ui, |ui| {
             ui.selectable_value(gizmo, None, "off")
                 .on_hover_text("Draw no pose axes.");
@@ -100,9 +106,7 @@ fn pose_gizmo_selector(ui: &mut Ui, gizmo: &mut Option<HandInteraction>) {
             }
         })
         .response
-        .on_hover_text(
-            "Draw an OpenXR interaction pose as RGB axes on both hands: X red, Y green, Z blue.",
-        );
+        .on_hover_text(tooltip);
 }
 
 /// Draws each enabled hand's panel in its bottom corner and applies any selection.

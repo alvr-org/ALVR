@@ -112,14 +112,17 @@ worth not repeating.
 
 There is no collision: walking through walls is expected.
 
-The toolbar selects which eye the window shows — **Left**, **Right** or **Stereo** — and which
-source it draws. **Virtual** is the decoded video, the content the VR server renders; **Real** is
-the local glTF scene, which stands in for what the headset's cameras would see; **Mixed**, the
+The toolbar is icons; hovering any of them says what it does. The top row selects which eye the
+window shows — **Left** (the default), **Right** or **Stereo**, drawn as a pair of eyes with the
+shown ones open — and which source it draws. **Virtual** (a headset) is the decoded video, the
+content the VR server renders; **Real** (a landscape) is the local glTF scene, which stands in for
+what the headset's cameras would see; **Mixed** (the landscape seen through the headset), the
 default, is what the headset shows — the video blended over the scene by the stream's passthrough
-mode, which is plain video when passthrough is off. It also shows the connection state, stream
-resolution and current position.
+mode, which is plain video when passthrough is off. Then come the connection state with the stream
+resolution and refresh rate (hover it for the client core's full status message, including the
+server address and any error) and the camera position in metres.
 
-**Stats**, shown while streaming, toggles a readout over the top of the view: the refresh rate,
+**Stats** (the bar chart), shown while streaming, toggles a readout over the top of the view: the refresh rate,
 frame pacing, head speed, decoded frame count and passthrough mode. The same timing numbers are in
 `GET /api/state`; see [`frame_timing`](#frame_timing).
 
@@ -160,10 +163,10 @@ The source can be switched from the API with [`POST /api/source`](#post-apisourc
 
 ## Controller emulation
 
-The **Inputs** toolbar row controls both emulated controllers and emulated hands. Its controller
-section: **L** and **R** enable each hand independently, the dropdown selects which controller type
-to emulate, **Display** shows the 3D models in the scene view, and **Reset** returns poses and
-inputs to their defaults.
+The second toolbar row controls both emulated controllers and emulated hands. Its controller
+section, marked by a gamepad: **L** and **R** enable each hand independently, the dropdown selects
+which controller type to emulate, the eye shows the 3D models in the scene view, the axes select a
+pose to draw as a gizmo, and the circular arrow returns poses and inputs to their defaults.
 
 A side is emulated as a controller **or** as a hand, never both, exactly as a real headset reports
 one or the other. Switching a controller on therefore switches that side's hand off, and vice
@@ -297,9 +300,9 @@ emulation mode happens on the server, as with real hardware.
 > Implementation notes, the measurements behind the server settings below, and the dead ends are in
 > [`HAND-EMULATION.md`](HAND-EMULATION.md).
 
-The **Hand** section of the **Inputs** row mirrors the controller one: **L** and **R** enable each
-hand, **Display** shows the 3D models, **Reset** returns the pose and the gesture to their
-defaults. Hands are posed with the same icons and the same movement panel as controllers, and
+The hand section of the second row, marked by a hand, mirrors the controller one: **L** and **R**
+enable each hand, the eye shows the 3D models, the axes select a pose gizmo, and the circular arrow
+returns the pose and the gesture to their defaults. Hands are posed with the same icons and the same movement panel as controllers, and
 excluded against them per side as described above.
 
 What differs is what is being emulated. A controller sends buttons; a hand sends **the 26 joint
@@ -877,6 +880,7 @@ enabled.
 | `src/overlay.rs` | Device icons over the view and the 6DoF movement panel, shared by both kinds |
 | `src/controller_ui.rs` | Controller toolbar section and the corner input panels |
 | `src/hand_ui.rs` | Hand toolbar section and the corner gesture panels |
+| `src/icons.rs` | Painted toolbar icons and the icon buttons that show them |
 | `src/api.rs` | HTTP server and shared state |
 | `src/shader.wgsl` | Unlit vertex/fragment shader |
 | `src/hand.wgsl` | Skinned, normal-shaded hand shader |

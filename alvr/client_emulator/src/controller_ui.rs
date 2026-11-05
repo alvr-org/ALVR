@@ -11,6 +11,7 @@
 use crate::{
     client::HapticsEvent,
     controllers::{ControllerInteraction, ControllerSettings, ControllerState, Hand, Profile},
+    icons::{self, Icon},
     overlay::{hand_color, input_tooltip},
 };
 use alvr_packets::ButtonValue;
@@ -303,17 +304,18 @@ pub fn toolbar_row(
     settings: &ControllerSettings,
     gizmo: &mut Option<ControllerInteraction>,
 ) {
-    ui.label("Controller:");
+    icons::label(ui, Icon::Controller, "Controllers");
 
     for hand in Hand::BOTH {
         let index = hand.index();
-        let label = match hand {
-            Hand::Left => "L",
-            Hand::Right => "R",
+        let (label, tooltip) = match hand {
+            Hand::Left => ("L", "Emulate the left controller"),
+            Hand::Right => ("R", "Emulate the right controller"),
         };
 
         if ui
             .toggle_value(&mut controllers[index].enabled, label)
+            .on_hover_text(tooltip)
             .changed()
             && controllers[index].enabled
         {
@@ -350,10 +352,14 @@ pub fn toolbar_row(
                     }
                 }
             }
-        });
+        })
+        .response
+        .on_hover_text("Controller type, for both hands");
 
     let mut visible = controllers.iter().all(|state| state.model_visible);
-    if ui.toggle_value(&mut visible, "Display").changed() {
+    if icons::toggle(ui, &mut visible, Icon::Show, "Show the controller models in the view")
+        .changed()
+    {
         for state in controllers.iter_mut() {
             state.model_visible = visible;
         }
@@ -361,7 +367,7 @@ pub fn toolbar_row(
 
     pose_gizmo_selector(ui, gizmo);
 
-    if ui.button("Reset").clicked() {
+    if icons::button(ui, Icon::Reset, "Reset both controllers' poses and inputs").clicked() {
         for hand in Hand::BOTH {
             controllers[hand.index()].reset(settings, hand);
         }
@@ -371,11 +377,14 @@ pub fn toolbar_row(
 /// The controller pose to draw axes at, or nothing, which is the default. The controller
 /// counterpart of the hand's selector, and independent of it.
 fn pose_gizmo_selector(ui: &mut Ui, gizmo: &mut Option<ControllerInteraction>) {
-    let label = gizmo.map_or("Pose: off", |pose| pose.label());
+    let label = gizmo.map_or("off", |pose| pose.label());
+    let tooltip = "Draw a controller pose as RGB axes on both controllers: X red, Y green, Z blue.";
+
+    icons::label(ui, Icon::Axes, tooltip);
 
     ComboBox::from_id_salt("controller pose gizmo")
         .selected_text(label)
-        .width(84.0)
+        .width(56.0)
         .show_ui(ui, |ui| {
             ui.selectable_value(gizmo, None, "off")
                 .on_hover_text("Draw no pose axes.");
@@ -386,9 +395,7 @@ fn pose_gizmo_selector(ui: &mut Ui, gizmo: &mut Option<ControllerInteraction>) {
             }
         })
         .response
-        .on_hover_text(
-            "Draw a controller pose as RGB axes on both controllers: X red, Y green, Z blue.",
-        );
+        .on_hover_text(tooltip);
 }
 
 /// Lays out and runs one skeuomorphic controller panel.

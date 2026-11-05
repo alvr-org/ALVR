@@ -19,6 +19,7 @@ mod controllers;
 mod decoder;
 mod hand_ui;
 mod hands;
+mod icons;
 mod interaction;
 mod overlay;
 mod render;
@@ -40,6 +41,7 @@ use crate::{
     controller_ui::ControllerUi,
     controllers::{ControllerInteraction, ControllerSettings, ControllerState, Hand},
     hands::{HandSettings, HandState},
+    icons::Icon,
     interaction::HandInteraction,
     overlay::{PoseOverlay, PoseTarget, Slot},
     render::{
@@ -225,7 +227,7 @@ impl EmulatorApp {
             scene,
             scene_error,
             environment_path,
-            view_mode: ViewMode::Stereo,
+            view_mode: ViewMode::Left,
             source: ViewSource::Mixed,
             show_stats: true,
             video_frames: 0,
@@ -1325,55 +1327,79 @@ impl EmulatorApp {
     fn draw_toolbar(&mut self, ui: &mut Ui) {
         egui::Panel::top(egui::Id::new("toolbar")).show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.label("View:");
-                ui.selectable_value(&mut self.view_mode, ViewMode::Left, "Left");
-                ui.selectable_value(&mut self.view_mode, ViewMode::Right, "Right");
-                ui.selectable_value(&mut self.view_mode, ViewMode::Stereo, "Stereo");
+                // Icons with tooltips rather than captioned text buttons: the groups are told
+                // apart by the separators, and the tooltips carry what the captions used to.
+                icons::selectable_value(
+                    ui,
+                    &mut self.view_mode,
+                    ViewMode::Left,
+                    Icon::LeftEye,
+                    "Left eye",
+                );
+                icons::selectable_value(
+                    ui,
+                    &mut self.view_mode,
+                    ViewMode::Right,
+                    Icon::RightEye,
+                    "Right eye",
+                );
+                icons::selectable_value(
+                    ui,
+                    &mut self.view_mode,
+                    ViewMode::Stereo,
+                    Icon::BothEyes,
+                    "Both eyes, side by side",
+                );
 
                 ui.separator();
 
                 // The stream is the virtual content, the local scene stands in for what the
                 // headset's cameras would see. Switching to the latter while streaming is also how
                 // to tell a decode problem apart from a rendering one.
-                ui.label("Source:");
-                ui.selectable_value(&mut self.source, ViewSource::Mixed, "Mixed")
-                    .on_hover_text(
-                        "What the headset shows: the video over the local scene, blended by the \
-                         stream's passthrough mode. Plain video when passthrough is off.",
-                    );
-                ui.selectable_value(&mut self.source, ViewSource::Virtual, "Virtual")
-                    .on_hover_text("The video alone, opaque.");
-                ui.selectable_value(&mut self.source, ViewSource::Real, "Real")
-                    .on_hover_text("The local scene alone.");
+                icons::selectable_value(
+                    ui,
+                    &mut self.source,
+                    ViewSource::Mixed,
+                    Icon::Mixed,
+                    "Mixed: what the headset shows. The streamed video over the local scene, \
+                     blended by the stream's passthrough mode; plain video when passthrough is off.",
+                );
+                icons::selectable_value(
+                    ui,
+                    &mut self.source,
+                    ViewSource::Virtual,
+                    Icon::Virtual,
+                    "Virtual: the streamed video alone, opaque.",
+                );
+                icons::selectable_value(
+                    ui,
+                    &mut self.source,
+                    ViewSource::Real,
+                    Icon::Real,
+                    "Real: the local scene alone, standing in for the headset's cameras.",
+                );
 
                 ui.separator();
 
                 let status = self.status();
                 if status.streaming {
-                    ui.label(
-                        RichText::new(format!(
-                            "Streaming  {}x{}",
-                            status.view_resolution.x, status.view_resolution.y
-                        ))
-                        .color(Color32::LIGHT_GREEN),
-                    );
-
                     // The numbers themselves go in an overlay over the view, where there is room
                     // to label them; see [`draw_stats_overlay`].
-                    ui.toggle_value(&mut self.show_stats, "Stats");
-                } else {
-                    ui.label(
-                        RichText::new("Not connected to ALVR server").color(Color32::LIGHT_RED),
-                    );
+                    icons::toggle(ui, &mut self.show_stats, Icon::Stats, "Frame pacing statistics");
                 }
+
+                connection_status(ui, &status);
 
                 ui.separator();
 
-                ui.label("Position:");
-                ui.label(format!(
-                    "x {:.2}  y {:.2}  z {:.2}",
-                    self.camera.position.x, self.camera.position.y, self.camera.position.z
-                ));
+                ui.label(
+                    RichText::new(format!(
+                        "{:.2}  {:.2}  {:.2}",
+                        self.camera.position.x, self.camera.position.y, self.camera.position.z
+                    ))
+                    .weak(),
+                )
+                .on_hover_text("Camera position x, y, z, in metres");
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if self.look_latched {
@@ -1396,9 +1422,6 @@ impl EmulatorApp {
     /// be emulated as one or the other and the two toggles belong next to each other.
     fn draw_inputs_row(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            ui.label("Inputs:");
-            ui.separator();
-
             let mut hands_enabled = [self.hands[0].enabled, self.hands[1].enabled];
             controller_ui::toolbar_row(
                 ui,
@@ -1939,6 +1962,34 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
             1.0,
         );
     }
+}
+
+/// A coloured dot and a short line saying whether a stream is up, with the client core's full
+/// status message, which carries the server address and any error, on hover.
+fn connection_status(ui: &mut Ui, status: &ClientStatus) {
+    let (color, text) = if status.streaming {
+        (
+            Color32::LIGHT_GREEN,
+            format!(
+                "{}x{}  {:.0} Hz",
+                status.view_resolution.x, status.view_resolution.y, status.refresh_rate
+            ),
+        )
+    } else {
+        (Color32::LIGHT_RED, "Not connected".into())
+    };
+
+    let tooltip = if status.hud_message.is_empty() {
+        "Connection to the ALVR server".to_owned()
+    } else {
+        status.hud_message.clone()
+    };
+
+    let (dot, _) = ui.allocate_exact_size(egui::vec2(10.0, 10.0), Sense::hover());
+    ui.painter().circle_filled(dot.center(), 4.0, color);
+
+    ui.label(RichText::new(text).color(color))
+        .on_hover_text(tooltip);
 }
 
 /// Short name of a passthrough mode, for the stats overlay and the API.

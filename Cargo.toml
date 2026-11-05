@@ -1,11 +1,11 @@
 [workspace]
-resolver = "2"
+# Must be explicit: virtual workspaces default to resolver 1, ignoring the members' edition
+resolver = "3"
 members = ["alvr/*"]
 
 [workspace.package]
 version = "21.0.0-dev14"
 edition = "2024"
-rust-version = "1.92"
 authors = ["alvr-org"]
 license = "MIT"
 

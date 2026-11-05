@@ -30,7 +30,7 @@ use crate::{
     api::{
         Articulation, CaptureRequestKind, ControllerCommand, ControllerSnapshot,
         ControllersResponse, HandCommand, HandSnapshot, HandsResponse, NamedSummary,
-        ProfileSummary, SharedState, StateResponse,
+        ProfileSummary, SharedState, StateResponse, ViewSource,
     },
     camera::{Camera, CameraInput, Eye},
     client::{
@@ -57,6 +57,7 @@ use alvr_common::{
     parking_lot::Mutex,
 };
 use alvr_packets::ButtonValue;
+use alvr_session::PassthroughMode;
 use eframe::{
     App, CreationContext, Frame, NativeOptions,
     egui::{self, Color32, Key, PointerButton, RichText, Sense, Ui, ViewportBuilder},
@@ -99,15 +100,16 @@ struct EmulatorApp {
     scene_error: Option<String>,
     environment_path: PathBuf,
     view_mode: ViewMode,
-    /// Show the streamed video rather than the local scene, when a stream is available.
-    ///
-    /// The stream is the *virtual* source: it is the VR content the server renders. The local
-    /// glTF scene stands in for what the headset's cameras would see, so it is the *real* one.
-    prefer_video: bool,
+    /// What to draw. The video sources fall back to the scene until a stream is available.
+    source: ViewSource,
     /// Show the frame pacing overlay over the view.
     show_stats: bool,
     /// Decoded frame count and layout, mirrored out of the video renderer for the stats overlay.
     video_frames: u64,
+    /// Alpha stream frames uploaded, for the stats overlay.
+    alpha_frames: u64,
+    /// How much older the alpha on screen is than the color frame it is shown with.
+    alpha_lag: Option<Duration>,
     video_layout: FrameLayout,
     /// Pixel aspect ratio of one eye of the video, mirrored out for the letterboxed display.
     video_eye_aspect: Option<f32>,
@@ -224,9 +226,11 @@ impl EmulatorApp {
             scene_error,
             environment_path,
             view_mode: ViewMode::Stereo,
-            prefer_video: true,
+            source: ViewSource::Mixed,
             show_stats: true,
             video_frames: 0,
+            alpha_frames: 0,
+            alpha_lag: None,
             video_layout: FrameLayout::Single,
             video_eye_aspect: None,
             look_latched: false,
@@ -328,6 +332,13 @@ impl EmulatorApp {
     }
 
     /// Applies pose changes queued by `POST /api/move`.
+    /// Applies a view source change requested through the API.
+    fn apply_pending_source(&mut self) {
+        if let Some(source) = self.shared.source.lock().take() {
+            self.source = source;
+        }
+    }
+
     fn apply_pending_moves(&mut self) {
         while let Some(pending) = self.shared.moves.lock().pop_front() {
             if let Some(position) = pending.position {
@@ -1042,6 +1053,7 @@ impl EmulatorApp {
             None => {
                 let created = Arc::new(Mutex::new(VideoRenderer::new(
                     &state.device,
+                    &state.queue,
                     state.target_format,
                 )));
 
@@ -1061,11 +1073,41 @@ impl EmulatorApp {
             renderer.upload(&state.device, &state.queue, decoded);
         }
 
+        // Matched against the color frame on screen rather than only the one just uploaded: the
+        // alpha for a frame can finish decoding a repaint later, and must still be shown with it.
+        if self.client.status().streaming {
+            if renderer.has_frame()
+                && let Some(alpha) = self.client.take_alpha_frame(renderer.current_timestamp())
+            {
+                renderer.upload_alpha(&state.device, &state.queue, &alpha);
+                self.alpha_frames += 1;
+            }
+        } else {
+            renderer.clear_alpha();
+            self.alpha_frames = 0;
+        }
+
+        renderer.set_passthrough(self.passthrough().as_ref());
+
+        // Zero when every color frame finds its own alpha; a steady positive value means the alpha
+        // is consistently late and the mask trails the image.
+        self.alpha_lag = renderer
+            .alpha_timestamp()
+            .map(|alpha| renderer.current_timestamp().saturating_sub(alpha));
+
         self.video_frames = renderer.frames_shown();
         self.video_layout = renderer.layout();
         self.video_eye_aspect = renderer.eye_aspect_ratio();
 
         renderer.has_frame().then(|| renderer.current_timestamp())
+    }
+
+    /// The passthrough mode the video is drawn with: the stream's in the mixed view, none otherwise.
+    fn passthrough(&self) -> Option<PassthroughMode> {
+        match self.source {
+            ViewSource::Mixed => self.client.status().passthrough.clone(),
+            ViewSource::Virtual | ViewSource::Real => None,
+        }
     }
 
     /// Renders and answers any queued capture requests.
@@ -1205,6 +1247,12 @@ impl EmulatorApp {
             refresh_rate: status.refresh_rate,
             codec: status.codec.map(|codec| format!("{codec:?}")),
             frame_timing: timing,
+            source: self.source,
+            passthrough: status
+                .passthrough
+                .as_ref()
+                .map(|mode| passthrough_name(mode).into()),
+            alpha_frames: self.alpha_frames,
         };
     }
 
@@ -1257,6 +1305,20 @@ impl EmulatorApp {
                 "frames".into(),
                 format!("{} {:?}", self.video_frames, self.video_layout),
             ),
+            (
+                "passthrough".into(),
+                match &self.client.status().passthrough {
+                    None => "off".into(),
+                    Some(PassthroughMode::AlphaStream(_)) => {
+                        let lag = self.alpha_lag.map_or("-".into(), |lag| {
+                            format!("{:.1} ms", lag.as_secs_f32() * 1000.0)
+                        });
+
+                        format!("alpha stream, {} frames, lag {lag}", self.alpha_frames)
+                    }
+                    Some(mode) => passthrough_name(mode).into(),
+                },
+            ),
         ]
     }
 
@@ -1274,8 +1336,15 @@ impl EmulatorApp {
                 // headset's cameras would see. Switching to the latter while streaming is also how
                 // to tell a decode problem apart from a rendering one.
                 ui.label("Source:");
-                ui.selectable_value(&mut self.prefer_video, true, "Virtual");
-                ui.selectable_value(&mut self.prefer_video, false, "Real");
+                ui.selectable_value(&mut self.source, ViewSource::Mixed, "Mixed")
+                    .on_hover_text(
+                        "What the headset shows: the video over the local scene, blended by the \
+                         stream's passthrough mode. Plain video when passthrough is off.",
+                    );
+                ui.selectable_value(&mut self.source, ViewSource::Virtual, "Virtual")
+                    .on_hover_text("The video alone, opaque.");
+                ui.selectable_value(&mut self.source, ViewSource::Real, "Real")
+                    .on_hover_text("The local scene alone.");
 
                 ui.separator();
 
@@ -1388,6 +1457,7 @@ impl App for EmulatorApp {
         self.controller_ui.apply_haptics(haptics);
 
         self.apply_pending_moves();
+        self.apply_pending_source();
         self.apply_controller_commands();
         self.apply_hand_commands();
         self.apply_timed_releases();
@@ -1413,7 +1483,9 @@ impl App for EmulatorApp {
 
         // Falls back to the scene until the first frame arrives, so the window is never blank while
         // the stream is negotiating.
-        let show_video = self.prefer_video && displayed_frame.is_some();
+        let show_video = self.source != ViewSource::Real && displayed_frame.is_some();
+        // With passthrough the video is see-through, and the scene is what shows through it.
+        let scene_under_video = show_video && self.passthrough().is_some();
         // The video displays letterboxed at its own aspect ratio; the scene adapts to the window.
         let video_eye_aspect = show_video.then_some(self.video_eye_aspect).flatten();
 
@@ -1486,6 +1558,7 @@ impl App for EmulatorApp {
                         view_mode,
                         viewport: response.rect,
                         show_video,
+                        scene_under_video,
                         video_eye_aspect,
                         controller_models,
                         hand_poses,
@@ -1646,6 +1719,10 @@ struct ViewportCallback {
     viewport: egui::Rect,
     /// Draw the streamed video rather than the local scene.
     show_video: bool,
+    /// Draw the local scene behind the video, for the video to blend over. It is drawn from the
+    /// displayed frame's eye poses and the stream's projection, so the two line up exactly as the
+    /// headset's reprojected layer lines up with its passthrough.
+    scene_under_video: bool,
     /// Pixel aspect ratio of one eye of the video, when the video is shown. The video is displayed
     /// inner-fit at this ratio rather than stretched to the viewport.
     video_eye_aspect: Option<f32>,
@@ -1734,6 +1811,17 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
             aspect_ratio
         };
 
+        // Under the video the scene follows the same rule as the device models, for the same
+        // reason: anything else drifts against the video content.
+        if self.scene_under_video
+            && let Some(renderer) = resources.get::<Arc<SceneRenderer>>()
+        {
+            let projection = Camera::projection_matrix(device_aspect);
+
+            renderer.set_view_projection(queue, Eye::Left, projection * self.device_eye_views[0]);
+            renderer.set_view_projection(queue, Eye::Right, projection * self.device_eye_views[1]);
+        }
+
         let controllers = resources.get::<Arc<Mutex<ControllerRenderer>>>().map(|r| r.lock());
         let hands = resources.get::<Arc<Mutex<HandRenderer>>>().map(|r| r.lock());
         let gizmos = resources.get::<Arc<GizmoRenderer>>();
@@ -1788,7 +1876,15 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
 
         let draw_eye = |pass: &mut wgpu::RenderPass<'static>, eye: Eye| {
             match &video {
-                Some(video) => video.lock().draw(pass, eye),
+                Some(video) => {
+                    if self.scene_under_video
+                        && let Some(scene) = scene
+                    {
+                        scene.draw(pass, eye);
+                    }
+
+                    video.lock().draw(pass, eye);
+                }
                 None => {
                     if let Some(scene) = scene {
                         scene.draw(pass, eye);
@@ -1842,6 +1938,16 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
             0.0,
             1.0,
         );
+    }
+}
+
+/// Short name of a passthrough mode, for the stats overlay and the API.
+fn passthrough_name(mode: &PassthroughMode) -> &'static str {
+    match mode {
+        PassthroughMode::Blend { .. } => "blend",
+        PassthroughMode::RgbChromaKey(_) => "RGB chroma key",
+        PassthroughMode::HsvChromaKey(_) => "HSV chroma key",
+        PassthroughMode::AlphaStream(_) => "alpha stream",
     }
 }
 
@@ -2097,6 +2203,9 @@ fn main() {
         refresh_rate: 0.0,
         codec: None,
         frame_timing: FrameTiming::default(),
+        source: ViewSource::Mixed,
+        passthrough: None,
+        alpha_frames: 0,
     }));
 
     if let Err(e) = api::spawn(Arc::clone(&shared), port) {

@@ -42,6 +42,34 @@ pub struct StateResponse {
     pub codec: Option<String>,
     /// How evenly the streamed world has been advancing; see [`FrameTiming`].
     pub frame_timing: FrameTiming,
+    /// What the window draws.
+    pub source: ViewSource,
+    /// The stream's passthrough mode, `None` when the video is opaque.
+    pub passthrough: Option<String>,
+    /// Frames of the alpha stream shown so far, for the alpha stream passthrough mode.
+    pub alpha_frames: u64,
+}
+
+/// What the on-screen view draws.
+///
+/// The stream is the *virtual* source: it is the VR content the server renders. The local glTF
+/// scene stands in for what the headset's cameras would see, so it is the *real* one.
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum ViewSource {
+    /// What the headset shows: the video blended over the real one by the stream's passthrough
+    /// mode. The same as [`ViewSource::Virtual`] when passthrough is off.
+    Mixed,
+    /// The video alone, opaque, whatever the passthrough mode.
+    Virtual,
+    /// The local scene alone.
+    Real,
+}
+
+/// Body of `POST /api/source`.
+#[derive(Deserialize)]
+pub struct SourceRequest {
+    pub source: ViewSource,
 }
 
 /// Body of `POST /api/move`. Every field is optional so a caller can change only what it cares
@@ -427,6 +455,8 @@ pub struct SharedState {
     pub hand_commands: Mutex<VecDeque<HandCommand>>,
     /// Capture requests queued by the view endpoints.
     pub captures: Mutex<VecDeque<CaptureRequest>>,
+    /// View source change requested by `/api/source`, applied on the next frame.
+    pub source: Mutex<Option<ViewSource>>,
 }
 
 impl SharedState {
@@ -440,6 +470,7 @@ impl SharedState {
             controller_commands: Mutex::new(VecDeque::new()),
             hand_commands: Mutex::new(VecDeque::new()),
             captures: Mutex::new(VecDeque::new()),
+            source: Mutex::new(None),
         }
     }
 }
@@ -535,6 +566,22 @@ fn route(shared: &SharedState, request: &mut tiny_http::Request) -> Reply {
                         pitch: parsed.pitch,
                         roll: parsed.roll,
                     });
+
+                    Reply::Json("{\"ok\":true}".into())
+                }
+                Err(e) => Reply::Error(400, format!("Invalid JSON: {e}")),
+            }
+        }
+
+        (tiny_http::Method::Post, "/api/source") => {
+            let mut body = String::new();
+            if let Err(e) = request.as_reader().read_to_string(&mut body) {
+                return Reply::Error(400, format!("Cannot read request body: {e}"));
+            }
+
+            match serde_json::from_str::<SourceRequest>(&body) {
+                Ok(parsed) => {
+                    *shared.source.lock() = Some(parsed.source);
 
                     Reply::Json("{\"ok\":true}".into())
                 }

@@ -47,7 +47,6 @@ pub enum DecodedFrame {
 }
 
 impl DecodedFrame {
-    #[allow(dead_code)] // Part of the frame's public shape, useful to callers of the trait.
     pub fn timestamp(&self) -> Duration {
         match self {
             DecodedFrame::Yuv420 { timestamp, .. } => *timestamp,

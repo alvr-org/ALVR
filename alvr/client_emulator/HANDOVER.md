@@ -418,7 +418,7 @@ Server settings in `build/alvr_streamer_windows/session.json`:
 |---|---|---|
 | `stream_protocol` | `Udp` | |
 | `preferred_codec` | `H264` | the only verified path |
-| `passthrough.enabled` | `false` | its `variant` must be a value this branch knows; a stale `AlphaStream` from `ar_mode` breaks negotiation |
+| `passthrough` | off, or `AlphaStream` to test AR | switching *to* `AlphaStream` needs a SteamVR restart; see README "Passthrough" |
 | `client_connections` | emulator hostname trusted | |
 
 Repackaging with `cargo xtask package-streamer` **regenerates `session.json` with defaults**, losing

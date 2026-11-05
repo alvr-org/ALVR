@@ -17,6 +17,9 @@ existing clients working unchanged; see "ALVR changes" below.
 - **Decodes and displays the video stream.** The toolbar switches between the decoded video
   (**Virtual**) and the local glTF scene (**Real**), which is useful for telling a decode problem
   apart from a rendering one.
+- **Previews AR passthrough.** With a passthrough mode enabled on the server, including the 8 bit
+  alpha stream, the **Mixed** source blends the video over the local scene exactly as the headset
+  blends it over the real world; see [Passthrough](#passthrough).
 - Renders a glTF scene from a first person camera. This is also what the capture endpoints return —
   they render the scene offscreen, not the video.
 - **Emulates motion controllers.** Either controller can be enabled independently, posed in 6DoF,
@@ -90,8 +93,6 @@ A few things that will otherwise cost you time:
     -X POST -d '["<hostname>","Trust"]' \
     http://127.0.0.1:8082/api/session/client-connections
   ```
-- The server's `passthrough` `variant` must be one this branch knows. A stale `AlphaStream` value left
-  by the `ar_mode` branch breaks stream negotiation.
 
 See [`HANDOVER.md`](HANDOVER.md) for the design reasoning, the freeze diagnosis, and the dead ends
 worth not repeating.
@@ -113,12 +114,49 @@ There is no collision: walking through walls is expected.
 
 The toolbar selects which eye the window shows — **Left**, **Right** or **Stereo** — and which
 source it draws. **Virtual** is the decoded video, the content the VR server renders; **Real** is
-the local glTF scene, which stands in for what the headset's cameras would see. It also shows the
-connection state, stream resolution and current position.
+the local glTF scene, which stands in for what the headset's cameras would see; **Mixed**, the
+default, is what the headset shows — the video blended over the scene by the stream's passthrough
+mode, which is plain video when passthrough is off. It also shows the connection state, stream
+resolution and current position.
 
 **Stats**, shown while streaming, toggles a readout over the top of the view: the refresh rate,
-frame pacing, head speed and decoded frame count. The same numbers are in `GET /api/state`; see
-[`frame_timing`](#frame_timing).
+frame pacing, head speed, decoded frame count and passthrough mode. The same timing numbers are in
+`GET /api/state`; see [`frame_timing`](#frame_timing).
+
+## Passthrough
+
+Every passthrough mode in the server's `video.passthrough` setting is applied as the headset applies
+it, in [`src/video.wgsl`](src/video.wgsl), ported from the headset's stream shader in
+`alvr/graphics`: **Blend** (constant alpha), **RGB** and **HSV Chroma Key**, and **Alpha Stream (8
+bit)**. The mode's real-time parameters, such as the key colour, apply mid-stream as they do on the
+headset.
+
+**Alpha Stream** is the mode from the `ar_mode` branch: the server keeps the application's own alpha
+channel and sends it as a second, monochrome video stream. The emulator decodes it with a second
+software decoder and pairs its frames with the color frames by timestamp, showing the newest alpha
+frame no newer than the color frame on screen, and holding the previous mask if the matching one is
+late. The stats line reads `alpha stream, N frames`; a count stuck at zero means the alpha decoder
+never received a keyframe or the server could not create the second encoder (look for "alpha
+stream" in the server log).
+
+In **Mixed**, the scene behind the video is drawn from the eye poses the displayed frame was
+rendered with and with the stream's projection, not from the live camera. That is the emulator's
+stand-in for the headset reprojecting the layer onto the current pose: without it, content anchored
+in the room would swim against the scene by the stream's latency whenever the camera moved.
+
+Server side, the alpha stream mode needs an application that writes a meaningful alpha channel —
+areas it leaves at zero are fully see-through, and with the mode on the server clears uncovered
+areas to transparent instead of the usual blue. Whether the alpha encoder exists is decided when
+the driver starts, so *switching to* Alpha Stream needs a SteamVR restart; after that, toggling
+passthrough on and off, or changing its real-time parameters, applies live.
+
+**The SteamVR dashboard is opaque.** While it is open — the panel with **Resume Game** — the alpha
+plane comes through as solid 255 and Mixed looks exactly like Virtual. Close it (the left
+controller's `menu/click` toggles it) and the application's own alpha returns. If Mixed ever looks
+opaque, check this before suspecting the pairing.
+
+The source can be switched from the API with [`POST /api/source`](#post-apisource), and
+`GET /api/state` reports `source`, `passthrough` and `alpha_frames`.
 
 ## Controller emulation
 
@@ -525,6 +563,9 @@ Localhost only, and unauthenticated: it is a debugging interface and must not be
   "view_resolution": [0, 0],
   "refresh_rate": 0.0,
   "codec": null,
+  "source": "mixed",
+  "passthrough": null,
+  "alpha_frames": 0,
   "frame_timing": {
     "publish_ms":    { "mean": 8.35,  "deviation": 4.34 },
     "sent_ms":       { "mean": 4.63,  "deviation": 0.16 },
@@ -542,6 +583,10 @@ Localhost only, and unauthenticated: it is a debugging interface and must not be
 
 `codec` becomes the negotiated codec once the server announces it. Decoded frame count and frame
 layout are shown in the stats overlay but are not yet exposed here.
+
+`passthrough` is the stream's passthrough mode (`"blend"`, `"RGB chroma key"`, `"HSV chroma key"`
+or `"alpha stream"`), `null` for an opaque stream; `alpha_frames` counts the alpha stream frames
+shown. See [Passthrough](#passthrough).
 
 #### `frame_timing`
 
@@ -562,6 +607,14 @@ back means the signal left clean and something downstream resampled it.
 
 Under steady motion `step_deg.mean` should equal the turn rate times `world_ms.mean`, with
 `step_deg.deviation` near zero. Drive the camera with `POST /api/drive` and compare.
+
+### `POST /api/source`
+
+Selects what the window draws, as the toolbar's **Source** buttons do: `mixed`, `virtual` or `real`.
+
+```sh
+curl -X POST http://127.0.0.1:8080/api/source -d '{"source": "real"}'
+```
 
 ### `POST /api/drive`
 

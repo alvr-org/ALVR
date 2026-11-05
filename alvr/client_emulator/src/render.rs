@@ -343,6 +343,12 @@ impl SceneRenderer {
         let view_proj = Camera::projection_matrix(aspect_ratio) * camera.view_matrix(eye);
         self.mesh.set_view(queue, eye, view_proj);
     }
+
+    /// Uploads a view-projection matrix built elsewhere, for drawing the scene from a pose other
+    /// than the live camera's.
+    pub fn set_view_projection(&self, queue: &Queue, eye: Eye, view_proj: Mat4) {
+        self.mesh.set_view(queue, eye, view_proj);
+    }
 }
 
 /// Renders the emulated controllers' 3D models into the scene view.

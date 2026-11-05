@@ -4,16 +4,23 @@
 //! the conversion on the GPU means the per-frame CPU cost is just the upload, and it is also where a
 //! future zero-copy decoder would plug in: only [`VideoRenderer::upload`] would change, not the
 //! drawing.
+//!
+//! The passthrough modes are applied here as well, so the video can be composited over the local
+//! scene the way the headset composites it over the real world. The alpha stream mode adds a fourth
+//! plane, the luma of the separate alpha stream.
 
 use crate::{
     camera::Eye,
     decoder::{ColorRange, DecodedFrame},
 };
+use alvr_common::glam::Vec4;
+use alvr_session::PassthroughMode;
 use bytemuck::{Pod, Zeroable};
 use std::time::Duration;
 use wgpu::{
     AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendComponent,
+    BlendFactor, BlendOperation, BlendState,
     Buffer, BufferBindingType, BufferDescriptor, BufferUsages, ColorTargetState, ColorWrites,
     Device, Extent3d, FilterMode, FragmentState, MipmapFilterMode, MultisampleState, Origin3d,
     PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, Queue, RenderPipeline,
@@ -30,7 +37,100 @@ struct Uniforms {
     region: [f32; 4],
     /// 1.0 when the samples use the full 0-255 range, 0.0 for the limited broadcast range.
     full_range: f32,
-    _padding: [f32; 3],
+    /// The same for the alpha plane.
+    alpha_full_range: f32,
+    /// See [`PassthroughParams`].
+    passthrough_mode: u32,
+    blend_alpha: f32,
+    ck_channels: [[f32; 4]; 3],
+    premultiplied: u32,
+    _padding: [u32; 3],
+}
+
+/// The passthrough mode reduced to the values the shader needs, mirroring what
+/// `alvr_graphics::StreamRenderer` puts in its push constants.
+#[derive(Clone, Copy)]
+struct PassthroughParams {
+    /// 0: none or Blend, 1: RGB chroma key, 2: HSV chroma key, 3: alpha stream.
+    mode: u32,
+    /// Constant alpha for mode 0.
+    blend_alpha: f32,
+    ck_channels: [Vec4; 3],
+    /// Whether color arrives already multiplied by alpha, as the headset's layer flag says.
+    premultiplied: bool,
+}
+
+impl PassthroughParams {
+    const OPAQUE: Self = Self {
+        mode: 0,
+        blend_alpha: 1.0,
+        ck_channels: [Vec4::ZERO; 3],
+        premultiplied: true,
+    };
+
+    fn new(mode: Option<&PassthroughMode>) -> Self {
+        const DEG_TO_NORM: f32 = 1. / 360.;
+
+        match mode {
+            None => Self::OPAQUE,
+            Some(PassthroughMode::Blend {
+                premultiplied_alpha,
+                threshold,
+            }) => Self {
+                blend_alpha: 1. - threshold,
+                premultiplied: *premultiplied_alpha,
+                ..Self::OPAQUE
+            },
+            Some(PassthroughMode::RgbChromaKey(config)) => {
+                let norm = |v| v as f32 / 255.;
+
+                let thresh = norm(config.distance_threshold);
+                let up_feather = 1. + config.feathering;
+                let down_feather = 1. - config.feathering;
+                let range_vec =
+                    thresh * Vec4::new(-up_feather, -down_feather, down_feather, up_feather);
+
+                Self {
+                    mode: 1,
+                    ck_channels: [
+                        norm(config.red) + range_vec,
+                        norm(config.green) + range_vec,
+                        norm(config.blue) + range_vec,
+                    ],
+                    ..Self::OPAQUE
+                }
+            }
+            Some(PassthroughMode::HsvChromaKey(config)) => Self {
+                mode: 2,
+                ck_channels: [
+                    Vec4::new(
+                        config.hue_start_max_deg,
+                        config.hue_start_min_deg,
+                        config.hue_end_min_deg,
+                        config.hue_end_max_deg,
+                    ) * DEG_TO_NORM,
+                    Vec4::new(
+                        config.saturation_start_max,
+                        config.saturation_start_min,
+                        config.saturation_end_min,
+                        config.saturation_end_max,
+                    ),
+                    Vec4::new(
+                        config.value_start_max,
+                        config.value_start_min,
+                        config.value_end_min,
+                        config.value_end_max,
+                    ),
+                ],
+                ..Self::OPAQUE
+            },
+            Some(PassthroughMode::AlphaStream(config)) => Self {
+                mode: 3,
+                premultiplied: config.premultiplied_alpha,
+                ..Self::OPAQUE
+            },
+        }
+    }
 }
 
 /// Dynamic offset stride, matching the alignment requirement used elsewhere.
@@ -57,22 +157,37 @@ struct Planes {
     height: u32,
 }
 
+/// The luma plane of the alpha stream, which is all of it that carries information.
+struct AlphaPlane {
+    texture: Texture,
+    width: u32,
+    height: u32,
+}
+
 pub struct VideoRenderer {
     pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
     uniform_buffer: Buffer,
     sampler: wgpu::Sampler,
     planes: Option<Planes>,
+    alpha: Option<AlphaPlane>,
+    /// Bound in place of the alpha plane until the alpha stream delivers a frame, so the bind
+    /// group is always complete. White, so a stray sample reads as opaque.
+    alpha_placeholder: Texture,
     bind_group: Option<BindGroup>,
     layout: FrameLayout,
     range: ColorRange,
+    alpha_range: ColorRange,
+    passthrough: PassthroughParams,
+    /// Timestamp of the alpha frame currently uploaded.
+    alpha_timestamp: Option<Duration>,
     /// Timestamp of the frame currently uploaded, for the statistics reports.
     current_timestamp: Duration,
     frames_shown: u64,
 }
 
 impl VideoRenderer {
-    pub fn new(device: &Device, output_format: TextureFormat) -> Self {
+    pub fn new(device: &Device, queue: &Queue, output_format: TextureFormat) -> Self {
         let shader = device.create_shader_module(wgpu::include_wgsl!("video.wgsl"));
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -128,6 +243,16 @@ impl VideoRenderer {
                     ty: BindingType::Sampler(SamplerBindingType::Filtering),
                     count: None,
                 },
+                BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
 
@@ -153,7 +278,16 @@ impl VideoRenderer {
                 compilation_options: Default::default(),
                 targets: &[Some(ColorTargetState {
                     format: output_format,
-                    blend: Some(BlendState::REPLACE),
+                    // The shader outputs premultiplied color. An opaque stream has alpha 1, which
+                    // makes this a plain replace.
+                    blend: Some(BlendState {
+                        color: BlendComponent {
+                            src_factor: BlendFactor::One,
+                            dst_factor: BlendFactor::OneMinusSrcAlpha,
+                            operation: BlendOperation::Add,
+                        },
+                        alpha: BlendComponent::OVER,
+                    }),
                     write_mask: ColorWrites::ALL,
                 })],
             }),
@@ -194,15 +328,23 @@ impl VideoRenderer {
             ..Default::default()
         });
 
+        let alpha_placeholder = create_plane(device, 1, 1, "video alpha placeholder");
+        write_plane(queue, &alpha_placeholder, 1, 1, &[255], 1);
+
         Self {
             pipeline,
             bind_group_layout,
             uniform_buffer,
             sampler,
             planes: None,
+            alpha: None,
+            alpha_placeholder,
             bind_group: None,
             layout: FrameLayout::Single,
             range: ColorRange::Limited,
+            alpha_range: ColorRange::Full,
+            passthrough: PassthroughParams::OPAQUE,
+            alpha_timestamp: None,
             current_timestamp: Duration::ZERO,
             frames_shown: 0,
         }
@@ -289,13 +431,88 @@ impl VideoRenderer {
 
         let planes = self.planes.as_ref().unwrap();
 
-
         write_plane(queue, &planes.y, *width, *height, y, *y_stride);
         write_plane(queue, &planes.u, chroma_width, chroma_height, u, *uv_stride);
         write_plane(queue, &planes.v, chroma_width, chroma_height, v, *uv_stride);
 
+        self.ensure_bind_group(device);
+
+        self.current_timestamp = *timestamp;
+        self.range = *range;
+        self.frames_shown += 1;
+    }
+
+    /// Uploads a decoded frame of the alpha stream, replacing the previous alpha.
+    ///
+    /// Only the luma plane is used: the server encodes the alpha as grey, so the chroma planes are
+    /// flat. It is sampled with the color frame's coordinates, which is valid because both streams
+    /// share the encoded layout.
+    pub fn upload_alpha(&mut self, device: &Device, queue: &Queue, frame: &DecodedFrame) {
+        let DecodedFrame::Yuv420 {
+            timestamp,
+            width,
+            height,
+            range,
+            y,
+            y_stride,
+            ..
+        } = frame;
+
+        let needs_alloc = self
+            .alpha
+            .as_ref()
+            .is_none_or(|alpha| alpha.width != *width || alpha.height != *height);
+
+        if needs_alloc {
+            self.alpha = Some(AlphaPlane {
+                texture: create_plane(device, *width, *height, "video alpha"),
+                width: *width,
+                height: *height,
+            });
+            self.bind_group = None;
+
+            alvr_common::info!("Alpha frame is {width}x{height}");
+        }
+
+        let alpha = self.alpha.as_ref().unwrap();
+        write_plane(queue, &alpha.texture, *width, *height, y, *y_stride);
+        self.ensure_bind_group(device);
+
+        self.alpha_range = *range;
+        self.alpha_timestamp = Some(*timestamp);
+    }
+
+    /// Timestamp of the alpha frame currently uploaded, if any.
+    pub fn alpha_timestamp(&self) -> Option<Duration> {
+        self.alpha_timestamp
+    }
+
+    /// Sets how the video is blended over what is behind it. `None` draws it opaque.
+    pub fn set_passthrough(&mut self, mode: Option<&PassthroughMode>) {
+        self.passthrough = PassthroughParams::new(mode);
+    }
+
+    /// Forgets the uploaded alpha, so a new stream does not start with the previous one's mask.
+    pub fn clear_alpha(&mut self) {
+        if self.alpha.take().is_some() {
+            self.bind_group = None;
+        }
+        self.alpha_timestamp = None;
+    }
+
+    /// Builds the bind group if it was invalidated. Needs the color planes, so before the first
+    /// color frame this does nothing.
+    fn ensure_bind_group(&mut self, device: &Device) {
+        let Some(planes) = &self.planes else {
+            return;
+        };
+
         if self.bind_group.is_none() {
             let view = |texture: &Texture| texture.create_view(&TextureViewDescriptor::default());
+            let alpha = self
+                .alpha
+                .as_ref()
+                .map_or(&self.alpha_placeholder, |alpha| &alpha.texture);
 
             self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
                 label: Some("video bind group"),
@@ -325,13 +542,13 @@ impl VideoRenderer {
                         binding: 4,
                         resource: BindingResource::Sampler(&self.sampler),
                     },
+                    BindGroupEntry {
+                        binding: 5,
+                        resource: BindingResource::TextureView(&view(alpha)),
+                    },
                 ],
             }));
         }
-
-        self.current_timestamp = *timestamp;
-        self.range = *range;
-        self.frames_shown += 1;
     }
 
     /// Writes the sub-rectangle each eye should sample. Call before beginning the render pass.
@@ -344,13 +561,20 @@ impl VideoRenderer {
                 (FrameLayout::Single, _) => [0.0, 0.0, 1.0, 1.0],
             };
 
+            let passthrough = self.passthrough;
+
             queue.write_buffer(
                 &self.uniform_buffer,
                 index as u64 * UNIFORM_STRIDE,
                 bytemuck::bytes_of(&Uniforms {
                     region,
                     full_range: (self.range == ColorRange::Full) as u32 as f32,
-                    _padding: [0.0; 3],
+                    alpha_full_range: (self.alpha_range == ColorRange::Full) as u32 as f32,
+                    passthrough_mode: passthrough.mode,
+                    blend_alpha: passthrough.blend_alpha,
+                    ck_channels: passthrough.ck_channels.map(|channel| channel.to_array()),
+                    premultiplied: passthrough.premultiplied as u32,
+                    _padding: [0; 3],
                 }),
             );
         }

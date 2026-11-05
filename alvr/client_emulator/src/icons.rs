@@ -279,7 +279,23 @@ pub fn inner_group<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R
             bottom: margin as i8,
         })
         .show(ui, |ui| {
-            ui.spacing_mut().interact_size.y -= margin * 2.0;
+            // A dropdown is as tall as the taller of its text and its arrow, plus padding. Left at
+            // the toolbar's enlarged sizes, that made each dropdown, and so each inner group,
+            // taller than the row: every inner group grew the row a little, and everything placed
+            // after one was centred on the taller row, a few pixels off from what came before.
+            // So the arrow is sized to the dropdown's own text, and the padding is whatever then
+            // fills the height exactly.
+            let height = ui.spacing().interact_size.y - margin * 2.0;
+            let text_height = WidgetText::from(dropdown_text(ui, "Ag"))
+                .into_galley(ui, Some(TextWrapMode::Extend), f32::INFINITY, TextStyle::Button)
+                .size()
+                .y;
+
+            let spacing = ui.spacing_mut();
+            spacing.interact_size.y = height;
+            spacing.icon_width = text_height;
+            spacing.button_padding.y = ((height - text_height) / 2.0).max(0.0);
+
             ui.horizontal(add_contents).inner
         })
         .inner
@@ -407,8 +423,8 @@ pub fn combo_width<'a>(ui: &Ui, labels: impl IntoIterator<Item = &'a str>) -> f3
 
 /// The dropdown arrow for a `ComboBox`: a thin chevron rather than egui's filled triangle.
 pub fn chevron(ui: &Ui, rect: Rect, visuals: &WidgetVisuals, open: bool) {
-    // At the dropdown text's size, which stays at egui's normal size; see [`dropdown_text`].
-    let half = rect.height().min(rect.width()) * 0.3 / size_factor(ui);
+    // `rect` is the arrow slot, which [`inner_group`] sizes to the dropdown's text.
+    let half = rect.height().min(rect.width()) * 0.3;
     let center = rect.center();
     let flip = if open { -1.0 } else { 1.0 };
     let points = vec![

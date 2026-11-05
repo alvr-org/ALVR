@@ -1,5 +1,6 @@
 //! Scene loading. Currently backed by glTF triangle meshes rendered unlit, on the assumption that
-//! lighting and shadows are baked into the base colour textures.
+//! lighting and shadows are baked in: into the base colour textures, or into vertex colours, which
+//! multiply the material's colour as the glTF specification defines.
 //!
 //! [`Scene`] is deliberately a plain geometry container rather than a renderer, so an alternative
 //! source (such as a Gaussian splat capture) can be added later without touching the render code
@@ -27,7 +28,8 @@ pub const ENVIRONMENT_FILE_NAME: &str = "environment.gltf";
 pub struct Vertex {
     pub position: [f32; 3],
     pub uv: [f32; 2],
-    /// Base colour factor of the material, baked in so untextured models still show their colour.
+    /// Base colour factor of the material times the vertex colour, if any, baked in so untextured
+    /// models still show their colour.
     pub color: [f32; 3],
 }
 
@@ -160,11 +162,20 @@ impl Scene {
             // easy-gltf has already flattened node transforms into world space, so the vertices can
             // be taken as they are.
             let base_index = vertices.len() as u32;
+            let has_colors = model.has_colors();
             for vertex in model.vertices() {
+                let color = if has_colors {
+                    std::array::from_fn(|channel| {
+                        tint[channel] * f32::from(vertex.color[channel]) / f32::from(u16::MAX)
+                    })
+                } else {
+                    tint
+                };
+
                 vertices.push(Vertex {
                     position: [vertex.position.x, vertex.position.y, vertex.position.z],
                     uv: [vertex.tex_coords.x, vertex.tex_coords.y],
-                    color: tint,
+                    color,
                 });
             }
 

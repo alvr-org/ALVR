@@ -20,7 +20,8 @@ egui-wgpu = "0.35"
 wgpu = "29"
 bytemuck = { version = "1", features = ["derive"] }
 dirs = "6"
-easy-gltf = "1.1"
+# Vertex colours carry baked lighting in rooms that store it per vertex.
+easy-gltf = { version = "1.1", features = ["vertex-color"] }
 env_logger = "0.11"
 # Skinned hand models: easy-gltf flattens node transforms and drops skins, so the hand loader
 # reads the file directly. Same version easy-gltf already pulls in.

@@ -60,6 +60,8 @@ pub enum Icon {
     Axes,
     /// A circular arrow.
     Reset,
+    /// Stacked sheets: one of several variants, here the controller type.
+    Layers,
 }
 
 /// Corner radius of every toolbar control, the same as the corner panels' frames.
@@ -266,7 +268,7 @@ pub fn inner_group<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R
     let margin = (group_margin(ui) * 0.7).round();
 
     Frame::new()
-        .fill(track_fill(ui.visuals().dark_mode))
+        .fill(inner_fill(ui.visuals().dark_mode))
         .corner_radius(CornerRadius::same(CORNER_RADIUS + margin as u8))
         // Extra room on the left: the icon there has no field of its own, so with an even margin
         // it sat against the edge while the dropdown on the right had its own padding.
@@ -500,6 +502,15 @@ fn track_fill(dark_mode: bool) -> Color32 {
     }
 }
 
+/// An inner group's capsule, laid over its group's: a shade darker than the group, and no more.
+fn inner_fill(dark_mode: bool) -> Color32 {
+    if dark_mode {
+        Color32::from_white_alpha(16)
+    } else {
+        Color32::from_black_alpha(15)
+    }
+}
+
 /// Matches the height of the text buttons around it, so the two mix in one row.
 fn button_size(ui: &Ui) -> Vec2 {
     let height = ui.spacing().interact_size.y;
@@ -616,6 +627,17 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
             axis(at(6.5, 3.5), Color32::from_rgb(230, 70, 70));
             axis(at(-4.0, -7.0), Color32::from_rgb(80, 200, 90));
             axis(at(-7.5, 7.5), Color32::from_rgb(80, 140, 255));
+        }
+        Icon::Layers => {
+            // The top sheet whole, and only the lower edges of the two beneath it, as sheets
+            // stacked one under the other appear.
+            let sheet = |y: f32| [at(-6.5, y), at(0.0, y - 3.2), at(6.5, y), at(0.0, y + 3.2)];
+
+            painter.add(Shape::closed_line(sheet(-3.0).to_vec(), stroke));
+            for y in [0.4, 3.8] {
+                let [left, _, right, bottom] = sheet(y);
+                painter.add(Shape::line(vec![left, bottom, right], stroke));
+            }
         }
         Icon::Reset => {
             // A clockwise arc most of the way round, open at the upper right, with the arrowhead

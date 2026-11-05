@@ -357,33 +357,39 @@ pub fn toolbar_row(
         "Mixed".into()
     };
 
-    ComboBox::from_id_salt("controller profile")
-        .icon(icons::chevron)
-        .width(icons::combo_width(
-            ui,
-            settings
-                .profiles
-                .iter()
-                .map(|profile| profile.name.as_str())
-                .chain(["Mixed"]),
-        ))
-        .selected_text(icons::dropdown_text(ui, selected_text).color(tint))
-        .show_ui(ui, |ui| {
-            for (index, profile) in settings.profiles.iter().enumerate() {
-                let selected = same_profile && index == controllers[0].profile_index;
-                if ui.selectable_label(selected, &profile.name).clicked() {
-                    for state in controllers.iter_mut() {
-                        if state.profile_index != index {
-                            state.profile_index = index;
-                            // Held inputs of the previous type would linger stale.
-                            state.inputs.clear();
+    // Labelled by its own icon on an inner group, like the gizmo dropdown.
+    let tooltip = "Controller type, for both hands";
+    icons::inner_group(ui, |ui| {
+        icons::label(ui, Icon::Layers, Some(tint), tooltip);
+
+        ComboBox::from_id_salt("controller profile")
+            .icon(icons::chevron)
+            .width(icons::combo_width(
+                ui,
+                settings
+                    .profiles
+                    .iter()
+                    .map(|profile| profile.name.as_str())
+                    .chain(["Mixed"]),
+            ))
+            .selected_text(icons::dropdown_text(ui, selected_text).color(tint))
+            .show_ui(ui, |ui| {
+                for (index, profile) in settings.profiles.iter().enumerate() {
+                    let selected = same_profile && index == controllers[0].profile_index;
+                    if ui.selectable_label(selected, &profile.name).clicked() {
+                        for state in controllers.iter_mut() {
+                            if state.profile_index != index {
+                                state.profile_index = index;
+                                // Held inputs of the previous type would linger stale.
+                                state.inputs.clear();
+                            }
                         }
                     }
                 }
-            }
-        })
-        .response
-        .on_hover_text("Controller type, for both hands");
+            })
+            .response
+            .on_hover_text(tooltip);
+    });
 
     if icons::button(
         ui,

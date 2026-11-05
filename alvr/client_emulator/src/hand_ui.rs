@@ -103,29 +103,32 @@ fn pose_gizmo_selector(ui: &mut Ui, gizmo: &mut Option<HandInteraction>) {
 
     let tint = icons::HAND_TINT;
 
-    icons::label(ui, Icon::Axes, None, tooltip);
+    // The axes and the dropdown as one pair, so the icon reads as the dropdown's label.
+    icons::inner_group(ui, |ui| {
+        icons::label(ui, Icon::Axes, None, tooltip);
 
-    egui::ComboBox::from_id_salt("hand pose gizmo")
-        .icon(icons::chevron)
-        .selected_text(icons::dropdown_text(ui, label).color(tint))
-        .width(icons::combo_width(
-            ui,
-            HandInteraction::ALL
-                .iter()
-                .map(|pose| pose.label())
-                .chain(["off"]),
-        ))
-        .show_ui(ui, |ui| {
-            ui.selectable_value(gizmo, None, "off")
-                .on_hover_text("Draw no pose axes.");
+        egui::ComboBox::from_id_salt("hand pose gizmo")
+            .icon(icons::chevron)
+            .selected_text(icons::dropdown_text(ui, label).color(tint))
+            .width(icons::combo_width(
+                ui,
+                HandInteraction::ALL
+                    .iter()
+                    .map(|pose| pose.label())
+                    .chain(["off"]),
+            ))
+            .show_ui(ui, |ui| {
+                ui.selectable_value(gizmo, None, "off")
+                    .on_hover_text("Draw no pose axes.");
 
-            for pose in HandInteraction::ALL {
-                ui.selectable_value(gizmo, Some(pose), pose.label())
-                    .on_hover_text(pose.describe());
-            }
-        })
-        .response
-        .on_hover_text(tooltip);
+                for pose in HandInteraction::ALL {
+                    ui.selectable_value(gizmo, Some(pose), pose.label())
+                        .on_hover_text(pose.describe());
+                }
+            })
+            .response
+            .on_hover_text(tooltip);
+    });
 }
 
 /// Draws each enabled hand's panel in its bottom corner and applies any selection.

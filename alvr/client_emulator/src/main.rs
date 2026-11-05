@@ -1414,9 +1414,9 @@ impl EmulatorApp {
 
                 toolbar_gap(ui);
 
-                // The connection and its numbers as one group. The numbers go in an overlay over
-                // the view, where there is room to label them; see [`draw_stats_overlay`].
-                let status = self.status();
+                // A group of one, so the toggle matches the segmented controls beside it. The
+                // numbers go in an overlay over the view, where there is room to label them; see
+                // [`draw_stats_overlay`].
                 icons::group(ui, |ui| {
                     icons::toggle(
                         ui,
@@ -1426,9 +1426,12 @@ impl EmulatorApp {
                         "Statistics: camera position, and the stream and its frame pacing while \
                          streaming",
                     );
-
-                    connection_status(ui, &status);
                 });
+
+                toolbar_gap(ui);
+
+                // On its own: a status rather than a control, so it does not sit on a group.
+                connection_status(ui, &self.status());
 
                 let hint = if self.look_latched {
                     "Esc to release mouse"

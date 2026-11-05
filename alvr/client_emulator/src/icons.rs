@@ -18,8 +18,8 @@ use eframe::egui::{
 use eframe::egui::{Frame, Margin, RichText};
 use std::f32::consts::{PI, TAU};
 
-/// egui's default interaction height, which the toolbar's fixed widths were designed against.
-const DEFAULT_INTERACT_HEIGHT: f32 = 18.0;
+/// egui's default body text size, which the toolbar's fixed sizes were designed against.
+const DEFAULT_BODY_SIZE: f32 = 14.0;
 
 /// Colour of everything in the controller section of the toolbar.
 pub const CONTROLLER_TINT: Color32 = Color32::from_rgb(30, 70, 165);
@@ -87,12 +87,21 @@ pub fn scale_style(style: &mut Style, factor: f32) {
     spacing.icon_spacing *= factor;
 }
 
-/// Flattens egui's widgets for the toolbar: no frame on a control at rest, a soft fill on hover,
-/// and one corner radius throughout. egui draws its buttons and dropdowns as filled grey boxes,
-/// which next to the frameless icons made every kind of control look different.
+/// Restyles egui's own widgets for the toolbar, which leaves only the dropdowns: one corner radius
+/// throughout, and a white field with a hairline edge that darkens a little on hover and while
+/// open. egui draws them as filled grey boxes, which on the grey groups had no contrast at all.
 pub fn flatten_style(style: &mut Style) {
     let visuals = &mut style.visuals;
-    let hover_fill = hover_fill(visuals.dark_mode);
+    let field = visuals.extreme_bg_color;
+    let ink = visuals.text_color();
+    let edge = Stroke::new(
+        1.0,
+        if visuals.dark_mode {
+            Color32::from_white_alpha(22)
+        } else {
+            Color32::from_black_alpha(20)
+        },
+    );
 
     for widget in [
         &mut visuals.widgets.noninteractive,
@@ -105,21 +114,27 @@ pub fn flatten_style(style: &mut Style) {
         widget.expansion = 0.0;
     }
 
-    visuals.widgets.inactive.weak_bg_fill = Color32::TRANSPARENT;
-    visuals.widgets.inactive.bg_stroke = Stroke::NONE;
-    for widget in [
-        &mut visuals.widgets.hovered,
-        &mut visuals.widgets.active,
-        &mut visuals.widgets.open,
+    for (widget, darken) in [
+        (&mut visuals.widgets.inactive, 0.0),
+        (&mut visuals.widgets.hovered, 0.05),
+        (&mut visuals.widgets.active, 0.09),
+        (&mut visuals.widgets.open, 0.09),
     ] {
-        widget.weak_bg_fill = hover_fill;
-        widget.bg_stroke = Stroke::NONE;
+        widget.weak_bg_fill = field.lerp_to_gamma(ink, darken);
+        widget.bg_stroke = edge;
     }
 }
 
-/// How much larger than egui's default the Ui currently is, for widths given in default pixels.
+/// How much larger than egui's default the Ui currently is, for sizes given in default pixels.
+///
+/// Read from the text size rather than the control height: [`inner_group`] makes its controls
+/// shorter without the toolbar being any smaller, and measuring the height made the dropdown text
+/// inside it come out larger instead.
 pub fn size_factor(ui: &Ui) -> f32 {
-    ui.spacing().interact_size.y / DEFAULT_INTERACT_HEIGHT
+    ui.style()
+        .text_styles
+        .get(&TextStyle::Body)
+        .map_or(1.0, |font| font.size / DEFAULT_BODY_SIZE)
 }
 
 /// A button that is either on or off, like `Ui::toggle_value`, showing an icon instead of text.
@@ -239,6 +254,25 @@ pub fn group<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
         .corner_radius(group_radius(ui))
         .inner_margin(Margin::same(margin.round() as i8))
         .show(ui, |ui| ui.horizontal(add_contents).inner)
+        .inner
+}
+
+/// A group within a group: a slightly darker capsule pairing a control with the icon that labels
+/// it, such as the gizmo dropdown with its axes.
+///
+/// The controls inside are made shorter by the inner margin, so the inner group is exactly as tall
+/// as the controls beside it and the row does not grow.
+pub fn inner_group<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
+    let margin = (group_margin(ui) * 0.7).round();
+
+    Frame::new()
+        .fill(track_fill(ui.visuals().dark_mode))
+        .corner_radius(CornerRadius::same(CORNER_RADIUS + margin as u8))
+        .inner_margin(Margin::same(margin as i8))
+        .show(ui, |ui| {
+            ui.spacing_mut().interact_size.y -= margin * 2.0;
+            ui.horizontal(add_contents).inner
+        })
         .inner
 }
 

@@ -181,8 +181,9 @@ pub fn flex_item<R>(ui: &mut Ui, id_salt: &str, add_contents: impl FnOnce(&mut U
     response.inner
 }
 
-/// A neutral veil, darker than what is under it on a light theme and lighter on a dark one. Every
-/// grey in the toolbar is one of these, at the strengths named above.
+/// A neutral veil, darker than what is under it on a light theme and lighter on a dark one, at one
+/// of the strengths named above. The hover fill in either theme; in a light theme also the groups
+/// and lines, which a dark theme takes from the dashboard instead.
 fn shade(visuals: &Visuals, strength: u8) -> Color32 {
     if visuals.dark_mode {
         Color32::from_white_alpha(strength)
@@ -191,41 +192,24 @@ fn shade(visuals: &Visuals, strength: u8) -> Color32 {
     }
 }
 
-/// The fill and outline of a group's capsule.
-#[derive(Clone, Copy)]
-struct Capsule {
-    fill: Color32,
-    outline: Color32,
+/// The fill of a group's capsule: the dashboard's section colour in a dark theme.
+fn group_fill(visuals: &Visuals) -> Color32 {
+    if visuals.dark_mode {
+        theme::SECTION_BG
+    } else {
+        shade(visuals, TRACK_SHADE)
+    }
 }
 
-impl Capsule {
-    /// A group: the dashboard's section colour in a dark theme.
-    fn group(visuals: &Visuals) -> Self {
-        Self {
-            fill: if visuals.dark_mode {
-                theme::SECTION_BG
-            } else {
-                shade(visuals, TRACK_SHADE)
-            },
-            outline: line_color(visuals),
-        }
-    }
-
-    /// Paints the capsule's fill.
-    fn fill(self, painter: &Painter, rect: Rect, radius: CornerRadius) {
-        painter.rect_filled(rect, radius, self.fill);
-    }
-
-    /// Paints the capsule's outline, inside its rect, so outlining a capsule does not change its
-    /// size and the groups stay aligned.
-    fn outline_on(self, ui: &Ui, rect: Rect, radius: CornerRadius) {
-        ui.painter().rect_stroke(
-            rect,
-            radius,
-            Stroke::new(0.5 * size_factor(ui), self.outline),
-            StrokeKind::Inside,
-        );
-    }
+/// Outlines a group's capsule `rect`, inside it, so the outline does not change the capsule's size
+/// and the groups stay aligned.
+fn outline_group(ui: &Ui, rect: Rect) {
+    ui.painter().rect_stroke(
+        rect,
+        group_radius(ui),
+        Stroke::new(0.5 * size_factor(ui), line_color(ui.visuals())),
+        StrokeKind::Inside,
+    );
 }
 
 /// The OK colour, the connection status's while streaming: the dashboard's green in a dark theme,
@@ -361,8 +345,7 @@ pub fn segmented<T: PartialEq + Copy>(
     let painter = ui.painter();
     let radius = CornerRadius::same(CORNER_RADIUS);
 
-    let capsule = Capsule::group(visuals);
-    capsule.fill(painter, track, capsule_radius(margin));
+    painter.rect_filled(track, group_radius(ui), group_fill(visuals));
 
     let selected = options.iter().position(|(option, _, _)| option == current);
 
@@ -395,21 +378,18 @@ pub fn segmented<T: PartialEq + Copy>(
         paint_icon(ui, slot(index), *icon, color);
     }
 
-    capsule.outline_on(ui, track, capsule_radius(margin));
+    outline_group(ui, track);
 }
 
 /// Lays out `add_contents` in a row on a grey capsule, marking the controls as one group.
 pub fn group<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
-    let margin = group_margin(ui);
-    let capsule = Capsule::group(ui.visuals());
-
     let shown = Frame::new()
-        .fill(capsule.fill)
-        .corner_radius(capsule_radius(margin))
-        .inner_margin(Margin::same(margin as i8))
+        .fill(group_fill(ui.visuals()))
+        .corner_radius(group_radius(ui))
+        .inner_margin(Margin::same(group_margin(ui) as i8))
         .show(ui, |ui| ui.horizontal(add_contents).inner);
 
-    capsule.outline_on(ui, shown.response.rect, capsule_radius(margin));
+    outline_group(ui, shown.response.rect);
     shown.inner
 }
 
@@ -594,10 +574,10 @@ pub fn group_margin(ui: &Ui) -> f32 {
     (GROUP_MARGIN * size_factor(ui)).round()
 }
 
-/// Corner radius of a capsule with `margin` around its controls: the controls' radius plus the
-/// margin, so the corners of the capsule and of the controls on it are concentric.
-fn capsule_radius(margin: f32) -> CornerRadius {
-    CornerRadius::same(CORNER_RADIUS + margin as u8)
+/// Corner radius of a group's capsule: the controls' radius plus the group margin, so the corners
+/// of the capsule and of the controls on it are concentric.
+fn group_radius(ui: &Ui) -> CornerRadius {
+    CornerRadius::same(CORNER_RADIUS + group_margin(ui) as u8)
 }
 
 /// Matches the height of the text buttons around it, so the two mix in one row.

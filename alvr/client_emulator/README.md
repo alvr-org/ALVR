@@ -114,7 +114,8 @@ There is no collision: walking through walls is expected.
 
 The toolbar is icons; hovering any of them says what it does. Colours each keep one meaning: light
 blue marks what is selected, green and red the connection state, and terracotta and plum the
-controller and hand sections. The top row selects which eye the
+controller and hand sections; within those sections a selection takes a light wash of the
+section's colour instead of the blue. The top row selects which eye the
 window shows — **Left** (the default), **Right** or **Stereo**, drawn as a pair of eyes with the
 shown ones open — and which source it draws. **Virtual** (a headset) is the decoded video, the
 content the VR server renders; **Real** (a landscape) is the local glTF scene, which stands in for

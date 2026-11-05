@@ -360,7 +360,7 @@ pub fn text_toggle(
     }
 
     if ui.is_rect_visible(rect) {
-        paint_fills(ui, rect, &response, *value);
+        paint_fills(ui, rect, &response, *value, tint);
 
         let color = tint.unwrap_or_else(|| {
             if *value {
@@ -388,7 +388,7 @@ pub fn button(ui: &mut Ui, icon: Icon, tint: Option<Color32>, tooltip: &str) -> 
     let (rect, response) = ui.allocate_exact_size(button_size(ui), Sense::click());
 
     if ui.is_rect_visible(rect) {
-        paint_fills(ui, rect, &response, false);
+        paint_fills(ui, rect, &response, false, tint);
         paint_icon(ui, rect, icon, tint, ui.visuals().text_color());
     }
 
@@ -456,7 +456,7 @@ fn selectable(
     let (rect, response) = ui.allocate_exact_size(button_size(ui), Sense::click());
 
     if ui.is_rect_visible(rect) {
-        paint_fills(ui, rect, &response, selected);
+        paint_fills(ui, rect, &response, selected, tint);
 
         let color = if selected {
             ui.visuals().selection.stroke.color
@@ -470,7 +470,16 @@ fn selectable(
 }
 
 /// The hover and selection fills behind a button, each faded in and out rather than switched.
-fn paint_fills(ui: &Ui, rect: Rect, response: &Response, selected: bool) {
+///
+/// A tinted control is selected in a light wash of its own tint rather than the app's blue, so
+/// the selection belongs to the section the control is in.
+fn paint_fills(
+    ui: &Ui,
+    rect: Rect,
+    response: &Response,
+    selected: bool,
+    tint: Option<Color32>,
+) {
     let ctx = ui.ctx();
     let visuals = ui.visuals();
     let radius = CornerRadius::same(CORNER_RADIUS);
@@ -487,12 +496,17 @@ fn paint_fills(ui: &Ui, rect: Rect, response: &Response, selected: bool) {
 
     let selection = ctx.animate_bool_with_time(response.id.with("selected"), selected, FADE_SECONDS);
     if selection > 0.0 {
-        ui.painter().rect_filled(
-            rect,
-            radius,
-            visuals.selection.bg_fill.gamma_multiply(selection),
-        );
+        let fill = tint.map_or(visuals.selection.bg_fill, selection_wash);
+
+        ui.painter()
+            .rect_filled(rect, radius, fill.gamma_multiply(selection));
     }
+}
+
+/// The selection fill for a control drawn in `tint`: the tint, faded towards white, as light as
+/// egui's own selection blue so a selected control reads equally on and off a tinted section.
+fn selection_wash(tint: Color32) -> Color32 {
+    tint.lerp_to_gamma(Color32::WHITE, 0.72)
 }
 
 /// Space between a group's grey capsule and the controls on it.

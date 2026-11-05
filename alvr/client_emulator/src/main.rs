@@ -510,7 +510,9 @@ impl EmulatorApp {
                                 None => state.pose,
                             };
                             let duration = transition
-                                .or_else(|| index.and_then(|index| settings.poses[index].transition))
+                                .or_else(|| {
+                                    index.and_then(|index| settings.poses[index].transition)
+                                })
                                 .unwrap_or(settings.transition);
 
                             state.set_articulation(articulation.apply(base), duration);
@@ -537,7 +539,8 @@ impl EmulatorApp {
         for release in releases {
             if now >= release.at {
                 // Resting values are removed by `set_input` whatever the input's type.
-                self.controllers[release.hand].set_input(release.suffix, ButtonValue::Binary(false));
+                self.controllers[release.hand]
+                    .set_input(release.suffix, ButtonValue::Binary(false));
             } else {
                 self.timed_releases.push(release);
             }
@@ -736,7 +739,10 @@ impl EmulatorApp {
                 continue;
             }
 
-            let Some(profile) = self.controller_settings.profiles.get(controller.profile_index)
+            let Some(profile) = self
+                .controller_settings
+                .profiles
+                .get(controller.profile_index)
             else {
                 continue;
             };
@@ -830,9 +836,8 @@ impl EmulatorApp {
                     head_position + head_orientation * state.position,
                 );
 
-                transforms[GizmoRenderer::slot(GizmoDevice::Hand, index)] = Some(
-                    palm * Mat4::from_rotation_translation(pose.orientation, pose.position),
-                );
+                transforms[GizmoRenderer::slot(GizmoDevice::Hand, index)] =
+                    Some(palm * Mat4::from_rotation_translation(pose.orientation, pose.position));
             }
         }
 
@@ -1152,9 +1157,7 @@ impl EmulatorApp {
 
         let Some(renderer) = renderer else {
             for request in pending {
-                request
-                    .result
-                    .fulfill(Err("Environment not loaded".into()));
+                request.result.fulfill(Err("Environment not loaded".into()));
             }
             return;
         };
@@ -1182,8 +1185,7 @@ impl EmulatorApp {
         // Captures render the scene live, so the live camera is the right head pose here.
         let controller_models =
             self.controller_model_matrices(self.camera.position, self.camera.orientation());
-        let hand_poses =
-            self.hand_joint_matrices(self.camera.position, self.camera.orientation());
+        let hand_poses = self.hand_joint_matrices(self.camera.position, self.camera.orientation());
         let gizmos = self.gizmo_transforms(self.camera.position, self.camera.orientation());
 
         // Capture at the negotiated stream resolution when streaming, so captures are deterministic
@@ -1211,9 +1213,7 @@ impl EmulatorApp {
                 hands: hand_lock.as_ref().map(|renderer| {
                     (
                         &**renderer,
-                        std::array::from_fn(|hand| {
-                            hand_poses[hand].as_deref()
-                        }),
+                        std::array::from_fn(|hand| hand_poses[hand].as_deref()),
                     )
                 }),
                 gizmos: gizmo_renderer
@@ -1232,12 +1232,9 @@ impl EmulatorApp {
                 kind,
             );
 
-            request.result.fulfill(encode_png(
-                &pixels,
-                eye_width * 2,
-                eye_height,
-                request.kind,
-            ));
+            request
+                .result
+                .fulfill(encode_png(&pixels, eye_width * 2, eye_height, request.kind));
         }
     }
 
@@ -1383,7 +1380,11 @@ impl EmulatorApp {
                     ui.max_rect().min,
                     egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
                 );
-                let drag = ui.interact(bar, egui::Id::new("title bar drag"), Sense::click_and_drag());
+                let drag = ui.interact(
+                    bar,
+                    egui::Id::new("title bar drag"),
+                    Sense::click_and_drag(),
+                );
                 let maximized = ui.input(|input| input.viewport().maximized.unwrap_or(false));
 
                 if drag.double_clicked() {
@@ -1500,7 +1501,6 @@ impl EmulatorApp {
 
                     self.draw_input_groups(ui);
                 });
-
             });
 
         // A hairline and a soft shadow along the bottom edge, so the toolbar reads as a bar resting
@@ -1624,7 +1624,9 @@ impl EmulatorApp {
             (true, false) => {
                 Some("Hover a controller icon to move it; use the corner panels for buttons")
             }
-            (false, true) => Some("Hover a hand icon to move it; pick a gesture in the corner panels"),
+            (false, true) => {
+                Some("Hover a hand icon to move it; pick a gesture in the corner panels")
+            }
             (false, false) => None,
         }
     }
@@ -1733,7 +1735,10 @@ impl App for EmulatorApp {
                 _ => (
                     camera.position,
                     camera.orientation(),
-                    [camera.view_matrix(Eye::Left), camera.view_matrix(Eye::Right)],
+                    [
+                        camera.view_matrix(Eye::Left),
+                        camera.view_matrix(Eye::Right),
+                    ],
                 ),
             };
 
@@ -1989,9 +1994,7 @@ impl ViewportCallback {
             hands: hands.map(|renderer| {
                 (
                     renderer,
-                    std::array::from_fn(|hand| {
-                        self.hand_poses[hand].as_deref()
-                    }),
+                    std::array::from_fn(|hand| self.hand_poses[hand].as_deref()),
                 )
             }),
             gizmos: gizmos.map(|renderer| (renderer, self.gizmos)),
@@ -2056,8 +2059,12 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
             renderer.set_view_projection(queue, Eye::Right, projection * self.device_eye_views[1]);
         }
 
-        let controllers = resources.get::<Arc<Mutex<ControllerRenderer>>>().map(|r| r.lock());
-        let hands = resources.get::<Arc<Mutex<HandRenderer>>>().map(|r| r.lock());
+        let controllers = resources
+            .get::<Arc<Mutex<ControllerRenderer>>>()
+            .map(|r| r.lock());
+        let hands = resources
+            .get::<Arc<Mutex<HandRenderer>>>()
+            .map(|r| r.lock());
         let gizmos = resources.get::<Arc<GizmoRenderer>>();
 
         self.devices(
@@ -2095,8 +2102,12 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
             .then(|| resources.get::<Arc<Mutex<VideoRenderer>>>())
             .flatten();
         let scene = resources.get::<Arc<SceneRenderer>>();
-        let controllers = resources.get::<Arc<Mutex<ControllerRenderer>>>().map(|r| r.lock());
-        let hands = resources.get::<Arc<Mutex<HandRenderer>>>().map(|r| r.lock());
+        let controllers = resources
+            .get::<Arc<Mutex<ControllerRenderer>>>()
+            .map(|r| r.lock());
+        let hands = resources
+            .get::<Arc<Mutex<HandRenderer>>>()
+            .map(|r| r.lock());
         let gizmos = resources.get::<Arc<GizmoRenderer>>();
         let devices = self.devices(
             controllers.as_deref(),
@@ -2136,11 +2147,11 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
         // viewport; stretching it also mismatched the controller overlays. The scene has no fixed
         // aspect and fills the viewport.
         let draw_view = |pass: &mut wgpu::RenderPass<'static>,
-                             eye: Eye,
-                             left: f32,
-                             top: f32,
-                             width: f32,
-                             height: f32| {
+                         eye: Eye,
+                         left: f32,
+                         top: f32,
+                         width: f32,
+                         height: f32| {
             let (left, top, width, height) = match self.video_eye_aspect {
                 Some(aspect) => fit_viewport(left, top, width, height, aspect),
                 None => (left, top, width, height),
@@ -2296,7 +2307,9 @@ fn draw_stats_overlay(ctx: &egui::Context, view_rect: egui::Rect, entries: &[(St
     // and sizing the centred strip to the current text made the whole strip resize and every entry
     // slide sideways each frame. Slots only grow, so the layout settles within a moment and stays.
     let widths_id = egui::Id::new("stats overlay value widths");
-    let mut value_widths: Vec<f32> = ctx.data(|data| data.get_temp(widths_id)).unwrap_or_default();
+    let mut value_widths: Vec<f32> = ctx
+        .data(|data| data.get_temp(widths_id))
+        .unwrap_or_default();
     // A different set of entries is a different layout; start it afresh.
     value_widths.resize(galleys.len(), 0.0);
     for (width, (_, value)) in value_widths.iter_mut().zip(&galleys) {
@@ -2323,9 +2336,7 @@ fn draw_stats_overlay(ctx: &egui::Context, view_rect: egui::Rect, entries: &[(St
     let mut lines: Vec<(Vec<usize>, f32)> = vec![];
     for (index, &width) in entry_widths.iter().enumerate() {
         match lines.last_mut() {
-            Some((entries, line_width))
-                if *line_width + STATS_ENTRY_GAP + width <= max_width =>
-            {
+            Some((entries, line_width)) if *line_width + STATS_ENTRY_GAP + width <= max_width => {
                 entries.push(index);
                 *line_width += STATS_ENTRY_GAP + width;
             }
@@ -2398,7 +2409,10 @@ fn view_sub_rects(
         ViewMode::Stereo => {
             let half = rect.width() / 2.0;
             vec![
-                (Eye::Left, egui::Rect::from_min_size(rect.min, egui::vec2(half, rect.height()))),
+                (
+                    Eye::Left,
+                    egui::Rect::from_min_size(rect.min, egui::vec2(half, rect.height())),
+                ),
                 (
                     Eye::Right,
                     egui::Rect::from_min_size(
@@ -2424,10 +2438,7 @@ fn view_sub_rects(
                         fit_viewport(rect.left(), rect.top(), rect.width(), rect.height(), aspect);
 
                     (
-                        egui::Rect::from_min_size(
-                            egui::pos2(left, top),
-                            egui::vec2(width, height),
-                        ),
+                        egui::Rect::from_min_size(egui::pos2(left, top), egui::vec2(width, height)),
                         Camera::fov_aspect_ratio(),
                         view,
                     )

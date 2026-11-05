@@ -16,8 +16,7 @@ use crate::{
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
     BUTTON_INFO, ButtonType, DeviceMotion, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID, Pose,
-    RelaxedAtomic, ViewParams,
-    error,
+    RelaxedAtomic, ViewParams, error,
     glam::{Quat, UVec2, Vec3},
     info,
     parking_lot::{Mutex, RwLock},
@@ -284,7 +283,8 @@ const TIMING_WINDOW: usize = 150;
 impl Samples {
     fn push(&mut self, sample: f32) {
         // A non-finite sample would poison the mean for the whole window.
-        self.0.push_back(if sample.is_finite() { sample } else { 0.0 });
+        self.0
+            .push_back(if sample.is_finite() { sample } else { 0.0 });
 
         if self.0.len() > TIMING_WINDOW {
             self.0.pop_front();
@@ -298,7 +298,11 @@ impl Samples {
 
         let inverse_count = 1.0 / self.0.len() as f32;
         let mean = self.0.iter().sum::<f32>() * inverse_count;
-        let deviation = self.0.iter().map(|sample| (sample - mean).abs()).sum::<f32>();
+        let deviation = self
+            .0
+            .iter()
+            .map(|sample| (sample - mean).abs())
+            .sum::<f32>();
 
         Stat {
             mean,

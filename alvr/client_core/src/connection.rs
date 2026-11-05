@@ -282,7 +282,8 @@ fn connection_pipeline(
     //
     // Across machines this is moot — both sides can hold the same number — so ordinary clients keep
     // using the configured port and send the original `StreamReady`.
-    let share_machine_with_server = server_ip.is_loopback() || alvr_system_info::local_ip() == server_ip;
+    let share_machine_with_server =
+        server_ip.is_loopback() || alvr_system_info::local_ip() == server_ip;
     let requested_stream_port = if share_machine_with_server {
         info!("Server is on this machine; binding an OS-assigned stream port");
         0
@@ -432,8 +433,7 @@ fn connection_pipeline(
 
                     if header.is_idr {
                         got_idr = true;
-                    } else if !got_idr
-                        && Instant::now() > last_idr_request + Duration::from_secs(1)
+                    } else if !got_idr && Instant::now() > last_idr_request + Duration::from_secs(1)
                     {
                         // No keyframe yet: the decoder cannot output anything until one arrives.
                         last_idr_request = Instant::now();

@@ -115,10 +115,9 @@ impl SkinnedModel {
 
         // The mesh that uses the skin, rather than simply the first mesh: a file may carry props
         // alongside the hand.
-        let Some(node) = document
-            .nodes()
-            .find(|node| node.mesh().is_some() && node.skin().is_some_and(|used| used.index() == skin.index()))
-        else {
+        let Some(node) = document.nodes().find(|node| {
+            node.mesh().is_some() && node.skin().is_some_and(|used| used.index() == skin.index())
+        }) else {
             bail!("{} has a skin but no mesh using it", path.display());
         };
 
@@ -134,10 +133,14 @@ impl SkinnedModel {
                 continue;
             }
 
-            let reader = primitive.reader(|buffer| buffers.get(buffer.index()).map(|data| &data.0[..]));
+            let reader =
+                primitive.reader(|buffer| buffers.get(buffer.index()).map(|data| &data.0[..]));
 
             let Some(positions) = reader.read_positions() else {
-                warn!("Skipping a primitive of {} with no positions", path.display());
+                warn!(
+                    "Skipping a primitive of {} with no positions",
+                    path.display()
+                );
                 continue;
             };
             let positions = positions.collect::<Vec<_>>();
@@ -185,10 +188,7 @@ impl SkinnedModel {
                     uv: uvs.get(index).copied().unwrap_or([0.0, 0.0]),
                     color: tint,
                     joints: joints.get(index).copied().unwrap_or([0; INFLUENCES]),
-                    weights: weights
-                        .get(index)
-                        .copied()
-                        .unwrap_or([1.0, 0.0, 0.0, 0.0]),
+                    weights: weights.get(index).copied().unwrap_or([1.0, 0.0, 0.0, 0.0]),
                 });
             }
 
@@ -199,10 +199,7 @@ impl SkinnedModel {
                 .and_then(to_texture);
 
             primitives.push(SkinnedPrimitive {
-                indices: indices
-                    .into_u32()
-                    .map(|index| index + base_index)
-                    .collect(),
+                indices: indices.into_u32().map(|index| index + base_index).collect(),
                 texture,
             });
         }
@@ -230,7 +227,11 @@ impl SkinnedModel {
         let inverse_binds = skin
             .reader(|buffer| buffers.get(buffer.index()).map(|data| &data.0[..]))
             .read_inverse_bind_matrices()
-            .map(|matrices| matrices.map(|matrix| Mat4::from_cols_array_2d(&matrix)).collect::<Vec<_>>())
+            .map(|matrices| {
+                matrices
+                    .map(|matrix| Mat4::from_cols_array_2d(&matrix))
+                    .collect::<Vec<_>>()
+            })
             .unwrap_or_else(|| vec![Mat4::IDENTITY; skin_nodes.len()]);
 
         if inverse_binds.len() != skin_nodes.len() {
@@ -251,7 +252,12 @@ impl SkinnedModel {
         let names = skin
             .joints()
             .enumerate()
-            .map(|(slot, joint)| joint.name().map(str::to_owned).unwrap_or_else(|| format!("joint {slot}")))
+            .map(|(slot, joint)| {
+                joint
+                    .name()
+                    .map(str::to_owned)
+                    .unwrap_or_else(|| format!("joint {slot}"))
+            })
             .collect::<Vec<_>>();
 
         let canonical = names

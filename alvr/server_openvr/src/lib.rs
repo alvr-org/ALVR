@@ -85,12 +85,15 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
 
     // The alpha stream changes the encoder topology, so it is read once at driver init rather
     // than through the real-time config path.
-    let (alpha_stream_enabled, alpha_stream_bitrate_mbps) =
-        if let Some(PassthroughMode::AlphaStream(config)) = settings.video.passthrough.as_option() {
-            (true, config.bitrate_mbps)
-        } else {
-            (false, 0)
-        };
+    let (alpha_stream_enabled, alpha_stream_bitrate_mbps) = if let Some(
+        PassthroughMode::AlphaStream(config),
+    ) =
+        settings.video.passthrough.as_option()
+    {
+        (true, config.bitrate_mbps)
+    } else {
+        (false, 0)
+    };
 
     let body_tracking_vive_enabled =
         if let Switch::Enabled(config) = &settings.headset.body_tracking {

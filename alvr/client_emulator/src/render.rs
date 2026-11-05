@@ -13,12 +13,11 @@ use alvr_common::{glam::Mat4, warn};
 use bytemuck::{Pod, Zeroable};
 use std::num::NonZeroU32;
 use wgpu::{
-    AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry,
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState,
-    Buffer, BufferBindingType, BufferDescriptor, BufferUsages, Color, ColorTargetState, ColorWrites,
-    CommandEncoderDescriptor, CompareFunction, DepthStencilState, Device, Extent3d, FilterMode,
-    FragmentState, FrontFace, IndexFormat, LoadOp, MipmapFilterMode, MultisampleState, Operations,
-    Origin3d,
+    AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingResource, BindingType, BlendState, Buffer, BufferBindingType,
+    BufferDescriptor, BufferUsages, Color, ColorTargetState, ColorWrites, CommandEncoderDescriptor,
+    CompareFunction, DepthStencilState, Device, Extent3d, FilterMode, FragmentState, FrontFace,
+    IndexFormat, LoadOp, MipmapFilterMode, MultisampleState, Operations, Origin3d,
     PipelineLayoutDescriptor, PolygonMode, PrimitiveState, PrimitiveTopology, Queue,
     RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor,
     RenderPipeline, RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages,
@@ -314,7 +313,12 @@ pub struct SceneRenderer {
 }
 
 impl SceneRenderer {
-    pub fn new(device: &Device, queue: &Queue, scene: &Scene, output_format: TextureFormat) -> Self {
+    pub fn new(
+        device: &Device,
+        queue: &Queue,
+        scene: &Scene,
+        output_format: TextureFormat,
+    ) -> Self {
         let pipeline = MeshPipeline::new(device, queue, output_format);
         let mesh = Mesh::new(device, queue, &pipeline, scene);
 
@@ -414,7 +418,9 @@ impl HandTint {
         let bare = bare.clamp(0.0, 1.0);
         let alpha = bare * bare * (3.0 - 2.0 * bare);
 
-        std::array::from_fn(|channel| glove[channel] + (self.skin[channel] - glove[channel]) * alpha)
+        std::array::from_fn(|channel| {
+            glove[channel] + (self.skin[channel] - glove[channel]) * alpha
+        })
     }
 }
 
@@ -1367,7 +1373,10 @@ pub fn capture_stereo(
 
     devices.upload(
         queue,
-        [camera.view_matrix(Eye::Left), camera.view_matrix(Eye::Right)],
+        [
+            camera.view_matrix(Eye::Left),
+            camera.view_matrix(Eye::Right),
+        ],
         Camera::projection_matrix(aspect_ratio),
     );
 

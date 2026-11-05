@@ -139,11 +139,7 @@ fn to_ffi_skeleton(skeleton: &[Pose; 31]) -> FfiHandSkeleton {
 /// they did, a pinch would move the aim off whatever the user was pointing at, at the moment they
 /// commit to clicking it. The metacarpal does not articulate, so neither the knuckle nor the
 /// direction from the metacarpal's base to it moves as the fingers curl.
-pub fn hand_tip_offset(
-    config: &HeadsetConfig,
-    device_id: u64,
-    hand_skeleton: &[Pose; 26],
-) -> Pose {
+pub fn hand_tip_offset(config: &HeadsetConfig, device_id: u64, hand_skeleton: &[Pose; 26]) -> Pose {
     let (left_offset, right_offset) = get_hand_skeleton_offsets(config);
     let pose_offset = if device_id == *HAND_LEFT_ID {
         left_offset

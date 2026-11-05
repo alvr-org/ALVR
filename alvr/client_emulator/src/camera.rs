@@ -91,9 +91,7 @@ impl Camera {
         self.yaw = self.yaw.rem_euclid(std::f32::consts::TAU);
         self.roll = self.roll.rem_euclid(std::f32::consts::TAU);
 
-        let speed = MOVE_SPEED
-            * delta_seconds
-            * if input.fast { FAST_MULTIPLIER } else { 1.0 };
+        let speed = MOVE_SPEED * delta_seconds * if input.fast { FAST_MULTIPLIER } else { 1.0 };
 
         // Horizontal movement only: derive the basis from yaw alone so looking up or down does not
         // move the camera vertically.

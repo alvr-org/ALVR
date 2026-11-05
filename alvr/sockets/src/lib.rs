@@ -341,20 +341,29 @@ mod tests {
     /// A connection that arrives in time is accepted, and in blocking mode like any other socket.
     #[test]
     fn accept_returns_a_blocking_socket() {
-        let listener =
-            control_socket::bind(Duration::from_secs(5), 0, None, SocketBufferConfig::default())
-                .unwrap();
+        let listener = control_socket::bind(
+            Duration::from_secs(5),
+            0,
+            None,
+            SocketBufferConfig::default(),
+        )
+        .unwrap();
         let port = listener.local_addr().unwrap().port();
         let _client = TcpStream::connect((Ipv4Addr::LOCALHOST, port)).unwrap();
 
         let (socket, _) = accept(&listener).unwrap();
-        socket.set_read_timeout(Some(Duration::from_millis(50))).unwrap();
+        socket
+            .set_read_timeout(Some(Duration::from_millis(50)))
+            .unwrap();
 
         // A non-blocking socket would fail at once instead of waiting out the read timeout.
         let start = Instant::now();
         let error = (&socket).read(&mut [0; 1]).unwrap_err();
 
-        assert!(matches!(error.kind(), io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock));
+        assert!(matches!(
+            error.kind(),
+            io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
+        ));
         assert!(start.elapsed() >= Duration::from_millis(40));
     }
 }

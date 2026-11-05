@@ -462,6 +462,9 @@ mod tests {
     #[test]
     fn scale_matches_conversion() {
         // A frame at exactly one second must land on the scale, catching a stray factor of 1000.
-        assert_eq!(duration_to_pts(Duration::from_secs(1)), TIMESTAMP_SCALE as i64);
+        assert_eq!(
+            duration_to_pts(Duration::from_secs(1)),
+            TIMESTAMP_SCALE as i64
+        );
     }
 }

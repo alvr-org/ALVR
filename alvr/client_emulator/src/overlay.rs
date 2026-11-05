@@ -250,8 +250,10 @@ fn movement_panel(
     // reachable when the icon sits at a view edge.
     let screen = usable_rect(ctx);
     let position = pos2(
-        (anchor.x - MOVE_PANEL_SIZE.x / 2.0)
-            .clamp(screen.left() + 8.0, screen.right() - MOVE_PANEL_SIZE.x - 8.0),
+        (anchor.x - MOVE_PANEL_SIZE.x / 2.0).clamp(
+            screen.left() + 8.0,
+            screen.right() - MOVE_PANEL_SIZE.x - 8.0,
+        ),
         (anchor.y + 20.0).min(screen.bottom() - MOVE_PANEL_SIZE.y - 8.0),
     );
 

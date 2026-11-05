@@ -457,12 +457,9 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                     && let Err(e) = try_connect(
                         Arc::clone(&ctx),
                         Arc::clone(&lifecycle_state),
-                        [(
-                            client_ip,
-                            (client_hostname.clone(), client_control_port),
-                        )]
-                        .into_iter()
-                        .collect(),
+                        [(client_ip, (client_hostname.clone(), client_control_port))]
+                            .into_iter()
+                            .collect(),
                     )
                 {
                     error!("Could not initiate connection for {client_hostname}: {e}");
@@ -497,10 +494,7 @@ fn try_connect(
     dbg_connection!("try_connect: Finding client and creating control socket");
 
     let (socket, client_ip, connection_result) = alvr_sockets::connect_to_client(
-        clients
-            .iter()
-            .map(|(ip, (_, port))| (*ip, *port))
-            .collect(),
+        clients.iter().map(|(ip, (_, port))| (*ip, *port)).collect(),
         Duration::from_secs(1),
     )?;
 

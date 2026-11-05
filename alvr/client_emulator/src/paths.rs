@@ -44,6 +44,10 @@ pub fn adopt_settings_file(name: &str) {
 
     match std::fs::copy(&source, &target) {
         Ok(_) => info!("Copied {} to {}", source.display(), target.display()),
-        Err(e) => warn!("Cannot copy {} to {}: {e}", source.display(), target.display()),
+        Err(e) => warn!(
+            "Cannot copy {} to {}: {e}",
+            source.display(),
+            target.display()
+        ),
     }
 }

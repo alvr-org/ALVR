@@ -11,12 +11,10 @@
 //! generated from the ALVR definitions themselves, which keeps the two from drifting apart.
 
 use alvr_common::{
-    FOCUS3_CONTROLLER_PROFILE_PATH, INDEX_CONTROLLER_PROFILE_PATH,
-    PICO4_CONTROLLER_PROFILE_PATH, PICO4S_CONTROLLER_PROFILE_PATH,
-    PICO_G3_CONTROLLER_PROFILE_PATH, PICO_NEO3_CONTROLLER_PROFILE_PATH,
-    PSVR2_CONTROLLER_PROFILE_PATH, QUEST_CONTROLLER_PROFILE_PATH, VIVE_CONTROLLER_PROFILE_PATH,
-    YVR_CONTROLLER_PROFILE_PATH,
-    Pose,
+    FOCUS3_CONTROLLER_PROFILE_PATH, INDEX_CONTROLLER_PROFILE_PATH, PICO_G3_CONTROLLER_PROFILE_PATH,
+    PICO_NEO3_CONTROLLER_PROFILE_PATH, PICO4_CONTROLLER_PROFILE_PATH,
+    PICO4S_CONTROLLER_PROFILE_PATH, PSVR2_CONTROLLER_PROFILE_PATH, Pose,
+    QUEST_CONTROLLER_PROFILE_PATH, VIVE_CONTROLLER_PROFILE_PATH, YVR_CONTROLLER_PROFILE_PATH,
     anyhow::{Context, Result},
     glam::{EulerRot, Quat, Vec3},
     hash_string, info, warn,
@@ -125,9 +123,9 @@ pub fn input_is_scalar(suffix: &str) -> Option<bool> {
     // Left and right entries always have the same type, so looking up one hand is enough.
     let id = hash_string(&input_path(Hand::Left, suffix));
 
-    alvr_common::BUTTON_INFO.get(&id).map(|info| {
-        matches!(info.button_type, alvr_common::ButtonType::Scalar)
-    })
+    alvr_common::BUTTON_INFO
+        .get(&id)
+        .map(|info| matches!(info.button_type, alvr_common::ButtonType::Scalar))
 }
 
 /// One input a profile supports, with its hashed path id precomputed.
@@ -183,11 +181,7 @@ impl Profile {
     /// All input path ids of both hands, as announced to the server via the active interaction
     /// profile packet.
     pub fn input_id_set(&self) -> HashSet<u64> {
-        self.inputs
-            .iter()
-            .flatten()
-            .map(|input| input.id)
-            .collect()
+        self.inputs.iter().flatten().map(|input| input.id).collect()
     }
 }
 
@@ -289,7 +283,8 @@ fn default_grip_offset(path: &str) -> Option<GripOffset> {
 /// The bundled model for a profile, where there is one: the Quest 2 controllers from the WebXR
 /// Input Profiles, aligned to the emulator's grip by `tools/fetch_controller_model.py`.
 fn default_model(path: &str, hand: Hand) -> Option<String> {
-    (path == QUEST_CONTROLLER_PROFILE_PATH).then(|| format!("models/quest_controller_{}.glb", hand.side()))
+    (path == QUEST_CONTROLLER_PROFILE_PATH)
+        .then(|| format!("models/quest_controller_{}.glb", hand.side()))
 }
 
 /// The headset a profile's controller ships with, whose client-side pose correction is applied.
@@ -405,8 +400,7 @@ fn resolve(file: SettingsFile, directory: &Path) -> ControllerSettings {
                     .filter_map(|suffix| {
                         // Interning against the known list also rejects inputs ALVR cannot carry,
                         // which a custom profile might mistakenly list.
-                        let Some(interned) =
-                            INPUT_SUFFIXES.iter().find(|known| **known == *suffix)
+                        let Some(interned) = INPUT_SUFFIXES.iter().find(|known| **known == *suffix)
                         else {
                             warn!(
                                 "Profile '{}' lists unknown input '{suffix}'; ignoring it",
@@ -427,9 +421,8 @@ fn resolve(file: SettingsFile, directory: &Path) -> ControllerSettings {
             let grip_offset = entry
                 .grip_offset
                 .or_else(|| default_grip_offset(&entry.path));
-            let grip_from_aim = |hand: Hand| {
-                grip_offset.map_or(Pose::IDENTITY, |offset| offset.pose(hand))
-            };
+            let grip_from_aim =
+                |hand: Hand| grip_offset.map_or(Pose::IDENTITY, |offset| offset.pose(hand));
             let platform = headset_platform(&entry.path);
             let sent_from_grip = |hand: Hand| {
                 platform.map_or(Pose::IDENTITY, |platform| {
@@ -855,7 +848,10 @@ mod tests {
         let quest = &settings.profiles[settings.find_profile("Quest").expect("Quest profile")];
 
         assert!(
-            quest.grip_from_aim[0].orientation.angle_between(Quat::IDENTITY) > 1.0,
+            quest.grip_from_aim[0]
+                .orientation
+                .angle_between(Quat::IDENTITY)
+                > 1.0,
             "the Quest grip offset was not filled in"
         );
     }

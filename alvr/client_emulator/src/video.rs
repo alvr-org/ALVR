@@ -20,14 +20,13 @@ use std::time::Duration;
 use wgpu::{
     AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendComponent,
-    BlendFactor, BlendOperation, BlendState,
-    Buffer, BufferBindingType, BufferDescriptor, BufferUsages, ColorTargetState, ColorWrites,
-    Device, Extent3d, FilterMode, FragmentState, MipmapFilterMode, MultisampleState, Origin3d,
-    PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, Queue, RenderPipeline,
-    RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages,
-    TexelCopyBufferLayout, TexelCopyTextureInfo, Texture, TextureAspect, TextureDescriptor,
-    TextureDimension, TextureFormat, TextureSampleType, TextureUsages,
-    TextureViewDescriptor, TextureViewDimension, VertexState,
+    BlendFactor, BlendOperation, BlendState, Buffer, BufferBindingType, BufferDescriptor,
+    BufferUsages, ColorTargetState, ColorWrites, Device, Extent3d, FilterMode, FragmentState,
+    MipmapFilterMode, MultisampleState, Origin3d, PipelineLayoutDescriptor, PrimitiveState,
+    PrimitiveTopology, Queue, RenderPipeline, RenderPipelineDescriptor, SamplerBindingType,
+    SamplerDescriptor, ShaderStages, TexelCopyBufferLayout, TexelCopyTextureInfo, Texture,
+    TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType,
+    TextureUsages, TextureViewDescriptor, TextureViewDimension, VertexState,
 };
 
 #[repr(C)]
@@ -616,7 +615,14 @@ fn create_plane(device: &Device, width: u32, height: u32, label: &str) -> Textur
 }
 
 /// Uploads one plane, honouring the decoder's row stride.
-fn write_plane(queue: &Queue, texture: &Texture, width: u32, height: u32, data: &[u8], stride: u32) {
+fn write_plane(
+    queue: &Queue,
+    texture: &Texture,
+    width: u32,
+    height: u32,
+    data: &[u8],
+    stride: u32,
+) {
     // ffmpeg pads rows for alignment, so the source stride is usually larger than the width.
     //
     // The buffer is not required to include padding after the final row, so a full

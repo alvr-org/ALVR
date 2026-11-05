@@ -27,8 +27,8 @@ use alvr_common::{
     warn,
 };
 use alvr_packets::{
-    BatteryInfo, ButtonEntry, ClientControlPacket, ClientStreamConfig, RealTimeConfig, TrackingData,
-    VideoStreamKind,
+    BatteryInfo, ButtonEntry, ClientControlPacket, ClientStreamConfig, RealTimeConfig,
+    TrackingData, VideoStreamKind,
 };
 use alvr_session::CodecType;
 use alvr_system_info::Platform;

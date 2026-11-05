@@ -179,11 +179,15 @@ impl Scene {
                 });
             }
 
-            let texture = material.pbr.base_color_texture.as_ref().map(|image| Texture {
-                width: image.width(),
-                height: image.height(),
-                pixels: image.as_raw().clone(),
-            });
+            let texture = material
+                .pbr
+                .base_color_texture
+                .as_ref()
+                .map(|image| Texture {
+                    width: image.width(),
+                    height: image.height(),
+                    pixels: image.as_raw().clone(),
+                });
 
             primitives.push(Primitive {
                 indices: model_indices

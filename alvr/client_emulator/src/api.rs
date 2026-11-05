@@ -358,7 +358,10 @@ pub enum HandCommand {
         transition: Option<Duration>,
     },
     /// Play a timed gesture from the settings, from its beginning.
-    PlayGesture { hand: Hand, gesture: String },
+    PlayGesture {
+        hand: Hand,
+        gesture: String,
+    },
     Reset {
         hand: Hand,
     },
@@ -480,8 +483,9 @@ impl SharedState {
 /// Binds to localhost only: this is a debugging interface with no authentication, and it should not
 /// be reachable from the network.
 pub fn spawn(shared: Arc<SharedState>, port: u16) -> alvr_common::anyhow::Result<()> {
-    let server = tiny_http::Server::http(("127.0.0.1", port))
-        .map_err(|e| alvr_common::anyhow::anyhow!("Cannot start HTTP server on port {port}: {e}"))?;
+    let server = tiny_http::Server::http(("127.0.0.1", port)).map_err(|e| {
+        alvr_common::anyhow::anyhow!("Cannot start HTTP server on port {port}: {e}")
+    })?;
 
     info!("Control API listening on http://127.0.0.1:{port}");
 
@@ -510,10 +514,12 @@ fn route(shared: &SharedState, request: &mut tiny_http::Request) -> Reply {
     let url = request.url().split('?').next().unwrap_or("").to_owned();
 
     match (&method, url.as_str()) {
-        (tiny_http::Method::Get, "/api/state") => match serde_json::to_string_pretty(&*shared.state.lock()) {
-            Ok(json) => Reply::Json(json),
-            Err(e) => Reply::Error(500, format!("Cannot serialise state: {e}")),
-        },
+        (tiny_http::Method::Get, "/api/state") => {
+            match serde_json::to_string_pretty(&*shared.state.lock()) {
+                Ok(json) => Reply::Json(json),
+                Err(e) => Reply::Error(500, format!("Cannot serialise state: {e}")),
+            }
+        }
 
         (tiny_http::Method::Get, "/api/controllers") => {
             match serde_json::to_string_pretty(&*shared.controllers.lock()) {
@@ -589,11 +595,12 @@ fn route(shared: &SharedState, request: &mut tiny_http::Request) -> Reply {
             }
         }
 
-        (tiny_http::Method::Get, "/api/drive") => match serde_json::to_string(&*shared.drive.lock())
-        {
-            Ok(body) => Reply::Json(body),
-            Err(e) => Reply::Error(500, format!("Cannot serialise drive state: {e}")),
-        },
+        (tiny_http::Method::Get, "/api/drive") => {
+            match serde_json::to_string(&*shared.drive.lock()) {
+                Ok(body) => Reply::Json(body),
+                Err(e) => Reply::Error(500, format!("Cannot serialise drive state: {e}")),
+            }
+        }
 
         (tiny_http::Method::Post, "/api/drive") => {
             let mut body = String::new();
@@ -627,7 +634,10 @@ fn controller_route(shared: &SharedState, rest: &str, body: &str) -> Reply {
     };
 
     let Some(hand) = Hand::from_side(side) else {
-        return Reply::Error(404, format!("No such controller: {side} (use left or right)"));
+        return Reply::Error(
+            404,
+            format!("No such controller: {side} (use left or right)"),
+        );
     };
 
     // An empty body means "change nothing", which keeps `curl -X POST` without a payload usable.
@@ -778,7 +788,10 @@ fn known_name(shared: &SharedState, name: &str, gesture: bool) -> Result<(), Str
         &snapshot.poses
     };
 
-    if list.iter().any(|known| known.name.eq_ignore_ascii_case(name)) {
+    if list
+        .iter()
+        .any(|known| known.name.eq_ignore_ascii_case(name))
+    {
         return Ok(());
     }
 
@@ -792,14 +805,19 @@ fn known_name(shared: &SharedState, name: &str, gesture: bool) -> Result<(), Str
     Err(format!("Unknown {kind} '{name}'. Available: {names}"))
 }
 
-fn parse_configure(shared: &SharedState, hand: Hand, body: &str) -> Result<ControllerCommand, String> {
+fn parse_configure(
+    shared: &SharedState,
+    hand: Hand,
+    body: &str,
+) -> Result<ControllerCommand, String> {
     let parsed: ControllerConfigRequest =
         serde_json::from_str(body).map_err(|e| format!("Invalid JSON: {e}"))?;
 
     if let Some(profile) = &parsed.profile {
-        let known = shared.controllers.lock().profiles.iter().any(|summary| {
-            summary.name.eq_ignore_ascii_case(profile) || summary.path == *profile
-        });
+        let known =
+            shared.controllers.lock().profiles.iter().any(|summary| {
+                summary.name.eq_ignore_ascii_case(profile) || summary.path == *profile
+            });
 
         if !known {
             let names = shared
@@ -932,16 +950,22 @@ fn capture(shared: &SharedState, kind: CaptureRequestKind) -> Reply {
 fn respond(request: tiny_http::Request, reply: Reply) -> std::io::Result<()> {
     match reply {
         Reply::Json(body) => {
-            let header = "Content-Type: application/json".parse::<tiny_http::Header>().unwrap();
+            let header = "Content-Type: application/json"
+                .parse::<tiny_http::Header>()
+                .unwrap();
             request.respond(tiny_http::Response::from_string(body).with_header(header))
         }
         Reply::Png(bytes) => {
-            let header = "Content-Type: image/png".parse::<tiny_http::Header>().unwrap();
+            let header = "Content-Type: image/png"
+                .parse::<tiny_http::Header>()
+                .unwrap();
             request.respond(tiny_http::Response::from_data(bytes).with_header(header))
         }
         Reply::Error(code, message) => {
             let body = serde_json::json!({ "error": message }).to_string();
-            let header = "Content-Type: application/json".parse::<tiny_http::Header>().unwrap();
+            let header = "Content-Type: application/json"
+                .parse::<tiny_http::Header>()
+                .unwrap();
             request.respond(
                 tiny_http::Response::from_string(body)
                     .with_status_code(code)

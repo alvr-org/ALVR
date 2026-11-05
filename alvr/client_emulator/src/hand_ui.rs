@@ -64,7 +64,14 @@ pub fn toolbar_row(
     }
 
     let mut visible = hands.iter().all(|state| state.model_visible);
-    if icons::toggle(ui, &mut visible, Icon::Show, "Show the hand models in the view").changed() {
+    if icons::toggle(
+        ui,
+        &mut visible,
+        Icon::Show,
+        "Show the hand models in the view",
+    )
+    .changed()
+    {
         for state in hands.iter_mut() {
             state.model_visible = visible;
         }
@@ -482,7 +489,8 @@ fn draw_pose_icon(
     let horizontal = Vec3::NEG_Z.cross(view).normalize();
     let vertical = view.cross(horizontal).normalize();
 
-    let anchor = (joints[hands::WRIST].position + joints[Finger::Middle.joints()[1]].position) / 2.0;
+    let anchor =
+        (joints[hands::WRIST].position + joints[Finger::Middle.joints()[1]].position) / 2.0;
 
     // Projected into the hand's own units first, so the drawing can then be fitted to the cell.
     let flatten = |position: Vec3| {

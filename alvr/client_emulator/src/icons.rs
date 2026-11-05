@@ -365,9 +365,9 @@ pub fn segmented<T: PartialEq + Copy>(
     }
 
     if let Some(selected) = selected {
-        let position = ui
-            .ctx()
-            .animate_value_with_time(id.with("thumb"), selected as f32, SLIDE_SECONDS);
+        let position =
+            ui.ctx()
+                .animate_value_with_time(id.with("thumb"), selected as f32, SLIDE_SECONDS);
         let thumb = slot(0).translate(vec2(pitch * position, 0.0));
 
         painter.rect_filled(thumb, radius, visuals.selection.bg_fill);
@@ -528,8 +528,10 @@ fn chevron(ui: &Ui, rect: Rect, visuals: &WidgetVisuals, open: bool) {
         center + vec2(half, -half * 0.5 * flip),
     ];
 
-    ui.painter()
-        .add(Shape::line(points, Stroke::new(1.5, visuals.fg_stroke.color)));
+    ui.painter().add(Shape::line(
+        points,
+        Stroke::new(1.5, visuals.fg_stroke.color),
+    ));
 }
 
 /// The colour of a control's icon or text: the selection's text colour while selected and the
@@ -554,11 +556,15 @@ fn paint_fills(ui: &Ui, rect: Rect, response: &Response, selected: bool) {
         FADE_SECONDS,
     );
     if hover > 0.0 {
-        ui.painter()
-            .rect_filled(rect, radius, shade(visuals, HOVER_SHADE).gamma_multiply(hover));
+        ui.painter().rect_filled(
+            rect,
+            radius,
+            shade(visuals, HOVER_SHADE).gamma_multiply(hover),
+        );
     }
 
-    let selection = ctx.animate_bool_with_time(response.id.with("selected"), selected, FADE_SECONDS);
+    let selection =
+        ctx.animate_bool_with_time(response.id.with("selected"), selected, FADE_SECONDS);
     if selection > 0.0 {
         ui.painter().rect_filled(
             rect,
@@ -707,7 +713,14 @@ fn paint(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
                 );
             }
 
-            capsule(painter, at(-3.2, 4.4), at(-6.9, 0.6), 1.3 * scale, 1.0 * scale, color);
+            capsule(
+                painter,
+                at(-3.2, 4.4),
+                at(-6.9, 0.6),
+                1.3 * scale,
+                1.0 * scale,
+                color,
+            );
         }
         Icon::Axes => {
             // Fixed colours rather than the text colour: they are what the gizmo draws.
@@ -758,7 +771,13 @@ fn paint(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
         Icon::Restore => {
             // The back window shows only where the front one does not cover it.
             painter.add(Shape::line(
-                vec![at(-2.5, -3.0), at(-2.5, -5.0), at(5.0, -5.0), at(5.0, 2.5), at(3.0, 2.5)],
+                vec![
+                    at(-2.5, -3.0),
+                    at(-2.5, -5.0),
+                    at(5.0, -5.0),
+                    at(5.0, 2.5),
+                    at(3.0, 2.5),
+                ],
                 stroke,
             ));
             painter.rect_stroke(
@@ -820,7 +839,10 @@ fn eye(painter: &Painter, center: Pos2, scale: f32, color: Color32) {
         points.push(center + vec2(t * half_width, (1.0 - t * t) * half_height));
     }
 
-    painter.add(Shape::closed_line(points, Stroke::new(1.2 * scale.max(0.75), color)));
+    painter.add(Shape::closed_line(
+        points,
+        Stroke::new(1.2 * scale.max(0.75), color),
+    ));
     painter.circle_filled(center, 1.4 * scale, color);
 }
 

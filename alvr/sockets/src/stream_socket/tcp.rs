@@ -248,7 +248,9 @@ mod tests {
         let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).unwrap();
         let mut client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
         let (server, _) = listener.accept().unwrap();
-        server.set_read_timeout(Some(Duration::from_millis(100))).unwrap();
+        server
+            .set_read_timeout(Some(Duration::from_millis(100)))
+            .unwrap();
 
         client.write_all(sent).unwrap();
         drop(client);
@@ -266,7 +268,10 @@ mod tests {
 
     #[test]
     fn closed_connection_is_reported() {
-        assert!(matches!(recv_after_close(&[]), Err(ConnectionError::Other(_))));
+        assert!(matches!(
+            recv_after_close(&[]),
+            Err(ConnectionError::Other(_))
+        ));
     }
 
     #[test]
@@ -275,6 +280,9 @@ mod tests {
         packet[6..10].copy_from_slice(&100u32.to_le_bytes());
         packet.extend_from_slice(&[1, 2, 3, 4, 5]);
 
-        assert!(matches!(recv_after_close(&packet), Err(ConnectionError::Other(_))));
+        assert!(matches!(
+            recv_after_close(&packet),
+            Err(ConnectionError::Other(_))
+        ));
     }
 }

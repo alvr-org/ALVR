@@ -16,8 +16,8 @@ use crate::{
 };
 use alvr_packets::ButtonValue;
 use eframe::egui::{
-    Align2, Color32, Context, CornerRadius, FontId, Id, Order, PointerButton, Pos2, Rect,
-    Response, Sense, Stroke, StrokeKind, Ui, Vec2, pos2, vec2,
+    Align2, Color32, Context, CornerRadius, FontId, Id, Order, PointerButton, Pos2, Rect, Response,
+    Sense, Stroke, StrokeKind, Ui, Vec2, pos2, vec2,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -233,9 +233,10 @@ impl ControllerUi {
             let screen = usable_rect(ctx);
             let position = match hand {
                 Hand::Left => pos2(screen.left() + 10.0, screen.bottom() - size.y - 10.0),
-                Hand::Right => {
-                    pos2(screen.right() - size.x - 10.0, screen.bottom() - size.y - 10.0)
-                }
+                Hand::Right => pos2(
+                    screen.right() - size.x - 10.0,
+                    screen.bottom() - size.y - 10.0,
+                ),
             };
 
             let mut changes = PanelChanges::default();
@@ -324,8 +325,13 @@ pub fn toolbar_row(
     // Visibility and the gizmo come straight after the toggles, in the same place as in the hand
     // section, so the two sections line up; the controller type, which hands lack, follows.
     let mut visible = controllers.iter().all(|state| state.model_visible);
-    if icons::toggle(ui, &mut visible, Icon::Show, "Show the controller models in the view")
-        .changed()
+    if icons::toggle(
+        ui,
+        &mut visible,
+        Icon::Show,
+        "Show the controller models in the view",
+    )
+    .changed()
     {
         for state in controllers.iter_mut() {
             state.model_visible = visible;
@@ -347,7 +353,10 @@ pub fn toolbar_row(
         "Mixed".into()
     };
 
-    let profile_names = settings.profiles.iter().map(|profile| profile.name.as_str());
+    let profile_names = settings
+        .profiles
+        .iter()
+        .map(|profile| profile.name.as_str());
     icons::dropdown(
         ui,
         "controller profile",
@@ -448,7 +457,10 @@ fn panel_contents(
     haptic_indicator(
         ui,
         hand,
-        to_screen(GRIP_X0 + GRIP_COL_W / 2.0, PANEL_MARGIN + TRIGGER_ROW_H / 2.0),
+        to_screen(
+            GRIP_X0 + GRIP_COL_W / 2.0,
+            PANEL_MARGIN + TRIGGER_ROW_H / 2.0,
+        ),
         haptics,
         time,
     );
@@ -621,8 +633,7 @@ fn panel_contents(
 
 /// Whether the given mouse button is held down on this widget.
 fn held_with(ui: &Ui, response: &Response, button: PointerButton) -> bool {
-    response.is_pointer_button_down_on()
-        && ui.input(|state| state.pointer.button_down(button))
+    response.is_pointer_button_down_on() && ui.input(|state| state.pointer.button_down(button))
 }
 
 /// Queues a persistent flip of a binary input.
@@ -665,9 +676,13 @@ fn pull_control(
     if held_with(ui, &response, PointerButton::Primary) {
         // A digital press is a full pull; profiles without an analog axis get the click directly.
         if has_value {
-            changes.driven.insert(value_suffix, ButtonValue::Scalar(1.0));
+            changes
+                .driven
+                .insert(value_suffix, ButtonValue::Scalar(1.0));
         } else {
-            changes.driven.insert(click_suffix, ButtonValue::Binary(true));
+            changes
+                .driven
+                .insert(click_suffix, ButtonValue::Binary(true));
         }
     }
 
@@ -687,7 +702,9 @@ fn pull_control(
         };
 
         let value = (state.scalar(value_suffix) + change * PULL_PER_PIXEL).clamp(0.0, 1.0);
-        changes.toggles.push((value_suffix, ButtonValue::Scalar(value)));
+        changes
+            .toggles
+            .push((value_suffix, ButtonValue::Scalar(value)));
     }
 
     if response.clicked_by(PointerButton::Secondary) {
@@ -695,9 +712,13 @@ fn pull_control(
 
         if has_value {
             let value = if engaged { 0.0 } else { 1.0 };
-            changes.toggles.push((value_suffix, ButtonValue::Scalar(value)));
+            changes
+                .toggles
+                .push((value_suffix, ButtonValue::Scalar(value)));
         } else {
-            changes.toggles.push((click_suffix, ButtonValue::Binary(!engaged)));
+            changes
+                .toggles
+                .push((click_suffix, ButtonValue::Binary(!engaged)));
         }
     }
 
@@ -711,7 +732,11 @@ fn pull_control(
     painter.rect_filled(rect, CornerRadius::same(5), visuals.bg_fill);
 
     if value > 0.0 {
-        painter.rect_filled(fill, CornerRadius::same(5), hand_color(hand).gamma_multiply(0.55));
+        painter.rect_filled(
+            fill,
+            CornerRadius::same(5),
+            hand_color(hand).gamma_multiply(0.55),
+        );
     }
 
     let stroke = if touched {
@@ -787,7 +812,9 @@ fn button_control(
     let response = ui.interact(rect, id, Sense::click_and_drag());
 
     if held_with(ui, &response, PointerButton::Primary) {
-        changes.driven.insert(click_suffix, ButtonValue::Binary(true));
+        changes
+            .driven
+            .insert(click_suffix, ButtonValue::Binary(true));
     }
 
     if let Some(touch_suffix) = touch_suffix
@@ -838,19 +865,13 @@ fn button_control(
             let stroke = Stroke::new(1.5, glyph_color);
             for line in -1..=1 {
                 let y = center.y + line as f32 * 3.5;
-                painter.line_segment(
-                    [pos2(center.x - 4.5, y), pos2(center.x + 4.5, y)],
-                    stroke,
-                );
+                painter.line_segment([pos2(center.x - 4.5, y), pos2(center.x + 4.5, y)], stroke);
             }
         }
         ButtonGlyph::System => {
             let stroke = Stroke::new(1.5, glyph_color);
             painter.circle_stroke(center + vec2(0.0, 0.7), 4.2, stroke);
-            painter.line_segment(
-                [center + vec2(0.0, -1.7), center + vec2(0.0, -5.2)],
-                stroke,
-            );
+            painter.line_segment([center + vec2(0.0, -1.7), center + vec2(0.0, -5.2)], stroke);
         }
     }
 
@@ -901,18 +922,30 @@ fn thumbstick_control(
 
     // Screen Y grows downwards, stick Y grows upwards.
     if let Some(offset) = deflection(PointerButton::Primary) {
-        changes.driven.insert("thumbstick/x", ButtonValue::Scalar(offset.x));
-        changes.driven.insert("thumbstick/y", ButtonValue::Scalar(-offset.y));
+        changes
+            .driven
+            .insert("thumbstick/x", ButtonValue::Scalar(offset.x));
+        changes
+            .driven
+            .insert("thumbstick/y", ButtonValue::Scalar(-offset.y));
     } else if let Some(offset) = deflection(PointerButton::Secondary) {
         // Kept on release, so a held direction can be combined with other input.
-        changes.toggles.push(("thumbstick/x", ButtonValue::Scalar(offset.x)));
-        changes.toggles.push(("thumbstick/y", ButtonValue::Scalar(-offset.y)));
+        changes
+            .toggles
+            .push(("thumbstick/x", ButtonValue::Scalar(offset.x)));
+        changes
+            .toggles
+            .push(("thumbstick/y", ButtonValue::Scalar(-offset.y)));
     }
 
     // A plain left click — no movement — recentres a held deflection.
     if response.clicked_by(PointerButton::Primary) {
-        changes.toggles.push(("thumbstick/x", ButtonValue::Scalar(0.0)));
-        changes.toggles.push(("thumbstick/y", ButtonValue::Scalar(0.0)));
+        changes
+            .toggles
+            .push(("thumbstick/x", ButtonValue::Scalar(0.0)));
+        changes
+            .toggles
+            .push(("thumbstick/y", ButtonValue::Scalar(0.0)));
     }
 
     if response.clicked_by(PointerButton::Middle) {
@@ -989,7 +1022,9 @@ fn trackpad_control(
             ButtonValue::Scalar((-offset.y / half.y).clamp(-1.0, 1.0)),
         );
         // Explicit, because a contact at the exact centre has zero deflection to derive it from.
-        changes.driven.insert("trackpad/touch", ButtonValue::Binary(true));
+        changes
+            .driven
+            .insert("trackpad/touch", ButtonValue::Binary(true));
     }
 
     if features.pad_force && response.dragged_by(PointerButton::Middle) {
@@ -1001,7 +1036,9 @@ fn trackpad_control(
         };
 
         let force = (state.scalar("trackpad/force") + change * PULL_PER_PIXEL).clamp(0.0, 1.0);
-        changes.toggles.push(("trackpad/force", ButtonValue::Scalar(force)));
+        changes
+            .toggles
+            .push(("trackpad/force", ButtonValue::Scalar(force)));
     }
 
     if response.clicked_by(PointerButton::Middle) {
@@ -1083,12 +1120,12 @@ fn thumbrest_control(
     let response = ui.interact(rect, id, Sense::click_and_drag());
 
     if held_with(ui, &response, PointerButton::Primary) {
-        changes.driven.insert("thumbrest/touch", ButtonValue::Binary(true));
+        changes
+            .driven
+            .insert("thumbrest/touch", ButtonValue::Binary(true));
     }
 
-    if response.clicked_by(PointerButton::Middle)
-        || response.clicked_by(PointerButton::Secondary)
-    {
+    if response.clicked_by(PointerButton::Middle) || response.clicked_by(PointerButton::Secondary) {
         toggle_binary(changes, state, "thumbrest/touch");
     }
 
@@ -1139,10 +1176,18 @@ fn haptic_indicator(ui: &mut Ui, hand: Hand, center: Pos2, haptics: &HapticsViz,
 
     let glyph_color = if active {
         painter.circle_filled(center, radius, haptic_color(haptics, time));
-        painter.circle_stroke(center, radius, Stroke::new(1.0, Color32::WHITE.gamma_multiply(0.5)));
+        painter.circle_stroke(
+            center,
+            radius,
+            Stroke::new(1.0, Color32::WHITE.gamma_multiply(0.5)),
+        );
         Color32::BLACK
     } else {
-        painter.circle_stroke(center, radius, Stroke::new(1.0, ui.visuals().weak_text_color()));
+        painter.circle_stroke(
+            center,
+            radius,
+            Stroke::new(1.0, ui.visuals().weak_text_color()),
+        );
         ui.visuals().weak_text_color()
     };
 

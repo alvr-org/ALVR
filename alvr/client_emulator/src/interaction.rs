@@ -284,7 +284,9 @@ mod tests {
         // the user's right" — must come back negated; one that survives it — "up" — must come back
         // unchanged. Getting these two backwards is the easy mistake, and it is invisible on one
         // hand alone.
-        let grip_left = HandInteraction::Grip.transform(&left, Hand::Left).orientation;
+        let grip_left = HandInteraction::Grip
+            .transform(&left, Hand::Left)
+            .orientation;
         let grip_right = HandInteraction::Grip
             .transform(&right, Hand::Right)
             .orientation;

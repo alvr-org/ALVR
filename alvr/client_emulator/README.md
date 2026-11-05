@@ -113,7 +113,7 @@ worth not repeating.
 There is no collision: walking through walls is expected.
 
 The toolbar is icons; hovering any of them says what it does. Colours each keep one meaning: light
-blue marks what is selected, green and red the connection state, and amber and plum the
+blue marks what is selected, green and red the connection state, and terracotta and plum the
 controller and hand sections. The top row selects which eye the
 window shows — **Left** (the default), **Right** or **Stereo**, drawn as a pair of eyes with the
 shown ones open — and which source it draws. **Virtual** (a headset) is the decoded video, the
@@ -166,7 +166,7 @@ The source can be switched from the API with [`POST /api/source`](#post-apisourc
 ## Controller emulation
 
 The second toolbar row controls both emulated controllers and emulated hands. Its controller
-section, drawn in amber and marked by a gamepad: **L** and **R** enable each hand independently, the eye shows
+section, drawn in terracotta and marked by a gamepad: **L** and **R** enable each hand independently, the eye shows
 the 3D models in the scene view, the axes select a pose to draw as a gizmo, the dropdown selects
 which controller type to emulate, and the circular arrow returns poses and inputs to their
 defaults.

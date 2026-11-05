@@ -838,7 +838,7 @@ fn create_placeholder_texture(device: &Device, queue: &Queue) -> TextureView {
         mip_level_count: 1,
         sample_count: 1,
         dimension: TextureDimension::D2,
-        format: TextureFormat::Rgba8UnormSrgb,
+        format: TextureFormat::Rgba8Unorm,
         usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
         view_formats: &[],
     });
@@ -879,8 +879,13 @@ fn upload_texture(device: &Device, queue: &Queue, texture: &crate::scene::Textur
         mip_level_count: 1,
         sample_count: 1,
         dimension: TextureDimension::D2,
-        // glTF base colour textures are sRGB encoded.
-        format: TextureFormat::Rgba8UnormSrgb,
+        // glTF base colour textures are sRGB encoded, and are uploaded as plain Unorm on purpose:
+        // the render target is not an sRGB one (egui draws in display values throughout), so
+        // decoding them to linear on sampling, with nothing encoding the result back, rendered
+        // every texture roughly as if gamma were applied twice, much too dark. Undecoded, a
+        // texture comes out as it was authored, and in step with the material colours, which are
+        // passed through as they are.
+        format: TextureFormat::Rgba8Unorm,
         usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
         view_formats: &[],
     });

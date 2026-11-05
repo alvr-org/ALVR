@@ -112,13 +112,13 @@ worth not repeating.
 
 There is no collision: walking through walls is expected.
 
-The window draws its own title bar, matching the toolbar under it: the app name on the left, and
-the connection state and the window buttons on the right. Hover the connection state for the client
+The window draws its own title bar, matching the toolbar under it: the app name and the connection
+state on the left, and the window buttons on the right. Hover the connection state for the client
 core's full status message, including the server address and any error. Drag the title bar to move
 the window, double-click it to maximise, and drag any edge or corner to resize.
 
 The toolbar is one row of icon groups, which wraps onto a second line only when the window is too
-narrow, with hints on how to look around and drive the devices underneath. Hovering any icon says
+narrow, with hints on how to look around and drive the devices underneath it on the right. Hovering any icon says
 what it does. The toolbar is otherwise monochrome, so the few colours each keep one meaning: light
 blue marks what is selected, and green and red the connection state. The first group selects which
 eye the window shows — **Left** (the default), **Right** or **Stereo**, drawn as a pair of eyes with the

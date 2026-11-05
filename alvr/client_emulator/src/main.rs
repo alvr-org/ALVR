@@ -1355,7 +1355,7 @@ impl EmulatorApp {
     }
 
     /// The window's title bar, drawn by the app in place of the system's so it matches the toolbar
-    /// under it: the app name on the left, and the connection status and the window buttons on the
+    /// under it: the app name and the connection status on the left, and the window buttons on the
     /// right. Dragging it moves the window and double-clicking it maximises.
     fn draw_title_bar(&mut self, ui: &mut Ui) {
         let margin = (8.0 * TOOLBAR_SCALE) as i8;
@@ -1391,6 +1391,7 @@ impl EmulatorApp {
 
                 ui.horizontal(|ui| {
                     ui.label(icons::normal_text(ui, "ALVR Client Emulator").strong());
+                    connection_status(ui, &self.status());
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if icons::button(ui, Icon::Close, "Close").clicked() {
@@ -1409,9 +1410,6 @@ impl EmulatorApp {
                         if icons::button(ui, Icon::Minimize, "Minimise").clicked() {
                             ui.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
                         }
-
-                        icons::group_gap(ui);
-                        connection_status(ui, &self.status());
                     });
                 });
             });
@@ -1495,14 +1493,19 @@ impl EmulatorApp {
                     self.draw_input_groups(ui);
                 });
 
-                // The hints under the groups, in one dimmed line, cut short rather than wrapped
-                // when the window is narrow: they are the least important thing on the toolbar.
+                // The hints under the groups, at the right, in one dimmed line, cut short rather
+                // than wrapped when the window is narrow: they are the least important thing on
+                // the toolbar.
                 let hints = [Some(self.look_hint()), self.device_hint()]
                     .into_iter()
                     .flatten()
                     .collect::<Vec<_>>()
                     .join("    ·    ");
-                ui.add(egui::Label::new(RichText::new(hints).weak().small()).truncate());
+
+                ui.add_space(4.0 * icons::size_factor(ui));
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.add(egui::Label::new(RichText::new(hints).weak().small()).truncate());
+                });
             });
 
         // A hairline and a soft shadow along the bottom edge, so the toolbar reads as a bar resting

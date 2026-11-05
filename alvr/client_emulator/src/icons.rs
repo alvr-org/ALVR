@@ -144,7 +144,7 @@ pub fn toggle(
 }
 
 /// One of several mutually exclusive options, drawn as a single capsule with the selected option
-/// raised on a thumb that slides between them.
+/// on a thumb that slides between them.
 ///
 /// Replaces a row of separate selectable buttons: the capsule shows at a glance that the options
 /// belong together and that exactly one of them is in effect.
@@ -215,12 +215,6 @@ pub fn segmented<T: PartialEq + Copy>(
             .animate_value_with_time(id.with("thumb"), selected as f32, SLIDE_SECONDS);
         let thumb = slot(0).translate(vec2(segment.x * position, 0.0));
 
-        // A soft shadow under the thumb, so it reads as raised above the track.
-        painter.rect_filled(
-            thumb.translate(vec2(0.0, 1.0)).expand(0.5),
-            inner_radius,
-            Color32::from_black_alpha(28),
-        );
         painter.rect_filled(thumb, inner_radius, visuals.selection.bg_fill);
     }
 
@@ -280,6 +274,48 @@ pub fn dropdown_text(ui: &Ui, text: impl Into<String>) -> RichText {
         / size_factor(ui);
 
     RichText::new(text).size(size)
+}
+
+/// Like [`toggle`], with a short text in place of the icon.
+///
+/// Rather than egui's `toggle_value`, whose highlight is sized to its text: a one-letter label got
+/// a narrow highlight beside the wider one of the icon toggles next to it.
+pub fn text_toggle(
+    ui: &mut Ui,
+    value: &mut bool,
+    text: &str,
+    tint: Option<Color32>,
+    tooltip: &str,
+) -> Response {
+    let (rect, mut response) = ui.allocate_exact_size(button_size(ui), Sense::click());
+
+    if response.clicked() {
+        *value = !*value;
+        response.mark_changed();
+    }
+
+    if ui.is_rect_visible(rect) {
+        paint_fills(ui, rect, &response, *value);
+
+        let color = tint.unwrap_or_else(|| {
+            if *value {
+                ui.visuals().selection.stroke.color
+            } else {
+                ui.visuals().text_color()
+            }
+        });
+        let galley = WidgetText::from(RichText::new(text).color(color)).into_galley(
+            ui,
+            Some(TextWrapMode::Extend),
+            f32::INFINITY,
+            TextStyle::Button,
+        );
+
+        ui.painter()
+            .galley(rect.center() - galley.size() / 2.0, galley, color);
+    }
+
+    response.on_hover_text(tooltip)
 }
 
 /// A push button showing an icon. Frameless at rest, like every other toolbar control.

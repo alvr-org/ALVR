@@ -59,10 +59,7 @@ pub fn toolbar_row(
             Hand::Right => ("R", "Emulate the right hand"),
         };
 
-        if ui
-            .toggle_value(&mut hands[index].enabled, egui::RichText::new(label).color(tint))
-            .on_hover_text(tooltip)
-            .changed()
+        if icons::text_toggle(ui, &mut hands[index].enabled, label, Some(tint), tooltip).changed()
             && hands[index].enabled
         {
             controllers[index].enabled = false;

@@ -17,7 +17,7 @@ use crate::{
 use alvr_packets::ButtonValue;
 use eframe::egui::{
     Align2, Color32, ComboBox, Context, CornerRadius, FontId, Id, Order, PointerButton, Pos2, Rect,
-    Response, RichText, Sense, Stroke, StrokeKind, Ui, Vec2, pos2, vec2,
+    Response, Sense, Stroke, StrokeKind, Ui, Vec2, pos2, vec2,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -317,12 +317,7 @@ pub fn toolbar_row(
             Hand::Right => ("R", "Emulate the right controller"),
         };
 
-        if ui
-            .toggle_value(
-                &mut controllers[index].enabled,
-                RichText::new(label).color(tint),
-            )
-            .on_hover_text(tooltip)
+        if icons::text_toggle(ui, &mut controllers[index].enabled, label, Some(tint), tooltip)
             .changed()
             && controllers[index].enabled
         {

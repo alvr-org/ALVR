@@ -1414,18 +1414,21 @@ impl EmulatorApp {
 
                 toolbar_gap(ui);
 
-                // The numbers go in an overlay over the view, where there is room to label them;
-                // see [`draw_stats_overlay`].
-                icons::toggle(
-                    ui,
-                    &mut self.show_stats,
-                    Icon::Stats,
-                    None,
-                    "Statistics: camera position, and the stream and its frame pacing while \
-                     streaming",
-                );
+                // The connection and its numbers as one group. The numbers go in an overlay over
+                // the view, where there is room to label them; see [`draw_stats_overlay`].
+                let status = self.status();
+                icons::group(ui, |ui| {
+                    icons::toggle(
+                        ui,
+                        &mut self.show_stats,
+                        Icon::Stats,
+                        None,
+                        "Statistics: camera position, and the stream and its frame pacing while \
+                         streaming",
+                    );
 
-                connection_status(ui, &self.status());
+                    connection_status(ui, &status);
+                });
 
                 let hint = if self.look_latched {
                     "Esc to release mouse"

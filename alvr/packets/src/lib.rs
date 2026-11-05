@@ -22,10 +22,20 @@ pub const HAPTICS: u16 = 1;
 pub const AUDIO: u16 = 2;
 pub const VIDEO: u16 = 3;
 pub const STATISTICS: u16 = 4;
+/// Monochrome alpha companion to VIDEO, used by the 8 bit alpha passthrough mode.
+pub const VIDEO_ALPHA: u16 = 5;
 
-#[derive(Serialize, Deserialize, Clone)]
+/// Identifies which of the two video streams a packet or decoder config belongs to.
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
+pub enum VideoStreamKind {
+    Color,
+    Alpha,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct VideoStreamingCapabilitiesExt {
-    // Nothing for now
+    /// Whether the client can decode a second monochrome stream carrying 8 bit alpha.
+    pub alpha_stream: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -53,11 +63,16 @@ impl VideoStreamingCapabilities {
     }
 
     pub fn ext(&self) -> Result<VideoStreamingCapabilitiesExt> {
-        let _ext_json = json::from_str::<json::Value>(&self.ext_str)?;
+        let ext_json = json::from_str::<json::Value>(&self.ext_str)?;
 
-        // decode values here
-
-        Ok(VideoStreamingCapabilitiesExt {})
+        // decode values here. Missing fields are tolerated so that older clients, which send an
+        // empty ext object, negotiate as "unsupported" instead of failing the whole handshake.
+        Ok(VideoStreamingCapabilitiesExt {
+            alpha_stream: ext_json
+                .get("alpha_stream")
+                .and_then(json::Value::as_bool)
+                .unwrap_or(false),
+        })
     }
 }
 
@@ -75,9 +90,11 @@ pub enum ClientConnectionResult {
     ClientStandby,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct NegotiatedStreamingConfigExt {
-    // Nothing for now
+    /// Set when both peers support the alpha stream and the mode is enabled in settings. When
+    /// false the client must not expect any packet on the VIDEO_ALPHA stream.
+    pub enable_alpha_stream: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -101,11 +118,15 @@ impl ClientNegotiatedStreamingConfig {
     }
 
     pub fn ext(&self) -> Result<NegotiatedStreamingConfigExt> {
-        let _ext_json = json::from_str::<json::Value>(&self.ext_str)?;
+        let ext_json = json::from_str::<json::Value>(&self.ext_str)?;
 
-        // decode values here
-
-        Ok(NegotiatedStreamingConfigExt {})
+        // decode values here. See VideoStreamingCapabilities::ext for why missing fields default.
+        Ok(NegotiatedStreamingConfigExt {
+            enable_alpha_stream: ext_json
+                .get("enable_alpha_stream")
+                .and_then(json::Value::as_bool)
+                .unwrap_or(false),
+        })
     }
 }
 
@@ -150,7 +171,15 @@ impl StreamConfigPacket {
 pub struct DecoderInitializationConfig {
     pub codec: CodecType,
     pub config_buffer: Vec<u8>, // e.g. SPS + PPS NALs
+    /// Which stream this config initializes. Defaults to Color so that a config produced by an
+    /// older server still targets the main decoder.
+    #[serde(default = "default_video_stream_kind")]
+    pub stream: VideoStreamKind,
     pub ext_str: String,
+}
+
+fn default_video_stream_kind() -> VideoStreamKind {
+    VideoStreamKind::Color
 }
 
 #[derive(Serialize, Deserialize)]

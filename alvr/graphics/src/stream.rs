@@ -49,6 +49,9 @@ struct ViewObjects {
 pub struct StreamRenderer {
     context: Rc<GraphicsContext>,
     staging_renderer: StagingRenderer,
+    /// Present only for the 8 bit alpha passthrough mode, where a second monochrome stream
+    /// carries the alpha plane.
+    alpha_staging_renderer: Option<StagingRenderer>,
     pipeline: RenderPipeline,
     views_objects: [ViewObjects; 2],
 }
@@ -67,11 +70,15 @@ impl StreamRenderer {
         fix_limited_range: bool,
         encoding_gamma: f32,
         upscaling: Option<UpscalingConfig>,
+        enable_alpha_stream: bool,
     ) -> Self {
         let device = &context.device;
 
         let target_format = super::gl_format_to_wgpu(target_format);
 
+        // The alpha texture is always declared in the layout so that a single shader module and
+        // pipeline layout work for both cases; when the alpha stream is disabled it is bound to
+        // the color staging texture and never sampled (guarded by ENABLE_ALPHA_STREAM).
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: None,
             entries: &[
@@ -91,6 +98,16 @@ impl StreamRenderer {
                     ty: BindingType::Sampler(SamplerBindingType::Filtering),
                     count: None,
                 },
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
 
@@ -101,6 +118,7 @@ impl StreamRenderer {
         constants.extend([
             ("ENABLE_SRGB_CORRECTION", enable_srgb_correction.into()),
             ("ENCODING_GAMMA", encoding_gamma.into()),
+            ("ENABLE_ALPHA_STREAM", enable_alpha_stream.into()),
         ]);
 
         let staging_resolution = if let Some(foveated_encoding) = foveated_encoding {
@@ -179,8 +197,14 @@ impl StreamRenderer {
 
         let mut view_objects = vec![];
         let mut staging_textures_gl = vec![];
+        let mut alpha_staging_textures_gl = vec![];
         for target_swapchain in &swapchain_textures {
             let staging_texture = super::create_texture(device, staging_resolution, target_format);
+
+            // The alpha stream is decoded to its own AHardwareBuffer, so it needs its own staging
+            // texture. When disabled, bind the color texture to keep the bind group valid.
+            let alpha_staging_texture = enable_alpha_stream
+                .then(|| super::create_texture(device, staging_resolution, target_format));
 
             let bind_group = device.create_bind_group(&BindGroupDescriptor {
                 label: None,
@@ -195,6 +219,15 @@ impl StreamRenderer {
                     BindGroupEntry {
                         binding: 1,
                         resource: BindingResource::Sampler(&sampler),
+                    },
+                    BindGroupEntry {
+                        binding: 2,
+                        resource: BindingResource::TextureView(
+                            &alpha_staging_texture
+                                .as_ref()
+                                .unwrap_or(&staging_texture)
+                                .create_view(&TextureViewDescriptor::default()),
+                        ),
                     },
                 ],
             });
@@ -213,8 +246,8 @@ impl StreamRenderer {
 
             #[cfg(not(any(target_os = "macos", target_os = "ios")))]
             {
-                let staging_texture_gl = unsafe {
-                    staging_texture.as_hal::<wgpu::hal::api::Gles, _, _>(|tex| {
+                let as_gl = |texture: &wgpu::Texture| unsafe {
+                    texture.as_hal::<wgpu::hal::api::Gles, _, _>(|tex| {
                         let wgpu::hal::gles::TextureInner::Texture { raw, .. } = tex.unwrap().inner
                         else {
                             panic!("invalid texture type");
@@ -222,7 +255,11 @@ impl StreamRenderer {
                         raw
                     })
                 };
-                staging_textures_gl.push(staging_texture_gl);
+
+                staging_textures_gl.push(as_gl(&staging_texture));
+                if let Some(alpha_staging_texture) = &alpha_staging_texture {
+                    alpha_staging_textures_gl.push(as_gl(alpha_staging_texture));
+                }
             }
         }
 
@@ -233,25 +270,46 @@ impl StreamRenderer {
             fix_limited_range,
         );
 
+        let alpha_staging_renderer = enable_alpha_stream.then(|| {
+            StagingRenderer::new(
+                Rc::clone(&context),
+                alpha_staging_textures_gl.try_into().unwrap(),
+                staging_resolution,
+                // The alpha plane is encoded as luma and must not be range-expanded like color.
+                false,
+            )
+        });
+
         Self {
             context,
             staging_renderer,
+            alpha_staging_renderer,
             pipeline,
             views_objects: view_objects.try_into().unwrap(),
         }
     }
 
     /// # Safety
-    /// `hardware_buffer` must be a valid pointer to a ANativeWindowBuffer.
+    /// `hardware_buffer` and `alpha_hardware_buffer` must be valid pointers to a
+    /// ANativeWindowBuffer, or null.
     pub fn render(
         &self,
         hardware_buffer: *mut c_void,
+        alpha_hardware_buffer: *mut c_void,
         view_params: [StreamViewParams; 2],
         passthrough: Option<&PassthroughMode>,
     ) {
         // if hardware_buffer is available copy stream to staging texture
         if !hardware_buffer.is_null() {
             self.staging_renderer.render(hardware_buffer);
+        }
+
+        // A missing alpha frame keeps the previous contents of the alpha staging texture, which is
+        // preferable to popping to fully opaque or transparent for one frame.
+        if let Some(alpha_staging_renderer) = &self.alpha_staging_renderer
+            && !alpha_hardware_buffer.is_null()
+        {
+            alpha_staging_renderer.render(alpha_hardware_buffer);
         }
 
         let mut encoder = self
@@ -397,6 +455,11 @@ fn set_passthrough_push_constants(render_pass: &mut RenderPass, config: Option<&
             set_vec4(render_pass, CK_CHANNEL0_CONST_OFFSET, red + range_vec);
             set_vec4(render_pass, CK_CHANNEL1_CONST_OFFSET, green + range_vec);
             set_vec4(render_pass, CK_CHANNEL2_CONST_OFFSET, blue + range_vec);
+        }
+        Some(PassthroughMode::AlphaStream(_)) => {
+            // Alpha comes from the companion stream, sampled directly in the shader.
+            set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 3);
+            set_float(render_pass, ALPHA_CONST_OFFSET, 1.);
         }
         Some(PassthroughMode::HsvChromaKey(config)) => {
             set_u32(render_pass, PASSTHROUGH_MODE_OFFSET, 2);

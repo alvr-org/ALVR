@@ -11,6 +11,55 @@ CEncoder::~CEncoder() {
         m_videoEncoder->Shutdown();
         m_videoEncoder.reset();
     }
+    if (m_alphaVideoEncoder) {
+        m_alphaVideoEncoder->Shutdown();
+        m_alphaVideoEncoder.reset();
+    }
+}
+
+std::shared_ptr<VideoEncoder> CEncoder::CreateAlphaEncoder(
+    std::shared_ptr<CD3DRender> d3dRender, uint32_t width, uint32_t height
+) {
+    auto tryCreate = [&](const char* name,
+                         std::function<std::shared_ptr<VideoEncoder>()> make
+                     ) -> std::shared_ptr<VideoEncoder> {
+        try {
+            Debug("Try to use %s for the alpha stream.\n", name);
+            auto encoder = make();
+            encoder->SetAlphaStream(true);
+            encoder->Initialize();
+            return encoder;
+        } catch (Exception e) {
+            Debug("Alpha stream %s unavailable: %s\n", name, e.what());
+            return nullptr;
+        }
+    };
+
+    if (auto encoder = tryCreate("VideoEncoderAMF", [&] {
+            return std::make_shared<VideoEncoderAMF>(d3dRender, width, height);
+        })) {
+        return encoder;
+    }
+    if (auto encoder = tryCreate("VideoEncoderNVENC", [&] {
+            return std::make_shared<VideoEncoderNVENC>(d3dRender, width, height);
+        })) {
+        return encoder;
+    }
+    if (auto encoder = tryCreate("VideoEncoderVPL", [&] {
+            return std::make_shared<VideoEncoderVPL>(d3dRender, width, height);
+        })) {
+        return encoder;
+    }
+#ifdef ALVR_GPL
+    if (auto encoder = tryCreate("VideoEncoderSW", [&] {
+            return std::make_shared<VideoEncoderSW>(d3dRender, width, height);
+        })) {
+        return encoder;
+    }
+#endif
+
+    Error("Failed to create an encoder for the alpha stream. Alpha will not be transmitted.\n");
+    return nullptr;
 }
 
 void CEncoder::Initialize(std::shared_ptr<CD3DRender> d3dRender) {
@@ -18,6 +67,10 @@ void CEncoder::Initialize(std::shared_ptr<CD3DRender> d3dRender) {
     m_FrameRender->Startup();
     uint32_t encoderWidth, encoderHeight;
     m_FrameRender->GetEncodingResolution(&encoderWidth, &encoderHeight);
+
+    if (Settings_Instance()->m_enableAlphaStream) {
+        m_alphaVideoEncoder = CreateAlphaEncoder(d3dRender, encoderWidth, encoderHeight);
+    }
 
     Exception vplException;
     Exception vceException;
@@ -129,12 +182,25 @@ void CEncoder::Run() {
             break;
 
         if (m_FrameRender->GetTexture()) {
+            // Sampled once so both streams agree: the client pairs frames by timestamp, and a
+            // mismatched IDR decision would leave the alpha decoder unable to recover in step.
+            bool insertIDR = m_scheduler.CheckIDRInsertion();
+
             m_videoEncoder->Transmit(
                 m_FrameRender->GetTexture().Get(),
                 m_presentationTime,
                 m_targetTimestampNs,
-                m_scheduler.CheckIDRInsertion()
+                insertIDR
             );
+
+            if (m_alphaVideoEncoder && m_FrameRender->GetAlphaTexture()) {
+                m_alphaVideoEncoder->Transmit(
+                    m_FrameRender->GetAlphaTexture().Get(),
+                    m_presentationTime,
+                    m_targetTimestampNs,
+                    insertIDR
+                );
+            }
         }
 
         m_encodeFinished.Set();

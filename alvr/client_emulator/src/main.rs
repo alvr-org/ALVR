@@ -1428,7 +1428,9 @@ impl EmulatorApp {
                     );
                 });
 
-                toolbar_gap(ui);
+                // Only a little space: the status describes what the stats are about, so it stays
+                // close to them.
+                ui.add_space(4.0 * icons::size_factor(ui));
 
                 // On its own: a status rather than a control, so it does not sit on a group.
                 connection_status(ui, &self.status());

@@ -268,7 +268,14 @@ pub fn inner_group<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R
     Frame::new()
         .fill(track_fill(ui.visuals().dark_mode))
         .corner_radius(CornerRadius::same(CORNER_RADIUS + margin as u8))
-        .inner_margin(Margin::same(margin as i8))
+        // Extra room on the left: the icon there has no field of its own, so with an even margin
+        // it sat against the edge while the dropdown on the right had its own padding.
+        .inner_margin(Margin {
+            left: (margin + 5.0 * size_factor(ui)).round() as i8,
+            right: margin as i8,
+            top: margin as i8,
+            bottom: margin as i8,
+        })
         .show(ui, |ui| {
             ui.spacing_mut().interact_size.y -= margin * 2.0;
             ui.horizontal(add_contents).inner

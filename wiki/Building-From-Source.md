@@ -31,7 +31,7 @@ If you are on Linux, install these additional packages:
   
   * `media-video/ffmpeg >= 4.4 [encode libdrm vulkan vaapi]`
   * `sys-libs/libunwind`
-  * `dev-lang/rust >= 1.72`
+  * `dev-util/rustup`
   * `media-video/pipewire [jacksdk]`
 
 * **Debian 12 / Ubuntu 20.04 / Pop!\_OS 20.04**

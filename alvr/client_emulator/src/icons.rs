@@ -632,24 +632,33 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
             painter.circle_filled(at(4.9, 0.1), 0.95 * scale, color);
         }
         Icon::Hand => {
-            painter.rect_filled(
-                Rect::from_min_max(at(-4.2, -0.5), at(4.2, 7.0)),
-                CornerRadius::same((2.5 * scale) as u8),
-                color,
-            );
+            // One solid silhouette: a softly squared palm, with the fingers and the thumb as
+            // tapering capsules overlapping it, so the outline reads as one shape with no joins.
+            // The fingers fan out a little, the middle one longest, and the thumb leaves the palm
+            // low on its side, angled out.
+            let palm = (0..32)
+                .map(|step| {
+                    let angle = step as f32 / 32.0 * TAU;
+                    // A superellipse: squarer than an ellipse, rounder than a rectangle.
+                    let (sin, cos) = angle.sin_cos();
+                    let x = cos.signum() * cos.abs().sqrt();
+                    let y = sin.signum() * sin.abs().sqrt();
+                    at(0.2 + 4.3 * x, 3.5 + 3.5 * y)
+                })
+                .collect::<Vec<_>>();
+            painter.add(Shape::convex_polygon(palm, color, Stroke::NONE));
 
-            // Each finger ends in a round tip: a bare line ends square, which made the hand look
-            // chopped off at the top.
-            let width = 1.9;
-            let finger = Stroke::new(width * scale, color);
-            let tip = |point: Pos2| painter.circle_filled(point, width / 2.0 * scale, color);
-
-            for (x, top) in [(-3.1, -5.0), (-1.0, -7.0), (1.1, -6.6), (3.1, -4.6)] {
-                painter.line_segment([at(x, 0.5), at(x, top)], finger);
-                tip(at(x, top));
+            // (base, tip, base radius, tip radius) of each finger, index to little.
+            for (base, tip, base_radius, tip_radius) in [
+                ((-2.9, 1.2), (-3.7, -4.4), 1.0, 0.9),
+                ((-0.8, 0.9), (-1.0, -6.4), 1.05, 0.95),
+                ((1.3, 1.0), (1.7, -5.7), 1.0, 0.9),
+                ((3.2, 1.6), (4.3, -3.4), 0.9, 0.8),
+            ] {
+                capsule(painter, at(base.0, base.1), at(tip.0, tip.1), base_radius * scale, tip_radius * scale, color);
             }
-            painter.line_segment([at(-3.6, 3.0), at(-7.0, -0.6)], finger);
-            tip(at(-7.0, -0.6));
+
+            capsule(painter, at(-3.2, 4.4), at(-6.9, 0.6), 1.3 * scale, 1.0 * scale, color);
         }
         Icon::Axes => {
             // Fixed colours rather than the text colour: they are what the gizmo draws.
@@ -755,6 +764,33 @@ fn goggles(painter: &Painter, at: &impl Fn(f32, f32) -> Pos2, stroke: Stroke) {
     .map(|(x, y)| at(x, y));
 
     painter.add(Shape::closed_line(rounded(&outline, 3), stroke));
+}
+
+/// A filled capsule from `from` to `to`, its radius tapering from `from_radius` to `to_radius`:
+/// two round ends joined by the quadrilateral tangent to both.
+fn capsule(
+    painter: &Painter,
+    from: Pos2,
+    to: Pos2,
+    from_radius: f32,
+    to_radius: f32,
+    color: Color32,
+) {
+    let along = (to - from).normalized();
+    let across = vec2(-along.y, along.x);
+
+    painter.add(Shape::convex_polygon(
+        vec![
+            from + across * from_radius,
+            to + across * to_radius,
+            to - across * to_radius,
+            from - across * from_radius,
+        ],
+        color,
+        Stroke::NONE,
+    ));
+    painter.circle_filled(from, from_radius, color);
+    painter.circle_filled(to, to_radius, color);
 }
 
 /// Rounds every corner of a closed outline by corner cutting (Chaikin's algorithm): each pass

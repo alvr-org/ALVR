@@ -118,13 +118,13 @@ shown ones open — and which source it draws. **Virtual** (a headset) is the de
 content the VR server renders; **Real** (a landscape) is the local glTF scene, which stands in for
 what the headset's cameras would see; **Mixed** (the landscape seen through the headset), the
 default, is what the headset shows — the video blended over the scene by the stream's passthrough
-mode, which is plain video when passthrough is off. Then come the connection state with the stream
-resolution and refresh rate (hover it for the client core's full status message, including the
-server address and any error) and the camera position in metres.
+mode, which is plain video when passthrough is off. Then comes the connection state; hover it for
+the client core's full status message, including the server address and any error.
 
-**Stats** (the bar chart), shown while streaming, toggles a readout over the top of the view: the refresh rate,
-frame pacing, head speed, decoded frame count and passthrough mode. The same timing numbers are in
-`GET /api/state`; see [`frame_timing`](#frame_timing).
+**Stats** (the bar chart) toggles a readout over the top of the view: the camera position in metres,
+and while streaming the stream's resolution and refresh rate, frame pacing, head speed, decoded
+frame count and passthrough mode. It wraps onto more lines when the view is too narrow for one. The
+same timing numbers are in `GET /api/state`; see [`frame_timing`](#frame_timing).
 
 ## Passthrough
 

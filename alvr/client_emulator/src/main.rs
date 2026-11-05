@@ -1266,8 +1266,25 @@ impl EmulatorApp {
     /// divided it by the frame interval yourself. The deviation carries over unchanged, and it is
     /// the number that matters — under steady motion the speed should be constant, so whatever it
     /// varies by is scene movement with nothing behind it.
+    ///
+    /// The camera position comes first and is there with or without a stream; everything after it
+    /// describes the stream and is left out until one is up.
     fn stats_entries(&mut self) -> Vec<(String, String)> {
-        let refresh_rate = self.status().refresh_rate;
+        let position = self.camera.position;
+        let mut entries = vec![(
+            "position".into(),
+            format!("{:.2} {:.2} {:.2} m", position.x, position.y, position.z),
+        )];
+
+        let status = self.client.status();
+        if !status.streaming {
+            return entries;
+        }
+
+        let stream = format!(
+            "{}x{} {:.0} Hz",
+            status.view_resolution.x, status.view_resolution.y, status.refresh_rate
+        );
         let timing = self.client.frame_timing();
 
         let frames_per_second = if timing.world_ms.mean > 0.0 {
@@ -1276,8 +1293,8 @@ impl EmulatorApp {
             0.0
         };
 
-        vec![
-            ("refresh".into(), format!("{refresh_rate:.0} Hz")),
+        entries.extend([
+            ("stream".into(), stream),
             (
                 "world".into(),
                 format!(
@@ -1321,7 +1338,9 @@ impl EmulatorApp {
                     Some(mode) => passthrough_name(mode).into(),
                 },
             ),
-        ]
+        ]);
+
+        entries
     }
 
     fn draw_toolbar(&mut self, ui: &mut Ui) {
@@ -1381,25 +1400,17 @@ impl EmulatorApp {
 
                 ui.separator();
 
-                let status = self.status();
-                if status.streaming {
-                    // The numbers themselves go in an overlay over the view, where there is room
-                    // to label them; see [`draw_stats_overlay`].
-                    icons::toggle(ui, &mut self.show_stats, Icon::Stats, "Frame pacing statistics");
-                }
+                // The numbers go in an overlay over the view, where there is room to label them;
+                // see [`draw_stats_overlay`].
+                icons::toggle(
+                    ui,
+                    &mut self.show_stats,
+                    Icon::Stats,
+                    "Statistics: camera position, and the stream and its frame pacing while \
+                     streaming",
+                );
 
-                connection_status(ui, &status);
-
-                ui.separator();
-
-                ui.label(
-                    RichText::new(format!(
-                        "{:.2}  {:.2}  {:.2}",
-                        self.camera.position.x, self.camera.position.y, self.camera.position.z
-                    ))
-                    .weak(),
-                )
-                .on_hover_text("Camera position x, y, z, in metres");
+                connection_status(ui, &self.status());
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if self.look_latched {
@@ -1609,7 +1620,6 @@ impl App for EmulatorApp {
 
         if let Some(view_rect) = view_rect
             && self.show_stats
-            && self.status().streaming
         {
             let entries = self.stats_entries();
             draw_stats_overlay(&ui_context, view_rect, &entries);
@@ -1964,19 +1974,14 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
     }
 }
 
-/// A coloured dot and a short line saying whether a stream is up, with the client core's full
-/// status message, which carries the server address and any error, on hover.
+/// A coloured dot and a word saying whether a stream is up, with the client core's full status
+/// message, which carries the server address and any error, on hover. The stream's resolution and
+/// refresh rate are in the stats overlay.
 fn connection_status(ui: &mut Ui, status: &ClientStatus) {
     let (color, text) = if status.streaming {
-        (
-            Color32::LIGHT_GREEN,
-            format!(
-                "{}x{}  {:.0} Hz",
-                status.view_resolution.x, status.view_resolution.y, status.refresh_rate
-            ),
-        )
+        (Color32::LIGHT_GREEN, "Streaming")
     } else {
-        (Color32::LIGHT_RED, "Not connected".into())
+        (Color32::LIGHT_RED, "Not connected")
     };
 
     let tooltip = if status.hud_message.is_empty() {
@@ -2018,6 +2023,8 @@ fn fit_viewport(left: f32, top: f32, width: f32, height: f32, aspect: f32) -> (f
 /// Gap between a stat's label and its value, and between one stat and the next.
 const STATS_LABEL_GAP: f32 = 5.0;
 const STATS_ENTRY_GAP: f32 = 18.0;
+/// Vertical gap between lines, when the stats wrap.
+const STATS_LINE_GAP: f32 = 4.0;
 
 /// Frame pacing readout, drawn as a rounded strip over the top of the view.
 ///
@@ -2066,18 +2073,39 @@ fn draw_stats_overlay(ctx: &egui::Context, view_rect: egui::Rect, entries: &[(St
     }
     ctx.data_mut(|data| data.insert_temp(widths_id, value_widths.clone()));
 
-    let content_width = galleys
+    let entry_widths = galleys
         .iter()
         .zip(&value_widths)
         .map(|((label, _), value_width)| label.size().x + STATS_LABEL_GAP + value_width)
-        .sum::<f32>()
-        + STATS_ENTRY_GAP * (galleys.len() - 1) as f32;
-    let content_height = galleys
+        .collect::<Vec<_>>();
+    let line_height = galleys
         .iter()
         .map(|(label, value)| label.size().y.max(value.size().y))
         .fold(0.0, f32::max);
 
     let margin = egui::vec2(12.0, 6.0);
+
+    // Entries wrap onto further lines rather than running off the sides of a narrow view. Packed
+    // greedily in order; an entry wider than the view still gets a line of its own. The slot
+    // widths only grow, so once they settle the breaks stop moving too.
+    let max_width = (view_rect.width() - 20.0 - margin.x * 2.0).max(0.0);
+    let mut lines: Vec<(Vec<usize>, f32)> = vec![];
+    for (index, &width) in entry_widths.iter().enumerate() {
+        match lines.last_mut() {
+            Some((entries, line_width))
+                if *line_width + STATS_ENTRY_GAP + width <= max_width =>
+            {
+                entries.push(index);
+                *line_width += STATS_ENTRY_GAP + width;
+            }
+            _ => lines.push((vec![index], width)),
+        }
+    }
+
+    let content_width = lines.iter().map(|(_, width)| *width).fold(0.0, f32::max);
+    let content_height =
+        line_height * lines.len() as f32 + STATS_LINE_GAP * (lines.len() - 1) as f32;
+
     let strip = egui::Rect::from_center_size(
         egui::pos2(
             view_rect.center().x,
@@ -2092,18 +2120,27 @@ fn draw_stats_overlay(ctx: &egui::Context, view_rect: egui::Rect, entries: &[(St
         Color32::from_black_alpha(170),
     );
 
-    let mut cursor = strip.left_top() + margin;
-    for ((label, value), value_width) in galleys.into_iter().zip(value_widths) {
-        let label_width = label.size().x;
+    let mut galleys = galleys.into_iter().map(Some).collect::<Vec<_>>();
+    for (line, (entries, _)) in lines.iter().enumerate() {
+        let mut cursor = strip.left_top()
+            + margin
+            + egui::vec2(0.0, line as f32 * (line_height + STATS_LINE_GAP));
 
-        painter.galley(cursor, label, label_color);
-        painter.galley(
-            cursor + egui::vec2(label_width + STATS_LABEL_GAP, 0.0),
-            value,
-            Color32::WHITE,
-        );
+        for &index in entries {
+            let Some((label, value)) = galleys[index].take() else {
+                continue;
+            };
+            let label_width = label.size().x;
 
-        cursor.x += label_width + STATS_LABEL_GAP + value_width + STATS_ENTRY_GAP;
+            painter.galley(cursor, label, label_color);
+            painter.galley(
+                cursor + egui::vec2(label_width + STATS_LABEL_GAP, 0.0),
+                value,
+                Color32::WHITE,
+            );
+
+            cursor.x += entry_widths[index] + STATS_ENTRY_GAP;
+        }
     }
 }
 

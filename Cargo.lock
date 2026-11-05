@@ -245,6 +245,7 @@ dependencies = [
  "alvr_client_core",
  "alvr_common",
  "alvr_filesystem",
+ "alvr_gui_common",
  "alvr_packets",
  "alvr_session",
  "alvr_system_info",

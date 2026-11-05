@@ -11,12 +11,16 @@
 //!
 //! The toolbar is otherwise monochrome: blue marks a selection, and green and red, used by the
 //! connection status, OK and error. The sections are told apart by their groups and title icons.
+//!
+//! In a dark theme the colours are the ALVR dashboard's own, taken from its theme in
+//! `alvr_gui_common`, so the two apps look alike; a light theme gets light counterparts.
 
 use eframe::egui::{
     Color32, CornerRadius, Frame, Margin, Painter, Pos2, Rect, Response, RichText, Sense, Shape,
     Stroke, StrokeKind, Style, TextStyle, TextWrapMode, Ui, Vec2, Visuals, WidgetText,
     style::WidgetVisuals, vec2,
 };
+use alvr_gui_common::theme;
 use std::f32::consts::{PI, TAU};
 
 /// egui's default text size, the size all the point values here are given at.
@@ -41,6 +45,7 @@ const SLIDE_SECONDS: f32 = 0.15;
 /// Strengths of the neutral shades the toolbar is built from; see [`shade`].
 const TRACK_SHADE: u8 = 10;
 const INNER_SHADE: u8 = 15;
+const OUTLINE_SHADE: u8 = 28;
 const HOVER_SHADE: u8 = 14;
 const EDGE_SHADE: u8 = 20;
 const RULE_SHADE: u8 = 30;
@@ -104,6 +109,16 @@ pub fn toolbar_style(style: &mut Style, factor: f32) {
     spacing.icon_spacing *= factor;
 
     let visuals = &mut style.visuals;
+
+    // The dashboard's selection, in either theme: its accent blue with near-white on it.
+    visuals.selection.bg_fill = theme::ACCENT;
+    visuals.selection.stroke = Stroke::new(1.0, theme::FG);
+
+    if visuals.dark_mode {
+        visuals.widgets.noninteractive.fg_stroke.color = theme::FG;
+        visuals.widgets.inactive.fg_stroke.color = theme::FG;
+    }
+
     let field = visuals.extreme_bg_color;
     let ink = visuals.text_color();
     let edge = Stroke::new(1.0, shade(visuals, EDGE_SHADE));
@@ -170,6 +185,82 @@ fn shade(visuals: &Visuals, strength: u8) -> Color32 {
         Color32::from_white_alpha(strength)
     } else {
         Color32::from_black_alpha(strength)
+    }
+}
+
+/// The fill and outline of a capsule: a group, or an inner group within one.
+#[derive(Clone, Copy)]
+struct Capsule {
+    fill: Color32,
+    outline: Color32,
+}
+
+impl Capsule {
+    /// A group: the dashboard's section colour in a dark theme.
+    fn group(visuals: &Visuals) -> Self {
+        Self {
+            fill: if visuals.dark_mode {
+                theme::SECTION_BG
+            } else {
+                shade(visuals, TRACK_SHADE)
+            },
+            outline: Self::outline(visuals),
+        }
+    }
+
+    /// An inner group: the dashboard's darker section colour in a dark theme.
+    fn inner(visuals: &Visuals) -> Self {
+        Self {
+            fill: if visuals.dark_mode {
+                theme::DARKER_BG
+            } else {
+                shade(visuals, INNER_SHADE)
+            },
+            outline: Self::outline(visuals),
+        }
+    }
+
+    fn outline(visuals: &Visuals) -> Color32 {
+        if visuals.dark_mode {
+            theme::SEPARATOR_BG
+        } else {
+            shade(visuals, OUTLINE_SHADE)
+        }
+    }
+
+    /// Paints the capsule's fill.
+    fn fill(self, painter: &Painter, rect: Rect, radius: CornerRadius) {
+        painter.rect_filled(rect, radius, self.fill);
+    }
+
+    /// Paints the capsule's outline, inside its rect, so outlining a capsule does not change its
+    /// size and the groups stay aligned.
+    fn outline_on(self, ui: &Ui, rect: Rect, radius: CornerRadius) {
+        ui.painter().rect_stroke(
+            rect,
+            radius,
+            Stroke::new(0.5 * size_factor(ui), self.outline),
+            StrokeKind::Inside,
+        );
+    }
+}
+
+/// The OK colour, the connection status's while streaming: the dashboard's green in a dark theme,
+/// a darker one that stays readable on a light theme.
+pub fn ok_color(visuals: &Visuals) -> Color32 {
+    if visuals.dark_mode {
+        theme::OK_GREEN
+    } else {
+        Color32::from_rgb(40, 150, 70)
+    }
+}
+
+/// The error colour, the connection status's while disconnected; see [`ok_color`].
+pub fn error_color(visuals: &Visuals) -> Color32 {
+    if visuals.dark_mode {
+        theme::KO_RED
+    } else {
+        Color32::from_rgb(200, 50, 45)
     }
 }
 
@@ -264,7 +355,8 @@ pub fn segmented<T: PartialEq + Copy>(
     let painter = ui.painter();
     let radius = CornerRadius::same(CORNER_RADIUS);
 
-    painter.rect_filled(track, capsule_radius(margin), shade(visuals, TRACK_SHADE));
+    let capsule = Capsule::group(visuals);
+    capsule.fill(painter, track, capsule_radius(margin));
 
     let selected = options.iter().position(|(option, _, _)| option == current);
 
@@ -296,18 +388,23 @@ pub fn segmented<T: PartialEq + Copy>(
         let color = content_color(visuals, option == current);
         paint_icon(ui, slot(index), *icon, color);
     }
+
+    capsule.outline_on(ui, track, capsule_radius(margin));
 }
 
 /// Lays out `add_contents` in a row on a grey capsule, marking the controls as one group.
 pub fn group<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
     let margin = group_margin(ui);
+    let capsule = Capsule::group(ui.visuals());
 
-    Frame::new()
-        .fill(shade(ui.visuals(), TRACK_SHADE))
+    let shown = Frame::new()
+        .fill(capsule.fill)
         .corner_radius(capsule_radius(margin))
         .inner_margin(Margin::same(margin.round() as i8))
-        .show(ui, |ui| ui.horizontal(add_contents).inner)
-        .inner
+        .show(ui, |ui| ui.horizontal(add_contents).inner);
+
+    capsule.outline_on(ui, shown.response.rect, capsule_radius(margin));
+    shown.inner
 }
 
 /// A group within a group: a slightly darker capsule pairing a control with the icon that labels
@@ -317,9 +414,10 @@ pub fn group<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
 /// as the controls beside it and the row does not grow.
 fn inner_group<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
     let margin = (group_margin(ui) * 0.7).round();
+    let capsule = Capsule::inner(ui.visuals());
 
-    Frame::new()
-        .fill(shade(ui.visuals(), INNER_SHADE))
+    let shown = Frame::new()
+        .fill(capsule.fill)
         .corner_radius(capsule_radius(margin))
         // Extra room on the left, where the icon has no field of its own to pad it.
         .inner_margin(Margin {
@@ -341,8 +439,10 @@ fn inner_group<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
             spacing.button_padding.y = ((height - text_height) / 2.0).max(0.0);
 
             ui.horizontal(add_contents).inner
-        })
-        .inner
+        });
+
+    capsule.outline_on(ui, shown.response.rect, capsule_radius(margin));
+    shown.inner
 }
 
 /// A dropdown labelled by an icon, the two on an inner group.

@@ -154,6 +154,12 @@ struct EmulatorApp {
 
 impl EmulatorApp {
     fn new(context: &CreationContext<'_>, shared: Arc<SharedState>) -> Self {
+        // The dashboard's background in a dark theme, so the two ALVR apps look alike; see the
+        // toolbar's colours in `icons`.
+        context.egui_ctx.style_mut_of(egui::Theme::Dark, |style| {
+            style.visuals.panel_fill = alvr_gui_common::theme::BG;
+        });
+
         let environment_path = scene::default_environment_path()
             .unwrap_or_else(|_| PathBuf::from(scene::ENVIRONMENT_FILE_NAME));
 
@@ -2173,9 +2179,9 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
 /// resolution and refresh rate are in the stats overlay.
 fn connection_status(ui: &mut Ui, status: &ClientStatus) {
     let (color, text) = if status.streaming {
-        (Color32::from_rgb(40, 150, 70), "Streaming")
+        (icons::ok_color(ui.visuals()), "Streaming")
     } else {
-        (Color32::from_rgb(200, 50, 45), "Not connected")
+        (icons::error_color(ui.visuals()), "Not connected")
     };
 
     let tooltip = if status.hud_message.is_empty() {

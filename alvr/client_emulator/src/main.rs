@@ -1371,6 +1371,7 @@ impl EmulatorApp {
         egui::Panel::top(egui::Id::new("title bar"))
             .frame(frame)
             .show_separator_line(false)
+            .resizable(false)
             .show(ui, |ui| {
                 icons::toolbar_style(ui.style_mut(), TOOLBAR_SCALE);
 
@@ -1424,6 +1425,7 @@ impl EmulatorApp {
         let toolbar = egui::Panel::top(egui::Id::new("toolbar"))
             .frame(frame)
             .show_separator_line(false)
+            .resizable(false)
             .show(ui, |ui| {
                 icons::toolbar_style(ui.style_mut(), TOOLBAR_SCALE);
 
@@ -1503,9 +1505,14 @@ impl EmulatorApp {
                     .collect::<Vec<_>>()
                     .join("    ·    ");
 
+                // Within a row: a right-to-left layout directly in the panel would centre the hint
+                // in all the height left, which the panel then grows to include, holding it at
+                // whatever height it last had.
                 ui.add_space(4.0 * icons::size_factor(ui));
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.add(egui::Label::new(RichText::new(hints).weak().small()).truncate());
+                ui.horizontal(|ui| {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.add(egui::Label::new(RichText::new(hints).weak().small()).truncate());
+                    });
                 });
             });
 

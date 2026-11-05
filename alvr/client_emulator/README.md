@@ -164,9 +164,10 @@ The source can be switched from the API with [`POST /api/source`](#post-apisourc
 ## Controller emulation
 
 The second toolbar row controls both emulated controllers and emulated hands. Its controller
-section, marked by a gamepad: **L** and **R** enable each hand independently, the dropdown selects
-which controller type to emulate, the eye shows the 3D models in the scene view, the axes select a
-pose to draw as a gizmo, and the circular arrow returns poses and inputs to their defaults.
+section, marked by a teal gamepad: **L** and **R** enable each hand independently, the eye shows
+the 3D models in the scene view, the axes select a pose to draw as a gizmo, the dropdown selects
+which controller type to emulate, and the circular arrow returns poses and inputs to their
+defaults.
 
 A side is emulated as a controller **or** as a hand, never both, exactly as a real headset reports
 one or the other. Switching a controller on therefore switches that side's hand off, and vice
@@ -300,7 +301,7 @@ emulation mode happens on the server, as with real hardware.
 > Implementation notes, the measurements behind the server settings below, and the dead ends are in
 > [`HAND-EMULATION.md`](HAND-EMULATION.md).
 
-The hand section of the second row, marked by a hand, mirrors the controller one: **L** and **R**
+The hand section of the second row, marked by a violet hand, mirrors the controller one: **L** and **R**
 enable each hand, the eye shows the 3D models, the axes select a pose gizmo, and the circular arrow
 returns the pose and the gesture to their defaults. Hands are posed with the same icons and the same movement panel as controllers, and
 excluded against them per side as described above.

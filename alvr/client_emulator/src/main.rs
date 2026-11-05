@@ -207,7 +207,15 @@ impl EmulatorApp {
             camera.position = Vec3::new(centre.x, min.y + 1.6, centre.z);
         }
 
-        let directory = environment_path.parent().unwrap_or_else(|| Path::new("."));
+        // Next to the executable, not next to the environment: the bundled room lives in `models/`,
+        // and the default model paths in both settings files are relative to the executable
+        // (`models/hand_left.gltf`), so resolving them against the room's folder doubled the
+        // `models` and no hand or controller model could load.
+        let directory = std::env::current_exe()
+            .ok()
+            .and_then(|exe| exe.parent().map(Path::to_path_buf))
+            .unwrap_or_else(|| PathBuf::from("."));
+        let directory = directory.as_path();
 
         let controller_settings = ControllerSettings::load_or_create(directory);
         let controllers = [

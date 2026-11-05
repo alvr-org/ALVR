@@ -112,6 +112,29 @@ pub fn label(ui: &mut Ui, icon: Icon, tooltip: &str) -> Response {
     response.on_hover_text(tooltip)
 }
 
+/// Accent of the controller section's marker. Neither accent may be blue or orange: those mean
+/// left and right on the device icons over the view.
+pub const CONTROLLER_ACCENT: Color32 = Color32::from_rgb(0, 160, 145);
+/// Accent of the hand section's marker.
+pub const HAND_ACCENT: Color32 = Color32::from_rgb(150, 95, 230);
+
+/// An icon marking the start of a toolbar section, in the section's accent colour on a faint pill
+/// of the same, so the sections can be found without reading anything.
+pub fn accent_label(ui: &mut Ui, icon: Icon, accent: Color32, tooltip: &str) -> Response {
+    let (rect, response) = ui.allocate_exact_size(BUTTON_SIZE, Sense::hover());
+
+    if ui.is_rect_visible(rect) {
+        ui.painter().rect_filled(
+            rect,
+            ui.visuals().widgets.inactive.corner_radius,
+            accent.gamma_multiply(0.18),
+        );
+        paint(ui.painter(), icon_rect(rect), icon, accent);
+    }
+
+    response.on_hover_text(tooltip)
+}
+
 /// Drawn the way egui draws a selectable label: no frame until hovered or selected, and the
 /// selection colours when selected, so the icon rows look like the text rows they replace.
 fn selectable(ui: &mut Ui, selected: bool, icon: Icon, tooltip: &str) -> Response {

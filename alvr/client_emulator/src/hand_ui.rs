@@ -46,7 +46,7 @@ pub fn toolbar_row(
     settings: &HandSettings,
     gizmo: &mut Option<HandInteraction>,
 ) {
-    icons::label(ui, Icon::Hand, "Hand tracking");
+    icons::accent_label(ui, Icon::Hand, icons::HAND_ACCENT, "Hand tracking");
 
     for hand in Hand::BOTH {
         let index = hand.index();

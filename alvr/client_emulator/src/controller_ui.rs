@@ -304,7 +304,7 @@ pub fn toolbar_row(
     settings: &ControllerSettings,
     gizmo: &mut Option<ControllerInteraction>,
 ) {
-    icons::label(ui, Icon::Controller, "Controllers");
+    icons::accent_label(ui, Icon::Controller, icons::CONTROLLER_ACCENT, "Controllers");
 
     for hand in Hand::BOTH {
         let index = hand.index();
@@ -322,6 +322,19 @@ pub fn toolbar_row(
             hands_enabled[index] = false;
         }
     }
+
+    // Visibility and the gizmo come straight after the toggles, in the same place as in the hand
+    // section, so the two sections line up; the controller type, which hands lack, follows.
+    let mut visible = controllers.iter().all(|state| state.model_visible);
+    if icons::toggle(ui, &mut visible, Icon::Show, "Show the controller models in the view")
+        .changed()
+    {
+        for state in controllers.iter_mut() {
+            state.model_visible = visible;
+        }
+    }
+
+    pose_gizmo_selector(ui, gizmo);
 
     // One selector for both hands; the API can still set them individually, in which case the
     // selector shows the mix until it is used again.
@@ -355,17 +368,6 @@ pub fn toolbar_row(
         })
         .response
         .on_hover_text("Controller type, for both hands");
-
-    let mut visible = controllers.iter().all(|state| state.model_visible);
-    if icons::toggle(ui, &mut visible, Icon::Show, "Show the controller models in the view")
-        .changed()
-    {
-        for state in controllers.iter_mut() {
-            state.model_visible = visible;
-        }
-    }
-
-    pose_gizmo_selector(ui, gizmo);
 
     if icons::button(ui, Icon::Reset, "Reset both controllers' poses and inputs").clicked() {
         for hand in Hand::BOTH {

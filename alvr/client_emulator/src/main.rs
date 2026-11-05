@@ -1391,6 +1391,9 @@ impl EmulatorApp {
                 }
 
                 ui.horizontal(|ui| {
+                    // Indented like the controls inside the groups below, so the title lines up
+                    // with them rather than with the groups' rounded edges.
+                    ui.add_space(icons::group_margin(ui));
                     ui.label(icons::normal_text(ui, "ALVR Client Emulator").strong());
                     connection_status(ui, &self.status());
 
@@ -1508,7 +1511,6 @@ impl EmulatorApp {
                 // Within a row: a right-to-left layout directly in the panel would centre the hint
                 // in all the height left, which the panel then grows to include, holding it at
                 // whatever height it last had.
-                ui.add_space(4.0 * icons::size_factor(ui));
                 ui.horizontal(|ui| {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.add(egui::Label::new(RichText::new(hints).weak().small()).truncate());

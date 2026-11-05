@@ -491,7 +491,8 @@ fn paint_fills(ui: &Ui, rect: Rect, response: &Response, selected: bool) {
     }
 }
 
-fn group_margin(ui: &Ui) -> f32 {
+/// Space between a capsule's edge and the controls on it; see [`GROUP_MARGIN`].
+pub fn group_margin(ui: &Ui) -> f32 {
     GROUP_MARGIN * size_factor(ui)
 }
 

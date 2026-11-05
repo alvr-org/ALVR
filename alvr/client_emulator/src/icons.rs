@@ -21,16 +21,14 @@ use std::f32::consts::{PI, TAU};
 /// egui's default body text size, which the toolbar's fixed sizes were designed against.
 const DEFAULT_BODY_SIZE: f32 = 14.0;
 
-/// Colour of everything in the controller section of the toolbar.
-pub const CONTROLLER_TINT: Color32 = Color32::from_rgb(30, 70, 165);
-/// Colour of everything in the hand section of the toolbar.
+/// Colour of everything in the controller section of the toolbar: a cool slate.
 ///
-/// The two section tints are the only colours the toolbar uses besides egui's own light blue for
-/// selection, and green and red for the connection state, so each colour keeps one meaning.
-///
-/// Kept muted: a fully saturated purple next to the dark blue was harsh, and the two only need to
-/// be told apart, not to stand out.
-pub const HAND_TINT: Color32 = Color32::from_rgb(112, 84, 160);
+/// The section tints are kept out of the hues that already mean something in the toolbar: blue
+/// is the app's own selection colour, green is OK and red is an error. Slate and terracotta are
+/// told apart by temperature rather than hue, which keeps them calm.
+pub const CONTROLLER_TINT: Color32 = Color32::from_rgb(70, 85, 105);
+/// Colour of everything in the hand section of the toolbar: a warm terracotta.
+pub const HAND_TINT: Color32 = Color32::from_rgb(165, 95, 70);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Icon {

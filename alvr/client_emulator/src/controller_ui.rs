@@ -17,7 +17,7 @@ use crate::{
 use alvr_packets::ButtonValue;
 use eframe::egui::{
     Align2, Color32, ComboBox, Context, CornerRadius, FontId, Id, Order, PointerButton, Pos2, Rect,
-    Response, Sense, Stroke, StrokeKind, Ui, Vec2, pos2, vec2,
+    Response, RichText, Sense, Stroke, StrokeKind, Ui, Vec2, pos2, vec2,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -304,7 +304,10 @@ pub fn toolbar_row(
     settings: &ControllerSettings,
     gizmo: &mut Option<ControllerInteraction>,
 ) {
-    icons::accent_label(ui, Icon::Controller, icons::CONTROLLER_ACCENT, "Controllers");
+    // Everything in this section is drawn in the controller tint, so it reads as one group.
+    let tint = icons::CONTROLLER_TINT;
+
+    icons::label(ui, Icon::Controller, Some(tint), "Controllers");
 
     for hand in Hand::BOTH {
         let index = hand.index();
@@ -314,7 +317,10 @@ pub fn toolbar_row(
         };
 
         if ui
-            .toggle_value(&mut controllers[index].enabled, label)
+            .toggle_value(
+                &mut controllers[index].enabled,
+                RichText::new(label).color(tint),
+            )
             .on_hover_text(tooltip)
             .changed()
             && controllers[index].enabled
@@ -326,8 +332,14 @@ pub fn toolbar_row(
     // Visibility and the gizmo come straight after the toggles, in the same place as in the hand
     // section, so the two sections line up; the controller type, which hands lack, follows.
     let mut visible = controllers.iter().all(|state| state.model_visible);
-    if icons::toggle(ui, &mut visible, Icon::Show, "Show the controller models in the view")
-        .changed()
+    if icons::toggle(
+        ui,
+        &mut visible,
+        Icon::Show,
+        Some(tint),
+        "Show the controller models in the view",
+    )
+    .changed()
     {
         for state in controllers.iter_mut() {
             state.model_visible = visible;
@@ -350,8 +362,8 @@ pub fn toolbar_row(
     };
 
     ComboBox::from_id_salt("controller profile")
-        .width(96.0)
-        .selected_text(selected_text)
+        .width(96.0 * icons::size_factor(ui))
+        .selected_text(RichText::new(selected_text).color(tint))
         .show_ui(ui, |ui| {
             for (index, profile) in settings.profiles.iter().enumerate() {
                 let selected = same_profile && index == controllers[0].profile_index;
@@ -369,7 +381,14 @@ pub fn toolbar_row(
         .response
         .on_hover_text("Controller type, for both hands");
 
-    if icons::button(ui, Icon::Reset, "Reset both controllers' poses and inputs").clicked() {
+    if icons::button(
+        ui,
+        Icon::Reset,
+        Some(tint),
+        "Reset both controllers' poses and inputs",
+    )
+    .clicked()
+    {
         for hand in Hand::BOTH {
             controllers[hand.index()].reset(settings, hand);
         }
@@ -382,11 +401,13 @@ fn pose_gizmo_selector(ui: &mut Ui, gizmo: &mut Option<ControllerInteraction>) {
     let label = gizmo.map_or("off", |pose| pose.label());
     let tooltip = "Draw a controller pose as RGB axes on both controllers: X red, Y green, Z blue.";
 
-    icons::label(ui, Icon::Axes, tooltip);
+    let tint = icons::CONTROLLER_TINT;
+
+    icons::label(ui, Icon::Axes, None, tooltip);
 
     ComboBox::from_id_salt("controller pose gizmo")
-        .selected_text(label)
-        .width(56.0)
+        .selected_text(RichText::new(label).color(tint))
+        .width(56.0 * icons::size_factor(ui))
         .show_ui(ui, |ui| {
             ui.selectable_value(gizmo, None, "off")
                 .on_hover_text("Draw no pose axes.");

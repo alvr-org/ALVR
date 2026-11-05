@@ -7,19 +7,26 @@
 //!
 //! Every icon is drawn on a 16x16 design grid centred on the origin and scaled into its rect, so
 //! the coordinates below can be read without knowing the button size.
+//!
+//! Sizes follow the Ui's interaction height rather than fixed pixels, so the toolbar can be scaled
+//! as a whole by scaling its style; see [`scale_style`].
 
 use eframe::egui::{
-    Color32, CornerRadius, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, StrokeKind, Ui,
-    Vec2, vec2,
+    Color32, CornerRadius, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, StrokeKind, Style,
+    Ui, Vec2, vec2,
 };
 use std::f32::consts::{PI, TAU};
 
-/// Size of an icon button. Matches the height of the toolbar's text buttons, so the two mix in one
-/// row without it changing height.
-const BUTTON_SIZE: Vec2 = vec2(26.0, 20.0);
+/// egui's default interaction height, which the toolbar's fixed widths were designed against.
+const DEFAULT_INTERACT_HEIGHT: f32 = 18.0;
 
-/// Side of the square the 16 unit design grid is scaled into.
-const ICON_SIZE: f32 = 15.0;
+/// Colour of everything in the controller section of the toolbar.
+pub const CONTROLLER_TINT: Color32 = Color32::from_rgb(30, 70, 165);
+/// Colour of everything in the hand section of the toolbar.
+///
+/// The two section tints are the only colours the toolbar uses besides egui's own light blue for
+/// selection, and green and red for the connection state, so each colour keeps one meaning.
+pub const HAND_TINT: Color32 = Color32::from_rgb(105, 45, 175);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Icon {
@@ -44,15 +51,46 @@ pub enum Icon {
     Hand,
     /// A single eye: show the models.
     Show,
-    /// Coordinate axes in their conventional red, green and blue.
+    /// Coordinate axes in their conventional red, green and blue, which they keep even in a tinted
+    /// section: they are the colours the gizmo itself is drawn in.
     Axes,
     /// A circular arrow.
     Reset,
 }
 
+/// Scales text and spacing of `style` by `factor`, for a part of the UI that should be larger as a
+/// whole. The icon widgets below size themselves from the result.
+pub fn scale_style(style: &mut Style, factor: f32) {
+    for font in style.text_styles.values_mut() {
+        font.size *= factor;
+    }
+
+    let spacing = &mut style.spacing;
+    spacing.interact_size *= factor;
+    spacing.button_padding *= factor;
+    spacing.item_spacing *= factor;
+    spacing.icon_width *= factor;
+    spacing.icon_width_inner *= factor;
+    spacing.icon_spacing *= factor;
+}
+
+/// How much larger than egui's default the Ui currently is, for widths given in default pixels.
+pub fn size_factor(ui: &Ui) -> f32 {
+    ui.spacing().interact_size.y / DEFAULT_INTERACT_HEIGHT
+}
+
 /// A button that is either on or off, like `Ui::toggle_value`, showing an icon instead of text.
-pub fn toggle(ui: &mut Ui, value: &mut bool, icon: Icon, tooltip: &str) -> Response {
-    let mut response = selectable(ui, *value, icon, tooltip);
+///
+/// `tint` colours the icon, for controls belonging to a toolbar section; untinted icons follow the
+/// text colour.
+pub fn toggle(
+    ui: &mut Ui,
+    value: &mut bool,
+    icon: Icon,
+    tint: Option<Color32>,
+    tooltip: &str,
+) -> Response {
+    let mut response = selectable(ui, *value, icon, tint, tooltip);
 
     if response.clicked() {
         *value = !*value;
@@ -70,7 +108,7 @@ pub fn selectable_value<T: PartialEq>(
     icon: Icon,
     tooltip: &str,
 ) -> Response {
-    let mut response = selectable(ui, *current == option, icon, tooltip);
+    let mut response = selectable(ui, *current == option, icon, None, tooltip);
 
     if response.clicked() && *current != option {
         *current = option;
@@ -81,8 +119,8 @@ pub fn selectable_value<T: PartialEq>(
 }
 
 /// A push button showing an icon.
-pub fn button(ui: &mut Ui, icon: Icon, tooltip: &str) -> Response {
-    let (rect, response) = ui.allocate_exact_size(BUTTON_SIZE, Sense::click());
+pub fn button(ui: &mut Ui, icon: Icon, tint: Option<Color32>, tooltip: &str) -> Response {
+    let (rect, response) = ui.allocate_exact_size(button_size(ui), Sense::click());
 
     if ui.is_rect_visible(rect) {
         let visuals = ui.style().interact(&response);
@@ -94,42 +132,20 @@ pub fn button(ui: &mut Ui, icon: Icon, tooltip: &str) -> Response {
             visuals.bg_stroke,
             StrokeKind::Inside,
         );
-        paint(ui.painter(), icon_rect(rect), icon, visuals.fg_stroke.color);
+        paint_icon(ui, rect, icon, tint, visuals.fg_stroke.color);
     }
 
     response.on_hover_text(tooltip)
 }
 
 /// An icon that labels the control after it, with no interaction of its own besides its tooltip.
-pub fn label(ui: &mut Ui, icon: Icon, tooltip: &str) -> Response {
-    let (rect, response) = ui.allocate_exact_size(vec2(ICON_SIZE + 4.0, BUTTON_SIZE.y), Sense::hover());
+pub fn label(ui: &mut Ui, icon: Icon, tint: Option<Color32>, tooltip: &str) -> Response {
+    let size = vec2(icon_side(ui) * 1.25, button_size(ui).y);
+    let (rect, response) = ui.allocate_exact_size(size, Sense::hover());
 
     if ui.is_rect_visible(rect) {
         let color = ui.visuals().text_color();
-        paint(ui.painter(), icon_rect(rect), icon, color);
-    }
-
-    response.on_hover_text(tooltip)
-}
-
-/// Accent of the controller section's marker. Neither accent may be blue or orange: those mean
-/// left and right on the device icons over the view.
-pub const CONTROLLER_ACCENT: Color32 = Color32::from_rgb(0, 160, 145);
-/// Accent of the hand section's marker.
-pub const HAND_ACCENT: Color32 = Color32::from_rgb(150, 95, 230);
-
-/// An icon marking the start of a toolbar section, in the section's accent colour on a faint pill
-/// of the same, so the sections can be found without reading anything.
-pub fn accent_label(ui: &mut Ui, icon: Icon, accent: Color32, tooltip: &str) -> Response {
-    let (rect, response) = ui.allocate_exact_size(BUTTON_SIZE, Sense::hover());
-
-    if ui.is_rect_visible(rect) {
-        ui.painter().rect_filled(
-            rect,
-            ui.visuals().widgets.inactive.corner_radius,
-            accent.gamma_multiply(0.18),
-        );
-        paint(ui.painter(), icon_rect(rect), icon, accent);
+        paint_icon(ui, rect, icon, tint, color);
     }
 
     response.on_hover_text(tooltip)
@@ -137,8 +153,14 @@ pub fn accent_label(ui: &mut Ui, icon: Icon, accent: Color32, tooltip: &str) -> 
 
 /// Drawn the way egui draws a selectable label: no frame until hovered or selected, and the
 /// selection colours when selected, so the icon rows look like the text rows they replace.
-fn selectable(ui: &mut Ui, selected: bool, icon: Icon, tooltip: &str) -> Response {
-    let (rect, response) = ui.allocate_exact_size(BUTTON_SIZE, Sense::click());
+fn selectable(
+    ui: &mut Ui,
+    selected: bool,
+    icon: Icon,
+    tint: Option<Color32>,
+    tooltip: &str,
+) -> Response {
+    let (rect, response) = ui.allocate_exact_size(button_size(ui), Sense::click());
 
     if ui.is_rect_visible(rect) {
         let visuals = ui.style().interact_selectable(&response, selected);
@@ -153,14 +175,28 @@ fn selectable(ui: &mut Ui, selected: bool, icon: Icon, tooltip: &str) -> Respons
             );
         }
 
-        paint(ui.painter(), icon_rect(rect), icon, visuals.fg_stroke.color);
+        paint_icon(ui, rect, icon, tint, visuals.fg_stroke.color);
     }
 
     response.on_hover_text(tooltip)
 }
 
-fn icon_rect(rect: Rect) -> Rect {
-    Rect::from_center_size(rect.center(), Vec2::splat(ICON_SIZE))
+/// Matches the height of the text buttons around it, so the two mix in one row.
+fn button_size(ui: &Ui) -> Vec2 {
+    let height = ui.spacing().interact_size.y;
+    vec2(height * 1.4, height)
+}
+
+/// Side of the square the 16 unit design grid is scaled into.
+fn icon_side(ui: &Ui) -> f32 {
+    ui.spacing().interact_size.y * 0.78
+}
+
+/// Paints into the middle of a widget's rect, in the tint if there is one and in `color` otherwise.
+fn paint_icon(ui: &Ui, rect: Rect, icon: Icon, tint: Option<Color32>, color: Color32) {
+    let rect = Rect::from_center_size(rect.center(), Vec2::splat(icon_side(ui)));
+
+    paint(ui.painter(), rect, icon, tint.unwrap_or(color));
 }
 
 /// Paints `icon` into `rect` in `color`.

@@ -80,6 +80,9 @@ enum ViewMode {
     Stereo,
 }
 
+/// How much larger than egui's default the toolbar is drawn, text and controls alike.
+const TOOLBAR_SCALE: f32 = 1.5;
+
 /// Resolution of one eye in the capture endpoints, used when no stream has been negotiated yet.
 const FALLBACK_CAPTURE_RESOLUTION: (u32, u32) = (960, 916);
 
@@ -1353,6 +1356,7 @@ impl EmulatorApp {
 
     fn draw_toolbar(&mut self, ui: &mut Ui) {
         egui::Panel::top(egui::Id::new("toolbar")).show(ui, |ui| {
+            icons::scale_style(ui.style_mut(), TOOLBAR_SCALE);
             ui.horizontal(|ui| {
                 // Icons with tooltips rather than captioned text buttons: the groups are told
                 // apart by the separators, and the tooltips carry what the captions used to.
@@ -1414,23 +1418,21 @@ impl EmulatorApp {
                     ui,
                     &mut self.show_stats,
                     Icon::Stats,
+                    None,
                     "Statistics: camera position, and the stream and its frame pacing while \
                      streaming",
                 );
 
                 connection_status(ui, &self.status());
 
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if self.look_latched {
-                        ui.label(RichText::new("Esc to release mouse").weak());
-                    } else if self.look_held {
-                        ui.label(RichText::new("Release to stop looking").weak());
-                    } else {
-                        ui.label(
-                            RichText::new("Click to look, or hold right button").weak(),
-                        );
-                    }
-                });
+                let hint = if self.look_latched {
+                    "Esc to release mouse"
+                } else if self.look_held {
+                    "Release to stop looking"
+                } else {
+                    "Click to look, or hold right button"
+                };
+                toolbar_hint(ui, hint);
             });
 
             self.draw_inputs_row(ui);
@@ -1478,9 +1480,7 @@ impl EmulatorApp {
             };
 
             if let Some(hint) = hint {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(RichText::new(hint).weak());
-                });
+                toolbar_hint(ui, hint);
             }
         });
     }
@@ -1982,6 +1982,26 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
     }
 }
 
+/// A dimmed hint at the right end of a toolbar row, left out when the row has no room for it.
+///
+/// The hints are the least important thing on the toolbar, and a right-aligned label that does
+/// not fit is drawn over the controls to its left rather than clipped.
+fn toolbar_hint(ui: &mut Ui, hint: &str) {
+    let text = RichText::new(hint).weak();
+    let galley = egui::WidgetText::from(text.clone()).into_galley(
+        ui,
+        Some(egui::TextWrapMode::Extend),
+        f32::INFINITY,
+        egui::TextStyle::Body,
+    );
+
+    if galley.size().x + ui.spacing().item_spacing.x * 2.0 <= ui.available_width() {
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            ui.label(text);
+        });
+    }
+}
+
 /// A coloured dot and a word saying whether a stream is up, with the client core's full status
 /// message, which carries the server address and any error, on hover. The stream's resolution and
 /// refresh rate are in the stats overlay.
@@ -1998,8 +2018,9 @@ fn connection_status(ui: &mut Ui, status: &ClientStatus) {
         status.hud_message.clone()
     };
 
-    let (dot, _) = ui.allocate_exact_size(egui::vec2(10.0, 10.0), Sense::hover());
-    ui.painter().circle_filled(dot.center(), 4.0, color);
+    let size = icons::size_factor(ui);
+    let (dot, _) = ui.allocate_exact_size(egui::vec2(10.0, 10.0) * size, Sense::hover());
+    ui.painter().circle_filled(dot.center(), 4.0 * size, color);
 
     ui.label(RichText::new(text).color(color))
         .on_hover_text(tooltip);

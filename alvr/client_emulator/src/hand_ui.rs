@@ -46,7 +46,10 @@ pub fn toolbar_row(
     settings: &HandSettings,
     gizmo: &mut Option<HandInteraction>,
 ) {
-    icons::accent_label(ui, Icon::Hand, icons::HAND_ACCENT, "Hand tracking");
+    // Everything in this section is drawn in the hand tint, so it reads as one group.
+    let tint = icons::HAND_TINT;
+
+    icons::label(ui, Icon::Hand, Some(tint), "Hand tracking");
 
     for hand in Hand::BOTH {
         let index = hand.index();
@@ -56,7 +59,7 @@ pub fn toolbar_row(
         };
 
         if ui
-            .toggle_value(&mut hands[index].enabled, label)
+            .toggle_value(&mut hands[index].enabled, egui::RichText::new(label).color(tint))
             .on_hover_text(tooltip)
             .changed()
             && hands[index].enabled
@@ -66,7 +69,15 @@ pub fn toolbar_row(
     }
 
     let mut visible = hands.iter().all(|state| state.model_visible);
-    if icons::toggle(ui, &mut visible, Icon::Show, "Show the hand models in the view").changed() {
+    if icons::toggle(
+        ui,
+        &mut visible,
+        Icon::Show,
+        Some(tint),
+        "Show the hand models in the view",
+    )
+    .changed()
+    {
         for state in hands.iter_mut() {
             state.model_visible = visible;
         }
@@ -74,7 +85,8 @@ pub fn toolbar_row(
 
     pose_gizmo_selector(ui, gizmo);
 
-    if icons::button(ui, Icon::Reset, "Reset both hands' poses and gestures").clicked() {
+    if icons::button(ui, Icon::Reset, Some(tint), "Reset both hands' poses and gestures").clicked()
+    {
         for hand in Hand::BOTH {
             hands[hand.index()].reset(settings, hand);
         }
@@ -91,11 +103,13 @@ fn pose_gizmo_selector(ui: &mut Ui, gizmo: &mut Option<HandInteraction>) {
     let tooltip =
         "Draw an OpenXR interaction pose as RGB axes on both hands: X red, Y green, Z blue.";
 
-    icons::label(ui, Icon::Axes, tooltip);
+    let tint = icons::HAND_TINT;
+
+    icons::label(ui, Icon::Axes, None, tooltip);
 
     egui::ComboBox::from_id_salt("hand pose gizmo")
-        .selected_text(label)
-        .width(56.0)
+        .selected_text(egui::RichText::new(label).color(tint))
+        .width(56.0 * icons::size_factor(ui))
         .show_ui(ui, |ui| {
             ui.selectable_value(gizmo, None, "off")
                 .on_hover_text("Draw no pose axes.");

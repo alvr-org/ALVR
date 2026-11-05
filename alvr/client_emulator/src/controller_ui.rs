@@ -304,10 +304,7 @@ pub fn toolbar_row(
     settings: &ControllerSettings,
     gizmo: &mut Option<ControllerInteraction>,
 ) {
-    // Everything in this section is drawn in the controller tint, so it reads as one group.
-    let tint = icons::CONTROLLER_TINT;
-
-    icons::label(ui, Icon::Controller, Some(tint), "Controllers");
+    icons::label(ui, Icon::Controller, "Controllers");
     icons::title_divider(ui);
 
     for hand in Hand::BOTH {
@@ -317,8 +314,7 @@ pub fn toolbar_row(
             Hand::Right => ("R", "Emulate the right controller"),
         };
 
-        if icons::text_toggle(ui, &mut controllers[index].enabled, label, Some(tint), tooltip)
-            .changed()
+        if icons::text_toggle(ui, &mut controllers[index].enabled, label, tooltip).changed()
             && controllers[index].enabled
         {
             hands_enabled[index] = false;
@@ -328,14 +324,8 @@ pub fn toolbar_row(
     // Visibility and the gizmo come straight after the toggles, in the same place as in the hand
     // section, so the two sections line up; the controller type, which hands lack, follows.
     let mut visible = controllers.iter().all(|state| state.model_visible);
-    if icons::toggle(
-        ui,
-        &mut visible,
-        Icon::Show,
-        Some(tint),
-        "Show the controller models in the view",
-    )
-    .changed()
+    if icons::toggle(ui, &mut visible, Icon::Show, "Show the controller models in the view")
+        .changed()
     {
         for state in controllers.iter_mut() {
             state.model_visible = visible;
@@ -362,8 +352,6 @@ pub fn toolbar_row(
         ui,
         "controller profile",
         Icon::ControllerType,
-        Some(tint),
-        tint,
         &selected_text,
         profile_names.chain(["Mixed"]),
         "Controller type, for both hands",
@@ -383,14 +371,7 @@ pub fn toolbar_row(
         },
     );
 
-    if icons::button(
-        ui,
-        Icon::Reset,
-        Some(tint),
-        "Reset both controllers' poses and inputs",
-    )
-    .clicked()
-    {
+    if icons::button(ui, Icon::Reset, "Reset both controllers' poses and inputs").clicked() {
         for hand in Hand::BOTH {
             controllers[hand.index()].reset(settings, hand);
         }
@@ -404,8 +385,6 @@ fn pose_gizmo_selector(ui: &mut Ui, gizmo: &mut Option<ControllerInteraction>) {
         ui,
         "controller pose gizmo",
         Icon::Axes,
-        None,
-        icons::CONTROLLER_TINT,
         gizmo.map_or("off", |pose| pose.label()),
         ControllerInteraction::ALL
             .iter()

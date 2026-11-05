@@ -1420,7 +1420,6 @@ impl EmulatorApp {
                         ui,
                         &mut self.show_stats,
                         Icon::Stats,
-                        None,
                         "Statistics: camera position, and the stream and its frame pacing while \
                          streaming",
                     );

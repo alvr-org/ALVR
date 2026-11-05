@@ -112,10 +112,9 @@ worth not repeating.
 
 There is no collision: walking through walls is expected.
 
-The toolbar is icons; hovering any of them says what it does. Colours each keep one meaning: light
-blue marks what is selected, green and red the connection state, and terracotta and plum the
-controller and hand sections; within those sections a selection takes a light wash of the
-section's colour instead of the blue. The top row selects which eye the
+The toolbar is icons; hovering any of them says what it does. It is otherwise monochrome, so the
+few colours each keep one meaning: light blue marks what is selected, and green and red the
+connection state. The top row selects which eye the
 window shows — **Left** (the default), **Right** or **Stereo**, drawn as a pair of eyes with the
 shown ones open — and which source it draws. **Virtual** (a headset) is the decoded video, the
 content the VR server renders; **Real** (a landscape) is the local glTF scene, which stands in for
@@ -167,7 +166,7 @@ The source can be switched from the API with [`POST /api/source`](#post-apisourc
 ## Controller emulation
 
 The second toolbar row controls both emulated controllers and emulated hands. Its controller
-section, drawn in terracotta and marked by a gamepad: **L** and **R** enable each hand independently, the eye shows
+section, marked by a gamepad: **L** and **R** enable each hand independently, the eye shows
 the 3D models in the scene view, the axes select a pose to draw as a gizmo, the dropdown selects
 which controller type to emulate, and the circular arrow returns poses and inputs to their
 defaults.
@@ -304,7 +303,7 @@ emulation mode happens on the server, as with real hardware.
 > Implementation notes, the measurements behind the server settings below, and the dead ends are in
 > [`HAND-EMULATION.md`](HAND-EMULATION.md).
 
-The hand section of the second row, drawn in plum and marked by a hand, mirrors the controller one: **L** and **R**
+The hand section of the second row, marked by a hand, mirrors the controller one: **L** and **R**
 enable each hand, the eye shows the 3D models, the axes select a pose gizmo, and the circular arrow
 returns the pose and the gesture to their defaults. Hands are posed with the same icons and the same movement panel as controllers, and
 excluded against them per side as described above.

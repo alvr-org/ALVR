@@ -8,6 +8,9 @@
 //!
 //! Sizes are given in egui's default points and multiplied by [`size_factor`], so the toolbar
 //! scales as a whole with [`toolbar_style`].
+//!
+//! The toolbar is otherwise monochrome: blue marks a selection, and green and red, used by the
+//! connection status, OK and error. The sections are told apart by their groups and title icons.
 
 use eframe::egui::{
     Color32, CornerRadius, Frame, Margin, Painter, Pos2, Rect, Response, RichText, Sense, Shape,
@@ -15,14 +18,6 @@ use eframe::egui::{
     style::WidgetVisuals, vec2,
 };
 use std::f32::consts::{PI, TAU};
-
-/// Colour of everything in the controller section of the toolbar.
-///
-/// The section tints keep out of the hues that already mean something in the toolbar: blue is the
-/// app's selection colour, green is OK and red is an error.
-pub const CONTROLLER_TINT: Color32 = Color32::from_rgb(165, 95, 70);
-/// Colour of everything in the hand section of the toolbar.
-pub const HAND_TINT: Color32 = Color32::from_rgb(130, 80, 130);
 
 /// egui's default text size, the size all the point values here are given at.
 const DEFAULT_TEXT_SIZE: f32 = 14.0;
@@ -72,8 +67,8 @@ pub enum Icon {
     Hand,
     /// A single eye: show the models.
     Show,
-    /// Coordinate axes in their conventional red, green and blue, which they keep even in a tinted
-    /// section: they are the colours the gizmo itself is drawn in.
+    /// Coordinate axes in their conventional red, green and blue, the colours the gizmo itself is
+    /// drawn in.
     Axes,
     /// A circular arrow.
     Reset,
@@ -155,38 +150,17 @@ pub fn rule_color(visuals: &Visuals) -> Color32 {
 }
 
 /// A button that is either on or off, like `Ui::toggle_value`, showing an icon instead of text.
-///
-/// `tint` colours the content and the selection, for controls belonging to a toolbar section;
-/// untinted ones follow the text and selection colours.
-pub fn toggle(
-    ui: &mut Ui,
-    value: &mut bool,
-    icon: Icon,
-    tint: Option<Color32>,
-    tooltip: &str,
-) -> Response {
-    toggle_content(ui, value, Content::Icon(icon), tint, tooltip)
+pub fn toggle(ui: &mut Ui, value: &mut bool, icon: Icon, tooltip: &str) -> Response {
+    toggle_content(ui, value, Content::Icon(icon), tooltip)
 }
 
 /// Like [`toggle`], with a short text in place of the icon, at the same size, so a one-letter
 /// toggle has the same highlight as an icon one.
-pub fn text_toggle(
-    ui: &mut Ui,
-    value: &mut bool,
-    text: &str,
-    tint: Option<Color32>,
-    tooltip: &str,
-) -> Response {
-    toggle_content(ui, value, Content::Text(text), tint, tooltip)
+pub fn text_toggle(ui: &mut Ui, value: &mut bool, text: &str, tooltip: &str) -> Response {
+    toggle_content(ui, value, Content::Text(text), tooltip)
 }
 
-fn toggle_content(
-    ui: &mut Ui,
-    value: &mut bool,
-    content: Content,
-    tint: Option<Color32>,
-    tooltip: &str,
-) -> Response {
+fn toggle_content(ui: &mut Ui, value: &mut bool, content: Content, tooltip: &str) -> Response {
     let (rect, mut response) = ui.allocate_exact_size(button_size(ui), Sense::click());
 
     if response.clicked() {
@@ -195,9 +169,9 @@ fn toggle_content(
     }
 
     if ui.is_rect_visible(rect) {
-        paint_fills(ui, rect, &response, *value, tint);
+        paint_fills(ui, rect, &response, *value);
 
-        let color = content_color(ui.visuals(), *value, tint);
+        let color = content_color(ui.visuals(), *value);
         match content {
             Content::Icon(icon) => paint_icon(ui, rect, icon, color),
             Content::Text(text) => {
@@ -290,7 +264,7 @@ pub fn segmented<T: PartialEq + Copy>(
     }
 
     for (index, (option, icon, _)) in options.iter().enumerate() {
-        let color = content_color(visuals, option == current, None);
+        let color = content_color(visuals, option == current);
         paint_icon(ui, slot(index), *icon, color);
     }
 }
@@ -344,23 +318,20 @@ fn inner_group<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
 
 /// A dropdown labelled by an icon, the two on an inner group.
 ///
-/// `selected` is shown in the field, in `tint`. The field is as wide as the widest of `options`,
-/// so the arrow sits right after the text and the field does not resize as the selection changes.
+/// `selected` is shown in the field. The field is as wide as the widest of `options`, so the arrow
+/// sits right after the text and the field does not resize as the selection changes.
 /// `show_options` fills the open dropdown.
-#[allow(clippy::too_many_arguments)]
 pub fn dropdown<'a>(
     ui: &mut Ui,
     id_salt: &str,
     icon: Icon,
-    icon_tint: Option<Color32>,
-    tint: Color32,
     selected: &str,
     options: impl IntoIterator<Item = &'a str>,
     tooltip: &str,
     show_options: impl FnOnce(&mut Ui),
 ) {
     inner_group(ui, |ui| {
-        label(ui, icon, icon_tint, tooltip);
+        label(ui, icon, tooltip);
 
         let text_width = options
             .into_iter()
@@ -371,7 +342,7 @@ pub fn dropdown<'a>(
         eframe::egui::ComboBox::from_id_salt(id_salt)
             .icon(chevron)
             .width(width)
-            .selected_text(dropdown_text(ui, selected).color(tint))
+            .selected_text(dropdown_text(ui, selected))
             .show_ui(ui, show_options)
             .response
             .on_hover_text(tooltip);
@@ -393,24 +364,24 @@ pub fn title_divider(ui: &mut Ui) {
 }
 
 /// A push button showing an icon. Frameless at rest, like every other toolbar control.
-pub fn button(ui: &mut Ui, icon: Icon, tint: Option<Color32>, tooltip: &str) -> Response {
+pub fn button(ui: &mut Ui, icon: Icon, tooltip: &str) -> Response {
     let (rect, response) = ui.allocate_exact_size(button_size(ui), Sense::click());
 
     if ui.is_rect_visible(rect) {
-        paint_fills(ui, rect, &response, false, tint);
-        paint_icon(ui, rect, icon, content_color(ui.visuals(), false, tint));
+        paint_fills(ui, rect, &response, false);
+        paint_icon(ui, rect, icon, content_color(ui.visuals(), false));
     }
 
     response.on_hover_text(tooltip)
 }
 
 /// An icon that labels the control after it, with no interaction of its own besides its tooltip.
-pub fn label(ui: &mut Ui, icon: Icon, tint: Option<Color32>, tooltip: &str) -> Response {
+pub fn label(ui: &mut Ui, icon: Icon, tooltip: &str) -> Response {
     let size = vec2(icon_side(ui) * 1.25, button_size(ui).y);
     let (rect, response) = ui.allocate_exact_size(size, Sense::hover());
 
     if ui.is_rect_visible(rect) {
-        paint_icon(ui, rect, icon, content_color(ui.visuals(), false, tint));
+        paint_icon(ui, rect, icon, content_color(ui.visuals(), false));
     }
 
     response.on_hover_text(tooltip)
@@ -455,27 +426,18 @@ fn chevron(ui: &Ui, rect: Rect, visuals: &WidgetVisuals, open: bool) {
         .add(Shape::line(points, Stroke::new(1.5, visuals.fg_stroke.color)));
 }
 
-/// The colour of a control's icon or text: the tint if it has one, otherwise the selection's text
-/// colour while selected and the ordinary text colour while not.
-fn content_color(visuals: &Visuals, selected: bool, tint: Option<Color32>) -> Color32 {
-    tint.unwrap_or(if selected {
+/// The colour of a control's icon or text: the selection's text colour while selected and the
+/// ordinary text colour while not.
+fn content_color(visuals: &Visuals, selected: bool) -> Color32 {
+    if selected {
         visuals.selection.stroke.color
     } else {
         visuals.text_color()
-    })
+    }
 }
 
 /// The hover and selection fills behind a button, each faded in and out rather than switched.
-///
-/// A tinted control is selected in a light wash of its own tint rather than the app's blue, so
-/// the selection belongs to the section the control is in.
-fn paint_fills(
-    ui: &Ui,
-    rect: Rect,
-    response: &Response,
-    selected: bool,
-    tint: Option<Color32>,
-) {
+fn paint_fills(ui: &Ui, rect: Rect, response: &Response, selected: bool) {
     let ctx = ui.ctx();
     let visuals = ui.visuals();
     let radius = CornerRadius::same(CORNER_RADIUS);
@@ -492,17 +454,12 @@ fn paint_fills(
 
     let selection = ctx.animate_bool_with_time(response.id.with("selected"), selected, FADE_SECONDS);
     if selection > 0.0 {
-        let fill = tint.map_or(visuals.selection.bg_fill, selection_wash);
-
-        ui.painter()
-            .rect_filled(rect, radius, fill.gamma_multiply(selection));
+        ui.painter().rect_filled(
+            rect,
+            radius,
+            visuals.selection.bg_fill.gamma_multiply(selection),
+        );
     }
-}
-
-/// The selection fill for a control drawn in `tint`: the tint faded towards white, about as light
-/// as egui's selection blue, so a selection reads the same in every section.
-fn selection_wash(tint: Color32) -> Color32 {
-    tint.lerp_to_gamma(Color32::WHITE, 0.72)
 }
 
 fn group_margin(ui: &Ui) -> f32 {

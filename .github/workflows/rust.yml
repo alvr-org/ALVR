@@ -2,7 +2,7 @@ name: Rust
 
 on:
   pull_request:
-    branches: [master]
+    branches: [main]
   merge_group:
 
 env:

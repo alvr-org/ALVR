@@ -15,12 +15,12 @@
 //! In a dark theme the colours are the ALVR dashboard's own, taken from its theme in
 //! `alvr_gui_common`, so the two apps look alike; a light theme gets light counterparts.
 
-use eframe::egui::{
-    Color32, CornerRadius, Frame, Margin, Painter, Pos2, Rect, Response, RichText, Sense, Shape,
-    Stroke, StrokeKind, Style, TextStyle, TextWrapMode, Ui, Vec2, Visuals, WidgetText,
-    style::WidgetVisuals, vec2,
-};
 use alvr_gui_common::theme;
+use eframe::egui::{
+    Color32, Context, CornerRadius, Frame, Margin, Painter, Pos2, Rect, Response, RichText, Sense,
+    Shape, Stroke, StrokeKind, Style, TextStyle, TextWrapMode, Theme, Ui, Vec2, Visuals,
+    WidgetText, style::WidgetVisuals, vec2,
+};
 use std::f32::consts::{PI, TAU};
 
 /// egui's default text size, the size all the point values here are given at.
@@ -45,10 +45,8 @@ const SLIDE_SECONDS: f32 = 0.15;
 /// Strengths of the neutral shades the toolbar is built from; see [`shade`].
 const TRACK_SHADE: u8 = 10;
 const INNER_SHADE: u8 = 15;
-const OUTLINE_SHADE: u8 = 28;
 const HOVER_SHADE: u8 = 14;
-const EDGE_SHADE: u8 = 20;
-const RULE_SHADE: u8 = 30;
+const LINE_SHADE: u8 = 28;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Icon {
@@ -121,7 +119,7 @@ pub fn toolbar_style(style: &mut Style, factor: f32) {
 
     let field = visuals.extreme_bg_color;
     let ink = visuals.text_color();
-    let edge = Stroke::new(1.0, shade(visuals, EDGE_SHADE));
+    let edge = Stroke::new(1.0, line_color(visuals));
     let widgets = &mut visuals.widgets;
 
     for (widget, darken) in [
@@ -204,7 +202,7 @@ impl Capsule {
             } else {
                 shade(visuals, TRACK_SHADE)
             },
-            outline: Self::outline(visuals),
+            outline: line_color(visuals),
         }
     }
 
@@ -216,15 +214,7 @@ impl Capsule {
             } else {
                 shade(visuals, INNER_SHADE)
             },
-            outline: Self::outline(visuals),
-        }
-    }
-
-    fn outline(visuals: &Visuals) -> Color32 {
-        if visuals.dark_mode {
-            theme::SEPARATOR_BG
-        } else {
-            shade(visuals, OUTLINE_SHADE)
+            outline: line_color(visuals),
         }
     }
 
@@ -264,9 +254,32 @@ pub fn error_color(visuals: &Visuals) -> Color32 {
     }
 }
 
-/// The faint line the toolbar draws its dividers with.
-pub fn rule_color(visuals: &Visuals) -> Color32 {
-    shade(visuals, RULE_SHADE)
+/// The colour of every line: dividers, capsule outlines and the edges of the dropdowns. The
+/// dashboard's separator colour in a dark theme.
+pub fn line_color(visuals: &Visuals) -> Color32 {
+    if visuals.dark_mode {
+        theme::SEPARATOR_BG
+    } else {
+        shade(visuals, LINE_SHADE)
+    }
+}
+
+/// The fill and text colour of the status bar along the bottom of the window: in a dark theme
+/// the dashboard's, for its bottom bar showing an ordinary message.
+pub fn status_bar_colors(visuals: &Visuals) -> (Color32, Color32) {
+    if visuals.dark_mode {
+        (theme::LIGHTER_BG, theme::FG)
+    } else {
+        (visuals.faint_bg_color, visuals.strong_text_color())
+    }
+}
+
+/// Sets the app-wide colours the toolbar's are made to go with: the dashboard's background, in a
+/// dark theme. Call once at startup.
+pub fn install_theme(ctx: &Context) {
+    ctx.style_mut_of(Theme::Dark, |style| {
+        style.visuals.panel_fill = theme::BG;
+    });
 }
 
 /// A button that is either on or off, like `Ui::toggle_value`, showing an icon instead of text.
@@ -488,7 +501,7 @@ pub fn title_divider(ui: &mut Ui) {
     ui.painter().vline(
         rect.center().x,
         (rect.top() + inset)..=(rect.bottom() - inset),
-        Stroke::new(1.0, rule_color(ui.visuals())),
+        Stroke::new(1.0, line_color(ui.visuals())),
     );
 }
 
@@ -529,7 +542,7 @@ pub fn normal_text(ui: &Ui, text: impl Into<String>) -> RichText {
     RichText::new(text).size(size)
 }
 
-/// `text` laid out as dropdown text, for measuring.
+/// `text` laid out as [`normal_text`], for measuring.
 fn text_galley(ui: &Ui, text: &str) -> std::sync::Arc<eframe::egui::Galley> {
     WidgetText::from(normal_text(ui, text)).into_galley(
         ui,

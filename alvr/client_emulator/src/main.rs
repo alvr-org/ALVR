@@ -83,6 +83,9 @@ enum ViewMode {
 /// How much larger than egui's default the toolbar is drawn, text and controls alike.
 const TOOLBAR_SCALE: f32 = 1.5;
 
+/// Margin around the contents of the title bar, the toolbar and the status bar, in points.
+const BAR_MARGIN: f32 = 8.0 * TOOLBAR_SCALE;
+
 /// Resolution of one eye in the capture endpoints, used when no stream has been negotiated yet.
 const FALLBACK_CAPTURE_RESOLUTION: (u32, u32) = (960, 916);
 
@@ -154,11 +157,7 @@ struct EmulatorApp {
 
 impl EmulatorApp {
     fn new(context: &CreationContext<'_>, shared: Arc<SharedState>) -> Self {
-        // The dashboard's background in a dark theme, so the two ALVR apps look alike; see the
-        // toolbar's colours in `icons`.
-        context.egui_ctx.style_mut_of(egui::Theme::Dark, |style| {
-            style.visuals.panel_fill = alvr_gui_common::theme::BG;
-        });
+        icons::install_theme(&context.egui_ctx);
 
         let environment_path = scene::default_environment_path()
             .unwrap_or_else(|_| PathBuf::from(scene::ENVIRONMENT_FILE_NAME));
@@ -1363,8 +1362,8 @@ impl EmulatorApp {
     /// The window's title bar, drawn by the app in place of the system's so it matches the toolbar
     /// under it: the app name and the connection status on the left, and the window buttons on the
     /// right. Dragging it moves the window and double-clicking it maximises.
-    fn draw_title_bar(&mut self, ui: &mut Ui) {
-        let margin = (8.0 * TOOLBAR_SCALE) as i8;
+    fn draw_title_bar(&self, ui: &mut Ui) {
+        let margin = BAR_MARGIN as i8;
         let frame = egui::Frame::new()
             .fill(ui.visuals().panel_fill)
             .inner_margin(egui::Margin {
@@ -1426,7 +1425,7 @@ impl EmulatorApp {
     }
 
     fn draw_toolbar(&mut self, ui: &mut Ui) {
-        let margin = (8.0 * TOOLBAR_SCALE) as i8;
+        let margin = BAR_MARGIN as i8;
         let frame = egui::Frame::new()
             .fill(ui.visuals().panel_fill)
             .inner_margin(egui::Margin::symmetric(margin, margin / 2));
@@ -1530,7 +1529,7 @@ impl EmulatorApp {
         painter.hline(
             bar.x_range(),
             bar.bottom(),
-            egui::Stroke::new(1.0, icons::rule_color(ui.visuals())),
+            egui::Stroke::new(1.0, icons::line_color(ui.visuals())),
         );
     }
 
@@ -1545,14 +1544,10 @@ impl EmulatorApp {
             .collect::<Vec<_>>()
             .join("    ·    ");
 
-        let visuals = ui.visuals();
-        let (fill, text_color) = if visuals.dark_mode {
-            (alvr_gui_common::theme::LIGHTER_BG, alvr_gui_common::theme::FG)
-        } else {
-            (visuals.faint_bg_color, visuals.strong_text_color())
-        };
+        let (fill, text_color) = icons::status_bar_colors(ui.visuals());
 
-        let indent = ((8.0 + icons::GROUP_MARGIN) * TOOLBAR_SCALE) as i8;
+        // The title's indent: the bars' margin, and the group margin it adds to that.
+        let indent = (BAR_MARGIN + icons::GROUP_MARGIN * TOOLBAR_SCALE) as i8;
         let frame = egui::Frame::new()
             .fill(fill)
             .inner_margin(egui::Margin::symmetric(indent, 5));
@@ -1573,7 +1568,7 @@ impl EmulatorApp {
         ui.painter().hline(
             bar.x_range(),
             bar.top(),
-            egui::Stroke::new(1.0, icons::rule_color(ui.visuals())),
+            egui::Stroke::new(1.0, icons::line_color(ui.visuals())),
         );
 
         overlay::set_bottom_inset(ui.ctx(), bar.height());

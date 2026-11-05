@@ -60,8 +60,11 @@ pub enum Icon {
     Axes,
     /// A circular arrow.
     Reset,
-    /// Stacked sheets: one of several variants, here the controller type.
-    Layers,
+    /// A VR controller seen from the side, with a chevron beside it: choose the controller type.
+    ///
+    /// Drawn with the trigger and a thick handle so it reads as a controller rather than the
+    /// magnifying glass a bare ring and stick look like this small.
+    ControllerType,
 }
 
 /// Corner radius of every toolbar control, the same as the corner panels' frames.
@@ -173,13 +176,18 @@ pub fn segmented<T: PartialEq + Copy>(
 ) {
     let segment = button_size(ui);
     let margin = group_margin(ui);
-    let size = segment * vec2(options.len() as f32, 1.0) + Vec2::splat(margin * 2.0);
+    // A little space between the options, so each one sits on the track on its own rather than
+    // the highlights of neighbours touching.
+    let gap = 3.0 * size_factor(ui);
+    let pitch = segment.x + gap;
+    let count = options.len() as f32;
+    let size = vec2(pitch * count - gap, segment.y) + Vec2::splat(margin * 2.0);
     let (track, _) = ui.allocate_exact_size(size, Sense::hover());
     let id = ui.make_persistent_id(id_salt);
 
     let slot = |index: usize| {
         Rect::from_min_size(
-            track.min + vec2(margin + segment.x * index as f32, margin),
+            track.min + vec2(margin + pitch * index as f32, margin),
             segment,
         )
     };
@@ -230,7 +238,7 @@ pub fn segmented<T: PartialEq + Copy>(
         let position = ui
             .ctx()
             .animate_value_with_time(id.with("thumb"), selected as f32, SLIDE_SECONDS);
-        let thumb = slot(0).translate(vec2(segment.x * position, 0.0));
+        let thumb = slot(0).translate(vec2(pitch * position, 0.0));
 
         painter.rect_filled(thumb, inner_radius, visuals.selection.bg_fill);
     }
@@ -534,8 +542,11 @@ fn button_size(ui: &Ui) -> Vec2 {
 }
 
 /// Side of the square the 16 unit design grid is scaled into.
+///
+/// From the toolbar's scale rather than the row height, so an icon inside an [`inner_group`],
+/// whose rows are shorter, is drawn as large as the icons outside it.
 fn icon_side(ui: &Ui) -> f32 {
-    ui.spacing().interact_size.y * 0.78
+    14.0 * size_factor(ui)
 }
 
 /// Paints into the middle of a widget's rect, in the tint if there is one and in `color` otherwise.
@@ -644,16 +655,31 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
             axis(at(-4.0, -7.0), Color32::from_rgb(80, 200, 90));
             axis(at(-7.5, 7.5), Color32::from_rgb(80, 140, 255));
         }
-        Icon::Layers => {
-            // The top sheet whole, and only the lower edges of the two beneath it, as sheets
-            // stacked one under the other appear.
-            let sheet = |y: f32| [at(-6.5, y), at(0.0, y - 3.2), at(6.5, y), at(0.0, y + 3.2)];
+        Icon::ControllerType => {
+            // A Quest-style Touch controller: a wide, flat tracking ring arching over the round
+            // face, and a thick handle below. Kept wide and heavy, since a round ring on a thin
+            // stick reads as a magnifying glass or a key at this size.
+            let ring = (0..28)
+                .map(|step| {
+                    let angle = step as f32 / 28.0 * TAU;
+                    at(-1.4 + 5.6 * angle.cos(), -3.3 + 3.3 * angle.sin())
+                })
+                .collect::<Vec<_>>();
+            painter.add(Shape::closed_line(ring, stroke));
 
-            painter.add(Shape::closed_line(sheet(-3.0).to_vec(), stroke));
-            for y in [0.4, 3.8] {
-                let [left, _, right, bottom] = sheet(y);
-                painter.add(Shape::line(vec![left, bottom, right], stroke));
-            }
+            painter.circle_filled(at(-0.6, -0.9), 2.6 * scale, color);
+            painter.add(Shape::convex_polygon(
+                vec![at(-2.6, -0.2), at(1.4, -0.2), at(0.6, 6.4), at(-1.8, 6.4)],
+                color,
+                Stroke::NONE,
+            ));
+            painter.circle_filled(at(-0.6, 6.4), 1.2 * scale, color);
+
+            // The chevron: one of several, pick another.
+            painter.add(Shape::line(
+                vec![at(3.6, 3.6), at(5.3, 5.3), at(7.0, 3.6)],
+                stroke,
+            ));
         }
         Icon::Reset => {
             // A clockwise arc most of the way round, open at the upper right, with the arrowhead

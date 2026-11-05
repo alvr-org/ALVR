@@ -360,7 +360,7 @@ pub fn toolbar_row(
     // Labelled by its own icon on an inner group, like the gizmo dropdown.
     let tooltip = "Controller type, for both hands";
     icons::inner_group(ui, |ui| {
-        icons::label(ui, Icon::Layers, Some(tint), tooltip);
+        icons::label(ui, Icon::ControllerType, Some(tint), tooltip);
 
         ComboBox::from_id_salt("controller profile")
             .icon(icons::chevron)

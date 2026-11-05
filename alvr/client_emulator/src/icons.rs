@@ -618,27 +618,29 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
             axis(at(-7.5, 7.5), Color32::from_rgb(80, 140, 255));
         }
         Icon::Reset => {
-            // An arc most of the way round, with the arrowhead at its open end pointing on.
+            // A clockwise arc most of the way round, open at the upper right, with the arrowhead
+            // carrying on from its end. With y down, a growing angle runs clockwise on screen.
             let radius = 5.5;
-            let start = -0.35 * PI;
-            let sweep = 0.8 * TAU;
+            let end: f32 = -0.3 * PI;
+            let start = end - 0.8 * TAU;
             let points = (0..=24)
                 .map(|step| {
-                    let angle = start - sweep * step as f32 / 24.0;
+                    let angle = start + (end - start) * step as f32 / 24.0;
                     at(radius * angle.cos(), radius * angle.sin())
                 })
                 .collect::<Vec<_>>();
             painter.add(Shape::line(points, stroke));
 
-            let tip_angle: f32 = start;
-            let tip = vec2(tip_angle.cos(), tip_angle.sin()) * radius;
-            // Tangent in the direction of travel at the start of the arc, which runs backwards.
-            let along = vec2(tip_angle.sin(), -tip_angle.cos());
-            let outward = vec2(tip_angle.cos(), tip_angle.sin());
+            // The head's base straddles the arc's end, covering where the line stops, and its
+            // point lies ahead along the direction of travel. Pointing it back along the arc
+            // instead, as before, buried half of it in the line.
+            let base = vec2(end.cos(), end.sin()) * radius;
+            let forward = vec2(-end.sin(), end.cos());
+            let outward = vec2(end.cos(), end.sin());
             let head = [
-                tip + along * 3.2,
-                tip - outward * 2.6,
-                tip + outward * 2.6,
+                base + forward * 3.2,
+                base + outward * 2.5,
+                base - outward * 2.5,
             ];
             painter.add(Shape::convex_polygon(
                 head.iter().map(|point| at(point.x, point.y)).collect(),

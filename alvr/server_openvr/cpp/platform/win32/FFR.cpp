@@ -99,9 +99,18 @@ void FFR::Initialize(ID3D11Texture2D* compositionTexture) {
     }
 }
 
-void FFR::Render() {
+void FFR::Render(uint64_t targetTimestampNs) {
     auto fovVars = CalculateFoveationVars();
     UpdateBuffer(mImmediateContext.Get(), mFoveatedRenderingBuffer.Get(), &fovVars);
+
+    // Publish the same centers that were uploaded for this frame, without re-aligning them.
+    ReportEncoderFoveationCenters(
+        targetTimestampNs,
+        fovVars.centerShiftLeftX,
+        fovVars.centerShiftLeftY,
+        fovVars.centerShiftRightX,
+        fovVars.centerShiftRightY
+    );
 
     for (auto& p : mPipelines) {
         p.Render();

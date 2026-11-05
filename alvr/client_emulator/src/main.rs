@@ -1364,8 +1364,8 @@ impl EmulatorApp {
             .inner_margin(egui::Margin {
                 left: margin,
                 right: margin / 2,
-                top: margin / 2,
-                bottom: 0,
+                top: margin,
+                bottom: margin / 2,
             });
 
         egui::Panel::top(egui::Id::new("title bar"))
@@ -1427,68 +1427,69 @@ impl EmulatorApp {
             .show(ui, |ui| {
                 icons::toolbar_style(ui.style_mut(), TOOLBAR_SCALE);
 
-                // Every group in one row, wrapping onto a second only when the window is too
-                // narrow. Groups are told apart by space; options that exclude each other share
-                // one segmented control, so the grouping is visible without a caption.
+                // Every group in one row, wrapping group by group onto further lines when the
+                // window is too narrow. Groups are told apart by space; options that exclude each
+                // other share one segmented control, so the grouping is visible without a caption.
+                ui.spacing_mut().item_spacing.y = 6.0 * icons::size_factor(ui);
                 ui.horizontal_wrapped(|ui| {
-                    icons::segmented(
-                        ui,
-                        "view mode",
-                        &mut self.view_mode,
-                        &[
-                            (ViewMode::Left, Icon::LeftEye, "Left eye"),
-                            (ViewMode::Right, Icon::RightEye, "Right eye"),
-                            (ViewMode::Stereo, Icon::BothEyes, "Both eyes, side by side"),
-                        ],
-                    );
-
-                    icons::group_gap(ui);
+                    icons::flex_item(ui, "view mode", |ui| {
+                        icons::segmented(
+                            ui,
+                            "view mode",
+                            &mut self.view_mode,
+                            &[
+                                (ViewMode::Left, Icon::LeftEye, "Left eye"),
+                                (ViewMode::Right, Icon::RightEye, "Right eye"),
+                                (ViewMode::Stereo, Icon::BothEyes, "Both eyes, side by side"),
+                            ],
+                        );
+                    });
 
                     // The stream is the virtual content, the local scene stands in for what the
                     // headset's cameras would see. Switching to the latter while streaming is also
                     // how to tell a decode problem apart from a rendering one.
-                    icons::segmented(
-                        ui,
-                        "view source",
-                        &mut self.source,
-                        &[
-                            (
-                                ViewSource::Mixed,
-                                Icon::Mixed,
-                                "Mixed: what the headset shows. The streamed video over the local \
-                                 scene, blended by the stream's passthrough mode; plain video \
-                                 when passthrough is off.",
-                            ),
-                            (
-                                ViewSource::Virtual,
-                                Icon::Virtual,
-                                "Virtual: the streamed video alone, opaque.",
-                            ),
-                            (
-                                ViewSource::Real,
-                                Icon::Real,
-                                "Real: the local scene alone, standing in for the headset's \
-                                 cameras.",
-                            ),
-                        ],
-                    );
-
-                    icons::group_gap(ui);
+                    icons::flex_item(ui, "view source", |ui| {
+                        icons::segmented(
+                            ui,
+                            "view source",
+                            &mut self.source,
+                            &[
+                                (
+                                    ViewSource::Mixed,
+                                    Icon::Mixed,
+                                    "Mixed: what the headset shows. The streamed video over the \
+                                     local scene, blended by the stream's passthrough mode; plain \
+                                     video when passthrough is off.",
+                                ),
+                                (
+                                    ViewSource::Virtual,
+                                    Icon::Virtual,
+                                    "Virtual: the streamed video alone, opaque.",
+                                ),
+                                (
+                                    ViewSource::Real,
+                                    Icon::Real,
+                                    "Real: the local scene alone, standing in for the \
+                                     headset's cameras.",
+                                ),
+                            ],
+                        );
+                    });
 
                     // A group of one, so the toggle matches the segmented controls beside it. The
                     // numbers go in an overlay over the view, where there is room to label them;
                     // see [`draw_stats_overlay`].
-                    icons::group(ui, |ui| {
-                        icons::toggle(
-                            ui,
-                            &mut self.show_stats,
-                            Icon::Stats,
-                            "Statistics: camera position, and the stream and its frame pacing \
-                             while streaming",
-                        );
+                    icons::flex_item(ui, "stats", |ui| {
+                        icons::group(ui, |ui| {
+                            icons::toggle(
+                                ui,
+                                &mut self.show_stats,
+                                Icon::Stats,
+                                "Statistics: camera position, and the stream and its frame \
+                                 pacing while streaming",
+                            );
+                        });
                     });
-
-                    icons::group_gap(ui);
 
                     self.draw_input_groups(ui);
                 });
@@ -1539,29 +1540,31 @@ impl EmulatorApp {
     /// one or the other and the two toggles belong next to each other.
     fn draw_input_groups(&mut self, ui: &mut Ui) {
         let mut hands_enabled = [self.hands[0].enabled, self.hands[1].enabled];
-        icons::group(ui, |ui| {
-            controller_ui::toolbar_row(
-                ui,
-                &mut self.controllers,
-                &mut hands_enabled,
-                &self.controller_settings,
-                &mut self.controller_gizmo,
-            )
+        icons::flex_item(ui, "controllers", |ui| {
+            icons::group(ui, |ui| {
+                controller_ui::toolbar_row(
+                    ui,
+                    &mut self.controllers,
+                    &mut hands_enabled,
+                    &self.controller_settings,
+                    &mut self.controller_gizmo,
+                )
+            });
         });
         for (state, enabled) in self.hands.iter_mut().zip(hands_enabled) {
             state.enabled = enabled;
         }
 
-        icons::group_gap(ui);
-
-        icons::group(ui, |ui| {
-            hand_ui::toolbar_row(
-                ui,
-                &mut self.hands,
-                &mut self.controllers,
-                &self.hand_settings,
-                &mut self.hand_gizmo,
-            )
+        icons::flex_item(ui, "hands", |ui| {
+            icons::group(ui, |ui| {
+                hand_ui::toolbar_row(
+                    ui,
+                    &mut self.hands,
+                    &mut self.controllers,
+                    &self.hand_settings,
+                    &mut self.hand_gizmo,
+                )
+            });
         });
     }
 

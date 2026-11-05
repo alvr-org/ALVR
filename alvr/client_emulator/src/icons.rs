@@ -134,9 +134,33 @@ pub fn size_factor(ui: &Ui) -> f32 {
         .map_or(1.0, |font| font.size / DEFAULT_TEXT_SIZE)
 }
 
-/// Space between two groups.
-pub fn group_gap(ui: &mut Ui) {
-    ui.add_space(GROUP_GAP * size_factor(ui));
+/// Lays out one item of a row of groups that wraps like a flexbox: the item moves to a new line
+/// when it does not fit in what is left of the current one, and is spaced from the item before it
+/// only when the two share a line. Call within `Ui::horizontal_wrapped`.
+///
+/// egui wraps single widgets but cannot tell in advance whether a container such as a group fits,
+/// so each item's width is remembered from the previous frame and the decision made from that. On
+/// the very first frame every item stays on one line.
+pub fn flex_item<R>(ui: &mut Ui, id_salt: &str, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
+    let id = ui.id().with(id_salt);
+    let gap = GROUP_GAP * size_factor(ui);
+    let at_line_start = ui.cursor().min.x <= ui.max_rect().left() + 0.5;
+
+    if !at_line_start {
+        let width = ui.data(|data| data.get_temp::<f32>(id));
+
+        // What is left of this line: in a wrapping layout `available_width` is the whole line.
+        if width.is_some_and(|width| gap + width > ui.available_size_before_wrap().x) {
+            ui.end_row();
+        } else {
+            ui.add_space(gap);
+        }
+    }
+
+    let response = ui.scope(add_contents);
+    ui.data_mut(|data| data.insert_temp(id, response.response.rect.width()));
+
+    response.inner
 }
 
 /// A neutral veil, darker than what is under it on a light theme and lighter on a dark one. Every

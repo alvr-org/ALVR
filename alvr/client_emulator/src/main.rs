@@ -1499,23 +1499,6 @@ impl EmulatorApp {
                     self.draw_input_groups(ui);
                 });
 
-                // The hints under the groups, at the right, in one dimmed line, cut short rather
-                // than wrapped when the window is narrow: they are the least important thing on
-                // the toolbar.
-                let hints = [Some(self.look_hint()), self.device_hint()]
-                    .into_iter()
-                    .flatten()
-                    .collect::<Vec<_>>()
-                    .join("    ·    ");
-
-                // Within a row: a right-to-left layout directly in the panel would centre the hint
-                // in all the height left, which the panel then grows to include, holding it at
-                // whatever height it last had.
-                ui.horizontal(|ui| {
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.add(egui::Label::new(RichText::new(hints).weak().small()).truncate());
-                    });
-                });
             });
 
         // A hairline and a soft shadow along the bottom edge, so the toolbar reads as a bar resting
@@ -1543,6 +1526,43 @@ impl EmulatorApp {
             bar.bottom(),
             egui::Stroke::new(1.0, icons::rule_color(ui.visuals())),
         );
+    }
+
+    /// A thin bar along the bottom of the window with the hints on how to look around and drive
+    /// the devices, in one dimmed line cut short rather than wrapped when the window is narrow:
+    /// they are the least important thing in the window. The text is indented to line up with the
+    /// title.
+    fn draw_status_bar(&self, ui: &mut Ui) {
+        let hints = [Some(self.look_hint()), self.device_hint()]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+            .join("    ·    ");
+
+        let indent = ((8.0 + icons::GROUP_MARGIN) * TOOLBAR_SCALE) as i8;
+        let frame = egui::Frame::new()
+            .fill(ui.visuals().panel_fill)
+            .inner_margin(egui::Margin::symmetric(indent, 3));
+
+        let bar = egui::Panel::bottom(egui::Id::new("status bar"))
+            .frame(frame)
+            .show_separator_line(false)
+            .resizable(false)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.add(egui::Label::new(RichText::new(hints).weak().size(12.0)).truncate());
+                });
+            })
+            .response
+            .rect;
+
+        ui.painter().hline(
+            bar.x_range(),
+            bar.top(),
+            egui::Stroke::new(1.0, icons::rule_color(ui.visuals())),
+        );
+
+        overlay::set_bottom_inset(ui.ctx(), bar.height());
     }
 
     /// The controller section and the hand section, side by side, since a side can be emulated as
@@ -1682,6 +1702,7 @@ impl App for EmulatorApp {
 
         self.draw_title_bar(ui);
         self.draw_toolbar(ui);
+        self.draw_status_bar(ui);
 
         // Falls back to the scene until the first frame arrives, so the window is never blank while
         // the stream is negotiating.

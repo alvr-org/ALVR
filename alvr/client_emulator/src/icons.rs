@@ -27,7 +27,7 @@ const CORNER_RADIUS: u8 = 8;
 
 /// Space between a capsule's edge and the controls on it, and between neighbouring options of a
 /// segmented control.
-const GROUP_MARGIN: f32 = 3.5;
+pub const GROUP_MARGIN: f32 = 3.5;
 
 /// Space between groups.
 const GROUP_GAP: f32 = 14.0;

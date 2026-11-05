@@ -118,7 +118,8 @@ core's full status message, including the server address and any error. Drag the
 the window, double-click it to maximise, and drag any edge or corner to resize.
 
 The toolbar is one row of icon groups, which wraps group by group onto further lines when the
-window is too narrow, with hints on how to look around and drive the devices underneath it on the right. Hovering any icon says
+window is too narrow. Hints on how to look around and drive the devices run along a thin status
+bar at the bottom of the window. Hovering any icon says
 what it does. The toolbar is otherwise monochrome, so the few colours each keep one meaning: light
 blue marks what is selected, and green and red the connection state. The first group selects which
 eye the window shows — **Left** (the default), **Right** or **Stereo**, drawn as a pair of eyes with the

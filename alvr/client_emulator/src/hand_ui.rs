@@ -13,7 +13,7 @@ use crate::{
     hands::{self, Finger, HandPose, HandSettings, HandState},
     icons::{self, Icon},
     interaction::HandInteraction,
-    overlay::{hand_color, input_tooltip},
+    overlay::{hand_color, input_tooltip, usable_rect},
 };
 use alvr_common::glam::Vec3;
 use eframe::egui::{
@@ -142,7 +142,7 @@ pub fn hand_panels(
 
         // Positioned explicitly, for the same reason the controller panels are: anchoring places
         // an area by its remembered size, which is wrong on the first frame.
-        let screen = ctx.content_rect();
+        let screen = usable_rect(ctx);
         let position = match hand {
             Hand::Left => pos2(screen.left() + 10.0, screen.bottom() - size.y - 10.0),
             Hand::Right => pos2(

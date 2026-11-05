@@ -12,7 +12,7 @@ use crate::{
     client::HapticsEvent,
     controllers::{ControllerInteraction, ControllerSettings, ControllerState, Hand, Profile},
     icons::{self, Icon},
-    overlay::{hand_color, input_tooltip},
+    overlay::{hand_color, input_tooltip, usable_rect},
 };
 use alvr_packets::ButtonValue;
 use eframe::egui::{
@@ -230,7 +230,7 @@ impl ControllerUi {
             let features = PanelFeatures::from_profile(profile, hand);
             let size = features.size();
 
-            let screen = ctx.content_rect();
+            let screen = usable_rect(ctx);
             let position = match hand {
                 Hand::Left => pos2(screen.left() + 10.0, screen.bottom() - size.y - 10.0),
                 Hand::Right => {

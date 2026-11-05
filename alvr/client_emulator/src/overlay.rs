@@ -13,6 +13,28 @@ use eframe::egui::{
     Sense, Stroke, StrokeKind, Ui, Vec2, pos2, vec2,
 };
 
+/// Where the height of the window's status bar is kept between drawing it and drawing the panels
+/// that must stay clear of it; see [`usable_rect`].
+const BOTTOM_INSET_ID: &str = "overlay bottom inset";
+
+/// Records the height of what runs along the bottom of the window, the status bar, for
+/// [`usable_rect`] to keep the floating panels above it. Call each frame before drawing them.
+pub fn set_bottom_inset(ctx: &Context, height: f32) {
+    ctx.data_mut(|data| data.insert_temp(Id::new(BOTTOM_INSET_ID), height));
+}
+
+/// The part of the window the floating panels may use: all of it, less the status bar along the
+/// bottom.
+pub fn usable_rect(ctx: &Context) -> Rect {
+    let inset = ctx
+        .data(|data| data.get_temp::<f32>(Id::new(BOTTOM_INSET_ID)))
+        .unwrap_or(0.0);
+
+    let mut rect = ctx.content_rect();
+    rect.max.y -= inset;
+    rect
+}
+
 /// The pointer opens a device's movement panel within this distance of its icon.
 const ICON_HOVER_RADIUS: f32 = 56.0;
 
@@ -226,7 +248,7 @@ fn movement_panel(
     // Positioned explicitly rather than with `pivot`, which places the area by its remembered size
     // and misplaces it while that size is unknown. Clamped fully on screen so the panel stays
     // reachable when the icon sits at a view edge.
-    let screen = ctx.content_rect();
+    let screen = usable_rect(ctx);
     let position = pos2(
         (anchor.x - MOVE_PANEL_SIZE.x / 2.0)
             .clamp(screen.left() + 8.0, screen.right() - MOVE_PANEL_SIZE.x - 8.0),

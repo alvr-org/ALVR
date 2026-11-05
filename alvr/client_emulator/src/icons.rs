@@ -29,8 +29,8 @@ const CORNER_RADIUS: u8 = 8;
 /// segmented control.
 pub const GROUP_MARGIN: f32 = 3.5;
 
-/// Space between groups.
-const GROUP_GAP: f32 = 14.0;
+/// Space between groups, on top of the item spacing egui puts between any two widgets.
+const GROUP_GAP: f32 = 3.0;
 
 /// How long hover and selection fills take to fade, in seconds.
 const FADE_SECONDS: f32 = 0.1;

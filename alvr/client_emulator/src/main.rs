@@ -303,10 +303,10 @@ impl EmulatorApp {
             if held(Key::Q) {
                 input.roll -= 1.0;
             }
-            if held(Key::PageUp) {
+            if held(Key::R) || held(Key::PageUp) {
                 input.height += 1.0;
             }
-            if held(Key::PageDown) {
+            if held(Key::F) || held(Key::PageDown) {
                 input.height -= 1.0;
             }
 

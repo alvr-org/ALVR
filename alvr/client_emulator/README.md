@@ -139,7 +139,7 @@ worth not repeating.
 | `W` / `A` / `S` / `D` | Move horizontally (never vertically, regardless of pitch) |
 | Mouse | Yaw and pitch |
 | `Q` / `E` | Roll |
-| `Page Up` / `Page Down` | Change height |
+| `R` / `F`, or `Page Up` / `Page Down` | Move up / down |
 | `Shift` | Move faster |
 
 There is no collision: walking through walls is expected.

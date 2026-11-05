@@ -74,6 +74,11 @@ pub enum Icon {
     Reset,
     /// A Quest-style controller with a chevron beside it: choose the controller type.
     ControllerType,
+    /// The window buttons: a bar, a square, two overlapping squares and a cross.
+    Minimize,
+    Maximize,
+    Restore,
+    Close,
 }
 
 /// What a toggle shows.
@@ -342,7 +347,7 @@ pub fn dropdown<'a>(
         eframe::egui::ComboBox::from_id_salt(id_salt)
             .icon(chevron)
             .width(width)
-            .selected_text(dropdown_text(ui, selected))
+            .selected_text(normal_text(ui, selected))
             .show_ui(ui, show_options)
             .response
             .on_hover_text(tooltip);
@@ -387,9 +392,9 @@ pub fn label(ui: &mut Ui, icon: Icon, tooltip: &str) -> Response {
     response.on_hover_text(tooltip)
 }
 
-/// Text for a toolbar dropdown: at egui's normal size even in the enlarged toolbar. The dropdowns
-/// are read rather than aimed at, so they do not need the size of the icons and toggles.
-fn dropdown_text(ui: &Ui, text: impl Into<String>) -> RichText {
+/// Text at egui's normal size even in the enlarged toolbar, for what is read rather than aimed at,
+/// such as the dropdowns and the window title.
+pub fn normal_text(ui: &Ui, text: impl Into<String>) -> RichText {
     let size = ui
         .style()
         .text_styles
@@ -402,7 +407,7 @@ fn dropdown_text(ui: &Ui, text: impl Into<String>) -> RichText {
 
 /// `text` laid out as dropdown text, for measuring.
 fn text_galley(ui: &Ui, text: &str) -> std::sync::Arc<eframe::egui::Galley> {
-    WidgetText::from(dropdown_text(ui, text)).into_galley(
+    WidgetText::from(normal_text(ui, text)).into_galley(
         ui,
         Some(TextWrapMode::Extend),
         f32::INFINITY,
@@ -636,6 +641,34 @@ fn paint(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
                 vec![at(3.6, 3.6), at(5.3, 5.3), at(7.0, 3.6)],
                 stroke,
             ));
+        }
+        Icon::Minimize => {
+            painter.line_segment([at(-5.0, 0.5), at(5.0, 0.5)], stroke);
+        }
+        Icon::Maximize => {
+            painter.rect_stroke(
+                Rect::from_center_size(center, Vec2::splat(10.0 * scale)),
+                CornerRadius::same((1.5 * scale) as u8),
+                stroke,
+                StrokeKind::Middle,
+            );
+        }
+        Icon::Restore => {
+            // The back window shows only where the front one does not cover it.
+            painter.add(Shape::line(
+                vec![at(-2.5, -3.0), at(-2.5, -5.0), at(5.0, -5.0), at(5.0, 2.5), at(3.0, 2.5)],
+                stroke,
+            ));
+            painter.rect_stroke(
+                Rect::from_min_max(at(-5.0, -2.5), at(2.5, 5.0)),
+                CornerRadius::same((1.5 * scale) as u8),
+                stroke,
+                StrokeKind::Middle,
+            );
+        }
+        Icon::Close => {
+            painter.line_segment([at(-5.0, -5.0), at(5.0, 5.0)], stroke);
+            painter.line_segment([at(5.0, -5.0), at(-5.0, 5.0)], stroke);
         }
         Icon::Reset => {
             // A clockwise arc most of the way round, open at the upper right, with the arrowhead

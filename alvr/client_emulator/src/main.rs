@@ -1354,6 +1354,69 @@ impl EmulatorApp {
         entries
     }
 
+    /// The window's title bar, drawn by the app in place of the system's so it matches the toolbar
+    /// under it: the app name on the left, and the connection status and the window buttons on the
+    /// right. Dragging it moves the window and double-clicking it maximises.
+    fn draw_title_bar(&mut self, ui: &mut Ui) {
+        let margin = (8.0 * TOOLBAR_SCALE) as i8;
+        let frame = egui::Frame::new()
+            .fill(ui.visuals().panel_fill)
+            .inner_margin(egui::Margin {
+                left: margin,
+                right: margin / 2,
+                top: margin / 2,
+                bottom: 0,
+            });
+
+        egui::Panel::top(egui::Id::new("title bar"))
+            .frame(frame)
+            .show_separator_line(false)
+            .show(ui, |ui| {
+                icons::toolbar_style(ui.style_mut(), TOOLBAR_SCALE);
+
+                // Registered before the contents, so the buttons on top of it take the pointer
+                // first and only the empty parts of the bar move the window.
+                let bar = egui::Rect::from_min_size(
+                    ui.max_rect().min,
+                    egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
+                );
+                let drag = ui.interact(bar, egui::Id::new("title bar drag"), Sense::click_and_drag());
+                let maximized = ui.input(|input| input.viewport().maximized.unwrap_or(false));
+
+                if drag.double_clicked() {
+                    ui.send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
+                } else if drag.drag_started_by(PointerButton::Primary) {
+                    ui.send_viewport_cmd(egui::ViewportCommand::StartDrag);
+                }
+
+                ui.horizontal(|ui| {
+                    ui.label(icons::normal_text(ui, "ALVR Client Emulator").strong());
+
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if icons::button(ui, Icon::Close, "Close").clicked() {
+                            ui.send_viewport_cmd(egui::ViewportCommand::Close);
+                        }
+
+                        let (icon, tooltip) = if maximized {
+                            (Icon::Restore, "Restore")
+                        } else {
+                            (Icon::Maximize, "Maximise")
+                        };
+                        if icons::button(ui, icon, tooltip).clicked() {
+                            ui.send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
+                        }
+
+                        if icons::button(ui, Icon::Minimize, "Minimise").clicked() {
+                            ui.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+                        }
+
+                        icons::group_gap(ui);
+                        connection_status(ui, &self.status());
+                    });
+                });
+            });
+    }
+
     fn draw_toolbar(&mut self, ui: &mut Ui) {
         let margin = (8.0 * TOOLBAR_SCALE) as i8;
         let frame = egui::Frame::new()
@@ -1364,90 +1427,83 @@ impl EmulatorApp {
             .frame(frame)
             .show_separator_line(false)
             .show(ui, |ui| {
-            icons::toolbar_style(ui.style_mut(), TOOLBAR_SCALE);
+                icons::toolbar_style(ui.style_mut(), TOOLBAR_SCALE);
 
-            ui.horizontal(|ui| {
-                // Groups are told apart by space. Options that exclude each other share one
-                // segmented control, so the grouping is visible without a caption.
-                icons::segmented(
-                    ui,
-                    "view mode",
-                    &mut self.view_mode,
-                    &[
-                        (ViewMode::Left, Icon::LeftEye, "Left eye"),
-                        (ViewMode::Right, Icon::RightEye, "Right eye"),
-                        (ViewMode::Stereo, Icon::BothEyes, "Both eyes, side by side"),
-                    ],
-                );
-
-                icons::group_gap(ui);
-
-                // The stream is the virtual content, the local scene stands in for what the
-                // headset's cameras would see. Switching to the latter while streaming is also how
-                // to tell a decode problem apart from a rendering one.
-                icons::segmented(
-                    ui,
-                    "view source",
-                    &mut self.source,
-                    &[
-                        (
-                            ViewSource::Mixed,
-                            Icon::Mixed,
-                            "Mixed: what the headset shows. The streamed video over the local \
-                             scene, blended by the stream's passthrough mode; plain video when \
-                             passthrough is off.",
-                        ),
-                        (
-                            ViewSource::Virtual,
-                            Icon::Virtual,
-                            "Virtual: the streamed video alone, opaque.",
-                        ),
-                        (
-                            ViewSource::Real,
-                            Icon::Real,
-                            "Real: the local scene alone, standing in for the headset's cameras.",
-                        ),
-                    ],
-                );
-
-                icons::group_gap(ui);
-
-                // A group of one, so the toggle matches the segmented controls beside it. The
-                // numbers go in an overlay over the view, where there is room to label them; see
-                // [`draw_stats_overlay`].
-                icons::group(ui, |ui| {
-                    icons::toggle(
+                // Every group in one row, wrapping onto a second only when the window is too
+                // narrow. Groups are told apart by space; options that exclude each other share
+                // one segmented control, so the grouping is visible without a caption.
+                ui.horizontal_wrapped(|ui| {
+                    icons::segmented(
                         ui,
-                        &mut self.show_stats,
-                        Icon::Stats,
-                        "Statistics: camera position, and the stream and its frame pacing while \
-                         streaming",
+                        "view mode",
+                        &mut self.view_mode,
+                        &[
+                            (ViewMode::Left, Icon::LeftEye, "Left eye"),
+                            (ViewMode::Right, Icon::RightEye, "Right eye"),
+                            (ViewMode::Stereo, Icon::BothEyes, "Both eyes, side by side"),
+                        ],
                     );
-                });
 
-                let hint = if self.look_latched {
-                    "Esc to release mouse"
-                } else if self.look_held {
-                    "Release to stop looking"
-                } else {
-                    "Click to look, or hold right button"
-                };
+                    icons::group_gap(ui);
 
-                // The status at the right end of the row, and the hint in whatever room is left
-                // between it and the stats. The status is not a control, so it sits on no group.
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    connection_status(ui, &self.status());
+                    // The stream is the virtual content, the local scene stands in for what the
+                    // headset's cameras would see. Switching to the latter while streaming is also
+                    // how to tell a decode problem apart from a rendering one.
+                    icons::segmented(
+                        ui,
+                        "view source",
+                        &mut self.source,
+                        &[
+                            (
+                                ViewSource::Mixed,
+                                Icon::Mixed,
+                                "Mixed: what the headset shows. The streamed video over the local \
+                                 scene, blended by the stream's passthrough mode; plain video \
+                                 when passthrough is off.",
+                            ),
+                            (
+                                ViewSource::Virtual,
+                                Icon::Virtual,
+                                "Virtual: the streamed video alone, opaque.",
+                            ),
+                            (
+                                ViewSource::Real,
+                                Icon::Real,
+                                "Real: the local scene alone, standing in for the headset's \
+                                 cameras.",
+                            ),
+                        ],
+                    );
 
-                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                        toolbar_hint(ui, hint);
+                    icons::group_gap(ui);
+
+                    // A group of one, so the toggle matches the segmented controls beside it. The
+                    // numbers go in an overlay over the view, where there is room to label them;
+                    // see [`draw_stats_overlay`].
+                    icons::group(ui, |ui| {
+                        icons::toggle(
+                            ui,
+                            &mut self.show_stats,
+                            Icon::Stats,
+                            "Statistics: camera position, and the stream and its frame pacing \
+                             while streaming",
+                        );
                     });
+
+                    icons::group_gap(ui);
+
+                    self.draw_input_groups(ui);
                 });
+
+                // The hints under the groups, in one dimmed line, cut short rather than wrapped
+                // when the window is narrow: they are the least important thing on the toolbar.
+                let hints = [Some(self.look_hint()), self.device_hint()]
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<_>>()
+                    .join("    ·    ");
+                ui.add(egui::Label::new(RichText::new(hints).weak().small()).truncate());
             });
-
-            ui.add_space(4.0 * icons::size_factor(ui));
-
-            self.draw_inputs_row(ui);
-        });
 
         // A hairline and a soft shadow along the bottom edge, so the toolbar reads as a bar resting
         // over the view rather than a block of controls stacked on top of it. Painted on a layer
@@ -1476,58 +1532,101 @@ impl EmulatorApp {
         );
     }
 
-    /// The inputs row: the controller section and the hand section side by side, since a side can
-    /// be emulated as one or the other and the two toggles belong next to each other.
-    fn draw_inputs_row(&mut self, ui: &mut Ui) {
-        ui.horizontal(|ui| {
-            // Each section on a grey group, like the segmented controls above, so the two read
-            // as two units.
-            let mut hands_enabled = [self.hands[0].enabled, self.hands[1].enabled];
-            icons::group(ui, |ui| {
-                controller_ui::toolbar_row(
-                    ui,
-                    &mut self.controllers,
-                    &mut hands_enabled,
-                    &self.controller_settings,
-                    &mut self.controller_gizmo,
-                )
-            });
-            for (state, enabled) in self.hands.iter_mut().zip(hands_enabled) {
-                state.enabled = enabled;
-            }
-
-            icons::group_gap(ui);
-
-            icons::group(ui, |ui| {
-                hand_ui::toolbar_row(
-                    ui,
-                    &mut self.hands,
-                    &mut self.controllers,
-                    &self.hand_settings,
-                    &mut self.hand_gizmo,
-                )
-            });
-
-            let controllers = self.controllers.iter().any(|state| state.enabled);
-            let hands = self.hands.iter().any(|state| state.enabled);
-
-            let hint = match (controllers, hands) {
-                (true, true) => Some("Hover an icon to move a device; the corner panels drive it"),
-                (true, false) => {
-                    Some("Hover a controller icon to move it; use the corner panels for buttons")
-                }
-                (false, true) => {
-                    Some("Hover a hand icon to move it; pick a gesture in the corner panels")
-                }
-                (false, false) => None,
-            };
-
-            if let Some(hint) = hint {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    toolbar_hint(ui, hint);
-                });
-            }
+    /// The controller section and the hand section, side by side, since a side can be emulated as
+    /// one or the other and the two toggles belong next to each other.
+    fn draw_input_groups(&mut self, ui: &mut Ui) {
+        let mut hands_enabled = [self.hands[0].enabled, self.hands[1].enabled];
+        icons::group(ui, |ui| {
+            controller_ui::toolbar_row(
+                ui,
+                &mut self.controllers,
+                &mut hands_enabled,
+                &self.controller_settings,
+                &mut self.controller_gizmo,
+            )
         });
+        for (state, enabled) in self.hands.iter_mut().zip(hands_enabled) {
+            state.enabled = enabled;
+        }
+
+        icons::group_gap(ui);
+
+        icons::group(ui, |ui| {
+            hand_ui::toolbar_row(
+                ui,
+                &mut self.hands,
+                &mut self.controllers,
+                &self.hand_settings,
+                &mut self.hand_gizmo,
+            )
+        });
+    }
+
+    /// How to look around, or how to stop.
+    fn look_hint(&self) -> &'static str {
+        if self.look_latched {
+            "Esc to release mouse"
+        } else if self.look_held {
+            "Release to stop looking"
+        } else {
+            "Click to look, or hold right button"
+        }
+    }
+
+    /// How to drive the enabled devices, if any are.
+    fn device_hint(&self) -> Option<&'static str> {
+        let controllers = self.controllers.iter().any(|state| state.enabled);
+        let hands = self.hands.iter().any(|state| state.enabled);
+
+        match (controllers, hands) {
+            (true, true) => Some("Hover an icon to move a device; the corner panels drive it"),
+            (true, false) => {
+                Some("Hover a controller icon to move it; use the corner panels for buttons")
+            }
+            (false, true) => Some("Hover a hand icon to move it; pick a gesture in the corner panels"),
+            (false, false) => None,
+        }
+    }
+}
+
+/// Resizes the window from its edges and corners. Drawing our own title bar means doing without
+/// the system frame, and with it the borders the system resizes from.
+fn handle_window_edges(ctx: &egui::Context) {
+    use egui::{CursorIcon, ResizeDirection};
+
+    /// How far in from the window's edge a resize can start, in points.
+    const EDGE: f32 = 5.0;
+
+    if ctx.input(|input| input.viewport().maximized.unwrap_or(false)) {
+        return;
+    }
+
+    let Some(pointer) = ctx.input(|input| input.pointer.hover_pos()) else {
+        return;
+    };
+
+    let window = ctx.content_rect();
+    let west = pointer.x <= window.left() + EDGE;
+    let east = pointer.x >= window.right() - EDGE;
+    let north = pointer.y <= window.top() + EDGE;
+    let south = pointer.y >= window.bottom() - EDGE;
+
+    let (direction, cursor) = match (north, south, west, east) {
+        (true, _, true, _) => (ResizeDirection::NorthWest, CursorIcon::ResizeNwSe),
+        (true, _, _, true) => (ResizeDirection::NorthEast, CursorIcon::ResizeNeSw),
+        (_, true, true, _) => (ResizeDirection::SouthWest, CursorIcon::ResizeNeSw),
+        (_, true, _, true) => (ResizeDirection::SouthEast, CursorIcon::ResizeNwSe),
+        (true, ..) => (ResizeDirection::North, CursorIcon::ResizeVertical),
+        (_, true, ..) => (ResizeDirection::South, CursorIcon::ResizeVertical),
+        (.., true, _) => (ResizeDirection::West, CursorIcon::ResizeHorizontal),
+        (.., true) => (ResizeDirection::East, CursorIcon::ResizeHorizontal),
+        _ => return,
+    };
+
+    ctx.set_cursor_icon(cursor);
+
+    if ctx.input(|input| input.pointer.primary_pressed()) {
+        ctx.send_viewport_cmd(egui::ViewportCommand::BeginResize(direction));
     }
 }
 
@@ -1566,6 +1665,7 @@ impl App for EmulatorApp {
         // compositor start for the frame pacing statistics.
         let video_views = self.client.displayed_frame_views(displayed_frame);
 
+        self.draw_title_bar(ui);
         self.draw_toolbar(ui);
 
         // Falls back to the scene until the first frame arrives, so the window is never blank while
@@ -1756,6 +1856,11 @@ impl App for EmulatorApp {
                 egui::CursorGrab::None
             }));
             ui_context.send_viewport_cmd(egui::ViewportCommand::CursorVisible(!look_active));
+        }
+
+        // Last, so its resize cursor wins over whatever is under the window's edge.
+        if !look_active {
+            handle_window_edges(&ui_context);
         }
 
         self.service_captures(frame);
@@ -2024,24 +2129,6 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
             0.0,
             1.0,
         );
-    }
-}
-
-/// A dimmed hint, left out when the space it is given has no room for it.
-///
-/// The hints are the least important thing on the toolbar, and a label that does not fit is drawn
-/// over its neighbours rather than clipped.
-fn toolbar_hint(ui: &mut Ui, hint: &str) {
-    let text = RichText::new(hint).weak().small();
-    let galley = egui::WidgetText::from(text.clone()).into_galley(
-        ui,
-        Some(egui::TextWrapMode::Extend),
-        f32::INFINITY,
-        egui::TextStyle::Body,
-    );
-
-    if galley.size().x + ui.spacing().item_spacing.x * 2.0 <= ui.available_width() {
-        ui.label(text);
     }
 }
 
@@ -2419,7 +2506,12 @@ fn main() {
     let result = eframe::run_native(
         "ALVR Client Emulator",
         NativeOptions {
-            viewport: ViewportBuilder::default().with_inner_size((1280.0, 720.0)),
+            // Wide enough for every toolbar group on one line. Undecorated: the app draws its
+            // own title bar; see `draw_title_bar`.
+            viewport: ViewportBuilder::default()
+                .with_inner_size((1440.0, 810.0))
+                .with_min_inner_size((640.0, 400.0))
+                .with_decorations(false),
             renderer: eframe::Renderer::Wgpu,
             wgpu_options: egui_wgpu::WgpuConfiguration {
                 wgpu_setup: preferred_wgpu_setup(),

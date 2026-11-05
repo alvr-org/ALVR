@@ -112,16 +112,21 @@ worth not repeating.
 
 There is no collision: walking through walls is expected.
 
-The toolbar is icons; hovering any of them says what it does. It is otherwise monochrome, so the
-few colours each keep one meaning: light blue marks what is selected, and green and red the
-connection state. The top row selects which eye the
-window shows — **Left** (the default), **Right** or **Stereo**, drawn as a pair of eyes with the
+The window draws its own title bar, matching the toolbar under it: the app name on the left, and
+the connection state and the window buttons on the right. Hover the connection state for the client
+core's full status message, including the server address and any error. Drag the title bar to move
+the window, double-click it to maximise, and drag any edge or corner to resize.
+
+The toolbar is one row of icon groups, which wraps onto a second line only when the window is too
+narrow, with hints on how to look around and drive the devices underneath. Hovering any icon says
+what it does. The toolbar is otherwise monochrome, so the few colours each keep one meaning: light
+blue marks what is selected, and green and red the connection state. The first group selects which
+eye the window shows — **Left** (the default), **Right** or **Stereo**, drawn as a pair of eyes with the
 shown ones open — and which source it draws. **Virtual** (a headset) is the decoded video, the
 content the VR server renders; **Real** (a landscape) is the local glTF scene, which stands in for
 what the headset's cameras would see; **Mixed** (the landscape seen through the headset), the
 default, is what the headset shows — the video blended over the scene by the stream's passthrough
-mode, which is plain video when passthrough is off. Then comes the connection state; hover it for
-the client core's full status message, including the server address and any error.
+mode, which is plain video when passthrough is off.
 
 **Stats** (the bar chart) toggles a readout over the top of the view: the camera position in metres,
 and while streaming the stream's resolution and refresh rate, frame pacing, head speed, decoded
@@ -165,7 +170,7 @@ The source can be switched from the API with [`POST /api/source`](#post-apisourc
 
 ## Controller emulation
 
-The second toolbar row controls both emulated controllers and emulated hands. Its controller
+The last two toolbar groups control the emulated controllers and emulated hands. The controller
 section, marked by a gamepad: **L** and **R** enable each hand independently, the eye shows
 the 3D models in the scene view, the axes select a pose to draw as a gizmo, the dropdown selects
 which controller type to emulate, and the circular arrow returns poses and inputs to their
@@ -303,7 +308,7 @@ emulation mode happens on the server, as with real hardware.
 > Implementation notes, the measurements behind the server settings below, and the dead ends are in
 > [`HAND-EMULATION.md`](HAND-EMULATION.md).
 
-The hand section of the second row, marked by a hand, mirrors the controller one: **L** and **R**
+The hand section, marked by a hand, mirrors the controller one: **L** and **R**
 enable each hand, the eye shows the 3D models, the axes select a pose gizmo, and the circular arrow
 returns the pose and the gesture to their defaults. Hands are posed with the same icons and the same movement panel as controllers, and
 excluded against them per side as described above.

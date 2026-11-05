@@ -3,19 +3,19 @@ use crate::{
     interaction::{self, InteractionContext, InteractionSourcesConfig},
 };
 use alvr_client_core::{
-    ClientCoreContext,
+    ClientCoreContext, VideoFrameMetadata,
     video_decoder::{self, VideoDecoderConfig, VideoDecoderSource},
 };
 use alvr_common::{
-    DETACHED_CONTROLLER_LEFT_ID, DETACHED_CONTROLLER_RIGHT_ID, HAND_LEFT_ID, HAND_RIGHT_ID,
-    HEAD_ID, Pose, RelaxedAtomic, ViewParams,
+    AlvrFoveatedEncodingParams, DETACHED_CONTROLLER_LEFT_ID, DETACHED_CONTROLLER_RIGHT_ID,
+    HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID, Pose, RelaxedAtomic, ViewParams,
     anyhow::Result,
     error,
     glam::{UVec2, Vec2},
     parking_lot::RwLock,
 };
 use alvr_graphics::{GraphicsContext, StreamRenderer, StreamViewParams};
-use alvr_packets::{ClientStreamConfig, FoveatedEncodingParams, RealTimeConfig, TrackingData};
+use alvr_packets::{ClientStreamConfig, RealTimeConfig, TrackingData};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, ClientsidePostProcessingConfig, CodecType,
     MediacodecProperty, PassthroughMode, UpscalingConfig,
@@ -38,7 +38,7 @@ pub struct ParsedStreamConfig {
     pub encoding_gamma: f32,
     pub enable_hdr: bool,
     pub passthrough: Option<PassthroughMode>,
-    pub foveated_encoding_config: Option<FoveatedEncodingParams>,
+    pub foveated_encoding_config: Option<AlvrFoveatedEncodingParams>,
     pub clientside_foveation_config: Option<ClientsideFoveationConfig>,
     pub clientside_post_processing: Option<ClientsidePostProcessingConfig>,
     pub upscaling: Option<UpscalingConfig>,
@@ -87,7 +87,7 @@ pub struct StreamContext {
     stage_reference_space: Arc<xr::Space>,
     view_reference_space: Arc<xr::Space>,
     swapchains: [xr::Swapchain<xr::OpenGlEs>; 2],
-    last_good_view_params: [ViewParams; 2],
+    last_good_video_frame_metadata: VideoFrameMetadata,
     input_thread: Option<JoinHandle<()>>,
     input_thread_running: Arc<RelaxedAtomic>,
     config: ParsedStreamConfig,
@@ -231,7 +231,10 @@ impl StreamContext {
             stage_reference_space,
             view_reference_space,
             swapchains,
-            last_good_view_params: [ViewParams::DUMMY; 2],
+            last_good_video_frame_metadata: VideoFrameMetadata {
+                view_params: [ViewParams::DUMMY; 2],
+                foveation_center_shifts: None,
+            },
             input_thread: None,
             input_thread_running,
             config,
@@ -351,16 +354,27 @@ impl StreamContext {
             }
         }
 
-        let (timestamp, view_params, buffer_ptr) =
+        let (timestamp, frame_metadata, buffer_ptr) =
             if let Some((timestamp, buffer_ptr)) = frame_result {
-                let view_params = self.core_context.report_compositor_start(timestamp);
+                if let Some(metadata) = self.core_context.report_compositor_start(timestamp) {
+                    self.last_good_video_frame_metadata = VideoFrameMetadata {
+                        foveation_center_shifts: metadata
+                            .foveation_center_shifts
+                            .or(self.last_good_video_frame_metadata.foveation_center_shifts),
+                        ..metadata
+                    };
+                }
 
-                self.last_good_view_params = view_params;
-
-                (timestamp, view_params, buffer_ptr)
+                // Keep displaying new images even when their metadata is unavailable.
+                (timestamp, self.last_good_video_frame_metadata, buffer_ptr)
             } else {
-                (vsync_time, self.last_good_view_params, ptr::null_mut())
+                (
+                    vsync_time,
+                    self.last_good_video_frame_metadata,
+                    ptr::null_mut(),
+                )
             };
+        let view_params = frame_metadata.view_params;
 
         let left_swapchain_idx = self.swapchains[0].acquire_image().unwrap();
         let right_swapchain_idx = self.swapchains[1].acquire_image().unwrap();
@@ -431,7 +445,9 @@ impl StreamContext {
                 },
             ],
             self.config.passthrough.as_ref(),
-            None,
+            frame_metadata
+                .foveation_center_shifts
+                .map(|centers| centers.map(Vec2::from_array)),
         );
 
         self.swapchains[0].release_image().unwrap();

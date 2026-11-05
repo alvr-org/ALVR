@@ -57,6 +57,7 @@ public:
         vr::HmdMatrix34_t poses[],
         int layerCount,
         bool recentering,
+        uint64_t targetTimestampNs,
         const std::string& message,
         const std::string& debugText
     );

@@ -1,7 +1,7 @@
 #![allow(clippy::if_same_then_else)]
 
 use crate::{
-    ClientCapabilities, ClientCoreEvent,
+    ClientCapabilities, ClientCoreEvent, VideoFrameMetadata,
     logging_backend::{LOG_CHANNEL_SENDER, LogMirrorData},
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
@@ -9,7 +9,7 @@ use crate::{
 };
 use alvr_common::{
     ALVR_VERSION, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState,
-    ViewParams, dbg_connection, debug, error, info,
+    dbg_connection, debug, error, info,
     parking_lot::{Condvar, Mutex, RwLock},
     wait_rwlock, warn,
 };
@@ -52,6 +52,7 @@ const HANDSHAKE_ACTION_TIMEOUT: Duration = Duration::from_secs(2);
 const STREAMING_RECV_TIMEOUT: Duration = Duration::from_millis(500);
 
 const MAX_UNREAD_PACKETS: usize = 10; // Applies per stream
+const VIDEO_FRAME_METADATA_HISTORY_SIZE: usize = 128;
 
 pub type DecoderCallback = dyn FnMut(Duration, &[u8]) -> bool + Send;
 
@@ -64,7 +65,7 @@ pub struct ConnectionContext {
     pub statistics_sender: Mutex<Option<StreamSender<ClientStatistics>>>,
     pub statistics_manager: Mutex<Option<StatisticsManager>>,
     pub decoder_callback: Mutex<Option<Box<DecoderCallback>>>,
-    pub global_view_params_queue: Mutex<VecDeque<(Duration, [ViewParams; 2])>>,
+    pub video_frame_metadata_queue: Mutex<VecDeque<(Duration, VideoFrameMetadata)>>,
     pub max_prediction: RwLock<Duration>,
 }
 
@@ -271,6 +272,8 @@ fn connection_pipeline(
         stream_socket.subscribe_to_stream::<Haptics>(HAPTICS, MAX_UNREAD_PACKETS);
     let statistics_sender = stream_socket.request_stream(STATISTICS);
 
+    ctx.video_frame_metadata_queue.lock().clear();
+
     let video_receive_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
         move || {
@@ -300,17 +303,19 @@ fn connection_pipeline(
                 }
 
                 if !stream_corrupted || !settings.connection.avoid_video_glitching {
-                    // The view params must be enqueued before calling the decoder callback, there
-                    // is no problem if the callback fails
+                    // Metadata must be available before the decoder can return this frame.
                     {
-                        let global_view_params_queue_lock =
-                            &mut ctx.global_view_params_queue.lock();
+                        let queue_mut = &mut *ctx.video_frame_metadata_queue.lock();
+                        queue_mut.push_back((
+                            header.timestamp,
+                            VideoFrameMetadata {
+                                view_params: header.global_view_params,
+                                foveation_center_shifts: header.foveation_center_shifts,
+                            },
+                        ));
 
-                        global_view_params_queue_lock
-                            .push_back((header.timestamp, header.global_view_params));
-
-                        while global_view_params_queue_lock.len() > 128 {
-                            global_view_params_queue_lock.pop_front();
+                        while queue_mut.len() > VIDEO_FRAME_METADATA_HISTORY_SIZE {
+                            queue_mut.pop_front();
                         }
                     }
 

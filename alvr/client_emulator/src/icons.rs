@@ -17,9 +17,9 @@
 
 use alvr_gui_common::theme;
 use eframe::egui::{
-    Color32, Context, CornerRadius, Frame, Margin, Painter, Pos2, Rect, Response, RichText, Sense,
-    Shape, Stroke, StrokeKind, Style, TextStyle, TextWrapMode, Theme, Ui, Vec2, Visuals,
-    WidgetText, style::WidgetVisuals, vec2,
+    Color32, Context, CornerRadius, FontId, Frame, Margin, Painter, Pos2, Rect, Response, RichText,
+    Sense, Shape, Stroke, StrokeKind, Style, TextFormat, TextStyle, TextWrapMode, Theme, Ui, Vec2,
+    Visuals, WidgetText, pos2, style::WidgetVisuals, text::LayoutJob, vec2,
 };
 use std::f32::consts::{PI, TAU};
 
@@ -44,7 +44,6 @@ const SLIDE_SECONDS: f32 = 0.15;
 
 /// Strengths of the neutral shades the toolbar is built from; see [`shade`].
 const TRACK_SHADE: u8 = 10;
-const INNER_SHADE: u8 = 15;
 const HOVER_SHADE: u8 = 14;
 const LINE_SHADE: u8 = 28;
 
@@ -91,8 +90,8 @@ enum Content<'a> {
 }
 
 /// Styles a Ui for the toolbar: text and spacing scaled by `factor`, one corner radius throughout,
-/// and egui's own widgets, which leaves only the dropdowns, drawn as white fields with a hairline
-/// edge that darken a little on hover and while open, so they stand out on the grey groups.
+/// and egui's own widgets, which leaves only the dropdowns, drawn as fields with a hairline edge
+/// that darken a little on hover and while open.
 pub fn toolbar_style(style: &mut Style, factor: f32) {
     for font in style.text_styles.values_mut() {
         font.size *= factor;
@@ -117,7 +116,13 @@ pub fn toolbar_style(style: &mut Style, factor: f32) {
         visuals.widgets.inactive.fg_stroke.color = theme::FG;
     }
 
-    let field = visuals.extreme_bg_color;
+    // The dropdown fields: the dashboard's darker section colour in a dark theme, white in a light
+    // one, so they stand out from the groups they sit on.
+    let field = if visuals.dark_mode {
+        theme::DARKER_BG
+    } else {
+        visuals.extreme_bg_color
+    };
     let ink = visuals.text_color();
     let edge = Stroke::new(1.0, line_color(visuals));
     let widgets = &mut visuals.widgets;
@@ -138,8 +143,8 @@ pub fn toolbar_style(style: &mut Style, factor: f32) {
 
 /// How much larger than egui's default the Ui currently is.
 ///
-/// Read from the text size, which [`inner_group`] leaves alone, rather than the control height,
-/// which it shrinks.
+/// Read from the text size rather than the control height, which a layout may shrink without the
+/// toolbar being any smaller.
 pub fn size_factor(ui: &Ui) -> f32 {
     ui.style()
         .text_styles
@@ -186,7 +191,7 @@ fn shade(visuals: &Visuals, strength: u8) -> Color32 {
     }
 }
 
-/// The fill and outline of a capsule: a group, or an inner group within one.
+/// The fill and outline of a group's capsule.
 #[derive(Clone, Copy)]
 struct Capsule {
     fill: Color32,
@@ -201,18 +206,6 @@ impl Capsule {
                 theme::SECTION_BG
             } else {
                 shade(visuals, TRACK_SHADE)
-            },
-            outline: line_color(visuals),
-        }
-    }
-
-    /// An inner group: the dashboard's darker section colour in a dark theme.
-    fn inner(visuals: &Visuals) -> Self {
-        Self {
-            fill: if visuals.dark_mode {
-                theme::DARKER_BG
-            } else {
-                shade(visuals, INNER_SHADE)
             },
             outline: line_color(visuals),
         }
@@ -413,52 +406,14 @@ pub fn group<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
     let shown = Frame::new()
         .fill(capsule.fill)
         .corner_radius(capsule_radius(margin))
-        .inner_margin(Margin::same(margin.round() as i8))
+        .inner_margin(Margin::same(margin as i8))
         .show(ui, |ui| ui.horizontal(add_contents).inner);
 
     capsule.outline_on(ui, shown.response.rect, capsule_radius(margin));
     shown.inner
 }
 
-/// A group within a group: a slightly darker capsule pairing a control with the icon that labels
-/// it.
-///
-/// The controls inside are made shorter by the inner margin, so the inner group is exactly as tall
-/// as the controls beside it and the row does not grow.
-fn inner_group<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
-    let margin = (group_margin(ui) * 0.7).round();
-    let capsule = Capsule::inner(ui.visuals());
-
-    let shown = Frame::new()
-        .fill(capsule.fill)
-        .corner_radius(capsule_radius(margin))
-        // Extra room on the left, where the icon has no field of its own to pad it.
-        .inner_margin(Margin {
-            left: (margin + 5.0 * size_factor(ui)).round() as i8,
-            right: margin as i8,
-            top: margin as i8,
-            bottom: margin as i8,
-        })
-        .show(ui, |ui| {
-            // A dropdown is as tall as the taller of its text and its arrow, plus padding, and any
-            // taller than the row would grow it. The arrow is therefore sized to the dropdown's
-            // text, and the padding is whatever then fills the height exactly.
-            let height = ui.spacing().interact_size.y - margin * 2.0;
-            let text_height = text_galley(ui, "Ag").size().y;
-
-            let spacing = ui.spacing_mut();
-            spacing.interact_size.y = height;
-            spacing.icon_width = text_height;
-            spacing.button_padding.y = ((height - text_height) / 2.0).max(0.0);
-
-            ui.horizontal(add_contents).inner
-        });
-
-    capsule.outline_on(ui, shown.response.rect, capsule_radius(margin));
-    shown.inner
-}
-
-/// A dropdown labelled by an icon, the two on an inner group.
+/// A dropdown with its icon inside the field, ahead of the selected text.
 ///
 /// `selected` is shown in the field. The field is as wide as the widest of `options`, so the arrow
 /// sits right after the text and the field does not resize as the selection changes.
@@ -472,22 +427,50 @@ pub fn dropdown<'a>(
     tooltip: &str,
     show_options: impl FnOnce(&mut Ui),
 ) {
-    inner_group(ui, |ui| {
-        label(ui, icon, tooltip);
+    ui.scope(|ui| {
+        // A dropdown is as tall as the taller of its text and its arrow, plus padding. The arrow
+        // is sized to the text, and the padding is whatever then makes the field exactly as tall
+        // as the controls beside it.
+        let text_height = text_galley(ui, "Ag").size().y;
+        let height = ui.spacing().interact_size.y;
+        let spacing = ui.spacing_mut();
+        spacing.icon_width = text_height;
+        spacing.button_padding.y = ((height - text_height) / 2.0).max(0.0);
 
+        // The icon has no place in a dropdown's text, so the text starts with room for it and the
+        // icon is painted into that room once the field is drawn.
+        let icon_slot = icon_side(ui) * 1.25;
         let text_width = options
             .into_iter()
             .map(|option| text_galley(ui, option).size().x)
             .fold(0.0, f32::max);
-        let width = text_width + ui.spacing().icon_spacing + ui.spacing().icon_width;
+        let width = icon_slot + text_width + ui.spacing().icon_spacing + ui.spacing().icon_width;
 
-        eframe::egui::ComboBox::from_id_salt(id_salt)
+        let mut text = LayoutJob::default();
+        text.append(
+            selected,
+            icon_slot,
+            TextFormat::simple(
+                FontId::proportional(normal_text_size(ui)),
+                ui.visuals().text_color(),
+            ),
+        );
+
+        let response = eframe::egui::ComboBox::from_id_salt(id_salt)
             .icon(chevron)
             .width(width)
-            .selected_text(normal_text(ui, selected))
+            .selected_text(text)
             .show_ui(ui, show_options)
-            .response
-            .on_hover_text(tooltip);
+            .response;
+
+        let field = response.rect;
+        let icon_rect = Rect::from_min_size(
+            pos2(field.left() + ui.spacing().button_padding.x, field.top()),
+            vec2(icon_slot, field.height()),
+        );
+        paint_icon(ui, icon_rect, icon, content_color(ui.visuals(), false));
+
+        response.on_hover_text(tooltip);
     });
 }
 
@@ -532,14 +515,15 @@ pub fn label(ui: &mut Ui, icon: Icon, tooltip: &str) -> Response {
 /// Text at egui's normal size even in the enlarged toolbar, for what is read rather than aimed at,
 /// such as the dropdowns and the window title.
 pub fn normal_text(ui: &Ui, text: impl Into<String>) -> RichText {
-    let size = ui
-        .style()
+    RichText::new(text).size(normal_text_size(ui))
+}
+
+fn normal_text_size(ui: &Ui) -> f32 {
+    ui.style()
         .text_styles
         .get(&TextStyle::Button)
         .map_or(DEFAULT_TEXT_SIZE, |font| font.size)
-        / size_factor(ui);
-
-    RichText::new(text).size(size)
+        / size_factor(ui)
 }
 
 /// `text` laid out as [`normal_text`], for measuring.
@@ -553,7 +537,7 @@ fn text_galley(ui: &Ui, text: &str) -> std::sync::Arc<eframe::egui::Galley> {
 }
 
 /// The dropdown arrow: a thin chevron rather than egui's filled triangle. `rect` is the arrow slot,
-/// which [`inner_group`] sizes to the dropdown's text.
+/// which [`dropdown`] sizes to the dropdown's text.
 fn chevron(ui: &Ui, rect: Rect, visuals: &WidgetVisuals, open: bool) {
     let half = rect.height().min(rect.width()) * 0.3;
     let center = rect.center();
@@ -604,15 +588,16 @@ fn paint_fills(ui: &Ui, rect: Rect, response: &Response, selected: bool) {
     }
 }
 
-/// Space between a capsule's edge and the controls on it; see [`GROUP_MARGIN`].
+/// Space between a capsule's edge and the controls on it; see [`GROUP_MARGIN`]. Whole points, as
+/// a frame's margin is, so every capsule comes out the same height.
 pub fn group_margin(ui: &Ui) -> f32 {
-    GROUP_MARGIN * size_factor(ui)
+    (GROUP_MARGIN * size_factor(ui)).round()
 }
 
 /// Corner radius of a capsule with `margin` around its controls: the controls' radius plus the
 /// margin, so the corners of the capsule and of the controls on it are concentric.
 fn capsule_radius(margin: f32) -> CornerRadius {
-    CornerRadius::same(CORNER_RADIUS + margin.round() as u8)
+    CornerRadius::same(CORNER_RADIUS + margin as u8)
 }
 
 /// Matches the height of the text buttons around it, so the two mix in one row.
@@ -621,8 +606,7 @@ fn button_size(ui: &Ui) -> Vec2 {
     vec2(height * 1.4, height)
 }
 
-/// Side of the square the 16 unit design grid is scaled into. From the toolbar's scale rather than
-/// the row height, so an icon inside an [`inner_group`] is as large as the icons outside it.
+/// Side of the square the 16 unit design grid is scaled into, from the toolbar's scale.
 fn icon_side(ui: &Ui) -> f32 {
     DEFAULT_TEXT_SIZE * size_factor(ui)
 }

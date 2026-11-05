@@ -16,7 +16,7 @@ assignees: ''
 
 ## Checklist
 
-- [ ] I carefully followed the instructions in the [README](https://github.com/alvr-org/ALVR/blob/master/README.md) and successfully completed the setup wizard
+- [ ] I carefully followed the instructions in the [README](https://github.com/alvr-org/ALVR/blob/main/README.md) and successfully completed the setup wizard
 - [ ] I read the [ALVR GitHub Wiki](https://github.com/alvr-org/ALVR/wiki)
 - [ ] I declare that this issue description was not written with AI.
 

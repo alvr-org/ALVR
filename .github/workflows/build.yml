@@ -2,7 +2,7 @@ name: Build artifacts for PRs
 
 on:
   pull_request:
-    branches: [master]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always

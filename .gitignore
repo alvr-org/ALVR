@@ -74,3 +74,6 @@ cmake-build-debug/
 
 *.jks
 settings.local.json
+
+# Python bytecode, from importing the emulator's generator scripts
+__pycache__/

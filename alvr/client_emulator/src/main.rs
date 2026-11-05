@@ -1435,6 +1435,9 @@ impl EmulatorApp {
                 toolbar_hint(ui, hint);
             });
 
+            // A rule between the rows: the view settings above, the emulated devices below.
+            ui.add(egui::Separator::default().spacing(8.0 * icons::size_factor(ui)));
+
             self.draw_inputs_row(ui);
         });
     }

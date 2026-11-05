@@ -1535,9 +1535,9 @@ impl EmulatorApp {
     }
 
     /// A thin bar along the bottom of the window with the hints on how to look around and drive
-    /// the devices, in one dimmed line cut short rather than wrapped when the window is narrow:
-    /// they are the least important thing in the window. The text is indented to line up with the
-    /// title.
+    /// the devices, in one line cut short rather than wrapped when the window is narrow. Styled
+    /// like the dashboard's bottom bar showing an ordinary message, and indented to line up with
+    /// the title.
     fn draw_status_bar(&self, ui: &mut Ui) {
         let hints = [Some(self.look_hint()), self.device_hint()]
             .into_iter()
@@ -1545,10 +1545,17 @@ impl EmulatorApp {
             .collect::<Vec<_>>()
             .join("    ·    ");
 
+        let visuals = ui.visuals();
+        let (fill, text_color) = if visuals.dark_mode {
+            (alvr_gui_common::theme::LIGHTER_BG, alvr_gui_common::theme::FG)
+        } else {
+            (visuals.faint_bg_color, visuals.strong_text_color())
+        };
+
         let indent = ((8.0 + icons::GROUP_MARGIN) * TOOLBAR_SCALE) as i8;
         let frame = egui::Frame::new()
-            .fill(ui.visuals().panel_fill)
-            .inner_margin(egui::Margin::symmetric(indent, 3));
+            .fill(fill)
+            .inner_margin(egui::Margin::symmetric(indent, 5));
 
         let bar = egui::Panel::bottom(egui::Id::new("status bar"))
             .frame(frame)
@@ -1556,7 +1563,8 @@ impl EmulatorApp {
             .resizable(false)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    ui.add(egui::Label::new(RichText::new(hints).weak().size(12.0)).truncate());
+                    let text = RichText::new(hints).color(text_color).size(12.0);
+                    ui.add(egui::Label::new(text).truncate());
                 });
             })
             .response

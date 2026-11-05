@@ -1425,13 +1425,6 @@ impl EmulatorApp {
                     );
                 });
 
-                // The status sits close to the stats it describes, 6 points from them; the item
-                // spacing that follows the group anyway is taken back. It is a status rather than
-                // a control, so it does not sit on a group.
-                let item_spacing = ui.spacing().item_spacing.x;
-                ui.add_space(6.0 * icons::size_factor(ui) - item_spacing);
-                connection_status(ui, &self.status());
-
                 let hint = if self.look_latched {
                     "Esc to release mouse"
                 } else if self.look_held {
@@ -1439,7 +1432,16 @@ impl EmulatorApp {
                 } else {
                     "Click to look, or hold right button"
                 };
-                toolbar_hint(ui, hint);
+
+                // The status at the right end of the row, and the hint in whatever room is left
+                // between it and the stats. The status is not a control, so it sits on no group.
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    connection_status(ui, &self.status());
+
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        toolbar_hint(ui, hint);
+                    });
+                });
             });
 
             ui.add_space(4.0 * icons::size_factor(ui));
@@ -1521,7 +1523,9 @@ impl EmulatorApp {
             };
 
             if let Some(hint) = hint {
-                toolbar_hint(ui, hint);
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    toolbar_hint(ui, hint);
+                });
             }
         });
     }
@@ -2023,10 +2027,10 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
     }
 }
 
-/// A dimmed hint at the right end of a toolbar row, left out when the row has no room for it.
+/// A dimmed hint, left out when the space it is given has no room for it.
 ///
-/// The hints are the least important thing on the toolbar, and a right-aligned label that does
-/// not fit is drawn over the controls to its left rather than clipped.
+/// The hints are the least important thing on the toolbar, and a label that does not fit is drawn
+/// over its neighbours rather than clipped.
 fn toolbar_hint(ui: &mut Ui, hint: &str) {
     let text = RichText::new(hint).weak().small();
     let galley = egui::WidgetText::from(text.clone()).into_galley(
@@ -2037,9 +2041,7 @@ fn toolbar_hint(ui: &mut Ui, hint: &str) {
     );
 
     if galley.size().x + ui.spacing().item_spacing.x * 2.0 <= ui.available_width() {
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            ui.label(text);
-        });
+        ui.label(text);
     }
 }
 

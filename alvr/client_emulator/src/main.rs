@@ -1429,8 +1429,11 @@ impl EmulatorApp {
                 });
 
                 // Only a little space: the status describes what the stats are about, so it stays
-                // close to them.
-                ui.add_space(4.0 * icons::size_factor(ui));
+                // close to them: half the gap there was, which was the item spacing plus 4 points.
+                // The item spacing is added after the group regardless, so this takes back the
+                // difference.
+                let item_spacing = ui.spacing().item_spacing.x;
+                ui.add_space((4.0 * icons::size_factor(ui) - item_spacing) / 2.0);
 
                 // On its own: a status rather than a control, so it does not sit on a group.
                 connection_status(ui, &self.status());

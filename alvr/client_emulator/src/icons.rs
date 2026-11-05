@@ -623,7 +623,7 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
                 (-6.8, -3.0),
             ]
             .map(|(x, y)| at(x, y));
-            painter.add(Shape::closed_line(outline.to_vec(), stroke));
+            painter.add(Shape::closed_line(rounded(&outline, 3), stroke));
 
             let pad = Stroke::new(1.2 * scale.max(0.75), color);
             painter.line_segment([at(-5.6, -0.7), at(-2.2, -0.7)], pad);
@@ -638,11 +638,18 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
                 color,
             );
 
-            let finger = Stroke::new(1.9 * scale, color);
-            for (x, tip) in [(-3.1, -5.0), (-1.0, -7.0), (1.1, -6.6), (3.1, -4.6)] {
-                painter.line_segment([at(x, 0.5), at(x, tip)], finger);
+            // Each finger ends in a round tip: a bare line ends square, which made the hand look
+            // chopped off at the top.
+            let width = 1.9;
+            let finger = Stroke::new(width * scale, color);
+            let tip = |point: Pos2| painter.circle_filled(point, width / 2.0 * scale, color);
+
+            for (x, top) in [(-3.1, -5.0), (-1.0, -7.0), (1.1, -6.6), (3.1, -4.6)] {
+                painter.line_segment([at(x, 0.5), at(x, top)], finger);
+                tip(at(x, top));
             }
             painter.line_segment([at(-3.6, 3.0), at(-7.0, -0.6)], finger);
+            tip(at(-7.0, -0.6));
         }
         Icon::Axes => {
             // Fixed colours rather than the text colour: they are what the gizmo draws.
@@ -747,7 +754,27 @@ fn goggles(painter: &Painter, at: &impl Fn(f32, f32) -> Pos2, stroke: Stroke) {
     ]
     .map(|(x, y)| at(x, y));
 
-    painter.add(Shape::closed_line(outline.to_vec(), stroke));
+    painter.add(Shape::closed_line(rounded(&outline, 3), stroke));
+}
+
+/// Rounds every corner of a closed outline by corner cutting (Chaikin's algorithm): each pass
+/// replaces every edge by points a quarter and three quarters along it. A few passes turn a
+/// polygon into a smooth curve through the same shape, so outlines can be written as a handful
+/// of corners and still come out without facets or sharp corners.
+fn rounded(outline: &[Pos2], passes: usize) -> Vec<Pos2> {
+    let mut points = outline.to_vec();
+
+    for _ in 0..passes {
+        points = (0..points.len())
+            .flat_map(|index| {
+                let from = points[index];
+                let to = points[(index + 1) % points.len()];
+                [from.lerp(to, 0.25), from.lerp(to, 0.75)]
+            })
+            .collect();
+    }
+
+    points
 }
 
 /// Two filled peaks along the bottom of the icon.

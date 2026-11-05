@@ -1364,13 +1364,11 @@ impl EmulatorApp {
             .frame(frame)
             .show_separator_line(false)
             .show(ui, |ui| {
-            icons::scale_style(ui.style_mut(), TOOLBAR_SCALE);
-            icons::flatten_style(ui.style_mut());
+            icons::toolbar_style(ui.style_mut(), TOOLBAR_SCALE);
 
             ui.horizontal(|ui| {
-                // Icons with tooltips rather than captioned text buttons, and groups told apart by
-                // space rather than lines. Options that exclude each other share one segmented
-                // control, so the grouping is visible without a caption.
+                // Groups are told apart by space. Options that exclude each other share one
+                // segmented control, so the grouping is visible without a caption.
                 icons::segmented(
                     ui,
                     "view mode",
@@ -1382,7 +1380,7 @@ impl EmulatorApp {
                     ],
                 );
 
-                toolbar_gap(ui);
+                icons::group_gap(ui);
 
                 // The stream is the virtual content, the local scene stands in for what the
                 // headset's cameras would see. Switching to the latter while streaming is also how
@@ -1412,7 +1410,7 @@ impl EmulatorApp {
                     ],
                 );
 
-                toolbar_gap(ui);
+                icons::group_gap(ui);
 
                 // A group of one, so the toggle matches the segmented controls beside it. The
                 // numbers go in an overlay over the view, where there is room to label them; see
@@ -1428,14 +1426,11 @@ impl EmulatorApp {
                     );
                 });
 
-                // Only a little space: the status describes what the stats are about, so it stays
-                // close to them: half the gap there was, which was the item spacing plus 4 points.
-                // The item spacing is added after the group regardless, so this takes back the
-                // difference.
+                // The status sits close to the stats it describes, 6 points from them; the item
+                // spacing that follows the group anyway is taken back. It is a status rather than
+                // a control, so it does not sit on a group.
                 let item_spacing = ui.spacing().item_spacing.x;
-                ui.add_space((4.0 * icons::size_factor(ui) - item_spacing) / 2.0);
-
-                // On its own: a status rather than a control, so it does not sit on a group.
+                ui.add_space(6.0 * icons::size_factor(ui) - item_spacing);
                 connection_status(ui, &self.status());
 
                 let hint = if self.look_latched {
@@ -1448,8 +1443,6 @@ impl EmulatorApp {
                 toolbar_hint(ui, hint);
             });
 
-            // Space rather than a line between the rows: the grey groups already show where one
-            // set of controls ends.
             ui.add_space(4.0 * icons::size_factor(ui));
 
             self.draw_inputs_row(ui);
@@ -1478,7 +1471,7 @@ impl EmulatorApp {
         painter.hline(
             bar.x_range(),
             bar.bottom(),
-            egui::Stroke::new(1.0, hairline_color(ui.visuals())),
+            egui::Stroke::new(1.0, icons::rule_color(ui.visuals())),
         );
     }
 
@@ -1502,7 +1495,7 @@ impl EmulatorApp {
                 state.enabled = enabled;
             }
 
-            toolbar_gap(ui);
+            icons::group_gap(ui);
 
             icons::group(ui, |ui| {
                 hand_ui::toolbar_row(
@@ -2031,20 +2024,6 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
     }
 }
 
-/// Space between groups of toolbar controls, which separates them more quietly than a line.
-fn toolbar_gap(ui: &mut Ui) {
-    ui.add_space(14.0 * icons::size_factor(ui));
-}
-
-/// The faint line used for the toolbar's dividers.
-fn hairline_color(visuals: &egui::Visuals) -> Color32 {
-    if visuals.dark_mode {
-        Color32::from_white_alpha(28)
-    } else {
-        Color32::from_black_alpha(26)
-    }
-}
-
 /// A dimmed hint at the right end of a toolbar row, left out when the row has no room for it.
 ///
 /// The hints are the least important thing on the toolbar, and a right-aligned label that does
@@ -2065,12 +2044,9 @@ fn toolbar_hint(ui: &mut Ui, hint: &str) {
     }
 }
 
-/// A coloured dot and a word saying whether a stream is up, with the client core's full status
-/// message, which carries the server address and any error, on hover. The stream's resolution and
-/// refresh rate are in the stats overlay.
-///
-/// Drawn as a pill on a faint wash of its own colour, a badge rather than coloured text: pale green
-/// text on the light toolbar was hard to read, and a badge reads as status rather than as a control.
+/// A pill saying whether a stream is up, on a faint wash of its own colour, with the client core's
+/// full status message, which carries the server address and any error, on hover. The stream's
+/// resolution and refresh rate are in the stats overlay.
 fn connection_status(ui: &mut Ui, status: &ClientStatus) {
     let (color, text) = if status.streaming {
         (Color32::from_rgb(40, 150, 70), "Streaming")

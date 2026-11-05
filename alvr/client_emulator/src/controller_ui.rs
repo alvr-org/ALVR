@@ -16,7 +16,7 @@ use crate::{
 };
 use alvr_packets::ButtonValue;
 use eframe::egui::{
-    Align2, Color32, ComboBox, Context, CornerRadius, FontId, Id, Order, PointerButton, Pos2, Rect,
+    Align2, Color32, Context, CornerRadius, FontId, Id, Order, PointerButton, Pos2, Rect,
     Response, Sense, Stroke, StrokeKind, Ui, Vec2, pos2, vec2,
 };
 use std::{
@@ -357,39 +357,31 @@ pub fn toolbar_row(
         "Mixed".into()
     };
 
-    // Labelled by its own icon on an inner group, like the gizmo dropdown.
-    let tooltip = "Controller type, for both hands";
-    icons::inner_group(ui, |ui| {
-        icons::label(ui, Icon::ControllerType, Some(tint), tooltip);
-
-        ComboBox::from_id_salt("controller profile")
-            .icon(icons::chevron)
-            .width(icons::combo_width(
-                ui,
-                settings
-                    .profiles
-                    .iter()
-                    .map(|profile| profile.name.as_str())
-                    .chain(["Mixed"]),
-            ))
-            .selected_text(icons::dropdown_text(ui, selected_text).color(tint))
-            .show_ui(ui, |ui| {
-                for (index, profile) in settings.profiles.iter().enumerate() {
-                    let selected = same_profile && index == controllers[0].profile_index;
-                    if ui.selectable_label(selected, &profile.name).clicked() {
-                        for state in controllers.iter_mut() {
-                            if state.profile_index != index {
-                                state.profile_index = index;
-                                // Held inputs of the previous type would linger stale.
-                                state.inputs.clear();
-                            }
+    let profile_names = settings.profiles.iter().map(|profile| profile.name.as_str());
+    icons::dropdown(
+        ui,
+        "controller profile",
+        Icon::ControllerType,
+        Some(tint),
+        tint,
+        &selected_text,
+        profile_names.chain(["Mixed"]),
+        "Controller type, for both hands",
+        |ui| {
+            for (index, profile) in settings.profiles.iter().enumerate() {
+                let selected = same_profile && index == controllers[0].profile_index;
+                if ui.selectable_label(selected, &profile.name).clicked() {
+                    for state in controllers.iter_mut() {
+                        if state.profile_index != index {
+                            state.profile_index = index;
+                            // Held inputs of the previous type would linger stale.
+                            state.inputs.clear();
                         }
                     }
                 }
-            })
-            .response
-            .on_hover_text(tooltip);
-    });
+            }
+        },
+    );
 
     if icons::button(
         ui,
@@ -408,37 +400,28 @@ pub fn toolbar_row(
 /// The controller pose to draw axes at, or nothing, which is the default. The controller
 /// counterpart of the hand's selector, and independent of it.
 fn pose_gizmo_selector(ui: &mut Ui, gizmo: &mut Option<ControllerInteraction>) {
-    let label = gizmo.map_or("off", |pose| pose.label());
-    let tooltip = "Draw a controller pose as RGB axes on both controllers: X red, Y green, Z blue.";
+    icons::dropdown(
+        ui,
+        "controller pose gizmo",
+        Icon::Axes,
+        None,
+        icons::CONTROLLER_TINT,
+        gizmo.map_or("off", |pose| pose.label()),
+        ControllerInteraction::ALL
+            .iter()
+            .map(|pose| pose.label())
+            .chain(["off"]),
+        "Draw a controller pose as RGB axes on both controllers: X red, Y green, Z blue.",
+        |ui| {
+            ui.selectable_value(gizmo, None, "off")
+                .on_hover_text("Draw no pose axes.");
 
-    let tint = icons::CONTROLLER_TINT;
-
-    // The axes and the dropdown as one pair, so the icon reads as the dropdown's label.
-    icons::inner_group(ui, |ui| {
-        icons::label(ui, Icon::Axes, None, tooltip);
-
-        ComboBox::from_id_salt("controller pose gizmo")
-            .icon(icons::chevron)
-            .selected_text(icons::dropdown_text(ui, label).color(tint))
-            .width(icons::combo_width(
-                ui,
-                ControllerInteraction::ALL
-                    .iter()
-                    .map(|pose| pose.label())
-                    .chain(["off"]),
-            ))
-            .show_ui(ui, |ui| {
-                ui.selectable_value(gizmo, None, "off")
-                    .on_hover_text("Draw no pose axes.");
-
-                for pose in ControllerInteraction::ALL {
-                    ui.selectable_value(gizmo, Some(pose), pose.label())
-                        .on_hover_text(pose.describe());
-                }
-            })
-            .response
-            .on_hover_text(tooltip);
-    });
+            for pose in ControllerInteraction::ALL {
+                ui.selectable_value(gizmo, Some(pose), pose.label())
+                    .on_hover_text(pose.describe());
+            }
+        },
+    );
 }
 
 /// Lays out and runs one skeuomorphic controller panel.

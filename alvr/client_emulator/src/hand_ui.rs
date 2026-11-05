@@ -17,7 +17,7 @@ use crate::{
 };
 use alvr_common::glam::Vec3;
 use eframe::egui::{
-    self, Align2, Color32, Context, CornerRadius, FontId, Id, Order, Rect, Sense, Stroke, StrokeKind, Ui,
+    Align2, Color32, Context, CornerRadius, FontId, Id, Order, Rect, Sense, Stroke, StrokeKind, Ui,
     Vec2, pos2, vec2,
 };
 use std::time::Instant;
@@ -97,38 +97,28 @@ pub fn toolbar_row(
 /// derivations from one to the other are where this project's bugs have lived. One selection drives
 /// both hands, so the two are always shown together and a sign error that mirrors is obvious.
 fn pose_gizmo_selector(ui: &mut Ui, gizmo: &mut Option<HandInteraction>) {
-    let label = gizmo.map_or("off", |pose| pose.label());
-    let tooltip =
-        "Draw an OpenXR interaction pose as RGB axes on both hands: X red, Y green, Z blue.";
+    icons::dropdown(
+        ui,
+        "hand pose gizmo",
+        Icon::Axes,
+        None,
+        icons::HAND_TINT,
+        gizmo.map_or("off", |pose| pose.label()),
+        HandInteraction::ALL
+            .iter()
+            .map(|pose| pose.label())
+            .chain(["off"]),
+        "Draw an OpenXR interaction pose as RGB axes on both hands: X red, Y green, Z blue.",
+        |ui| {
+            ui.selectable_value(gizmo, None, "off")
+                .on_hover_text("Draw no pose axes.");
 
-    let tint = icons::HAND_TINT;
-
-    // The axes and the dropdown as one pair, so the icon reads as the dropdown's label.
-    icons::inner_group(ui, |ui| {
-        icons::label(ui, Icon::Axes, None, tooltip);
-
-        egui::ComboBox::from_id_salt("hand pose gizmo")
-            .icon(icons::chevron)
-            .selected_text(icons::dropdown_text(ui, label).color(tint))
-            .width(icons::combo_width(
-                ui,
-                HandInteraction::ALL
-                    .iter()
-                    .map(|pose| pose.label())
-                    .chain(["off"]),
-            ))
-            .show_ui(ui, |ui| {
-                ui.selectable_value(gizmo, None, "off")
-                    .on_hover_text("Draw no pose axes.");
-
-                for pose in HandInteraction::ALL {
-                    ui.selectable_value(gizmo, Some(pose), pose.label())
-                        .on_hover_text(pose.describe());
-                }
-            })
-            .response
-            .on_hover_text(tooltip);
-    });
+            for pose in HandInteraction::ALL {
+                ui.selectable_value(gizmo, Some(pose), pose.label())
+                    .on_hover_text(pose.describe());
+            }
+        },
+    );
 }
 
 /// Draws each enabled hand's panel in its bottom corner and applies any selection.

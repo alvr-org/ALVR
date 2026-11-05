@@ -250,6 +250,7 @@ dependencies = [
  "alvr_session",
  "alvr_system_info",
  "bytemuck",
+ "dirs",
  "easy-gltf",
  "eframe",
  "egui",

@@ -22,6 +22,7 @@ mod hands;
 mod icons;
 mod interaction;
 mod overlay;
+mod paths;
 mod render;
 mod scene;
 mod skinned;
@@ -67,7 +68,7 @@ use eframe::{
 };
 use std::{
     collections::{HashMap, HashSet},
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -159,8 +160,7 @@ impl EmulatorApp {
     fn new(context: &CreationContext<'_>, shared: Arc<SharedState>) -> Self {
         icons::install_theme(&context.egui_ctx);
 
-        let environment_path = scene::default_environment_path()
-            .unwrap_or_else(|_| PathBuf::from(scene::ENVIRONMENT_FILE_NAME));
+        let environment_path = scene::default_environment_path();
 
         let mut scene = None;
         let mut scene_error = None;
@@ -215,23 +215,20 @@ impl EmulatorApp {
             camera.position = Vec3::new(centre.x, min.y + 1.6, centre.z);
         }
 
-        // Next to the executable, not next to the environment: the bundled room lives in `models/`,
-        // and the default model paths in both settings files are relative to the executable
-        // (`models/hand_left.gltf`), so resolving them against the room's folder doubled the
-        // `models` and no hand or controller model could load.
-        let directory = std::env::current_exe()
-            .ok()
-            .and_then(|exe| exe.parent().map(Path::to_path_buf))
-            .unwrap_or_else(|| PathBuf::from("."));
-        let directory = directory.as_path();
+        // Settings live in the per-user folder; relative model paths in them name the models the
+        // build bundles next to the executable.
+        let settings_dir = paths::user_dir();
+        let models_dir = paths::executable_dir();
+        paths::adopt_settings_file(controllers::SETTINGS_FILE_NAME);
+        paths::adopt_settings_file(hands::SETTINGS_FILE_NAME);
 
-        let controller_settings = ControllerSettings::load_or_create(directory);
+        let controller_settings = ControllerSettings::load_or_create(&settings_dir, &models_dir);
         let controllers = [
             ControllerState::new(&controller_settings, Hand::Left),
             ControllerState::new(&controller_settings, Hand::Right),
         ];
 
-        let hand_settings = HandSettings::load_or_create(directory);
+        let hand_settings = HandSettings::load_or_create(&settings_dir, &models_dir);
         let hands = [
             HandState::new(&hand_settings, Hand::Left),
             HandState::new(&hand_settings, Hand::Right),
@@ -1761,8 +1758,9 @@ impl App for EmulatorApp {
                     ui.centered_and_justified(|ui| {
                         ui.label(
                             RichText::new(format!(
-                                "Could not load environment\n\n{message}\n\nRebuild to restore the bundled test room, or place your own {} next to the executable.",
-                                scene::ENVIRONMENT_FILE_NAME
+                                "Could not load environment\n\n{message}\n\nRebuild to restore the bundled test room, or place your own {} in {}.",
+                                scene::ENVIRONMENT_FILE_NAME,
+                                paths::user_dir().display()
                             ))
                             .color(Color32::LIGHT_RED),
                         );

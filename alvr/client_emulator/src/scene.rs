@@ -5,9 +5,10 @@
 //! source (such as a Gaussian splat capture) can be added later without touching the render code
 //! that consumes it.
 
+use crate::paths;
 use alvr_common::{
     Pose,
-    anyhow::{Context, Result, anyhow, bail},
+    anyhow::{Result, anyhow, bail},
     glam::{Quat, Vec3},
     info, warn,
 };
@@ -102,20 +103,19 @@ fn push_box(
 /// Folder next to the executable that the build copies the bundled models into.
 const BUNDLED_DIR_NAME: &str = "models";
 
-/// Resolves the environment file: one placed next to the executable wins, so a room of the user's
-/// own replaces the test room, which the build bundles otherwise.
-pub fn default_environment_path() -> Result<PathBuf> {
-    let exe = std::env::current_exe().context("Cannot determine executable path")?;
-    let dir = exe.parent().context("Executable has no parent directory")?;
+/// Resolves the environment file: one placed in the user folder wins, so a room of the user's own
+/// replaces the test room, which the build bundles otherwise.
+pub fn default_environment_path() -> PathBuf {
+    let own = paths::user_dir().join(ENVIRONMENT_FILE_NAME);
+    let bundled = paths::executable_dir()
+        .join(BUNDLED_DIR_NAME)
+        .join(ENVIRONMENT_FILE_NAME);
 
-    let own = dir.join(ENVIRONMENT_FILE_NAME);
-    let bundled = dir.join(BUNDLED_DIR_NAME).join(ENVIRONMENT_FILE_NAME);
-
-    Ok(if own.exists() || !bundled.exists() {
+    if own.exists() || !bundled.exists() {
         own
     } else {
         bundled
-    })
+    }
 }
 
 impl Scene {

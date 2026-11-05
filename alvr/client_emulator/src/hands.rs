@@ -906,10 +906,12 @@ pub struct HandSettings {
 }
 
 impl HandSettings {
-    /// Loads the settings file next to the executable, writing the default one first if none
+    /// Loads the settings file in `directory`, writing the default one first if none
     /// exists. A file that cannot be parsed falls back to the defaults without being overwritten,
     /// so a user's editing mistake never destroys their file.
-    pub fn load_or_create(directory: &Path) -> Self {
+    ///
+    /// Relative model paths in it are resolved against `models_dir`.
+    pub fn load_or_create(directory: &Path, models_dir: &Path) -> Self {
         let path = directory.join(SETTINGS_FILE_NAME);
 
         if !path.exists() {
@@ -950,13 +952,13 @@ impl HandSettings {
             }
         };
 
-        let mut settings = resolve(file, directory);
+        let mut settings = resolve(file, models_dir);
 
         // The pose list indexes state, so it must never be empty.
         if settings.poses.is_empty() {
             warn!("Hand settings contain no poses; using the built-in ones");
 
-            let built_in = resolve(default_file(), directory);
+            let built_in = resolve(default_file(), models_dir);
             settings.poses = built_in.poses;
             settings.gestures = built_in.gestures;
         }

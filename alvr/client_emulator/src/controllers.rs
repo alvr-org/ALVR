@@ -299,10 +299,12 @@ fn headset_platform(path: &str) -> Option<Platform> {
 }
 
 impl ControllerSettings {
-    /// Loads the settings file next to the executable, writing the default one first if none
+    /// Loads the settings file in `directory`, writing the default one first if none
     /// exists. A file that cannot be parsed falls back to the defaults without being overwritten,
     /// so a user's editing mistake never destroys their file.
-    pub fn load_or_create(directory: &Path) -> Self {
+    ///
+    /// Relative model paths in it are resolved against `models_dir`.
+    pub fn load_or_create(directory: &Path, models_dir: &Path) -> Self {
         let path = directory.join(SETTINGS_FILE_NAME);
 
         if !path.exists() {
@@ -329,12 +331,12 @@ impl ControllerSettings {
             }
         };
 
-        let mut settings = resolve(file, directory);
+        let mut settings = resolve(file, models_dir);
 
         // Everything indexes into the profile list, so it must never be empty.
         if settings.profiles.is_empty() {
             warn!("Controller settings contain no profiles; using the built-in ones");
-            settings.profiles = resolve(default_file(), directory).profiles;
+            settings.profiles = resolve(default_file(), models_dir).profiles;
         }
 
         settings

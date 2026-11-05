@@ -371,7 +371,7 @@ pub fn toolbar_row(
                 .map(|profile| profile.name.as_str())
                 .chain(["Mixed"]),
         ))
-        .selected_text(RichText::new(selected_text).color(tint))
+        .selected_text(icons::dropdown_text(ui, selected_text).color(tint))
         .show_ui(ui, |ui| {
             for (index, profile) in settings.profiles.iter().enumerate() {
                 let selected = same_profile && index == controllers[0].profile_index;
@@ -415,7 +415,7 @@ fn pose_gizmo_selector(ui: &mut Ui, gizmo: &mut Option<ControllerInteraction>) {
 
     ComboBox::from_id_salt("controller pose gizmo")
         .icon(icons::chevron)
-        .selected_text(RichText::new(label).color(tint))
+        .selected_text(icons::dropdown_text(ui, label).color(tint))
         .width(icons::combo_width(
             ui,
             ControllerInteraction::ALL

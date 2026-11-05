@@ -1437,18 +1437,9 @@ impl EmulatorApp {
                 toolbar_hint(ui, hint);
             });
 
-            // A hairline between the rows, inset from the edges: the view settings above, the
-            // emulated devices below.
-            let (rule, _) = ui.allocate_exact_size(
-                egui::vec2(ui.available_width(), 9.0 * icons::size_factor(ui)),
-                Sense::hover(),
-            );
-            let inset = 6.0 * icons::size_factor(ui);
-            ui.painter().hline(
-                (rule.left() + inset)..=(rule.right() - inset),
-                rule.center().y,
-                egui::Stroke::new(1.0, hairline_color(ui.visuals())),
-            );
+            // Space rather than a line between the rows: the grey groups already show where one
+            // set of controls ends.
+            ui.add_space(4.0 * icons::size_factor(ui));
 
             self.draw_inputs_row(ui);
         });
@@ -1484,27 +1475,33 @@ impl EmulatorApp {
     /// be emulated as one or the other and the two toggles belong next to each other.
     fn draw_inputs_row(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
+            // Each section on a grey group, like the segmented controls above, so the two read
+            // as two units.
             let mut hands_enabled = [self.hands[0].enabled, self.hands[1].enabled];
-            controller_ui::toolbar_row(
-                ui,
-                &mut self.controllers,
-                &mut hands_enabled,
-                &self.controller_settings,
-                &mut self.controller_gizmo,
-            );
+            icons::group(ui, |ui| {
+                controller_ui::toolbar_row(
+                    ui,
+                    &mut self.controllers,
+                    &mut hands_enabled,
+                    &self.controller_settings,
+                    &mut self.controller_gizmo,
+                )
+            });
             for (state, enabled) in self.hands.iter_mut().zip(hands_enabled) {
                 state.enabled = enabled;
             }
 
             toolbar_gap(ui);
 
-            hand_ui::toolbar_row(
-                ui,
-                &mut self.hands,
-                &mut self.controllers,
-                &self.hand_settings,
-                &mut self.hand_gizmo,
-            );
+            icons::group(ui, |ui| {
+                hand_ui::toolbar_row(
+                    ui,
+                    &mut self.hands,
+                    &mut self.controllers,
+                    &self.hand_settings,
+                    &mut self.hand_gizmo,
+                )
+            });
 
             let controllers = self.controllers.iter().any(|state| state.enabled);
             let hands = self.hands.iter().any(|state| state.enabled);

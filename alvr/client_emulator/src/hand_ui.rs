@@ -109,7 +109,7 @@ fn pose_gizmo_selector(ui: &mut Ui, gizmo: &mut Option<HandInteraction>) {
 
     egui::ComboBox::from_id_salt("hand pose gizmo")
         .icon(icons::chevron)
-        .selected_text(egui::RichText::new(label).color(tint))
+        .selected_text(icons::dropdown_text(ui, label).color(tint))
         .width(icons::combo_width(
             ui,
             HandInteraction::ALL

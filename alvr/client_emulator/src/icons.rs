@@ -15,6 +15,7 @@ use eframe::egui::{
     Color32, CornerRadius, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, StrokeKind, Style,
     TextStyle, TextWrapMode, Ui, Vec2, WidgetText, style::WidgetVisuals, vec2,
 };
+use eframe::egui::{Frame, Margin, RichText};
 use std::f32::consts::{PI, TAU};
 
 /// egui's default interaction height, which the toolbar's fixed widths were designed against.
@@ -151,15 +152,15 @@ pub fn segmented<T: PartialEq + Copy>(
     options: &[(T, Icon, &str)],
 ) {
     let segment = button_size(ui);
-    let inset = 2.0 * size_factor(ui);
-    let size = vec2(segment.x * options.len() as f32 + inset * 2.0, segment.y);
+    let margin = group_margin(ui);
+    let size = segment * vec2(options.len() as f32, 1.0) + Vec2::splat(margin * 2.0);
     let (track, _) = ui.allocate_exact_size(size, Sense::hover());
     let id = ui.make_persistent_id(id_salt);
 
     let slot = |index: usize| {
         Rect::from_min_size(
-            track.min + vec2(inset + segment.x * index as f32, inset),
-            vec2(segment.x, segment.y - inset * 2.0),
+            track.min + vec2(margin + segment.x * index as f32, margin),
+            segment,
         )
     };
 
@@ -184,10 +185,9 @@ pub fn segmented<T: PartialEq + Copy>(
 
     let visuals = ui.visuals();
     let painter = ui.painter();
-    let radius = CornerRadius::same(CORNER_RADIUS);
-    let inner_radius = CornerRadius::same(CORNER_RADIUS.saturating_sub(inset as u8));
+    let inner_radius = CornerRadius::same(CORNER_RADIUS);
 
-    painter.rect_filled(track, radius, track_fill(visuals.dark_mode));
+    painter.rect_filled(track, group_radius(ui), track_fill(visuals.dark_mode));
 
     let selected = options.iter().position(|(option, _, _)| option == current);
 
@@ -232,6 +232,34 @@ pub fn segmented<T: PartialEq + Copy>(
     }
 }
 
+/// Lays out `add_contents` in a row on a grey capsule, the same as a segmented control's track,
+/// marking the controls as one group.
+pub fn group<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
+    let margin = group_margin(ui);
+
+    Frame::new()
+        .fill(track_fill(ui.visuals().dark_mode))
+        .corner_radius(group_radius(ui))
+        .inner_margin(Margin::same(margin.round() as i8))
+        .show(ui, |ui| ui.horizontal(add_contents).inner)
+        .inner
+}
+
+/// Text for a toolbar dropdown: at egui's normal size even in the enlarged toolbar.
+///
+/// The dropdowns are read rather than aimed at, so they do not need the size the icons and the
+/// L/R toggles have, and at that size they crowded the row.
+pub fn dropdown_text(ui: &Ui, text: impl Into<String>) -> RichText {
+    let size = ui
+        .style()
+        .text_styles
+        .get(&TextStyle::Button)
+        .map_or(14.0, |font| font.size)
+        / size_factor(ui);
+
+    RichText::new(text).size(size)
+}
+
 /// A push button showing an icon. Frameless at rest, like every other toolbar control.
 pub fn button(ui: &mut Ui, icon: Icon, tint: Option<Color32>, tooltip: &str) -> Response {
     let (rect, response) = ui.allocate_exact_size(button_size(ui), Sense::click());
@@ -266,7 +294,7 @@ pub fn combo_width<'a>(ui: &Ui, labels: impl IntoIterator<Item = &'a str>) -> f3
     let text = labels
         .into_iter()
         .map(|label| {
-            WidgetText::from(label)
+            WidgetText::from(dropdown_text(ui, label))
                 .into_galley(ui, Some(TextWrapMode::Extend), f32::INFINITY, TextStyle::Button)
                 .size()
                 .x
@@ -278,7 +306,8 @@ pub fn combo_width<'a>(ui: &Ui, labels: impl IntoIterator<Item = &'a str>) -> f3
 
 /// The dropdown arrow for a `ComboBox`: a thin chevron rather than egui's filled triangle.
 pub fn chevron(ui: &Ui, rect: Rect, visuals: &WidgetVisuals, open: bool) {
-    let half = rect.height().min(rect.width()) * 0.3;
+    // At the dropdown text's size, which stays at egui's normal size; see [`dropdown_text`].
+    let half = rect.height().min(rect.width()) * 0.3 / size_factor(ui);
     let center = rect.center();
     let flip = if open { -1.0 } else { 1.0 };
     let points = vec![
@@ -289,7 +318,7 @@ pub fn chevron(ui: &Ui, rect: Rect, visuals: &WidgetVisuals, open: bool) {
 
     ui.painter().add(Shape::line(
         points,
-        Stroke::new(1.5 * size_factor(ui), visuals.fg_stroke.color),
+        Stroke::new(1.5, visuals.fg_stroke.color),
     ));
 }
 
@@ -341,6 +370,17 @@ fn paint_fills(ui: &Ui, rect: Rect, response: &Response, selected: bool) {
             visuals.selection.bg_fill.gamma_multiply(selection),
         );
     }
+}
+
+/// Space between a group's grey capsule and the controls on it.
+fn group_margin(ui: &Ui) -> f32 {
+    3.5 * size_factor(ui)
+}
+
+/// Corner radius of a group's capsule: the controls' radius plus the margin, so the corners of the
+/// capsule and of the controls on it are concentric.
+fn group_radius(ui: &Ui) -> CornerRadius {
+    CornerRadius::same(CORNER_RADIUS + group_margin(ui).round() as u8)
 }
 
 /// Behind a hovered control: a light veil, darker or lighter than whatever is under it.

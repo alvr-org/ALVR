@@ -108,8 +108,15 @@ fn pose_gizmo_selector(ui: &mut Ui, gizmo: &mut Option<HandInteraction>) {
     icons::label(ui, Icon::Axes, None, tooltip);
 
     egui::ComboBox::from_id_salt("hand pose gizmo")
+        .icon(icons::chevron)
         .selected_text(egui::RichText::new(label).color(tint))
-        .width(56.0 * icons::size_factor(ui))
+        .width(icons::combo_width(
+            ui,
+            HandInteraction::ALL
+                .iter()
+                .map(|pose| pose.label())
+                .chain(["off"]),
+        ))
         .show_ui(ui, |ui| {
             ui.selectable_value(gizmo, None, "off")
                 .on_hover_text("Draw no pose axes.");

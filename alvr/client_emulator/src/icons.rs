@@ -13,7 +13,7 @@
 
 use eframe::egui::{
     Color32, CornerRadius, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, StrokeKind, Style,
-    Ui, Vec2, vec2,
+    TextStyle, TextWrapMode, Ui, Vec2, WidgetText, style::WidgetVisuals, vec2,
 };
 use std::f32::consts::{PI, TAU};
 
@@ -58,6 +58,15 @@ pub enum Icon {
     Reset,
 }
 
+/// Corner radius of every toolbar control, the same as the corner panels' frames.
+const CORNER_RADIUS: u8 = 8;
+
+/// How long hover and selection fills take to fade, in seconds.
+const FADE_SECONDS: f32 = 0.1;
+
+/// How long the segmented control's selection takes to slide to a new option, in seconds.
+const SLIDE_SECONDS: f32 = 0.15;
+
 /// Scales text and spacing of `style` by `factor`, for a part of the UI that should be larger as a
 /// whole. The icon widgets below size themselves from the result.
 pub fn scale_style(style: &mut Style, factor: f32) {
@@ -72,6 +81,36 @@ pub fn scale_style(style: &mut Style, factor: f32) {
     spacing.icon_width *= factor;
     spacing.icon_width_inner *= factor;
     spacing.icon_spacing *= factor;
+}
+
+/// Flattens egui's widgets for the toolbar: no frame on a control at rest, a soft fill on hover,
+/// and one corner radius throughout. egui draws its buttons and dropdowns as filled grey boxes,
+/// which next to the frameless icons made every kind of control look different.
+pub fn flatten_style(style: &mut Style) {
+    let visuals = &mut style.visuals;
+    let hover_fill = hover_fill(visuals.dark_mode);
+
+    for widget in [
+        &mut visuals.widgets.noninteractive,
+        &mut visuals.widgets.inactive,
+        &mut visuals.widgets.hovered,
+        &mut visuals.widgets.active,
+        &mut visuals.widgets.open,
+    ] {
+        widget.corner_radius = CornerRadius::same(CORNER_RADIUS);
+        widget.expansion = 0.0;
+    }
+
+    visuals.widgets.inactive.weak_bg_fill = Color32::TRANSPARENT;
+    visuals.widgets.inactive.bg_stroke = Stroke::NONE;
+    for widget in [
+        &mut visuals.widgets.hovered,
+        &mut visuals.widgets.active,
+        &mut visuals.widgets.open,
+    ] {
+        widget.weak_bg_fill = hover_fill;
+        widget.bg_stroke = Stroke::NONE;
+    }
 }
 
 /// How much larger than egui's default the Ui currently is, for widths given in default pixels.
@@ -100,39 +139,106 @@ pub fn toggle(
     response
 }
 
-/// One option of a group, like `Ui::selectable_value`, showing an icon instead of text.
-pub fn selectable_value<T: PartialEq>(
+/// One of several mutually exclusive options, drawn as a single capsule with the selected option
+/// raised on a thumb that slides between them.
+///
+/// Replaces a row of separate selectable buttons: the capsule shows at a glance that the options
+/// belong together and that exactly one of them is in effect.
+pub fn segmented<T: PartialEq + Copy>(
     ui: &mut Ui,
+    id_salt: &str,
     current: &mut T,
-    option: T,
-    icon: Icon,
-    tooltip: &str,
-) -> Response {
-    let mut response = selectable(ui, *current == option, icon, None, tooltip);
+    options: &[(T, Icon, &str)],
+) {
+    let segment = button_size(ui);
+    let inset = 2.0 * size_factor(ui);
+    let size = vec2(segment.x * options.len() as f32 + inset * 2.0, segment.y);
+    let (track, _) = ui.allocate_exact_size(size, Sense::hover());
+    let id = ui.make_persistent_id(id_salt);
 
-    if response.clicked() && *current != option {
-        *current = option;
-        response.mark_changed();
+    let slot = |index: usize| {
+        Rect::from_min_size(
+            track.min + vec2(inset + segment.x * index as f32, inset),
+            vec2(segment.x, segment.y - inset * 2.0),
+        )
+    };
+
+    let responses = options
+        .iter()
+        .enumerate()
+        .map(|(index, (_, _, tooltip))| {
+            ui.interact(slot(index), id.with(index), Sense::click())
+                .on_hover_text(*tooltip)
+        })
+        .collect::<Vec<_>>();
+
+    for (response, (option, _, _)) in responses.iter().zip(options) {
+        if response.clicked() {
+            *current = *option;
+        }
     }
 
-    response
+    if !ui.is_rect_visible(track) {
+        return;
+    }
+
+    let visuals = ui.visuals();
+    let painter = ui.painter();
+    let radius = CornerRadius::same(CORNER_RADIUS);
+    let inner_radius = CornerRadius::same(CORNER_RADIUS.saturating_sub(inset as u8));
+
+    painter.rect_filled(track, radius, track_fill(visuals.dark_mode));
+
+    let selected = options.iter().position(|(option, _, _)| option == current);
+
+    for (index, response) in responses.iter().enumerate() {
+        let hover = ui.ctx().animate_bool_with_time(
+            response.id.with("hover"),
+            response.hovered() && selected != Some(index),
+            FADE_SECONDS,
+        );
+        if hover > 0.0 {
+            painter.rect_filled(
+                slot(index),
+                inner_radius,
+                hover_fill(visuals.dark_mode).gamma_multiply(hover),
+            );
+        }
+    }
+
+    if let Some(selected) = selected {
+        let position = ui
+            .ctx()
+            .animate_value_with_time(id.with("thumb"), selected as f32, SLIDE_SECONDS);
+        let thumb = slot(0).translate(vec2(segment.x * position, 0.0));
+
+        // A soft shadow under the thumb, so it reads as raised above the track.
+        painter.rect_filled(
+            thumb.translate(vec2(0.0, 1.0)).expand(0.5),
+            inner_radius,
+            Color32::from_black_alpha(28),
+        );
+        painter.rect_filled(thumb, inner_radius, visuals.selection.bg_fill);
+    }
+
+    for (index, (option, icon, _)) in options.iter().enumerate() {
+        let color = if option == current {
+            visuals.selection.stroke.color
+        } else {
+            visuals.text_color()
+        };
+
+        paint_icon(ui, slot(index), *icon, None, color);
+    }
 }
 
-/// A push button showing an icon.
+/// A push button showing an icon. Frameless at rest, like every other toolbar control.
 pub fn button(ui: &mut Ui, icon: Icon, tint: Option<Color32>, tooltip: &str) -> Response {
     let (rect, response) = ui.allocate_exact_size(button_size(ui), Sense::click());
 
     if ui.is_rect_visible(rect) {
-        let visuals = ui.style().interact(&response);
-
-        ui.painter().rect(
-            rect.expand(visuals.expansion),
-            visuals.corner_radius,
-            visuals.weak_bg_fill,
-            visuals.bg_stroke,
-            StrokeKind::Inside,
-        );
-        paint_icon(ui, rect, icon, tint, visuals.fg_stroke.color);
+        paint_fills(ui, rect, &response, false);
+        paint_icon(ui, rect, icon, tint, ui.visuals().text_color());
     }
 
     response.on_hover_text(tooltip)
@@ -151,8 +257,43 @@ pub fn label(ui: &mut Ui, icon: Icon, tint: Option<Color32>, tooltip: &str) -> R
     response.on_hover_text(tooltip)
 }
 
-/// Drawn the way egui draws a selectable label: no frame until hovered or selected, and the
-/// selection colours when selected, so the icon rows look like the text rows they replace.
+/// Width for a `ComboBox` that fits the widest of `labels` beside its arrow.
+///
+/// A fixed width left short selections such as "off" stranded far from the arrow, while sizing to
+/// the current selection would make the box, and everything after it, jump as the selection
+/// changed. Fitting the widest option avoids both.
+pub fn combo_width<'a>(ui: &Ui, labels: impl IntoIterator<Item = &'a str>) -> f32 {
+    let text = labels
+        .into_iter()
+        .map(|label| {
+            WidgetText::from(label)
+                .into_galley(ui, Some(TextWrapMode::Extend), f32::INFINITY, TextStyle::Button)
+                .size()
+                .x
+        })
+        .fold(0.0, f32::max);
+
+    text + ui.spacing().icon_spacing + ui.spacing().icon_width
+}
+
+/// The dropdown arrow for a `ComboBox`: a thin chevron rather than egui's filled triangle.
+pub fn chevron(ui: &Ui, rect: Rect, visuals: &WidgetVisuals, open: bool) {
+    let half = rect.height().min(rect.width()) * 0.3;
+    let center = rect.center();
+    let flip = if open { -1.0 } else { 1.0 };
+    let points = vec![
+        center + vec2(-half, -half * 0.5 * flip),
+        center + vec2(0.0, half * 0.5 * flip),
+        center + vec2(half, -half * 0.5 * flip),
+    ];
+
+    ui.painter().add(Shape::line(
+        points,
+        Stroke::new(1.5 * size_factor(ui), visuals.fg_stroke.color),
+    ));
+}
+
+/// An on/off icon button: no frame until hovered, the selection colour while on, both faded in.
 fn selectable(
     ui: &mut Ui,
     selected: bool,
@@ -163,22 +304,61 @@ fn selectable(
     let (rect, response) = ui.allocate_exact_size(button_size(ui), Sense::click());
 
     if ui.is_rect_visible(rect) {
-        let visuals = ui.style().interact_selectable(&response, selected);
+        paint_fills(ui, rect, &response, selected);
 
-        if selected || response.hovered() || response.has_focus() {
-            ui.painter().rect(
-                rect.expand(visuals.expansion),
-                visuals.corner_radius,
-                visuals.weak_bg_fill,
-                visuals.bg_stroke,
-                StrokeKind::Inside,
-            );
-        }
-
-        paint_icon(ui, rect, icon, tint, visuals.fg_stroke.color);
+        let color = if selected {
+            ui.visuals().selection.stroke.color
+        } else {
+            ui.visuals().text_color()
+        };
+        paint_icon(ui, rect, icon, tint, color);
     }
 
     response.on_hover_text(tooltip)
+}
+
+/// The hover and selection fills behind a button, each faded in and out rather than switched.
+fn paint_fills(ui: &Ui, rect: Rect, response: &Response, selected: bool) {
+    let ctx = ui.ctx();
+    let visuals = ui.visuals();
+    let radius = CornerRadius::same(CORNER_RADIUS);
+
+    let hover = ctx.animate_bool_with_time(
+        response.id.with("hover"),
+        response.hovered() && !selected,
+        FADE_SECONDS,
+    );
+    if hover > 0.0 {
+        ui.painter()
+            .rect_filled(rect, radius, hover_fill(visuals.dark_mode).gamma_multiply(hover));
+    }
+
+    let selection = ctx.animate_bool_with_time(response.id.with("selected"), selected, FADE_SECONDS);
+    if selection > 0.0 {
+        ui.painter().rect_filled(
+            rect,
+            radius,
+            visuals.selection.bg_fill.gamma_multiply(selection),
+        );
+    }
+}
+
+/// Behind a hovered control: a light veil, darker or lighter than whatever is under it.
+fn hover_fill(dark_mode: bool) -> Color32 {
+    if dark_mode {
+        Color32::from_white_alpha(18)
+    } else {
+        Color32::from_black_alpha(14)
+    }
+}
+
+/// The recessed track of a segmented control.
+fn track_fill(dark_mode: bool) -> Color32 {
+    if dark_mode {
+        Color32::from_white_alpha(12)
+    } else {
+        Color32::from_black_alpha(10)
+    }
 }
 
 /// Matches the height of the text buttons around it, so the two mix in one row.

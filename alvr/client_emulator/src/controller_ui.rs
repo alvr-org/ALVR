@@ -362,7 +362,15 @@ pub fn toolbar_row(
     };
 
     ComboBox::from_id_salt("controller profile")
-        .width(96.0 * icons::size_factor(ui))
+        .icon(icons::chevron)
+        .width(icons::combo_width(
+            ui,
+            settings
+                .profiles
+                .iter()
+                .map(|profile| profile.name.as_str())
+                .chain(["Mixed"]),
+        ))
         .selected_text(RichText::new(selected_text).color(tint))
         .show_ui(ui, |ui| {
             for (index, profile) in settings.profiles.iter().enumerate() {
@@ -406,8 +414,15 @@ fn pose_gizmo_selector(ui: &mut Ui, gizmo: &mut Option<ControllerInteraction>) {
     icons::label(ui, Icon::Axes, None, tooltip);
 
     ComboBox::from_id_salt("controller pose gizmo")
+        .icon(icons::chevron)
         .selected_text(RichText::new(label).color(tint))
-        .width(56.0 * icons::size_factor(ui))
+        .width(icons::combo_width(
+            ui,
+            ControllerInteraction::ALL
+                .iter()
+                .map(|pose| pose.label())
+                .chain(["off"]),
+        ))
         .show_ui(ui, |ui| {
             ui.selectable_value(gizmo, None, "off")
                 .on_hover_text("Draw no pose axes.");

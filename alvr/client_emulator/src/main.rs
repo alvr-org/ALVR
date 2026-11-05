@@ -1355,62 +1355,64 @@ impl EmulatorApp {
     }
 
     fn draw_toolbar(&mut self, ui: &mut Ui) {
-        egui::Panel::top(egui::Id::new("toolbar")).show(ui, |ui| {
+        let margin = (8.0 * TOOLBAR_SCALE) as i8;
+        let frame = egui::Frame::new()
+            .fill(ui.visuals().panel_fill)
+            .inner_margin(egui::Margin::symmetric(margin, margin / 2));
+
+        let toolbar = egui::Panel::top(egui::Id::new("toolbar"))
+            .frame(frame)
+            .show_separator_line(false)
+            .show(ui, |ui| {
             icons::scale_style(ui.style_mut(), TOOLBAR_SCALE);
+            icons::flatten_style(ui.style_mut());
+
             ui.horizontal(|ui| {
-                // Icons with tooltips rather than captioned text buttons: the groups are told
-                // apart by the separators, and the tooltips carry what the captions used to.
-                icons::selectable_value(
+                // Icons with tooltips rather than captioned text buttons, and groups told apart by
+                // space rather than lines. Options that exclude each other share one segmented
+                // control, so the grouping is visible without a caption.
+                icons::segmented(
                     ui,
+                    "view mode",
                     &mut self.view_mode,
-                    ViewMode::Left,
-                    Icon::LeftEye,
-                    "Left eye",
-                );
-                icons::selectable_value(
-                    ui,
-                    &mut self.view_mode,
-                    ViewMode::Right,
-                    Icon::RightEye,
-                    "Right eye",
-                );
-                icons::selectable_value(
-                    ui,
-                    &mut self.view_mode,
-                    ViewMode::Stereo,
-                    Icon::BothEyes,
-                    "Both eyes, side by side",
+                    &[
+                        (ViewMode::Left, Icon::LeftEye, "Left eye"),
+                        (ViewMode::Right, Icon::RightEye, "Right eye"),
+                        (ViewMode::Stereo, Icon::BothEyes, "Both eyes, side by side"),
+                    ],
                 );
 
-                ui.separator();
+                toolbar_gap(ui);
 
                 // The stream is the virtual content, the local scene stands in for what the
                 // headset's cameras would see. Switching to the latter while streaming is also how
                 // to tell a decode problem apart from a rendering one.
-                icons::selectable_value(
+                icons::segmented(
                     ui,
+                    "view source",
                     &mut self.source,
-                    ViewSource::Mixed,
-                    Icon::Mixed,
-                    "Mixed: what the headset shows. The streamed video over the local scene, \
-                     blended by the stream's passthrough mode; plain video when passthrough is off.",
-                );
-                icons::selectable_value(
-                    ui,
-                    &mut self.source,
-                    ViewSource::Virtual,
-                    Icon::Virtual,
-                    "Virtual: the streamed video alone, opaque.",
-                );
-                icons::selectable_value(
-                    ui,
-                    &mut self.source,
-                    ViewSource::Real,
-                    Icon::Real,
-                    "Real: the local scene alone, standing in for the headset's cameras.",
+                    &[
+                        (
+                            ViewSource::Mixed,
+                            Icon::Mixed,
+                            "Mixed: what the headset shows. The streamed video over the local \
+                             scene, blended by the stream's passthrough mode; plain video when \
+                             passthrough is off.",
+                        ),
+                        (
+                            ViewSource::Virtual,
+                            Icon::Virtual,
+                            "Virtual: the streamed video alone, opaque.",
+                        ),
+                        (
+                            ViewSource::Real,
+                            Icon::Real,
+                            "Real: the local scene alone, standing in for the headset's cameras.",
+                        ),
+                    ],
                 );
 
-                ui.separator();
+                toolbar_gap(ui);
 
                 // The numbers go in an overlay over the view, where there is room to label them;
                 // see [`draw_stats_overlay`].
@@ -1435,11 +1437,47 @@ impl EmulatorApp {
                 toolbar_hint(ui, hint);
             });
 
-            // A rule between the rows: the view settings above, the emulated devices below.
-            ui.add(egui::Separator::default().spacing(8.0 * icons::size_factor(ui)));
+            // A hairline between the rows, inset from the edges: the view settings above, the
+            // emulated devices below.
+            let (rule, _) = ui.allocate_exact_size(
+                egui::vec2(ui.available_width(), 9.0 * icons::size_factor(ui)),
+                Sense::hover(),
+            );
+            let inset = 6.0 * icons::size_factor(ui);
+            ui.painter().hline(
+                (rule.left() + inset)..=(rule.right() - inset),
+                rule.center().y,
+                egui::Stroke::new(1.0, hairline_color(ui.visuals())),
+            );
 
             self.draw_inputs_row(ui);
         });
+
+        // A hairline and a soft shadow along the bottom edge, so the toolbar reads as a bar resting
+        // over the view rather than a block of controls stacked on top of it. Painted on a layer
+        // above the view, which would otherwise cover anything drawn below the panel.
+        let bar = toolbar.response.rect;
+        let painter = ui.ctx().layer_painter(egui::LayerId::new(
+            egui::Order::Middle,
+            egui::Id::new("toolbar shadow"),
+        ));
+        let shadow_steps = 6;
+        for step in 0..shadow_steps {
+            let fade = 1.0 - step as f32 / shadow_steps as f32;
+            painter.rect_filled(
+                egui::Rect::from_min_max(
+                    egui::pos2(bar.left(), bar.bottom() + step as f32),
+                    egui::pos2(bar.right(), bar.bottom() + step as f32 + 1.0),
+                ),
+                0.0,
+                Color32::from_black_alpha((22.0 * fade * fade) as u8),
+            );
+        }
+        painter.hline(
+            bar.x_range(),
+            bar.bottom(),
+            egui::Stroke::new(1.0, hairline_color(ui.visuals())),
+        );
     }
 
     /// The inputs row: the controller section and the hand section side by side, since a side can
@@ -1458,7 +1496,7 @@ impl EmulatorApp {
                 state.enabled = enabled;
             }
 
-            ui.separator();
+            toolbar_gap(ui);
 
             hand_ui::toolbar_row(
                 ui,
@@ -1985,12 +2023,26 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
     }
 }
 
+/// Space between groups of toolbar controls, which separates them more quietly than a line.
+fn toolbar_gap(ui: &mut Ui) {
+    ui.add_space(14.0 * icons::size_factor(ui));
+}
+
+/// The faint line used for the toolbar's dividers.
+fn hairline_color(visuals: &egui::Visuals) -> Color32 {
+    if visuals.dark_mode {
+        Color32::from_white_alpha(28)
+    } else {
+        Color32::from_black_alpha(26)
+    }
+}
+
 /// A dimmed hint at the right end of a toolbar row, left out when the row has no room for it.
 ///
 /// The hints are the least important thing on the toolbar, and a right-aligned label that does
 /// not fit is drawn over the controls to its left rather than clipped.
 fn toolbar_hint(ui: &mut Ui, hint: &str) {
-    let text = RichText::new(hint).weak();
+    let text = RichText::new(hint).weak().small();
     let galley = egui::WidgetText::from(text.clone()).into_galley(
         ui,
         Some(egui::TextWrapMode::Extend),
@@ -2008,11 +2060,14 @@ fn toolbar_hint(ui: &mut Ui, hint: &str) {
 /// A coloured dot and a word saying whether a stream is up, with the client core's full status
 /// message, which carries the server address and any error, on hover. The stream's resolution and
 /// refresh rate are in the stats overlay.
+///
+/// Drawn as a pill on a faint wash of its own colour, a badge rather than coloured text: pale green
+/// text on the light toolbar was hard to read, and a badge reads as status rather than as a control.
 fn connection_status(ui: &mut Ui, status: &ClientStatus) {
     let (color, text) = if status.streaming {
-        (Color32::LIGHT_GREEN, "Streaming")
+        (Color32::from_rgb(40, 150, 70), "Streaming")
     } else {
-        (Color32::LIGHT_RED, "Not connected")
+        (Color32::from_rgb(200, 50, 45), "Not connected")
     };
 
     let tooltip = if status.hud_message.is_empty() {
@@ -2022,11 +2077,40 @@ fn connection_status(ui: &mut Ui, status: &ClientStatus) {
     };
 
     let size = icons::size_factor(ui);
-    let (dot, _) = ui.allocate_exact_size(egui::vec2(10.0, 10.0) * size, Sense::hover());
-    ui.painter().circle_filled(dot.center(), 4.0 * size, color);
+    let galley = egui::WidgetText::from(RichText::new(text).color(color).small()).into_galley(
+        ui,
+        Some(egui::TextWrapMode::Extend),
+        f32::INFINITY,
+        egui::TextStyle::Small,
+    );
 
-    ui.label(RichText::new(text).color(color))
-        .on_hover_text(tooltip);
+    let padding = egui::vec2(9.0, 3.0) * size;
+    let dot_radius = 3.5 * size;
+    let gap = 6.0 * size;
+    let pill_size = egui::vec2(
+        padding.x * 2.0 + dot_radius * 2.0 + gap + galley.size().x,
+        ui.spacing().interact_size.y - 4.0 * size,
+    );
+
+    let (pill, response) = ui.allocate_exact_size(pill_size, Sense::hover());
+    let painter = ui.painter();
+
+    painter.rect_filled(pill, pill.height() / 2.0, color.gamma_multiply(0.14));
+    painter.circle_filled(
+        egui::pos2(pill.left() + padding.x + dot_radius, pill.center().y),
+        dot_radius,
+        color,
+    );
+    painter.galley(
+        egui::pos2(
+            pill.left() + padding.x + dot_radius * 2.0 + gap,
+            pill.center().y - galley.size().y / 2.0,
+        ),
+        galley,
+        color,
+    );
+
+    response.on_hover_text(tooltip);
 }
 
 /// Short name of a passthrough mode, for the stats overlay and the API.

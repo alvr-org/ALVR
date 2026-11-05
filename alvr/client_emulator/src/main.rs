@@ -2002,9 +2002,23 @@ fn draw_stats_overlay(ctx: &egui::Context, view_rect: egui::Rect, entries: &[(St
         })
         .collect::<Vec<_>>();
 
+    // Each value gets a slot as wide as the widest it has been, rather than its current width.
+    // The values change length from frame to frame ("4.5" against "10.2", a growing frame count),
+    // and sizing the centred strip to the current text made the whole strip resize and every entry
+    // slide sideways each frame. Slots only grow, so the layout settles within a moment and stays.
+    let widths_id = egui::Id::new("stats overlay value widths");
+    let mut value_widths: Vec<f32> = ctx.data(|data| data.get_temp(widths_id)).unwrap_or_default();
+    // A different set of entries is a different layout; start it afresh.
+    value_widths.resize(galleys.len(), 0.0);
+    for (width, (_, value)) in value_widths.iter_mut().zip(&galleys) {
+        *width = width.max(value.size().x);
+    }
+    ctx.data_mut(|data| data.insert_temp(widths_id, value_widths.clone()));
+
     let content_width = galleys
         .iter()
-        .map(|(label, value)| label.size().x + STATS_LABEL_GAP + value.size().x)
+        .zip(&value_widths)
+        .map(|((label, _), value_width)| label.size().x + STATS_LABEL_GAP + value_width)
         .sum::<f32>()
         + STATS_ENTRY_GAP * (galleys.len() - 1) as f32;
     let content_height = galleys
@@ -2028,9 +2042,8 @@ fn draw_stats_overlay(ctx: &egui::Context, view_rect: egui::Rect, entries: &[(St
     );
 
     let mut cursor = strip.left_top() + margin;
-    for (label, value) in galleys {
+    for ((label, value), value_width) in galleys.into_iter().zip(value_widths) {
         let label_width = label.size().x;
-        let value_width = value.size().x;
 
         painter.galley(cursor, label, label_color);
         painter.galley(

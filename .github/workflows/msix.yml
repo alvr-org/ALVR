@@ -1,0 +1,63 @@
+name: Build MSIX
+
+# Builds the Windows .msix holding the streamer and the client emulator. See alvr/xtask/src/msix.rs.
+#
+# Signing uses two repository secrets:
+#   MSIX_CERT_PFX       the signing certificate's .pfx file, base64 encoded
+#   MSIX_CERT_PASSWORD  its password
+# Its subject must match Publisher in alvr/xtask/resources/msix/AppxManifest.xml. Without the
+# secrets the package is still built, but unsigned, and cannot be installed.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build_msix:
+    runs-on: windows-latest
+    env:
+      HAS_CERT: ${{ secrets.MSIX_CERT_PFX != '' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: crazy-max/ghaction-chocolatey@v4
+        with:
+          args: install zip unzip pkgconfiglite
+
+      - name: Prepare dependencies
+        env:
+          RUST_BACKTRACE: 1
+        run: cargo xtask prepare-deps --platform windows --ci
+
+      - name: Decode signing certificate
+        if: env.HAS_CERT == 'true'
+        shell: pwsh
+        env:
+          PFX_BASE64: ${{ secrets.MSIX_CERT_PFX }}
+        run: |
+          $path = Join-Path $env:RUNNER_TEMP "msix_signing.pfx"
+          [IO.File]::WriteAllBytes($path, [Convert]::FromBase64String($env:PFX_BASE64))
+          "MSIX_CERT_PFX=$path" >> $env:GITHUB_ENV
+
+      - name: Build and package
+        env:
+          RUST_BACKTRACE: 1
+          MSIX_CERT_PASSWORD: ${{ secrets.MSIX_CERT_PASSWORD }}
+        run: cargo xtask package-msix --gpl --ci
+
+      - name: Remove signing certificate
+        if: always() && env.HAS_CERT == 'true'
+        shell: pwsh
+        run: Remove-Item (Join-Path $env:RUNNER_TEMP "msix_signing.pfx") -ErrorAction SilentlyContinue
+
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-msix
+          path: ./build/alvr_windows.msix

@@ -12,6 +12,8 @@ mod data_sources_wasm;
 mod linux_checks;
 #[cfg(not(target_arch = "wasm32"))]
 mod logging_backend;
+#[cfg(windows)]
+mod msix;
 #[cfg(not(target_arch = "wasm32"))]
 mod steamvr_launcher;
 
@@ -23,8 +25,17 @@ use data_sources_wasm::DataSources;
 use alvr_filesystem as afs;
 use dashboard::Dashboard;
 
+/// The root the dashboard runs from, when it is not the executable's own folder. Set once at
+/// startup, before anything asks for the layout.
+static STREAMER_ROOT: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
+
 fn get_filesystem_layout() -> afs::Layout {
-    afs::filesystem_layout_from_dashboard_exe(&std::env::current_exe().unwrap()).unwrap()
+    match STREAMER_ROOT.get() {
+        Some(root) => afs::Layout::new(root),
+        None => {
+            afs::filesystem_layout_from_dashboard_exe(&std::env::current_exe().unwrap()).unwrap()
+        }
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -40,8 +51,27 @@ fn main() {
     use std::{env, ffi::OsStr, fs};
     use std::{io::Cursor, sync::mpsc};
 
+    // Must come before anything asks for the filesystem layout, logging included. See `msix`.
+    #[cfg(windows)]
+    let msix_messages = std::env::current_exe()
+        .ok()
+        .and_then(|exe| msix::prepare_streamer_dir(exe.parent()?))
+        .map(|prepared| {
+            STREAMER_ROOT.set(prepared.root).ok();
+            prepared.messages
+        })
+        .unwrap_or_default();
+
     let (server_events_sender, server_events_receiver) = mpsc::channel();
     logging_backend::init_logging(server_events_sender.clone());
+
+    #[cfg(windows)]
+    for message in msix_messages {
+        match message {
+            Ok(message) => info!("{message}"),
+            Err(message) => alvr_common::error!("{message}"),
+        }
+    }
 
     // Kill any other dashboard instance
     let self_path = std::env::current_exe().unwrap().canonicalize().unwrap();

@@ -3,6 +3,7 @@ mod ci;
 mod command;
 mod dependencies;
 mod format;
+mod msix;
 mod packaging;
 mod version;
 
@@ -36,6 +37,7 @@ SUBCOMMANDS:
     check-format        Check if code is correctly formatted
     package-streamer    Build streamer with distribution profile, make archive
     package-launcher    Build launcher with distribution profile, make archive
+    package-msix        Build streamer and client emulator, pack them into a Windows .msix
     package-client      Build client with distribution profile
     package-client-lib  Build client library then zip it
     clean               Removes all build artifacts and dependencies
@@ -60,7 +62,8 @@ FLAGS:
 
 ARGS:
     --platform <NAME>   Can be one of: windows, linux, macos, android. Can be omitted
-    --version <VERSION> Specify version to set with the bump-versions subcommand
+    --version <VERSION> Specify version to set with the bump-versions subcommand, or the
+                        package version for package-msix (four numbers, e.g. 21.0.0.0)
     --root <PATH>       Installation root. By default no root is set and paths are calculated using
                         relative paths, which requires conforming to FHS on Linux
 "#;
@@ -256,6 +259,7 @@ fn main() {
                     packaging::package_streamer(platform, for_ci, !no_nvidia, gpl, root)
                 }
                 "package-launcher" => packaging::package_launcher(),
+                "package-msix" => msix::package_msix(version, gpl, for_ci),
                 "package-client" => packaging::package_client_openxr(package_flavor, for_ci),
                 "package-client-lib" => packaging::package_client_lib(link_stdcpp, all_targets),
                 "format" => format::format(),

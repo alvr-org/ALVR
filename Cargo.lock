@@ -332,6 +332,7 @@ dependencies = [
  "alvr_sockets",
  "chrono",
  "cros-libva",
+ "dirs",
  "eframe",
  "env_logger",
  "ico",
@@ -345,6 +346,7 @@ dependencies = [
  "tungstenite",
  "ureq",
  "wgpu 25.0.2",
+ "windows-sys 0.61.2",
  "winres",
 ]
 

@@ -38,5 +38,13 @@ wgpu = "25"
 libva = { package = "cros-libva", version = "0.0.7" } # Latest that works on Ubuntu 22.04
 nvml-wrapper = "0.12"
 
+[target.'cfg(windows)'.dependencies]
+# For running from an MSIX package; see src/msix.rs.
+dirs = "6"
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Storage_Packaging_Appx",
+] }
+
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

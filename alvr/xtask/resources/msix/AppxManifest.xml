@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MSIX manifest for the ALVR streamer and the client emulator. `cargo xtask package-msix` fills in
+  {VERSION} and packs this together with the files under Assets.
+
+  The identity (Name + Publisher) is permanent: Windows only upgrades an installed package with one
+  that has the same identity, and Publisher must match the subject of the signing certificate.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  xmlns:virtualization="http://schemas.microsoft.com/appx/manifest/virtualization/windows10"
+  IgnorableNamespaces="uap rescap virtualization">
+
+  <Identity
+    Name="Axodox.ALVR"
+    Publisher="CN=Axodox"
+    Version="{VERSION}"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>ALVR</DisplayName>
+    <PublisherDisplayName>Axodox</PublisherDisplayName>
+    <Logo>Assets\Dashboard\StoreLogo.png</Logo>
+
+    <!--
+      Packaged apps' writes to AppData normally go to a private per-package copy. These folders are
+      shared with processes outside the package, so writes to them must reach the real folders:
+      - ALVR: the streamer files and settings, which SteamVR loads the driver from (see
+        alvr/dashboard/src/msix.rs).
+      - openvr: openvrpaths.vrpath, where the driver is registered with SteamVR.
+      - ALVR Client Emulator: the emulator's settings, which users edit by hand.
+      Requires the unvirtualizedResources capability below.
+    -->
+    <virtualization:FileSystemWriteVirtualization>
+      <virtualization:ExcludedDirectories>
+        <virtualization:ExcludedDirectory>$(KnownFolder:LocalAppData)\ALVR</virtualization:ExcludedDirectory>
+        <virtualization:ExcludedDirectory>$(KnownFolder:LocalAppData)\openvr</virtualization:ExcludedDirectory>
+        <virtualization:ExcludedDirectory>$(KnownFolder:LocalAppData)\ALVR Client Emulator</virtualization:ExcludedDirectory>
+      </virtualization:ExcludedDirectories>
+    </virtualization:FileSystemWriteVirtualization>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application
+      Id="Dashboard"
+      Executable="ALVR\ALVR Dashboard.exe"
+      EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="ALVR Dashboard"
+        Description="Stream SteamVR games to a standalone headset"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Dashboard\Square150x150Logo.png"
+        Square44x44Logo="Assets\Dashboard\Square44x44Logo.png" />
+    </Application>
+
+    <Application
+      Id="Emulator"
+      Executable="Emulator\alvr_client_emulator.exe"
+      EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="ALVR Client Emulator"
+        Description="A desktop stand-in for an ALVR headset"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Emulator\Square150x150Logo.png"
+        Square44x44Logo="Assets\Emulator\Square44x44Logo.png" />
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <Capability Name="internetClient" />
+    <Capability Name="privateNetworkClientServer" />
+    <rescap:Capability Name="runFullTrust" />
+    <rescap:Capability Name="unvirtualizedResources" />
+  </Capabilities>
+</Package>

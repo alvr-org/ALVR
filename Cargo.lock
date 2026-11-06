@@ -264,6 +264,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tiny_http",
+ "tungstenite",
  "wgpu 29.0.1",
 ]
 

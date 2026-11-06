@@ -12,6 +12,7 @@ use crate::{
     camera::{Camera, IPD},
     decoder::{self, DecodedFrame, DecoderKind, VideoDecoder},
     hands::JOINT_COUNT,
+    server_settings::{self, ServerSettingsWatch},
 };
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
@@ -72,6 +73,11 @@ pub struct ClientStatus {
     /// The alpha stream mode is only reported once the server has agreed to send that stream: a
     /// server that falls back sends no alpha, and the headset then shows the color opaque.
     pub passthrough: Option<PassthroughMode>,
+    /// Whether the server turns hand gestures into controller input (its "Hand tracking
+    /// interaction" setting): reported when the stream starts, then followed live while the
+    /// server is on this machine. `None` while not streaming. Without it a pinch moves the hand
+    /// but never clicks.
+    pub hand_interaction: Option<bool>,
 }
 
 impl Default for ClientStatus {
@@ -83,6 +89,7 @@ impl Default for ClientStatus {
             refresh_rate: 0.0,
             codec: None,
             passthrough: None,
+            hand_interaction: None,
         }
     }
 }
@@ -425,6 +432,10 @@ pub struct HapticsEvent {
 pub struct EmulatedClient {
     context: Arc<ClientCoreContext>,
     status: ClientStatus,
+    /// Follows real-time server settings between stream starts.
+    server_settings: ServerSettingsWatch,
+    /// The hand tracking interaction setting the current stream started with.
+    stream_hand_interaction: Option<bool>,
     /// Shared with the tracking thread.
     tracking: Arc<RwLock<TrackingWindow>>,
     streaming: Arc<RelaxedAtomic>,
@@ -480,6 +491,8 @@ impl EmulatedClient {
         Self {
             context,
             status: ClientStatus::default(),
+            server_settings: ServerSettingsWatch::start(),
+            stream_hand_interaction: None,
             tracking: Arc::new(RwLock::new(TrackingWindow::default())),
             streaming: Arc::new(RelaxedAtomic::new(false)),
             tracking_thread: None,
@@ -598,6 +611,16 @@ impl EmulatedClient {
 
     /// Drains client core events and keeps [`ClientStatus`] in step. Call once per frame.
     pub fn poll_events(&mut self) {
+        self.drain_events();
+
+        // The setting is real-time on the server, so a change made mid-stream applies at once;
+        // the watcher's view of it wins over the one the stream started with.
+        self.status.hand_interaction = self
+            .stream_hand_interaction
+            .map(|at_start| self.server_settings.hand_interaction().unwrap_or(at_start));
+    }
+
+    fn drain_events(&mut self) {
         while let Some(event) = self.context.poll_event() {
             match event {
                 ClientCoreEvent::UpdateHudMessage(message) => {
@@ -618,6 +641,12 @@ impl EmulatedClient {
                         config.settings.video.passthrough.clone().into_option();
                     self.update_passthrough();
 
+                    // What the stream starts with; `server_settings` follows later changes.
+                    self.stream_hand_interaction =
+                        Some(server_settings::hand_interaction_enabled(&config.settings));
+                    self.server_settings
+                        .set_port(config.settings.connection.web_server_port);
+
                     // A new stream starts from a clean slate on the server, so the full button
                     // state and the interaction profile must go out again.
                     self.sent_buttons.clear();
@@ -632,6 +661,7 @@ impl EmulatedClient {
                     self.status.view_resolution = UVec2::ZERO;
                     self.status.refresh_rate = 0.0;
                     self.status.codec = None;
+                    self.stream_hand_interaction = None;
 
                     self.alpha_stream_negotiated = false;
                     self.configured_passthrough = None;

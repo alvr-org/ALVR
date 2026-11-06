@@ -25,6 +25,7 @@ mod overlay;
 mod paths;
 mod render;
 mod scene;
+mod server_settings;
 mod skinned;
 mod video;
 
@@ -1398,7 +1399,16 @@ impl EmulatorApp {
                     // with them rather than with the groups' rounded edges.
                     ui.add_space(icons::group_margin(ui));
                     ui.label(icons::normal_text(ui, "ALVR Client Emulator").strong());
-                    connection_status(ui, &self.status());
+                    let status = self.status();
+                    connection_status(ui, &status);
+
+                    // Only worth the space while a hand is emulated: controllers click on their
+                    // own, whatever this setting says.
+                    if status.hand_interaction == Some(false)
+                        && self.hands.iter().any(|state| state.enabled)
+                    {
+                        hand_interaction_warning(ui);
+                    }
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if icons::button(ui, Icon::Close, "Close").clicked() {
@@ -2202,6 +2212,25 @@ fn connection_status(ui: &mut Ui, status: &ClientStatus) {
         status.hud_message.clone()
     };
 
+    status_pill(ui, None, color, text, tooltip);
+}
+
+/// Shown beside the connection status when the server ignores hand gestures, which otherwise
+/// looks like a broken pinch: the hand closes on screen and SteamVR never sees a click.
+fn hand_interaction_warning(ui: &mut Ui) {
+    status_pill(
+        ui,
+        Some(Icon::NoHand),
+        icons::error_color(ui.visuals()),
+        "Hand clicks off",
+        "Turn on ALVR Dashboard / Settings / Headset / Controllers / Hand tracking interaction"
+            .to_owned(),
+    );
+}
+
+/// A rounded label led by a dot, or by `icon` when given, on a faint wash of its own colour,
+/// explained on hover.
+fn status_pill(ui: &mut Ui, icon: Option<Icon>, color: Color32, text: &str, tooltip: String) {
     let size = icons::size_factor(ui);
     let galley = egui::WidgetText::from(RichText::new(text).color(color).small()).into_galley(
         ui,
@@ -2211,7 +2240,8 @@ fn connection_status(ui: &mut Ui, status: &ClientStatus) {
     );
 
     let padding = egui::vec2(9.0, 3.0) * size;
-    let dot_radius = 3.5 * size;
+    // An icon needs more room than the dot to stay legible; both are centred in the same slot.
+    let dot_radius = if icon.is_some() { 6.0 } else { 3.5 } * size;
     let gap = 6.0 * size;
     let pill_size = egui::vec2(
         padding.x * 2.0 + dot_radius * 2.0 + gap + galley.size().x,
@@ -2222,11 +2252,18 @@ fn connection_status(ui: &mut Ui, status: &ClientStatus) {
     let painter = ui.painter();
 
     painter.rect_filled(pill, pill.height() / 2.0, color.gamma_multiply(0.14));
-    painter.circle_filled(
-        egui::pos2(pill.left() + padding.x + dot_radius, pill.center().y),
-        dot_radius,
-        color,
-    );
+    let marker = egui::pos2(pill.left() + padding.x + dot_radius, pill.center().y);
+    match icon {
+        Some(icon) => icons::paint_into(
+            painter,
+            egui::Rect::from_center_size(marker, egui::Vec2::splat(dot_radius * 2.0)),
+            icon,
+            color,
+        ),
+        None => {
+            painter.circle_filled(marker, dot_radius, color);
+        }
+    }
     painter.galley(
         egui::pos2(
             pill.left() + padding.x + dot_radius * 2.0 + gap,

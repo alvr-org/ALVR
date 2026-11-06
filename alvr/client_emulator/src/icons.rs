@@ -67,6 +67,8 @@ pub enum Icon {
     Controller,
     /// An open hand, palm facing.
     Hand,
+    /// The hand inside a circle with a slash across it: hand input switched off.
+    NoHand,
     /// A single eye: show the models.
     Show,
     /// Coordinate axes in their conventional red, green and blue, the colours the gizmo itself is
@@ -604,6 +606,11 @@ fn paint_icon(ui: &Ui, rect: Rect, icon: Icon, color: Color32) {
     paint(ui.painter(), rect, icon, color);
 }
 
+/// Paints `icon` into `rect` in `color`, for widgets that lay themselves out.
+pub fn paint_into(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
+    paint(painter, rect, icon, color);
+}
+
 /// Paints `icon` into `rect` in `color`.
 fn paint(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
     let scale = rect.width() / 16.0;
@@ -678,6 +685,18 @@ fn paint(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
             painter.line_segment([at(-3.9, -2.4), at(-3.9, 1.0)], pad);
             painter.circle_filled(at(3.0, -1.7), 0.95 * scale, color);
             painter.circle_filled(at(4.9, 0.1), 0.95 * scale, color);
+        }
+        Icon::NoHand => {
+            // The hand small enough to sit inside the circle, the slash running over it from top
+            // left to bottom right, as a prohibition sign does.
+            paint(
+                painter,
+                Rect::from_center_size(center, rect.size() * 0.62),
+                Icon::Hand,
+                color,
+            );
+            painter.circle_stroke(center, 7.2 * scale, stroke);
+            painter.line_segment([at(-5.1, -5.1), at(5.1, 5.1)], stroke);
         }
         Icon::Hand => {
             // One solid silhouette: a softly squared palm, with the fingers and the thumb as

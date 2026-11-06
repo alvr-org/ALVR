@@ -26,6 +26,8 @@ env_logger = "0.11"
 # Skinned hand models: easy-gltf flattens node transforms and drops skins, so the hand loader
 # reads the file directly. Same version easy-gltf already pulls in.
 gltf = "1.4"
+# Decodes the window icon.
+ico = "0.5"
 # Links against the ffmpeg that `cargo xtask prepare-deps` already downloads for the server; see
 # build.rs. Note that build is GPL licensed.
 ffmpeg-next = "9"
@@ -40,3 +42,7 @@ tungstenite = "0.29"
 
 [build-dependencies]
 alvr_filesystem = { path = "../filesystem" }
+
+[target.'cfg(windows)'.build-dependencies]
+# Embeds the icon in the executable, for Explorer, shortcuts and the MSIX package.
+winres = "0.1"

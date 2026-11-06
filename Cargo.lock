@@ -258,6 +258,7 @@ dependencies = [
  "env_logger",
  "ffmpeg-next",
  "gltf",
+ "ico",
  "image",
  "pollster",
  "rand 0.10.1",
@@ -266,6 +267,7 @@ dependencies = [
  "tiny_http",
  "tungstenite",
  "wgpu 29.0.1",
+ "winres",
 ]
 
 [[package]]

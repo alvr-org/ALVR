@@ -14,10 +14,21 @@ use std::{
 /// where the settings files' relative model paths resolve.
 const MODELS_DIR: &str = "models";
 
+/// The ALVR icon recoloured orange to tell it apart from the dashboard. `main.rs` includes the same file for the window.
+const ICON_PATH: &str = "resources/emulator.ico";
+
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed={MODELS_DIR}");
     println!("cargo:rerun-if-env-changed=FFMPEG_DIR");
+    println!("cargo:rerun-if-changed={ICON_PATH}");
+
+    #[cfg(windows)]
+    {
+        let mut resource = winres::WindowsResource::new();
+        resource.set_icon(ICON_PATH);
+        resource.compile().unwrap();
+    }
 
     if let Some(target_dir) = target_dir() {
         copy_models(&target_dir.join(MODELS_DIR));

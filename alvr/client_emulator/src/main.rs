@@ -2561,6 +2561,31 @@ fn preferred_wgpu_setup() -> egui_wgpu::WgpuSetup {
     egui_wgpu::WgpuSetup::CreateNew(create_new)
 }
 
+/// The emulator icon for the taskbar and Alt-Tab, the same file `build.rs` embeds in the executable.
+fn window_icon() -> egui::IconData {
+    let icon = ico::IconDir::read(std::io::Cursor::new(include_bytes!(
+        "../resources/emulator.ico"
+    )))
+    .ok()
+    .and_then(|dir| {
+        // The largest entry, so Windows scales down rather than up.
+        let entry = dir.entries().iter().max_by_key(|entry| entry.width())?;
+        entry.decode().ok()
+    });
+
+    match icon {
+        Some(image) => egui::IconData {
+            rgba: image.rgba_data().to_owned(),
+            width: image.width(),
+            height: image.height(),
+        },
+        None => {
+            alvr_common::warn!("Cannot decode the window icon");
+            egui::IconData::default()
+        }
+    }
+}
+
 fn main() {
     env_logger::init();
 
@@ -2602,7 +2627,8 @@ fn main() {
             viewport: ViewportBuilder::default()
                 .with_inner_size((1440.0, 810.0))
                 .with_min_inner_size((640.0, 400.0))
-                .with_decorations(false),
+                .with_decorations(false)
+                .with_icon(window_icon()),
             renderer: eframe::Renderer::Wgpu,
             wgpu_options: egui_wgpu::WgpuConfiguration {
                 wgpu_setup: preferred_wgpu_setup(),

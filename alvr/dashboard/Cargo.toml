@@ -25,6 +25,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 settings-schema = { git = "https://github.com/alvr-org/settings-schema-rs", rev = "676185f" }
 statrs = "0.18"
+pollster = "1.0.1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 alvr_server_io.workspace = true
@@ -33,7 +34,7 @@ tungstenite = "0.29"
 ureq = { version = "3", features = ["json"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-wgpu = "25"
+wgpu = "29.0.4"
 libva = { package = "cros-libva", version = "0.0.7" } # Latest that works on Ubuntu 22.04
 nvml-wrapper = "0.12"
 

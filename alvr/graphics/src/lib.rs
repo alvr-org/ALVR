@@ -253,7 +253,7 @@ impl GraphicsContext {
         });
 
         let adapter =
-            futures::executor::block_on(instance.enumerate_adapters(Backends::GL)).remove(0);
+            pollster::block_on(instance.enumerate_adapters(Backends::GL)).remove(0);
         let (device, queue) = pollster::block_on(adapter.request_device(&DeviceDescriptor {
             label: None,
             required_features: Features::IMMEDIATES,

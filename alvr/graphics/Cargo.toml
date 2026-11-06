@@ -9,10 +9,8 @@ license.workspace = true
 alvr_common.workspace = true
 alvr_session.workspace = true
 
-futures = "0.3"
 glow = "0.17.0" # Needs to be update with wgpu
 glyph_brush_layout = "0.2"
 khronos-egl = { version = "6", features = ["dynamic"] }
-pollster = "0.4"
+pollster = "1.0.1"
 wgpu = "29.0.4"
-ash = "0.38"

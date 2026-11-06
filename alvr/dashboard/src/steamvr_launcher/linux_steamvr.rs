@@ -63,7 +63,7 @@ enum DeviceInfo {
 }
 
 pub fn linux_hardware_checks() {
-    let wgpu_adapters = futures::executor::block_on(
+    let wgpu_adapters = pollster::block_on(
         wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::VULKAN,
             flags: Default::default(),

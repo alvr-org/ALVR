@@ -161,7 +161,7 @@ what the headset's cameras would see; **Mixed** (the landscape seen through the 
 default, is what the headset shows — the video blended over the scene by the stream's passthrough
 mode, which is plain video when passthrough is off.
 
-**Stats** (the bar chart) toggles a readout over the top of the view: the camera position in metres,
+**Stats** (the bar chart) toggles a readout over the top of the view (off at start): the camera position in metres,
 and while streaming the stream's resolution and refresh rate, frame pacing, head speed, decoded
 frame count and passthrough mode. It wraps onto more lines when the view is too narrow for one. The
 same timing numbers are in `GET /api/state`; see [`frame_timing`](#frame_timing).

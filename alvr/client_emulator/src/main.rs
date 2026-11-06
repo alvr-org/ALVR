@@ -243,7 +243,7 @@ impl EmulatorApp {
             environment_path,
             view_mode: ViewMode::Left,
             source: ViewSource::Mixed,
-            show_stats: true,
+            show_stats: false,
             video_frames: 0,
             alpha_frames: 0,
             alpha_lag: None,

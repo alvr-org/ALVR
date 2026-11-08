@@ -1,3 +1,15 @@
+struct Immediate {
+    reprojection_transform: mat4x4f,
+    view_idx: u32,
+    passthrough_mode: u32, // 0: Blend, 1: RGB chroma key, 2: HSV chroma key
+    blend_alpha: f32,
+    _align: u32,
+    ck_channel0: vec4f,
+    ck_channel1: vec4f,
+    ck_channel2: vec4f,
+}
+var<immediate> imm: Immediate;
+
 const DIV12: f32 = 1.0 / 12.92;
 const DIV1: f32 = 1.0 / 1.055;
 const THRESHOLD: f32 = 0.04045;
@@ -12,18 +24,6 @@ override UPSCALE_EDGE_THRESHOLD: f32 = 4.0/255.0;
 override UPSCALE_EDGE_SHARPNESS: f32 = 2.0;
 
 override ENABLE_FFE: bool = false;
-
-struct Immediate {
-    reprojection_transform: mat4x4f,
-    view_idx: u32,
-    passthrough_mode: u32, // 0: Blend, 1: RGB chroma key, 2: HSV chroma key
-    blend_alpha: f32,
-    _align: u32,
-    ck_channel0: vec4f,
-    ck_channel1: vec4f,
-    ck_channel2: vec4f,
-}
-var<immediate> imm: Immediate;
 
 @group(0) @binding(0) var stream_texture: texture_2d<f32>;
 @group(0) @binding(1) var stream_sampler: sampler;

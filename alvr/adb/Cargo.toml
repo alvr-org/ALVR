@@ -13,4 +13,4 @@ alvr_session.workspace = true
 
 anyhow = "1"
 ureq = "3"
-zip = "8"
+zip = "9"

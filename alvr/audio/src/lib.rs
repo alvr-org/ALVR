@@ -7,6 +7,13 @@ pub mod linux;
 #[cfg(windows)]
 pub use crate::windows::*;
 
+#[cfg(windows)]
+mod process_loopback;
+#[cfg(windows)]
+pub use process_loopback::{
+    PROCESS_LOOPBACK_SAMPLE_RATE, process_loopback_available, record_process_loopback_blocking,
+};
+
 use alvr_common::{
     ConnectionError, ToAny,
     anyhow::{self, Context, Result, bail},

@@ -793,9 +793,23 @@ pub struct AudioBufferingConfig {
     pub batch_ms: u64,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+pub enum GameAudioCapture {
+    #[schema(strings(display_name = "Process loopback"))]
+    ProcessLoopback,
+    #[schema(strings(display_name = "Device loopback"))]
+    DeviceLoopback,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct GameAudioConfig {
+    #[cfg_attr(not(windows), schema(flag = "hidden"))]
+    #[schema(strings(
+        help = r"Process loopback captures everything the PC plays except ALVR, before the volume, mute and format of the output device are applied: no virtual audio cable and no change of the default device are needed, and the headset volume does not depend on the PC volume. It needs Windows 10 version 2004 or newer; if it is not available, device loopback is used. Device loopback captures the selected output device."
+    ))]
+    pub capture: GameAudioCapture,
+
     #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
     pub device: Option<CustomAudioDeviceConfig>,
 
@@ -1923,6 +1937,9 @@ pub fn session_settings_default() -> SettingsDefault {
                 enabled: true,
                 content: GameAudioConfigDefault {
                     gui_collapsed: true,
+                    capture: GameAudioCaptureDefault {
+                        variant: GameAudioCaptureDefaultVariant::DeviceLoopback,
+                    },
                     device: OptionalDefault {
                         set: false,
                         content: default_custom_audio_device.clone(),

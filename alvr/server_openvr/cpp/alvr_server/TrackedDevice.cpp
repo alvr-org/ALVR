@@ -96,7 +96,7 @@ bool TrackedDevice::register_device(bool await_activation) {
 
     if (await_activation) {
         auto lock = std::unique_lock<std::mutex>(this->activation_mutex);
-        this->activation_condvar.wait_for(lock, std::chrono::seconds(1), [this] {
+        this->activation_condvar.wait_for(lock, std::chrono::seconds(10), [this] {
             return this->activation_state != ActivationState::Pending;
         });
 

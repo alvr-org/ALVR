@@ -265,7 +265,7 @@ pub fn build_ffmpeg_linux(enable_nvenc: bool, deps_path: &Path) {
     if enable_nvenc {
         #[cfg(target_os = "linux")]
         {
-            let codec_header_version = "12.1.14.0";
+            let codec_header_version = "13.0.19.1";
             let temp_download_dir = deps_path.join("dl_temp");
             command::download_and_extract_zip(
                 &format!("https://github.com/FFmpeg/nv-codec-headers/archive/refs/tags/n{codec_header_version}.zip"),

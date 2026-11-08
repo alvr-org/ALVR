@@ -43,11 +43,16 @@ pub fn clean_session() {
 
     #[cfg(target_os = "linux")]
     {
-        let has_nvidia = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::VULKAN,
-            ..Default::default()
-        })
-        .enumerate_adapters(wgpu::Backends::VULKAN)
+        let has_nvidia = pollster::block_on(
+            wgpu::Instance::new(wgpu::InstanceDescriptor {
+                backends: wgpu::Backends::VULKAN,
+                flags: Default::default(),
+                memory_budget_thresholds: Default::default(),
+                backend_options: Default::default(),
+                display: Default::default(),
+            })
+            .enumerate_adapters(wgpu::Backends::VULKAN),
+        )
         .iter()
         .any(|adapter| adapter.get_info().vendor == 0x10de);
 

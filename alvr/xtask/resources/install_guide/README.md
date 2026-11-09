@@ -166,7 +166,7 @@ Or, with the headset connected: `adb uninstall com.axodox.alvr`.
 | Message or symptom | Fix |
 |---|---|
 | "The publisher certificate could not be verified" or error `0x800B0109` | The certificate is not trusted on this PC. Do step 1 of part 1. It has to go into **Local Machine → Trusted People**, not Current User. |
-| "A higher version of this package is already installed" | Uninstall ALVR Axodox from the PC first, then install. This happens after installing a build made on your own PC. |
+| "A higher version of this package is already installed" | The package you are installing is older than the installed one, for example an earlier release, or a build someone made on their own PC after it. Uninstall ALVR Axodox from the PC first, then install. |
 | SteamVR doesn't show ALVR | Start SteamVR from the dashboard, not from Steam. Or click **Register ALVR driver** under **Installation**. |
 | The emulator doesn't appear in the dashboard | Make sure SteamVR is running and no other emulator is open. Start the emulator again. |
 | The headset doesn't appear in the dashboard | Check that the PC and the headset are on the same network, and that the firewall rules were added (**Installation → Add firewall rules**). Check that both halves come from the same release. |

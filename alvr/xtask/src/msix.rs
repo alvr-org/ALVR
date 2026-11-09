@@ -143,54 +143,63 @@ pub fn package_msix(version: Option<String>, gpl: bool, reproducible: bool) {
     }
 }
 
-/// MSIX versions are four numbers. `21.0.0` becomes `21.0.0.0` and a pre-release such as
-/// `21.0.0-dev12` becomes `21.0.0.12`.
+/// Seconds from the Unix epoch to 2026-01-01 00:00 UTC, where build numbers start counting.
+const BUILD_NUMBER_START: u64 = 1_767_225_600;
+
+/// MSIX versions are four numbers, each at most 65535. The first three are ALVR's version without
+/// its pre-release part (`21.0.0-dev12` gives `21.0.0`). The fourth is the build number: the hours
+/// since 2026-01-01 UTC, so a later build is always a newer version, wherever it was built, and
+/// installs as an update to an earlier one. It runs out in June 2033; by then ALVR's version has
+/// most likely moved on, and counting can start again from a later date.
 ///
-/// That makes `21.0.0-dev12` newer than `21.0.0`, which Windows would refuse to install over it.
-/// Pass `--version` with an explicit four-part version when that matters.
-///
-/// `MSIX_BUILD_NUMBER`, when set, replaces the fourth number. CI sets it to the workflow's run
-/// number, which only goes up, so each released package installs as an update to the last.
+/// `MSIX_BUILD_NUMBER` replaces the build number, and `--version` with four numbers replaces the
+/// whole version.
 fn msix_version(version: &str) -> String {
-    let version = base_msix_version(version);
-
-    match env::var("MSIX_BUILD_NUMBER")
-        .ok()
-        .and_then(|number| number.trim().parse::<u16>().ok())
-    {
-        Some(build) => {
-            let (base, _) = version.rsplit_once('.').unwrap();
-            format!("{base}.{build}")
-        }
-        None => version,
-    }
-}
-
-fn base_msix_version(version: &str) -> String {
-    let (release, pre_release) = version.split_once('-').unwrap_or((version, ""));
-
+    let (release, _) = version.split_once('-').unwrap_or((version, ""));
     let mut parts = release
         .split('.')
-        .map(|part| part.parse::<u16>().unwrap_or(0))
+        .map(|part| {
+            part.parse::<u16>().unwrap_or_else(|_| {
+                panic!("{part} in version {version} is not a number up to 65535")
+            })
+        })
         .collect::<Vec<_>>();
 
-    if parts.len() < 4 {
+    if parts.len() == 4 {
+        // Given in full with --version.
+    } else {
         parts.resize(3, 0);
-        let revision = pre_release
-            .chars()
-            .filter(char::is_ascii_digit)
-            .collect::<String>()
-            .parse::<u16>()
-            .unwrap_or(0);
-        parts.push(revision);
+        parts.push(build_number());
     }
 
     parts
         .iter()
-        .take(4)
         .map(u16::to_string)
         .collect::<Vec<_>>()
         .join(".")
+}
+
+fn build_number() -> u16 {
+    if let Ok(number) = env::var("MSIX_BUILD_NUMBER") {
+        return number
+            .trim()
+            .parse()
+            .unwrap_or_else(|_| panic!("MSIX_BUILD_NUMBER {number} is not a number up to 65535"));
+    }
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let hours = now.saturating_sub(BUILD_NUMBER_START) / 3600;
+
+    u16::try_from(hours).unwrap_or_else(|_| {
+        panic!(
+            "{hours} hours since 2026-01-01 no longer fit in an MSIX version. Move \
+             BUILD_NUMBER_START to a later date together with a bump of ALVR's version, or Windows \
+             will see new builds as older than the installed one."
+        )
+    })
 }
 
 /// Copies a folder, leaving out what `SKIPPED_FILES` and `SKIPPED_EXTENSIONS` name.
@@ -246,4 +255,24 @@ fn windows_sdk_bin_dir() -> PathBuf {
     versions
         .pop()
         .unwrap_or_else(|| panic!("No Windows SDK with makeappx.exe in {}", kits.display()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn version_takes_alvr_version_and_hours() {
+        let version = msix_version("21.0.0-dev12");
+        let (base, build) = version.rsplit_once('.').unwrap();
+        assert_eq!(base, "21.0.0");
+
+        // November 2026 or later.
+        assert!(build.parse::<u16>().unwrap() >= 7272, "{version}");
+    }
+
+    #[test]
+    fn full_version_is_kept() {
+        assert_eq!(msix_version("21.0.0.5"), "21.0.0.5");
+    }
 }

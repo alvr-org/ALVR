@@ -9,8 +9,8 @@ name: Build MSIX and APK
 # GitHub pre-release with both, the public half of the MSIX signing certificate, and the install
 # guide (alvr/xtask/resources/install_guide/README.md) as its description.
 #
-# The file keeps its old name: renaming it would restart the run numbers, which are part of the
-# MSIX version.
+# The MSIX version's last number is the hours since 2026-01-01, so any later build, from any repo
+# or PC, installs as an update to an earlier one. See msix_version in alvr/xtask/src/msix.rs.
 #
 # Repository secrets:
 #   MSIX_CERT_PFX              the MSIX signing certificate's .pfx file, base64 encoded
@@ -33,8 +33,6 @@ jobs:
     runs-on: windows-latest
     env:
       HAS_CERT: ${{ secrets.MSIX_CERT_PFX != '' }}
-      # The fourth number of the package version; it only goes up, so every build is an update.
-      MSIX_BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v6
         with:

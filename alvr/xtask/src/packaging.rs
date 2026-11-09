@@ -146,12 +146,10 @@ fn set_client_openxr_manifest_value(key: &str, value: &str) {
             }
         })
         .collect::<Vec<_>>()
-        .join("
-");
+        .join("\n");
     assert!(found, "No `{key}` in {}", manifest_path.display());
 
-    fs::write(manifest_path, manifest + "
-").unwrap();
+    fs::write(manifest_path, manifest + "\n").unwrap();
 }
 
 pub fn package_client_openxr(flavor: ReleaseFlavor, skip_admin_priv: bool) {

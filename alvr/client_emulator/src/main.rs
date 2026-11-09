@@ -1398,7 +1398,7 @@ impl EmulatorApp {
                     // Indented like the controls inside the groups below, so the title lines up
                     // with them rather than with the groups' rounded edges.
                     ui.add_space(icons::group_margin(ui));
-                    ui.label(icons::normal_text(ui, "ALVR Client Emulator").strong());
+                    ui.label(icons::normal_text(ui, "AIVR Client Emulator").strong());
                     let status = self.status();
                     connection_status(ui, &status);
 
@@ -2620,7 +2620,7 @@ fn main() {
     info!("Starting ALVR client emulator");
 
     let result = eframe::run_native(
-        "ALVR Client Emulator",
+        "AIVR Client Emulator",
         NativeOptions {
             // Wide enough for every toolbar group on one line. Undecorated: the app draws its
             // own title bar; see `draw_title_bar`.

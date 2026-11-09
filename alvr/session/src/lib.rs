@@ -87,6 +87,22 @@ impl SessionConfig {
             return Ok(());
         }
 
+        let mut json_value = json_value.clone();
+        if let Some(sink) =
+            json_value.pointer_mut("/session_settings/headset/face_tracking/content/sink")
+            && sink.get("social_presence").is_none()
+            && matches!(
+                sink.get("variant").and_then(json::Value::as_str),
+                Some("VrchatEyeOsc" | "VrcFaceTracking")
+            )
+        {
+            let social_presence = sink.take();
+            *sink = json::json!({
+                "social_presence": { "enabled": true, "content": social_presence },
+                "eye_tracked_foveated_encoding": false,
+            });
+        }
+
         // Note: unwrap is safe because current session is expected to serialize correctly
         let old_session_json = json::to_value(self.clone()).unwrap();
         let old_session_fields = old_session_json.as_object().unwrap();

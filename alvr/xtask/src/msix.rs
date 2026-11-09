@@ -119,7 +119,7 @@ pub fn package_msix(version: Option<String>, gpl: bool, reproducible: bool) {
         .unwrap();
     }
 
-    let package = afs::build_dir().join("alvr_windows.msix");
+    let package = afs::build_dir().join("aivr_windows.msix");
     cmd!(sh, "{makeappx} pack /d {stage} /p {package} /o")
         .run()
         .unwrap();

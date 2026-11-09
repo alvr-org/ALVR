@@ -14,7 +14,7 @@
   IgnorableNamespaces="uap rescap virtualization">
 
   <Identity
-    Name="Axodox.ALVR"
+    Name="Axodox.AIVR"
     Publisher="CN=Axodox"
     Version="{VERSION}"
     ProcessorArchitecture="x64" />

@@ -74,7 +74,7 @@ jobs:
           MSIX_CERT_PASSWORD: ${{ secrets.MSIX_CERT_PASSWORD }}
         run: |
           $cert = [Security.Cryptography.X509Certificates.X509Certificate2]::new($env:MSIX_CERT_PFX, $env:MSIX_CERT_PASSWORD)
-          [IO.File]::WriteAllBytes("build/ALVR-signing-certificate.cer", $cert.Export("Cert"))
+          [IO.File]::WriteAllBytes("build/AIVR-signing-certificate.cer", $cert.Export("Cert"))
           "Certificate subject: $($cert.Subject), thumbprint: $($cert.Thumbprint)"
 
       - name: Remove signing certificate
@@ -87,8 +87,8 @@ jobs:
         with:
           name: windows-msix
           path: |
-            ./build/alvr_windows.msix
-            ./build/ALVR-signing-certificate.cer
+            ./build/aivr_windows.msix
+            ./build/AIVR-signing-certificate.cer
           if-no-files-found: error
 
   # The same steps upstream ALVR builds its headset client with (prepare-release.yml).
@@ -98,7 +98,7 @@ jobs:
       HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE != '' }}
       # An app of its own, so it installs next to official ALVR instead of conflicting with it.
       # Permanent: changing the ID makes it a different app. See set_client_openxr_manifest_value.
-      ALVR_ANDROID_PACKAGE_ID: com.axodox.alvr
+      ALVR_ANDROID_PACKAGE_ID: com.axodox.aivr
       ALVR_ANDROID_LABEL: AIVR
     steps:
       - uses: actions/checkout@v6
@@ -145,16 +145,16 @@ jobs:
         run: |
           mkdir -p out
           if [ "$HAS_KEYSTORE" = "true" ]; then
-            cp "${{ steps.sign_apk.outputs.signedFile }}" out/alvr_client_android.apk
+            cp "${{ steps.sign_apk.outputs.signedFile }}" out/aivr_client_android.apk
           else
-            cp build/alvr_client_android/alvr_client_android.apk out/alvr_client_android.apk
+            cp build/alvr_client_android/alvr_client_android.apk out/aivr_client_android.apk
           fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v7
         with:
           name: android-apk
-          path: out/alvr_client_android.apk
+          path: out/aivr_client_android.apk
           if-no-files-found: error
 
   release:
@@ -183,6 +183,6 @@ jobs:
           prerelease: true
           fail_on_unmatched_files: true
           files: |
-            artifacts/alvr_windows.msix
-            artifacts/ALVR-signing-certificate.cer
-            artifacts/alvr_client_android.apk
+            artifacts/aivr_windows.msix
+            artifacts/AIVR-signing-certificate.cer
+            artifacts/aivr_client_android.apk

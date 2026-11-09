@@ -3,7 +3,7 @@ use alvr_gui_common::theme;
 use eframe::egui::{Frame, RichText, ScrollArea, Ui};
 
 pub fn about_tab_ui(ui: &mut Ui) {
-    ui.label(RichText::new(format!("ALVR streamer v{}", *ALVR_VERSION)).size(30.0));
+    ui.label(RichText::new(format!("AIVR streamer v{}", *ALVR_VERSION)).size(30.0));
     ui.add_space(10.0);
     ui.hyperlink_to("Visit us on GitHub", "https://github.com/alvr-org/ALVR");
     ui.hyperlink_to("Join us on Discord", "https://discord.gg/ALVR");

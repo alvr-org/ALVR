@@ -3,11 +3,11 @@
 AIVR is our build of [ALVR](https://github.com/alvr-org/ALVR), which streams SteamVR games from a PC
 to a standalone headset. It has two halves, and each release has both:
 
-- **On the PC:** `alvr_windows.msix` installs two apps:
+- **On the PC:** `aivr_windows.msix` installs two apps:
   - **AIVR Dashboard**, the ALVR streamer with its SteamVR driver.
   - **AIVR Client Emulator** (orange icon), a desktop stand-in for a headset that connects to the
     streamer on the same PC.
-- **On the headset:** `alvr_client_android.apk` installs **AIVR**, the app that receives the
+- **On the headset:** `aivr_client_android.apk` installs **AIVR**, the app that receives the
   stream on a Quest, Pico or other Android headset. It's our own build and installs next to the
   official ALVR app without replacing it.
 
@@ -32,10 +32,10 @@ PC has to trust that certificate once before Windows will install it.
 
 From the release's **Assets**, download:
 
-- `alvr_windows.msix`: the PC package.
-- `ALVR-signing-certificate.cer`: the certificate to trust. You only need it the first time, or if
+- `aivr_windows.msix`: the PC package.
+- `AIVR-signing-certificate.cer`: the certificate to trust. You only need it the first time, or if
   we tell you the certificate has changed.
-- `alvr_client_android.apk`: the headset app, if you use a headset.
+- `aivr_client_android.apk`: the headset app, if you use a headset.
 
 ## Part 1: the PC
 
@@ -45,7 +45,7 @@ Open PowerShell **as administrator** (right-click PowerShell or Terminal, then "
 administrator"), go to the folder you downloaded to, and run:
 
 ```powershell
-Import-Certificate -FilePath .\ALVR-signing-certificate.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+Import-Certificate -FilePath .\AIVR-signing-certificate.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
 ```
 
 It prints one line with the subject `CN=Axodox`.
@@ -53,7 +53,7 @@ It prints one line with the subject `CN=Axodox`.
 <details>
 <summary>Without PowerShell</summary>
 
-1. Double-click `ALVR-signing-certificate.cer` and click **Install Certificate…**.
+1. Double-click `AIVR-signing-certificate.cer` and click **Install Certificate…**.
 2. Choose **Local Machine** and click **Next** (this asks for admin rights).
 3. Choose **Place all certificates in the following store**, click **Browse…** and pick
    **Trusted People**.
@@ -63,13 +63,13 @@ It prints one line with the subject `CN=Axodox`.
 
 ### 2. Install
 
-Double-click `alvr_windows.msix` and click **Install**.
+Double-click `aivr_windows.msix` and click **Install**.
 
 If double-clicking does nothing (some PCs have the App Installer removed), run this in PowerShell
 in the download folder instead. It doesn't need admin rights:
 
 ```powershell
-Add-AppxPackage .\alvr_windows.msix
+Add-AppxPackage .\aivr_windows.msix
 ```
 
 ### 3. First start
@@ -112,10 +112,10 @@ Connect the headset to the PC with the USB cable. In the headset, allow **USB de
 asks, and tick "Always allow from this computer".
 
 - **With SideQuest:** open SideQuest, wait for the dot at the top left to turn green, then drag
-  `alvr_client_android.apk` onto the SideQuest window.
+  `aivr_client_android.apk` onto the SideQuest window.
 - **With adb:** run this in the download folder:
   ```powershell
-  adb install -r .\alvr_client_android.apk
+  adb install -r .\aivr_client_android.apk
   ```
 
 ### 3. First start
@@ -133,13 +133,12 @@ You can unplug the USB cable once the app is installed. The stream goes over the
 **PC:**
 
 1. Close SteamVR and the dashboard.
-2. Download the new `alvr_windows.msix` and install it the same way. It installs over the old one
+2. Download the new `aivr_windows.msix` and install it the same way. It installs over the old one
    and keeps your settings.
 
 If SteamVR was still running, the dashboard can't replace the driver it has loaded and keeps
 using the old one. Close SteamVR, then start the dashboard again to finish the update.
 
-**Headset:** install the new `alvr_client_android.apk` the same way. It installs over the old one
 and keeps its settings. Update both halves together.
 
 ## Switching between this and a build from source
@@ -160,7 +159,7 @@ registers its own driver and removes the other one. Close SteamVR before switchi
    settings too. Windows does not remove these folders when you uninstall.
 
 **Headset:** in the app library, open the **⋯** menu on **AIVR** and choose **Uninstall**.
-Or, with the headset connected: `adb uninstall com.axodox.alvr`.
+Or, with the headset connected: `adb uninstall com.axodox.aivr`.
 
 ## Troubleshooting
 
@@ -168,9 +167,9 @@ Or, with the headset connected: `adb uninstall com.axodox.alvr`.
 |---|---|
 | "The publisher certificate could not be verified" or error `0x800B0109` | The certificate is not trusted on this PC. Do step 1 of part 1. It has to go into **Local Machine → Trusted People**, not Current User. |
 | "A higher version of this package is already installed" | The package you are installing is older than the installed one, for example an earlier release, or a build someone made on their own PC after it. Uninstall AIVR from the PC first, then install. |
-| SteamVR doesn't show ALVR | Start SteamVR from the dashboard, not from Steam. Or click **Register ALVR driver** under **Installation**. |
+| SteamVR doesn't show AIVR | Start SteamVR from the dashboard, not from Steam. Or click **Register AIVR driver** under **Installation**. |
 | The emulator doesn't appear in the dashboard | Make sure SteamVR is running and no other emulator is open. Start the emulator again. |
 | The headset doesn't appear in the dashboard | Check that the PC and the headset are on the same network, and that the firewall rules were added (**Installation → Add firewall rules**). Check that both halves come from the same release. |
 | `adb` or SideQuest doesn't see the headset | Developer mode is off, or USB debugging wasn't allowed in the headset. Plug the cable in again and look inside the headset for the prompt. |
-| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` when installing the APK | An AIVR build signed with a different key is installed. Uninstall it (`adb uninstall com.axodox.alvr`), then install. |
+| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` when installing the APK | An AIVR build signed with a different key is installed. Uninstall it (`adb uninstall com.axodox.aivr`), then install. |
 | Something else | The PC logs are in `%LOCALAPPDATA%\ALVR\streamer` (`session_log.txt`, `crash_log.txt`). Send them to the group. |

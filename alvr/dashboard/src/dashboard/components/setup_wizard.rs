@@ -72,7 +72,7 @@ impl SetupWizard {
             ui.add_space(60.0);
             ui.vertical(|ui| {
                 ui.add_space(30.0);
-                ui.heading(RichText::new("Welcome to ALVR").size(30.0));
+                ui.heading(RichText::new("Welcome to AIVR").size(30.0));
                 ui.add_space(5.0);
             });
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -86,14 +86,14 @@ impl SetupWizard {
         match &self.page {
             Page::Welcome => page_content(
                 ui,
-                "This setup wizard will help you setup ALVR.",
+                "This setup wizard will help you setup AIVR.",
                 "",
                 |_| (),
             ),
             Page::ResetSettings => page_content(
                 ui,
                 "Reset settings",
-                "It is recommended to reset your settings everytime you update ALVR.",
+                "It is recommended to reset your settings everytime you update AIVR.",
                 |ui| {
                     if ui.button("Reset settings").clicked() {
                         request = Some(SetupWizardRequest::ServerRequest(
@@ -145,7 +145,7 @@ This requires administrator rights!",
             Page::Recommendations => page_content(
                 ui,
                 "Recommendations",
-                r"ALVR supports multiple types of PC hardware and headsets but not all might work correctly with default settings. Please try tweaking different settings like resolution, bitrate, encoder and others if your ALVR experience is not optimal.",
+                r"AIVR supports multiple types of PC hardware and headsets but not all might work correctly with default settings. Please try tweaking different settings like resolution, bitrate, encoder and others if your AIVR experience is not optimal.",
                 |_| (),
             ),
             Page::Finished => page_content(

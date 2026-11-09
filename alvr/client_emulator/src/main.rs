@@ -2207,7 +2207,7 @@ fn connection_status(ui: &mut Ui, status: &ClientStatus) {
     };
 
     let tooltip = if status.hud_message.is_empty() {
-        "Connection to the ALVR server".to_owned()
+        "Connection to the AIVR server".to_owned()
     } else {
         status.hud_message.clone()
     };
@@ -2223,7 +2223,7 @@ fn hand_interaction_warning(ui: &mut Ui) {
         Some(Icon::NoHand),
         icons::error_color(ui.visuals()),
         "Hand clicks off",
-        "Turn on ALVR Dashboard / Settings / Headset / Controllers / Hand tracking interaction"
+        "Turn on AIVR Dashboard / Settings / Headset / Controllers / Hand tracking interaction"
             .to_owned(),
     );
 }

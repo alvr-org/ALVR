@@ -1,12 +1,13 @@
-# Installing ALVR test builds
+# Installing AIVR test builds
 
-ALVR has two halves, and each release has both:
+AIVR is our build of [ALVR](https://github.com/alvr-org/ALVR), which streams SteamVR games from a PC
+to a standalone headset. It has two halves, and each release has both:
 
 - **On the PC:** `alvr_windows.msix` installs two apps:
-  - **ALVR Axodox Dashboard**, the ALVR streamer with its SteamVR driver.
-  - **ALVR Axodox Client Emulator** (orange icon), a desktop stand-in for a headset that connects to the
+  - **AIVR Dashboard**, the ALVR streamer with its SteamVR driver.
+  - **AIVR Client Emulator** (orange icon), a desktop stand-in for a headset that connects to the
     streamer on the same PC.
-- **On the headset:** `alvr_client_android.apk` installs **ALVR Axodox**, the app that receives the
+- **On the headset:** `alvr_client_android.apk` installs **AIVR**, the app that receives the
   stream on a Quest, Pico or other Android headset. It's our own build and installs next to the
   official ALVR app without replacing it.
 
@@ -73,7 +74,7 @@ Add-AppxPackage .\alvr_windows.msix
 
 ### 3. First start
 
-1. Open **ALVR Axodox Dashboard** from the Start menu. The first time it starts after an install or an
+1. Open **AIVR Dashboard** from the Start menu. The first time it starts after an install or an
    update, it copies its SteamVR driver to `%LOCALAPPDATA%\ALVR\streamer`. Settings and logs are kept
    there as well.
 2. Go through the setup wizard. Click **Add firewall rules** when it asks, and accept the admin prompt.
@@ -81,7 +82,7 @@ Add-AppxPackage .\alvr_windows.msix
 
 To use the emulator instead of a headset:
 
-1. With SteamVR running from the dashboard, open **ALVR Axodox Client Emulator** from the Start menu.
+1. With SteamVR running from the dashboard, open **AIVR Client Emulator** from the Start menu.
 2. In the dashboard, click **Trust** next to the new device that appears.
 
 The emulator keeps its settings in `%LOCALAPPDATA%\ALVR Client Emulator`. You can edit them there.
@@ -119,9 +120,9 @@ asks, and tick "Always allow from this computer".
 
 ### 3. First start
 
-1. On the headset, open the app library. On Quest, **ALVR Axodox** is under **Unknown Sources** in
+1. On the headset, open the app library. On Quest, **AIVR** is under **Unknown Sources** in
    the filter at the top right of the library.
-2. Start **ALVR Axodox** and allow the microphone when it asks.
+2. Start **AIVR** and allow the microphone when it asks.
 3. On the PC, the headset now appears in the dashboard. Click **Trust**.
 4. Click **Launch SteamVR** in the dashboard if SteamVR isn't running yet.
 
@@ -154,11 +155,11 @@ registers its own driver and removes the other one. Close SteamVR before switchi
    the `...\AppData\Local\ALVR\streamer` entry. Otherwise SteamVR keeps loading the driver after the
    app is gone.
 2. Close SteamVR and the dashboard.
-3. Uninstall **ALVR Axodox** from Settings → Apps → Installed apps.
+3. Uninstall **AIVR** from Settings → Apps → Installed apps.
 4. Optionally, delete `%LOCALAPPDATA%\ALVR` and `%LOCALAPPDATA%\ALVR Client Emulator` to remove the
    settings too. Windows does not remove these folders when you uninstall.
 
-**Headset:** in the app library, open the **⋯** menu on **ALVR Axodox** and choose **Uninstall**.
+**Headset:** in the app library, open the **⋯** menu on **AIVR** and choose **Uninstall**.
 Or, with the headset connected: `adb uninstall com.axodox.alvr`.
 
 ## Troubleshooting
@@ -166,10 +167,10 @@ Or, with the headset connected: `adb uninstall com.axodox.alvr`.
 | Message or symptom | Fix |
 |---|---|
 | "The publisher certificate could not be verified" or error `0x800B0109` | The certificate is not trusted on this PC. Do step 1 of part 1. It has to go into **Local Machine → Trusted People**, not Current User. |
-| "A higher version of this package is already installed" | The package you are installing is older than the installed one, for example an earlier release, or a build someone made on their own PC after it. Uninstall ALVR Axodox from the PC first, then install. |
+| "A higher version of this package is already installed" | The package you are installing is older than the installed one, for example an earlier release, or a build someone made on their own PC after it. Uninstall AIVR from the PC first, then install. |
 | SteamVR doesn't show ALVR | Start SteamVR from the dashboard, not from Steam. Or click **Register ALVR driver** under **Installation**. |
 | The emulator doesn't appear in the dashboard | Make sure SteamVR is running and no other emulator is open. Start the emulator again. |
 | The headset doesn't appear in the dashboard | Check that the PC and the headset are on the same network, and that the firewall rules were added (**Installation → Add firewall rules**). Check that both halves come from the same release. |
 | `adb` or SideQuest doesn't see the headset | Developer mode is off, or USB debugging wasn't allowed in the headset. Plug the cable in again and look inside the headset for the prompt. |
-| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` when installing the APK | An ALVR Axodox build signed with a different key is installed. Uninstall it (`adb uninstall com.axodox.alvr`), then install. |
+| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` when installing the APK | An AIVR build signed with a different key is installed. Uninstall it (`adb uninstall com.axodox.alvr`), then install. |
 | Something else | The PC logs are in `%LOCALAPPDATA%\ALVR\streamer` (`session_log.txt`, `crash_log.txt`). Send them to the group. |

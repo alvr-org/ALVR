@@ -2,7 +2,7 @@ name: Build MSIX and APK
 
 # Builds the PC side and the headset side of ALVR from the same commit, so the two always match:
 # - a Windows .msix with the streamer and the client emulator (see alvr/xtask/src/msix.rs)
-# - an Android .apk with the headset client, as an app of its own ("ALVR Axodox") that installs
+# - an Android .apk with the headset client, as an app of its own ("AIVR") that installs
 #   next to official ALVR
 #
 # Run by hand, both are attached to the run as artifacts. Pushing a `v*` tag also publishes a
@@ -99,7 +99,7 @@ jobs:
       # An app of its own, so it installs next to official ALVR instead of conflicting with it.
       # Permanent: changing the ID makes it a different app. See set_client_openxr_manifest_value.
       ALVR_ANDROID_PACKAGE_ID: com.axodox.alvr
-      ALVR_ANDROID_LABEL: ALVR Axodox
+      ALVR_ANDROID_LABEL: AIVR
     steps:
       - uses: actions/checkout@v6
         with:
@@ -178,7 +178,7 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          name: ALVR ${{ github.ref_name }}
+          name: AIVR ${{ github.ref_name }}
           body_path: alvr/xtask/resources/install_guide/README.md
           prerelease: true
           fail_on_unmatched_files: true

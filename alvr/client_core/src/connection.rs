@@ -186,9 +186,15 @@ fn connection_pipeline(
 
     *connection_state_lock = ConnectionState::Connecting;
 
+    let audio_enabled = capabilities.audio;
+
     // TODO: Don't fetch cpal sample rate, get directly from AAudio
-    let microphone_sample_rate =
-        alvr_audio::input_sample_rate(&alvr_audio::new_input(None).to_con()?).to_con()?;
+    let microphone_sample_rate = if audio_enabled {
+        alvr_audio::input_sample_rate(&alvr_audio::new_input(None).to_con()?).to_con()?
+    } else {
+        // No microphone is recorded; any valid rate will do.
+        48000
+    };
 
     dbg_connection!("connection_pipeline: Send stream capabilities");
     proto_control_socket
@@ -451,57 +457,59 @@ fn connection_pipeline(
         })
     });
 
-    let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
-        let device = alvr_audio::new_output(None).to_con()?;
-        thread::spawn({
-            let ctx = Arc::clone(&ctx);
-            move || {
-                while is_streaming(&ctx) {
-                    alvr_common::show_err(audio::play_audio_loop(
-                        || is_streaming(&ctx),
-                        &device,
-                        2,
-                        negotiated_config.game_audio_sample_rate,
-                        config.buffering.clone(),
-                        &mut game_audio_receiver,
-                    ));
+    let game_audio_thread =
+        if let (true, Switch::Enabled(config)) = (audio_enabled, settings.audio.game_audio) {
+            let device = alvr_audio::new_output(None).to_con()?;
+            thread::spawn({
+                let ctx = Arc::clone(&ctx);
+                move || {
+                    while is_streaming(&ctx) {
+                        alvr_common::show_err(audio::play_audio_loop(
+                            || is_streaming(&ctx),
+                            &device,
+                            2,
+                            negotiated_config.game_audio_sample_rate,
+                            config.buffering.clone(),
+                            &mut game_audio_receiver,
+                        ));
+                    }
                 }
-            }
-        })
-    } else {
-        thread::spawn(|| ())
-    };
+            })
+        } else {
+            thread::spawn(|| ())
+        };
 
-    let microphone_thread = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
-        let device = alvr_audio::new_input(None).to_con()?;
+    let microphone_thread =
+        if audio_enabled && matches!(settings.audio.microphone, Switch::Enabled(_)) {
+            let device = alvr_audio::new_input(None).to_con()?;
 
-        let microphone_sender = stream_socket.request_stream(AUDIO);
+            let microphone_sender = stream_socket.request_stream(AUDIO);
 
-        thread::spawn({
-            let ctx = Arc::clone(&ctx);
-            move || {
-                while is_streaming(&ctx) {
-                    let ctx = Arc::clone(&ctx);
-                    match audio::record_audio_blocking(
-                        Arc::new(move || is_streaming(&ctx)),
-                        microphone_sender.clone(),
-                        &device,
-                        1,
-                        false,
-                    ) {
-                        Ok(()) => break,
-                        Err(e) => {
-                            error!("Audio record error: {e}");
+            thread::spawn({
+                let ctx = Arc::clone(&ctx);
+                move || {
+                    while is_streaming(&ctx) {
+                        let ctx = Arc::clone(&ctx);
+                        match audio::record_audio_blocking(
+                            Arc::new(move || is_streaming(&ctx)),
+                            microphone_sender.clone(),
+                            &device,
+                            1,
+                            false,
+                        ) {
+                            Ok(()) => break,
+                            Err(e) => {
+                                error!("Audio record error: {e}");
 
-                            continue;
+                                continue;
+                            }
                         }
                     }
                 }
-            }
-        })
-    } else {
-        thread::spawn(|| ())
-    };
+            })
+        } else {
+            thread::spawn(|| ())
+        };
 
     let haptics_receive_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);

@@ -224,6 +224,7 @@ pub extern "C" fn alvr_initialize(capabilities: AlvrClientCapabilities) {
         prefer_10bit: capabilities.prefer_10bit,
         preferred_encoding_gamma: capabilities.preferred_encoding_gamma,
         prefer_hdr: capabilities.prefer_hdr,
+        audio: true,
     };
     *CLIENT_CORE_CONTEXT.lock() = Some(ClientCoreContext::new(capabilities));
 }

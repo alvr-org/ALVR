@@ -76,6 +76,7 @@ pub struct ClientCapabilities {
     pub prefer_10bit: bool,
     pub preferred_encoding_gamma: f32,
     pub prefer_hdr: bool,
+    pub audio: bool,
 }
 
 pub struct ClientCoreContext {

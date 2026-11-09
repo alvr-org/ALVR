@@ -483,6 +483,7 @@ impl EmulatedClient {
             prefer_10bit: false,
             preferred_encoding_gamma: 1.0,
             prefer_hdr: false,
+            audio: false,
         };
 
         let context = Arc::new(ClientCoreContext::new(capabilities));

@@ -2,6 +2,10 @@ name: Build MSIX
 
 # Builds the Windows .msix holding the streamer and the client emulator. See alvr/xtask/src/msix.rs.
 #
+# Run by hand, the package is attached to the run as an artifact. Pushing a `v*` tag also publishes
+# a GitHub pre-release with the package, the public half of the signing certificate and the install
+# guide (alvr/xtask/resources/msix/README.md) as its description.
+#
 # Signing uses two repository secrets:
 #   MSIX_CERT_PFX       the signing certificate's .pfx file, base64 encoded
 #   MSIX_CERT_PASSWORD  its password
@@ -17,8 +21,13 @@ on:
 jobs:
   build_msix:
     runs-on: windows-latest
+    permissions:
+      # Publishing a release.
+      contents: write
     env:
       HAS_CERT: ${{ secrets.MSIX_CERT_PFX != '' }}
+      # The fourth number of the package version; it only goes up, so every build is an update.
+      MSIX_BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -51,6 +60,18 @@ jobs:
           MSIX_CERT_PASSWORD: ${{ secrets.MSIX_CERT_PASSWORD }}
         run: cargo xtask package-msix --gpl --ci
 
+      # The public certificate testers trust once so Windows accepts the package. Exported from the
+      # signing key, so it always matches whatever key the secrets hold.
+      - name: Export public certificate
+        if: env.HAS_CERT == 'true'
+        shell: pwsh
+        env:
+          MSIX_CERT_PASSWORD: ${{ secrets.MSIX_CERT_PASSWORD }}
+        run: |
+          $cert = [Security.Cryptography.X509Certificates.X509Certificate2]::new($env:MSIX_CERT_PFX, $env:MSIX_CERT_PASSWORD)
+          [IO.File]::WriteAllBytes("build/ALVR-signing-certificate.cer", $cert.Export("Cert"))
+          "Certificate subject: $($cert.Subject), thumbprint: $($cert.Thumbprint)"
+
       - name: Remove signing certificate
         if: always() && env.HAS_CERT == 'true'
         shell: pwsh
@@ -60,4 +81,19 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: windows-msix
-          path: ./build/alvr_windows.msix
+          path: |
+            ./build/alvr_windows.msix
+            ./build/ALVR-signing-certificate.cer
+          if-no-files-found: error
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ALVR ${{ github.ref_name }} (Windows MSIX)
+          body_path: alvr/xtask/resources/msix/README.md
+          prerelease: true
+          fail_on_unmatched_files: true
+          files: |
+            build/alvr_windows.msix
+            build/ALVR-signing-certificate.cer

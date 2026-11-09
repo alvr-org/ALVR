@@ -148,7 +148,25 @@ pub fn package_msix(version: Option<String>, gpl: bool, reproducible: bool) {
 ///
 /// That makes `21.0.0-dev12` newer than `21.0.0`, which Windows would refuse to install over it.
 /// Pass `--version` with an explicit four-part version when that matters.
+///
+/// `MSIX_BUILD_NUMBER`, when set, replaces the fourth number. CI sets it to the workflow's run
+/// number, which only goes up, so each released package installs as an update to the last.
 fn msix_version(version: &str) -> String {
+    let version = base_msix_version(version);
+
+    match env::var("MSIX_BUILD_NUMBER")
+        .ok()
+        .and_then(|number| number.trim().parse::<u16>().ok())
+    {
+        Some(build) => {
+            let (base, _) = version.rsplit_once('.').unwrap();
+            format!("{base}.{build}")
+        }
+        None => version,
+    }
+}
+
+fn base_msix_version(version: &str) -> String {
     let (release, pre_release) = version.split_once('-').unwrap_or((version, ""));
 
     let mut parts = release

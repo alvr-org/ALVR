@@ -20,7 +20,7 @@
     ProcessorArchitecture="x64" />
 
   <Properties>
-    <DisplayName>ALVR</DisplayName>
+    <DisplayName>ALVR Axodox</DisplayName>
     <PublisherDisplayName>Axodox</PublisherDisplayName>
     <Logo>Assets\Dashboard\StoreLogo.png</Logo>
 
@@ -56,7 +56,7 @@
       Executable="ALVR\ALVR Dashboard.exe"
       EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="ALVR Dashboard"
+        DisplayName="ALVR Axodox Dashboard"
         Description="Stream SteamVR games to a standalone headset"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Dashboard\Square150x150Logo.png"
@@ -68,7 +68,7 @@
       Executable="Emulator\alvr_client_emulator.exe"
       EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="ALVR Client Emulator"
+        DisplayName="ALVR Axodox Client Emulator"
         Description="A desktop stand-in for an ALVR headset"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Emulator\Square150x150Logo.png"

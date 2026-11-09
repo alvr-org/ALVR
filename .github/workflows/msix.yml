@@ -1,16 +1,26 @@
-name: Build MSIX
+name: Build MSIX and APK
 
-# Builds the Windows .msix holding the streamer and the client emulator. See alvr/xtask/src/msix.rs.
+# Builds the PC side and the headset side of ALVR from the same commit, so the two always match:
+# - a Windows .msix with the streamer and the client emulator (see alvr/xtask/src/msix.rs)
+# - an Android .apk with the headset client, as an app of its own ("ALVR Axodox") that installs
+#   next to official ALVR
 #
-# Run by hand, the package is attached to the run as an artifact. Pushing a `v*` tag also publishes
-# a GitHub pre-release with the package, the public half of the signing certificate and the install
-# guide (alvr/xtask/resources/msix/README.md) as its description.
+# Run by hand, both are attached to the run as artifacts. Pushing a `v*` tag also publishes a
+# GitHub pre-release with both, the public half of the MSIX signing certificate, and the install
+# guide (alvr/xtask/resources/install_guide/README.md) as its description.
 #
-# Signing uses two repository secrets:
-#   MSIX_CERT_PFX       the signing certificate's .pfx file, base64 encoded
-#   MSIX_CERT_PASSWORD  its password
-# Its subject must match Publisher in alvr/xtask/resources/msix/AppxManifest.xml. Without the
-# secrets the package is still built, but unsigned, and cannot be installed.
+# The file keeps its old name: renaming it would restart the run numbers, which are part of the
+# MSIX version.
+#
+# Repository secrets:
+#   MSIX_CERT_PFX              the MSIX signing certificate's .pfx file, base64 encoded
+#   MSIX_CERT_PASSWORD         its password
+#   ANDROID_KEYSTORE           the APK signing keystore (PKCS#12, key alias "alvr"), base64 encoded
+#   ANDROID_KEYSTORE_PASSWORD  its password, which is also the key's
+# The MSIX certificate's subject must match Publisher in alvr/xtask/resources/msix/AppxManifest.xml.
+# Without the MSIX secrets the package is unsigned and cannot be installed. Without the Android ones
+# the APK is signed with a throwaway key, so each build would have to be uninstalled before the
+# next could be installed.
 
 on:
   workflow_dispatch:
@@ -21,9 +31,6 @@ on:
 jobs:
   build_msix:
     runs-on: windows-latest
-    permissions:
-      # Publishing a release.
-      contents: write
     env:
       HAS_CERT: ${{ secrets.MSIX_CERT_PFX != '' }}
       # The fourth number of the package version; it only goes up, so every build is an update.
@@ -86,14 +93,98 @@ jobs:
             ./build/ALVR-signing-certificate.cer
           if-no-files-found: error
 
+  # The same steps upstream ALVR builds its headset client with (prepare-release.yml).
+  build_apk:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE != '' }}
+      # An app of its own, so it installs next to official ALVR instead of conflicting with it.
+      # Permanent: changing the ID makes it a different app. See set_client_openxr_manifest_value.
+      ALVR_ANDROID_PACKAGE_ID: com.axodox.alvr
+      ALVR_ANDROID_LABEL: ALVR Axodox
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-32"
+
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26b
+
+      - name: Build and package
+        env:
+          RUST_BACKTRACE: 1
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: cargo xtask package-client --ci
+
+      # Re-signs the APK with the team's key. Android only installs an update over an app signed
+      # with the same key, so this key must never change.
+      - name: Sign APK
+        if: env.HAS_KEYSTORE == 'true'
+        uses: ilharp/sign-android-release@v2
+        id: sign_apk
+        with:
+          releaseDir: build/alvr_client_android
+          signingKey: ${{ secrets.ANDROID_KEYSTORE }}
+          keyAlias: alvr
+          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          buildToolsVersion: 34.0.0
+
+      - name: Collect APK
+        run: |
+          mkdir -p out
+          if [ "$HAS_KEYSTORE" = "true" ]; then
+            cp "${{ steps.sign_apk.outputs.signedFile }}" out/alvr_client_android.apk
+          else
+            cp build/alvr_client_android/alvr_client_android.apk out/alvr_client_android.apk
+          fi
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-apk
+          path: out/alvr_client_android.apk
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build_msix, build_apk]
+    runs-on: ubuntu-latest
+    permissions:
+      # Publishing a release.
+      contents: write
+    steps:
+      # Only for the install guide, which becomes the release's description.
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: alvr/xtask/resources/install_guide
+
+      - uses: actions/download-artifact@v8
+        with:
+          merge-multiple: true
+          path: artifacts
+
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          name: ALVR ${{ github.ref_name }} (Windows MSIX)
-          body_path: alvr/xtask/resources/msix/README.md
+          name: ALVR ${{ github.ref_name }}
+          body_path: alvr/xtask/resources/install_guide/README.md
           prerelease: true
           fail_on_unmatched_files: true
           files: |
-            build/alvr_windows.msix
-            build/ALVR-signing-certificate.cer
+            artifacts/alvr_windows.msix
+            artifacts/ALVR-signing-certificate.cer
+            artifacts/alvr_client_android.apk

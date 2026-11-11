@@ -40,7 +40,7 @@ pub fn accept_from_server(
     timeout: Duration,
 ) -> ConResult<TcpStream> {
     // Uses timeout set during bind()
-    let (socket, server_address) = listener.accept().handle_try_again()?;
+    let (socket, server_address) = crate::accept(listener).handle_try_again()?;
 
     if let Some(ip) = server_ip
         && server_address.ip() != ip
@@ -144,6 +144,11 @@ impl MultiplexedSocketReader for MultiplexedTcpReader {
                 if count == PACKET_PREFIX_SIZE {
                     break;
                 }
+                // The peer has closed the connection. Retrying would spin forever, without ever
+                // returning to the caller's shutdown check.
+                if count == 0 {
+                    con_bail!("Connection closed by peer");
+                }
             }
 
             let stream_id = u16::from_le_bytes(prefix_bytes[0..2].try_into().unwrap());
@@ -178,7 +183,12 @@ impl MultiplexedSocketReader for MultiplexedTcpReader {
             let sub_buffer = &mut in_progress_packet.buffer.spare_capacity_mut()
                 [in_progress_packet.cursor..in_progress_packet.buffer_size];
 
-            in_progress_packet.cursor += self.inner.recv(sub_buffer).handle_try_again()?;
+            let count = self.inner.recv(sub_buffer).handle_try_again()?;
+            if count == 0 {
+                con_bail!("Connection closed by peer");
+            }
+
+            in_progress_packet.cursor += count;
         }
 
         // All writing was done to uninit capacity, here we set the final buffer length
@@ -224,4 +234,55 @@ pub fn split_multiplexed(
     };
 
     Ok((Box::new(writer), Box::new(reader)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alvr_common::ConnectionError;
+    use std::{sync::mpsc, thread};
+
+    /// Receives on the server end of a connection the client has already closed, after it sent
+    /// `sent`, and reports what `recv()` returned. Fails rather than hangs if `recv()` never does.
+    fn recv_after_close(sent: &[u8]) -> ConResult {
+        let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let mut client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (server, _) = listener.accept().unwrap();
+        server
+            .set_read_timeout(Some(Duration::from_millis(100)))
+            .unwrap();
+
+        client.write_all(sent).unwrap();
+        drop(client);
+
+        let (_, mut reader) = split_multiplexed(server, Duration::from_millis(100)).unwrap();
+        let (result_sender, result_receiver) = mpsc::channel();
+        thread::spawn(move || {
+            result_sender.send(reader.recv(&HashMap::new())).ok();
+        });
+
+        result_receiver
+            .recv_timeout(Duration::from_secs(5))
+            .expect("recv() never returned once the peer had closed the connection")
+    }
+
+    #[test]
+    fn closed_connection_is_reported() {
+        assert!(matches!(
+            recv_after_close(&[]),
+            Err(ConnectionError::Other(_))
+        ));
+    }
+
+    #[test]
+    fn connection_closed_mid_packet_is_reported() {
+        let mut packet = vec![0; PACKET_PREFIX_SIZE];
+        packet[6..10].copy_from_slice(&100u32.to_le_bytes());
+        packet.extend_from_slice(&[1, 2, 3, 4, 5]);
+
+        assert!(matches!(
+            recv_after_close(&packet),
+            Err(ConnectionError::Other(_))
+        ));
+    }
 }

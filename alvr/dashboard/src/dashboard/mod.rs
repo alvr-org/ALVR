@@ -244,7 +244,7 @@ impl eframe::App for Dashboard {
                 .show(ui, |ui| {
                     ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
                         ui.add_space(13.0);
-                        ui.heading(RichText::new("ALVR").size(25.0).strong());
+                        ui.heading(RichText::new("AIVR").size(25.0).strong());
                         egui::warn_if_debug_build(ui);
                     });
 

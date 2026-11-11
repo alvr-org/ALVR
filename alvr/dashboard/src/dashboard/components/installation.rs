@@ -85,7 +85,7 @@ impl InstallationTab {
                         }
                     });
 
-                    if ui.button("Register ALVR driver").clicked() {
+                    if ui.button("Register AIVR driver").clicked() {
                         requests.push(InstallationTabRequest::ServerRequest(
                             ServerRequest::RegisterAlvrDriver,
                         ));

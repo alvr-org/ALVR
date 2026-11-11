@@ -41,6 +41,16 @@ struct FfiHandData {
     const FfiHandSkeleton* handSkeleton;
     bool isHandTracker;
     bool predictHandSkeleton;
+    // Where the interaction tip sits relative to the device pose, in the device's own frame.
+    // SteamVR's hand interaction profile declares /pose/tip and its render model is parented to it,
+    // so this is what the pointer ray and the poke cursor come out of. Without it SteamVR falls
+    // back to the raw device pose, which is the OpenXR palm joint: the centre of the *middle*
+    // finger's metacarpal, so the pointer appears at the middle finger. Only meaningful when
+    // handSkeleton is set. The orientation points the ray along the index finger rather than
+    // wherever the device's rotation offset happens to face.
+    float tipOffsetPosition[3];
+    FfiQuat tipOffsetOrientation;
+    bool hasTipOffset;
 };
 
 enum FfiOpenvrPropertyType {
@@ -159,6 +169,11 @@ struct Settings {
     bool m_enableLinuxVulkanAsyncCompute;
     bool m_enableLinuxAsyncReprojection;
 
+    // 8 bit alpha passthrough: preserve the base layer's alpha and encode it as a second
+    // monochrome stream. Must stay in sync with the Rust Settings struct in bindings.rs.
+    bool m_enableAlphaStream = false;
+    unsigned int m_alphaStreamBitrateMbps = 10;
+
     bool m_enableControllers;
     bool m_controllerIsTracker = false;
     bool m_enableBodyTrackingFakeVive = false;
@@ -201,6 +216,9 @@ extern "C" void DriverReadyIdle(bool setDefaultChaprone);
 extern "C" void SetVideoConfigNals(const unsigned char* configBuffer, int len, int codec);
 extern "C" void
 VideoSend(unsigned long long targetTimestampNs, unsigned char* buf, int len, bool isIdr);
+extern "C" void SetAlphaVideoConfigNals(const unsigned char* configBuffer, int len, int codec);
+extern "C" void
+AlphaVideoSend(unsigned long long targetTimestampNs, unsigned char* buf, int len, bool isIdr);
 extern "C" void
 HapticsSend(unsigned long long path, float duration_s, float frequency, float amplitude);
 extern "C" void ShutdownRuntime();
@@ -248,7 +266,12 @@ extern "C" void CaptureFrame();
 
 // NalParsing.cpp
 void ParseFrameNals(
-    int codec, unsigned char* buf, int len, unsigned long long targetTimestampNs, bool isIdr
+    int codec,
+    unsigned char* buf,
+    int len,
+    unsigned long long targetTimestampNs,
+    bool isIdr,
+    bool isAlpha = false
 );
 
 // CrashHandler.cpp

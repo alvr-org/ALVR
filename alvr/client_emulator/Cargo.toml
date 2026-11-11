@@ -1,0 +1,48 @@
+[package]
+name = "alvr_client_emulator"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+alvr_common.workspace = true
+alvr_client_core.workspace = true
+alvr_gui_common.workspace = true
+alvr_packets.workspace = true
+alvr_session.workspace = true
+alvr_system_info.workspace = true
+
+eframe = { version = "0.35", features = ["wgpu"] }
+egui = "0.35"
+egui-wgpu = "0.35"
+wgpu = "29"
+bytemuck = { version = "1", features = ["derive"] }
+dirs = "6"
+# Vertex colours carry baked lighting in rooms that store it per vertex.
+easy-gltf = { version = "1.1", features = ["vertex-color"] }
+env_logger = "0.11"
+# Skinned hand models: easy-gltf flattens node transforms and drops skins, so the hand loader
+# reads the file directly. Same version easy-gltf already pulls in.
+gltf = "1.4"
+# Decodes the window icon.
+ico = "0.5"
+# Links against the ffmpeg that `cargo xtask prepare-deps` already downloads for the server; see
+# build.rs. Note that build is GPL licensed.
+ffmpeg-next = "9"
+image = { version = "0.25", default-features = false, features = ["png"] }
+pollster = "0.4"
+rand = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tiny_http = "0.12"
+# Follows real-time server settings over the events websocket, as the dashboard does.
+tungstenite = "0.29"
+
+[build-dependencies]
+alvr_filesystem = { path = "../filesystem" }
+
+[target.'cfg(windows)'.build-dependencies]
+# Embeds the icon in the executable, for Explorer, shortcuts and the MSIX package.
+winres = "0.1"

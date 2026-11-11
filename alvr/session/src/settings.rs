@@ -640,6 +640,33 @@ This is a similar effect to AR glasses."
 
     #[schema(strings(display_name = "HSV Chroma Key"))]
     HsvChromaKey(#[schema(flag = "real-time")] HsvChromaKeyConfig),
+
+    #[schema(strings(display_name = "Alpha Stream (8 bit)"))]
+    AlphaStream(AlphaStreamConfig),
+}
+
+/// Full 8 bit per pixel alpha, transmitted as a separate monochrome video stream and merged
+/// with the color stream on the headset. Unlike the other modes, the alpha is authored by the
+/// PC application itself instead of being derived from the color image, which allows arbitrary
+/// semi-transparent effects.
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[schema(collapsible)]
+pub struct AlphaStreamConfig {
+    #[schema(strings(
+        display_name = "Alpha stream bitrate",
+        help = "Bitrate of the separate monochrome alpha stream, in Mbps. Alpha is usually much
+cheaper to encode than color, so this can be kept low."
+    ))]
+    #[schema(gui(slider(min = 1, max = 50, step = 1)))]
+    pub bitrate_mbps: u32,
+
+    #[schema(strings(
+        display_name = "Premultiplied alpha",
+        help = "Enable if the PC application outputs color already multiplied by alpha.
+If colors look washed out or edges glow, try toggling this."
+    ))]
+    #[schema(flag = "real-time")]
+    pub premultiplied_alpha: bool,
 }
 
 #[repr(u8)]
@@ -1669,6 +1696,11 @@ pub fn session_settings_default() -> SettingsDefault {
                         blue: 0,
                         distance_threshold: 85,
                         feathering: 0.05,
+                    },
+                    AlphaStream: AlphaStreamConfigDefault {
+                        gui_collapsed: true,
+                        bitrate_mbps: 10,
+                        premultiplied_alpha: false,
                     },
                     HsvChromaKey: HsvChromaKeyConfigDefault {
                         hue_start_max_deg: 70.0,

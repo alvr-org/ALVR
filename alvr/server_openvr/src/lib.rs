@@ -17,6 +17,7 @@ use bindings::*;
 use alvr_common::{
     BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID, HEAD_ID,
     Pose, ViewParams, error,
+    glam::Quat,
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
     warn,
@@ -27,7 +28,7 @@ use alvr_server_core::{
     HandType, ServerCoreContext, ServerCoreEvent, ServerNegotiatedStreamingConfig,
 };
 use alvr_session::{
-    BodyTrackingSinkConfig, CodecType, ControllersConfig, ControllersEmulationMode,
+    BodyTrackingSinkConfig, CodecType, ControllersConfig, ControllersEmulationMode, PassthroughMode,
 };
 use std::{
     collections::VecDeque,
@@ -81,6 +82,18 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
         } else {
             (false, false, false)
         };
+
+    // The alpha stream changes the encoder topology, so it is read once at driver init rather
+    // than through the real-time config path.
+    let (alpha_stream_enabled, alpha_stream_bitrate_mbps) = if let Some(
+        PassthroughMode::AlphaStream(config),
+    ) =
+        settings.video.passthrough.as_option()
+    {
+        (true, config.bitrate_mbps)
+    } else {
+        (false, 0)
+    };
 
     let body_tracking_vive_enabled =
         if let Switch::Enabled(config) = &settings.headset.body_tracking {
@@ -238,6 +251,8 @@ fn make_settings(negotiated: Option<&ServerNegotiatedStreamingConfig>) -> Settin
         m_trackingRefOnly: settings.headset.tracking_ref_only,
         m_enableLinuxVulkanAsyncCompute: settings.extra.patches.linux_async_compute,
         m_enableLinuxAsyncReprojection: settings.extra.patches.linux_async_reprojection,
+        m_enableAlphaStream: alpha_stream_enabled,
+        m_alphaStreamBitrateMbps: alpha_stream_bitrate_mbps,
         m_enableControllers: controllers_enabled,
         m_controllerIsTracker: controller_is_tracker,
         m_enableBodyTrackingFakeVive: body_tracking_vive_enabled,
@@ -361,6 +376,8 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                         let (
                             ffi_left_hand_skeleton,
                             ffi_right_hand_skeleton,
+                            left_tip_offset,
+                            right_tip_offset,
                             use_separate_hand_trackers,
                             predict_hand_skeleton,
                         ) = if let Some(ControllersConfig {
@@ -368,33 +385,45 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                             ..
                         }) = controllers_config
                         {
-                            let left_hand_skeleton = context
-                                .get_hand_skeleton(HandType::Left, poll_timestamp)
-                                .map(|s| {
-                                    tracking::to_openvr_ffi_hand_skeleton(
-                                        headset_config,
-                                        *HAND_LEFT_ID,
-                                        &s,
-                                    )
-                                });
-                            let right_hand_skeleton = context
-                                .get_hand_skeleton(HandType::Right, poll_timestamp)
-                                .map(|s| {
-                                    tracking::to_openvr_ffi_hand_skeleton(
-                                        headset_config,
-                                        *HAND_RIGHT_ID,
-                                        &s,
-                                    )
-                                });
+                            let left_skeleton =
+                                context.get_hand_skeleton(HandType::Left, poll_timestamp);
+                            let right_skeleton =
+                                context.get_hand_skeleton(HandType::Right, poll_timestamp);
+
+                            let left_hand_skeleton = left_skeleton.as_ref().map(|s| {
+                                tracking::to_openvr_ffi_hand_skeleton(
+                                    headset_config,
+                                    *HAND_LEFT_ID,
+                                    s,
+                                )
+                            });
+                            let right_hand_skeleton = right_skeleton.as_ref().map(|s| {
+                                tracking::to_openvr_ffi_hand_skeleton(
+                                    headset_config,
+                                    *HAND_RIGHT_ID,
+                                    s,
+                                )
+                            });
+
+                            // Taken from the same skeleton sample as the bones, so the tip cannot
+                            // describe a different frame from the hand it belongs to.
+                            let left_tip = left_skeleton.as_ref().map(|s| {
+                                tracking::hand_tip_offset(headset_config, *HAND_LEFT_ID, s)
+                            });
+                            let right_tip = right_skeleton.as_ref().map(|s| {
+                                tracking::hand_tip_offset(headset_config, *HAND_RIGHT_ID, s)
+                            });
 
                             (
                                 tracked.then_some(left_hand_skeleton).flatten(),
                                 tracked.then_some(right_hand_skeleton).flatten(),
+                                tracked.then_some(left_tip).flatten(),
+                                tracked.then_some(right_tip).flatten(),
                                 hand_skeleton_config.steamvr_input_2_0,
                                 hand_skeleton_config.predict,
                             )
                         } else {
-                            (None, None, false, false)
+                            (None, None, None, None, false, false)
                         };
 
                         let ffi_left_hand_data = FfiHandData {
@@ -412,6 +441,12 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                 && ffi_left_controller_motion.is_none()
                                 && ffi_left_hand_skeleton.is_some(),
                             predictHandSkeleton: predict_hand_skeleton,
+                            tipOffsetPosition: left_tip_offset
+                                .map_or([0.0; 3], |tip| tip.position.to_array()),
+                            tipOffsetOrientation: tracking::to_ffi_quat(
+                                left_tip_offset.map_or(Quat::IDENTITY, |tip| tip.orientation),
+                            ),
+                            hasTipOffset: left_tip_offset.is_some(),
                         };
                         let ffi_right_hand_data = FfiHandData {
                             controllerMotion: if let Some(motion) = &ffi_right_controller_motion {
@@ -428,6 +463,12 @@ fn spawn_event_loop(events_receiver: mpsc::Receiver<ServerCoreEvent>) {
                                 && ffi_right_controller_motion.is_none()
                                 && ffi_right_hand_skeleton.is_some(),
                             predictHandSkeleton: predict_hand_skeleton,
+                            tipOffsetPosition: right_tip_offset
+                                .map_or([0.0; 3], |tip| tip.position.to_array()),
+                            tipOffsetOrientation: tracking::to_ffi_quat(
+                                right_tip_offset.map_or(Quat::IDENTITY, |tip| tip.orientation),
+                            ),
+                            hasTipOffset: right_tip_offset.is_some(),
                         };
 
                         let ffi_body_tracker_motions = if track_body || detached_controllers {
@@ -611,6 +652,37 @@ extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_id
         ];
 
         context.send_video_nal(timestamp, global_view_params, is_idr, buffer.to_vec());
+    }
+}
+
+#[unsafe(export_name = "SetAlphaVideoConfigNals")]
+extern "C" fn set_alpha_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32) {
+    let codec = if codec == 0 {
+        CodecType::H264
+    } else if codec == 1 {
+        CodecType::Hevc
+    } else {
+        CodecType::AV1
+    };
+
+    let mut config_buffer = vec![0; len as usize];
+
+    unsafe { ptr::copy_nonoverlapping(buffer_ptr, config_buffer.as_mut_ptr(), len as usize) };
+
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        context.set_alpha_video_config_nals(config_buffer, codec);
+    }
+}
+
+/// Unlike the color stream this does not need a head pose: the client renders the alpha plane
+/// with the view params of the color frame it is paired with.
+#[unsafe(export_name = "AlphaVideoSend")]
+extern "C" fn send_alpha_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_idr: bool) {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        let timestamp = Duration::from_nanos(timestamp_ns);
+        let buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
+
+        context.send_alpha_video_nal(timestamp, is_idr, buffer.to_vec());
     }
 }
 

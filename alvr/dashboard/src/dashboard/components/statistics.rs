@@ -185,10 +185,10 @@ impl StatisticsTab {
                         stats.total_pipeline_latency_s,
                         theme::FG,
                     );
-                    label(ui, "ALVR Latency", transmission_total_latency_s, theme::FG);
+                    label(ui, "AIVR Latency", transmission_total_latency_s, theme::FG);
                     label(
                         ui,
-                        "Client System (not ALVR latency)",
+                        "Client System (not AIVR latency)",
                         stats.vsync_queue_s,
                         RENDER_EXTERNAL_LABEL,
                     );
@@ -205,7 +205,7 @@ impl StatisticsTab {
                     label(ui, "Streamer Compositor", stats.server_compositor_s, RENDER);
                     label(
                         ui,
-                        "Game Render (not ALVR latency)",
+                        "Game Render (not AIVR latency)",
                         stats.game_time_s,
                         RENDER_EXTERNAL_LABEL,
                     );

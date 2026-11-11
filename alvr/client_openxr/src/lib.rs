@@ -339,6 +339,7 @@ pub fn entry_point() {
             prefer_10bit: false,
             preferred_encoding_gamma: 1.0,
             prefer_hdr: false,
+            audio: true,
         };
         let core_context = Arc::new(ClientCoreContext::new(capabilities));
 
@@ -515,9 +516,13 @@ pub fn entry_point() {
                             )
                             .unwrap();
                     }
-                    ClientCoreEvent::DecoderConfig { codec, config_nal } => {
+                    ClientCoreEvent::DecoderConfig {
+                        codec,
+                        config_nal,
+                        stream: stream_kind,
+                    } => {
                         if let Some(stream) = &mut stream_context {
-                            stream.maybe_initialize_decoder(codec, config_nal);
+                            stream.maybe_initialize_decoder(codec, config_nal, stream_kind);
                         }
                     }
                     ClientCoreEvent::RealTimeConfig(config) => {

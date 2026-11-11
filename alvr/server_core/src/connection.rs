@@ -22,11 +22,11 @@ use alvr_packets::{
     AUDIO, ClientConnectionResult, ClientConnectionsAction, ClientControlPacket,
     ClientNegotiatedStreamingConfig, ClientStatistics, HAPTICS, NegotiatedStreamingConfigExt,
     RealTimeConfig, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData,
-    VIDEO, VideoPacketHeader,
+    VIDEO, VIDEO_ALPHA, VideoPacketHeader,
 };
 use alvr_session::{
-    BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile, Settings,
-    SocketProtocol, SteamvrHmdInitConfig,
+    BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile,
+    PassthroughMode, Settings, SocketProtocol, SteamvrHmdInitConfig,
 };
 use alvr_sockets::{
     CONTROL_PORT, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, ProtoControlSocket, SocketConnection,
@@ -347,7 +347,8 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
             }
 
             let client_ip = IpAddr::V4(Ipv4Addr::LOCALHOST);
-            wired_client_ips.insert(client_ip, WIRED_CLIENT_HOSTNAME.to_owned());
+            // Wired clients are reached over an ADB forward on the well-known port.
+            wired_client_ips.insert(client_ip, (WIRED_CLIENT_HOSTNAME.to_owned(), CONTROL_PORT));
         }
 
         if !wired_client_ips.is_empty()
@@ -377,7 +378,9 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                     })
             {
                 for ip in &connection_info.manual_ips {
-                    manual_client_ips.insert(*ip, hostname.clone());
+                    // Manually configured clients are not discovered, so there is nowhere to learn
+                    // a custom port from: the well-known one is the only possible guess.
+                    manual_client_ips.insert(*ip, (hostname.clone(), CONTROL_PORT));
                 }
             }
             manual_client_ips
@@ -419,7 +422,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                 continue;
             }
 
-            for (client_hostname, client_ip) in clients {
+            for (client_hostname, (client_ip, client_control_port)) in clients {
                 let trusted = {
                     let mut session_manager = SESSION_MANAGER.write();
 
@@ -454,7 +457,9 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
                     && let Err(e) = try_connect(
                         Arc::clone(&ctx),
                         Arc::clone(&lifecycle_state),
-                        [(client_ip, client_hostname.clone())].into_iter().collect(),
+                        [(client_ip, (client_hostname.clone(), client_control_port))]
+                            .into_iter()
+                            .collect(),
                     )
                 {
                     error!("Could not initiate connection for {client_hostname}: {e}");
@@ -477,19 +482,23 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
     alvr_common::dbg_connection!("handshake_loop: End");
 }
 
+/// `clients` maps each candidate client address to its hostname and the control port to dial.
+///
+/// The port is per client because clients sharing a machine cannot all listen on the well-known
+/// [`CONTROL_PORT`]; discovery supplies that port for every client that does not advertise its own.
 fn try_connect(
     ctx: Arc<ConnectionContext>,
     lifecycle_state: Arc<RwLock<LifecycleState>>,
-    mut client_ips: HashMap<IpAddr, String>,
+    mut clients: HashMap<IpAddr, (String, u16)>,
 ) -> ConResult {
     dbg_connection!("try_connect: Finding client and creating control socket");
 
     let (socket, client_ip, connection_result) = alvr_sockets::connect_to_client(
-        client_ips.keys().cloned().collect(),
+        clients.iter().map(|(ip, (_, port))| (*ip, *port)).collect(),
         Duration::from_secs(1),
     )?;
 
-    let Some(client_hostname) = client_ips.remove(&client_ip) else {
+    let Some((client_hostname, _)) = clients.remove(&client_ip) else {
         con_bail!("unreachable");
     };
 
@@ -719,6 +728,22 @@ fn connection_pipeline(
         .encoding_gamma
         .unwrap_or(streaming_caps.preferred_encoding_gamma);
 
+    // The 8 bit alpha passthrough mode needs a second monochrome stream, which older clients
+    // cannot decode. Fall back to no passthrough rather than streaming something unreadable.
+    let mut enable_alpha_stream = matches!(
+        initial_settings.video.passthrough.as_option(),
+        Some(PassthroughMode::AlphaStream(_))
+    );
+    if enable_alpha_stream
+        && !streaming_caps
+            .ext()
+            .map(|ext| ext.alpha_stream)
+            .unwrap_or(false)
+    {
+        warn!("The alpha stream passthrough mode is not supported by the client.");
+        enable_alpha_stream = false;
+    }
+
     let codec = if initial_settings.video.preferred_codec == CodecType::AV1 {
         let codec = if streaming_caps.encoder_av1 {
             CodecType::AV1
@@ -782,7 +807,9 @@ fn connection_pipeline(
             wired,
             ext_str: String::new(),
         }
-        .with_ext(NegotiatedStreamingConfigExt {}),
+        .with_ext(NegotiatedStreamingConfigExt {
+            enable_alpha_stream,
+        }),
     )
     .to_con()?;
 
@@ -848,6 +875,8 @@ fn connection_pipeline(
 
     let control_sender = Arc::new(Mutex::new(socket.request_reliable_stream()?));
     let mut video_sender = socket.request_unreliable_stream(VIDEO);
+    let mut alpha_video_sender = enable_alpha_stream
+        .then(|| socket.request_unreliable_stream::<VideoPacketHeader>(VIDEO_ALPHA));
     let game_audio_sender: alvr_sockets::StreamSender<()> = socket.request_unreliable_stream(AUDIO);
     let haptics_sender = socket.request_unreliable_stream(HAPTICS);
 
@@ -863,6 +892,14 @@ fn connection_pipeline(
         std::sync::mpsc::sync_channel(initial_settings.connection.max_queued_server_video_frames);
     *ctx.video_channel_sender.lock() = Some(video_channel_sender);
     *ctx.haptics_sender.lock() = Some(haptics_sender);
+
+    let alpha_video_channel_receiver = enable_alpha_stream.then(|| {
+        let (sender, receiver) = std::sync::mpsc::sync_channel(
+            initial_settings.connection.max_queued_server_video_frames,
+        );
+        *ctx.alpha_video_channel_sender.lock() = Some(sender);
+        receiver
+    });
 
     let video_send_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
@@ -888,6 +925,25 @@ fn connection_pipeline(
                     .ok();
             }
         }
+    });
+
+    // Alpha view params are unused by the client (it reuses the color frame's), so unlike the
+    // color thread this does no unrecentering.
+    let alpha_video_send_thread = alpha_video_channel_receiver.map(|receiver| {
+        let mut sender = alpha_video_sender.take().unwrap();
+        let client_hostname = client_hostname.clone();
+        thread::spawn(move || {
+            while is_streaming(&client_hostname) {
+                let VideoPacket { header, payload } =
+                    match receiver.recv_timeout(STREAMING_RECV_TIMEOUT) {
+                        Ok(packet) => packet,
+                        Err(RecvTimeoutError::Timeout) => continue,
+                        Err(RecvTimeoutError::Disconnected) => return,
+                    };
+
+                sender.send_header_with_payload(&header, &payload).ok();
+            }
+        })
     });
 
     #[cfg_attr(target_os = "linux", expect(unused_variables))]
@@ -1214,6 +1270,12 @@ fn connection_pipeline(
                                 .send(&ServerControlPacket::DecoderConfig(config))
                                 .ok();
                         }
+                        if let Some(config) = ctx.alpha_decoder_config.lock().clone() {
+                            control_sender
+                                .lock()
+                                .send(&ServerControlPacket::DecoderConfig(config))
+                                .ok();
+                        }
                         ctx.events_sender.send(ServerCoreEvent::RequestIDR).ok();
                     }
                     ClientControlPacket::LocalViewParams(params) => {
@@ -1293,7 +1355,11 @@ fn connection_pipeline(
                     ClientControlPacket::Log { level, message } => {
                         info!("Client {client_hostname}: [{level:?}] {message}")
                     }
-                    ClientControlPacket::KeepAlive | ClientControlPacket::StreamReady => (),
+                    // Both stream-ready variants are consumed during the handshake; reaching the
+                    // streaming loop means a duplicate, which is harmless.
+                    ClientControlPacket::KeepAlive
+                    | ClientControlPacket::StreamReady
+                    | ClientControlPacket::StreamReadyOnPort(_) => (),
                     ClientControlPacket::ProximityState(headset_is_worn) => {
                         ctx.events_sender
                             .send(ServerCoreEvent::ProximityState(headset_is_worn))
@@ -1428,6 +1494,9 @@ fn connection_pipeline(
     // Ensure shutdown of threads
     dbg_connection!("connection_pipeline: Shutdown threads");
     video_send_thread.join().ok();
+    if let Some(thread) = alpha_video_send_thread {
+        thread.join().ok();
+    }
     game_audio_thread.join().ok();
     microphone_thread.join().ok();
     tracking_receive_thread.join().ok();

@@ -1,12 +1,26 @@
-name: Build MSIX
+name: Build MSIX and APK
 
-# Builds the Windows .msix holding the streamer and the client emulator. See alvr/xtask/src/msix.rs.
+# Builds the PC side and the headset side of ALVR from the same commit, so the two always match:
+# - a Windows .msix with the streamer and the client emulator (see alvr/xtask/src/msix.rs)
+# - an Android .apk with the headset client, as an app of its own ("AIVR") that installs
+#   next to official ALVR
 #
-# Signing uses two repository secrets:
-#   MSIX_CERT_PFX       the signing certificate's .pfx file, base64 encoded
-#   MSIX_CERT_PASSWORD  its password
-# Its subject must match Publisher in alvr/xtask/resources/msix/AppxManifest.xml. Without the
-# secrets the package is still built, but unsigned, and cannot be installed.
+# Run by hand, both are attached to the run as artifacts. Pushing a `v*` tag also publishes a
+# GitHub pre-release with both, the public half of the MSIX signing certificate, and the install
+# guide (alvr/xtask/resources/install_guide/README.md) as its description.
+#
+# The MSIX version's last number is the hours since 2026-01-01, so any later build, from any repo
+# or PC, installs as an update to an earlier one. See msix_version in alvr/xtask/src/msix.rs.
+#
+# Repository secrets:
+#   MSIX_CERT_PFX              the MSIX signing certificate's .pfx file, base64 encoded
+#   MSIX_CERT_PASSWORD         its password
+#   ANDROID_KEYSTORE           the APK signing keystore (PKCS#12, key alias "alvr"), base64 encoded
+#   ANDROID_KEYSTORE_PASSWORD  its password, which is also the key's
+# The MSIX certificate's subject must match Publisher in alvr/xtask/resources/msix/AppxManifest.xml.
+# Without the MSIX secrets the package is unsigned and cannot be installed. Without the Android ones
+# the APK is signed with a throwaway key, so each build would have to be uninstalled before the
+# next could be installed.
 
 on:
   workflow_dispatch:
@@ -51,6 +65,18 @@ jobs:
           MSIX_CERT_PASSWORD: ${{ secrets.MSIX_CERT_PASSWORD }}
         run: cargo xtask package-msix --gpl --ci
 
+      # The public certificate testers trust once so Windows accepts the package. Exported from the
+      # signing key, so it always matches whatever key the secrets hold.
+      - name: Export public certificate
+        if: env.HAS_CERT == 'true'
+        shell: pwsh
+        env:
+          MSIX_CERT_PASSWORD: ${{ secrets.MSIX_CERT_PASSWORD }}
+        run: |
+          $cert = [Security.Cryptography.X509Certificates.X509Certificate2]::new($env:MSIX_CERT_PFX, $env:MSIX_CERT_PASSWORD)
+          [IO.File]::WriteAllBytes("build/AIVR-signing-certificate.cer", $cert.Export("Cert"))
+          "Certificate subject: $($cert.Subject), thumbprint: $($cert.Thumbprint)"
+
       - name: Remove signing certificate
         if: always() && env.HAS_CERT == 'true'
         shell: pwsh
@@ -60,4 +86,103 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: windows-msix
-          path: ./build/alvr_windows.msix
+          path: |
+            ./build/aivr_windows.msix
+            ./build/AIVR-signing-certificate.cer
+          if-no-files-found: error
+
+  # The same steps upstream ALVR builds its headset client with (prepare-release.yml).
+  build_apk:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE != '' }}
+      # An app of its own, so it installs next to official ALVR instead of conflicting with it.
+      # Permanent: changing the ID makes it a different app. See set_client_openxr_manifest_value.
+      ALVR_ANDROID_PACKAGE_ID: com.axodox.aivr
+      ALVR_ANDROID_LABEL: AIVR
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-32"
+
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26b
+
+      - name: Build and package
+        env:
+          RUST_BACKTRACE: 1
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: cargo xtask package-client --ci
+
+      # Re-signs the APK with the team's key. Android only installs an update over an app signed
+      # with the same key, so this key must never change.
+      - name: Sign APK
+        if: env.HAS_KEYSTORE == 'true'
+        uses: ilharp/sign-android-release@v2
+        id: sign_apk
+        with:
+          releaseDir: build/alvr_client_android
+          signingKey: ${{ secrets.ANDROID_KEYSTORE }}
+          keyAlias: alvr
+          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          buildToolsVersion: 34.0.0
+
+      - name: Collect APK
+        run: |
+          mkdir -p out
+          if [ "$HAS_KEYSTORE" = "true" ]; then
+            cp "${{ steps.sign_apk.outputs.signedFile }}" out/aivr_client_android.apk
+          else
+            cp build/alvr_client_android/alvr_client_android.apk out/aivr_client_android.apk
+          fi
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-apk
+          path: out/aivr_client_android.apk
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build_msix, build_apk]
+    runs-on: ubuntu-latest
+    permissions:
+      # Publishing a release.
+      contents: write
+    steps:
+      # Only for the install guide, which becomes the release's description.
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: alvr/xtask/resources/install_guide
+
+      - uses: actions/download-artifact@v8
+        with:
+          merge-multiple: true
+          path: artifacts
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: AIVR ${{ github.ref_name }}
+          body_path: alvr/xtask/resources/install_guide/README.md
+          prerelease: true
+          fail_on_unmatched_files: true
+          files: |
+            artifacts/aivr_windows.msix
+            artifacts/AIVR-signing-certificate.cer
+            artifacts/aivr_client_android.apk

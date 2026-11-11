@@ -3,7 +3,7 @@ use alvr_common::{
     BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID,
     BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, DeviceMotion, Fov, HAND_LEFT_ID,
     HAND_RIGHT_ID, Pose, ViewParams,
-    glam::{EulerRot, Quat, Vec3},
+    glam::{EulerRot, Mat3, Quat, Vec3},
     settings_schema::Switch,
 };
 use alvr_session::{ControllersConfig, HeadsetConfig};
@@ -38,7 +38,7 @@ fn to_ffi_fov(fov: Fov) -> FfiFov {
     }
 }
 
-fn to_ffi_quat(quat: Quat) -> FfiQuat {
+pub fn to_ffi_quat(quat: Quat) -> FfiQuat {
     FfiQuat {
         x: quat.x,
         y: quat.y,
@@ -117,6 +117,59 @@ fn to_ffi_skeleton(skeleton: &[Pose; 31]) -> FfiHandSkeleton {
             .collect::<Vec<_>>()
             .try_into()
             .unwrap(),
+    }
+}
+
+/// Where the interaction tip belongs relative to the device pose, in the device's own frame.
+///
+/// The device pose the driver publishes is bone 0 of the skeleton below: the OpenXR palm joint with
+/// the configured offset applied. The palm is defined at the centre of the *middle* finger's
+/// metacarpal, so anything drawn at the device pose — SteamVR's pointer ray, its poke cursor, the
+/// hand profile's render model — appears at the middle finger rather than the index. The profile
+/// declares `/pose/tip` for exactly this, and this places it at the root of the index finger,
+/// which is where the specification's figure of the aim pose has the ray begin.
+///
+/// The tip points along the index metacarpal, the ray of that same figure, with +Y out of the back
+/// of the hand. It cannot simply keep the device's orientation: the rotation offset setting turns
+/// the device to match SteamVR's skeleton conventions (45° of yaw by default), not the finger, so a
+/// ray inheriting it leaves the hand diagonally.
+///
+/// Rigid with the hand, by construction. The spec asks for an aim pose that is "typically
+/// stabilized", and neither its origin nor its direction may follow the finger's articulation: if
+/// they did, a pinch would move the aim off whatever the user was pointing at, at the moment they
+/// commit to clicking it. The metacarpal does not articulate, so neither the knuckle nor the
+/// direction from the metacarpal's base to it moves as the fingers curl.
+pub fn hand_tip_offset(config: &HeadsetConfig, device_id: u64, hand_skeleton: &[Pose; 26]) -> Pose {
+    let (left_offset, right_offset) = get_hand_skeleton_offsets(config);
+    let pose_offset = if device_id == *HAND_LEFT_ID {
+        left_offset
+    } else {
+        right_offset
+    };
+
+    let palm = hand_skeleton[0];
+
+    // The root of the index finger, which is where OpenXR's figure of the hand aim pose
+    // (XR_EXT_hand_interaction) puts the origin of the ray. It is also stable: the metacarpal does
+    // not articulate, so the knuckle is rigid with the palm whatever the fingers are doing. Taking
+    // the live fingertip instead drags the aim about as the finger curls, so a pinch walks the
+    // target off the thing you were pointing at.
+    let knuckle = hand_skeleton[7].position;
+
+    // -Z along the index metacarpal, +Y as near the back of the hand as that allows. The palm's +Y
+    // is the back of the hand by the joint convention, for either hand.
+    let backward = (hand_skeleton[6].position - knuckle).normalize_or(Vec3::Z);
+    let dorsal = palm.orientation * Vec3::Y;
+    let up = (dorsal - backward * dorsal.dot(backward)).normalize_or(Vec3::Y);
+    let aim = Quat::from_mat3(&Mat3::from_cols(up.cross(backward), up, backward));
+
+    // Must match bone 0 below, or the tip lands somewhere unrelated to where the device is.
+    let device_orientation = palm.orientation * pose_offset.orientation;
+    let device_position = palm.position + device_orientation * pose_offset.position;
+
+    Pose {
+        orientation: device_orientation.conjugate() * aim,
+        position: device_orientation.conjugate() * (knuckle - device_position),
     }
 }
 
@@ -303,5 +356,43 @@ pub fn offset_controller_motion(
                 .angular_velocity
                 .cross(motion.pose.orientation * pose_offset.position),
         angular_velocity: motion.pose.orientation.conjugate() * motion.angular_velocity,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The tip SteamVR draws the pointer from: at the index knuckle, pointing along the index
+    /// metacarpal with +Y out of the back of the hand, whatever the device's rotation offset.
+    #[test]
+    fn hand_tip_runs_along_the_index_finger() {
+        let config = alvr_session::SessionConfig::default().to_settings().headset;
+
+        // A left hand held level, palm down, pointing forward and turned a little to the right,
+        // so no axis of the hand coincides with one of the world's.
+        let palm = Pose {
+            orientation: Quat::from_rotation_y(-0.3),
+            position: Vec3::new(0.1, 1.2, -0.3),
+        };
+        let mut skeleton = [palm; 26];
+        skeleton[6].position = palm.position + palm.orientation * Vec3::new(0.011, 0.0, 0.03);
+        skeleton[7].position = palm.position + palm.orientation * Vec3::new(0.022, 0.0, -0.033);
+
+        let tip = hand_tip_offset(&config, *HAND_LEFT_ID, &skeleton);
+
+        // The device pose as bone 0 has it: the position offset is in the rotated frame.
+        let (offset, _) = get_hand_skeleton_offsets(&config);
+        let device_orientation = palm.orientation * offset.orientation;
+        let device = Pose {
+            orientation: device_orientation,
+            position: palm.position + device_orientation * offset.position,
+        };
+        let world = device * tip;
+
+        let along = (skeleton[7].position - skeleton[6].position).normalize();
+        assert!(world.position.distance(skeleton[7].position) < 1e-5);
+        assert!((world.orientation * Vec3::NEG_Z).dot(along) > 0.9999);
+        assert!((world.orientation * Vec3::Y).dot(palm.orientation * Vec3::Y) > 0.9999);
     }
 }

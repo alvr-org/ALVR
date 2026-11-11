@@ -1,5 +1,19 @@
 [alias]
 xtask = "run -p alvr_xtask --"
 
+# `ffmpeg-sys-next`, used by the client emulator, locates ffmpeg through this variable and reads it
+# from the process environment, so it cannot be set from a build script. Pointing it at the ffmpeg
+# that `cargo xtask prepare-deps` already downloads keeps the emulator buildable with no extra setup.
+#
+# Cargo has no per-target `[env]`, so this is set globally. The path only exists on Windows, which is
+# harmless elsewhere: `ffmpeg-sys-next` falls back to pkg-config when the directory is missing, and
+# that is how Linux finds both the vendored prefix and distribution ffmpeg. Override FFMPEG_DIR in
+# the environment to point somewhere else.
+#
+# `force = false` means an FFMPEG_DIR already in the environment still wins, and `relative = true`
+# resolves the path against this file rather than the current directory.
+[env]
+FFMPEG_DIR = { value = "deps/windows/ffmpeg", force = false, relative = true }
+
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]

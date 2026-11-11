@@ -5,7 +5,7 @@ use crate::{
     dependencies::{self, OpenXRLoadersSelection},
 };
 use alvr_filesystem as afs;
-use std::{fs, path::Path};
+use std::{env, fs, path::Path};
 use xshell::{Shell, cmd};
 
 pub enum ReleaseFlavor {
@@ -128,7 +128,40 @@ pub fn replace_client_openxr_manifest(from_pattern: &str, to: &str) {
     fs::write(manifest_path, manifest_string).unwrap();
 }
 
+/// Replaces the line of the client manifest that starts with `key = `, which must exist.
+fn set_client_openxr_manifest_value(key: &str, value: &str) {
+    let manifest_path = afs::crate_dir("client_openxr").join("Cargo.toml");
+    let manifest = fs::read_to_string(&manifest_path).unwrap();
+
+    let prefix = format!("{key} = ");
+    let mut found = false;
+    let manifest = manifest
+        .lines()
+        .map(|line| {
+            if !found && line.starts_with(&prefix) {
+                found = true;
+                format!("{key} = \"{value}\"")
+            } else {
+                line.to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(found, "No `{key}` in {}", manifest_path.display());
+
+    fs::write(manifest_path, manifest + "\n").unwrap();
+}
+
 pub fn package_client_openxr(flavor: ReleaseFlavor, skip_admin_priv: bool) {
+    // Lets a fork ship the client as an app of its own, which installs next to official ALVR rather
+    // than conflicting with it. Changes the manifest in place, as the store flavors below do.
+    if let Ok(package_id) = env::var("ALVR_ANDROID_PACKAGE_ID") {
+        set_client_openxr_manifest_value("package", &package_id);
+    }
+    if let Ok(label) = env::var("ALVR_ANDROID_LABEL") {
+        set_client_openxr_manifest_value("label", &label);
+    }
+
     fs::remove_dir_all(afs::deps_dir().join("android_openxr")).ok();
 
     let openxr_selection = match flavor {

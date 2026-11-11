@@ -58,6 +58,14 @@ bool Controller::activate() {
         vr::VRScalarUnits_NormalizedOneSided
     );
 
+    // The hand interaction profile declares /pose/tip and parents its render model to it, so it is
+    // what SteamVR draws the pointer ray and the poke cursor from. Nothing creates it otherwise and
+    // SteamVR falls back to the raw device pose, which is the OpenXR palm joint — the middle
+    // finger's metacarpal. Controllers are left alone: their own profiles define a tip already.
+    if (isHandTracker()) {
+        vr_driver_input->CreatePoseComponent(this->prop_container, "/pose/tip", &m_compTip);
+    }
+
     if (this->device_id == HAND_LEFT_ID || this->device_id == HAND_TRACKER_LEFT_ID) {
         vr_driver_input->CreateSkeletonComponent(
             this->prop_container,
@@ -106,11 +114,22 @@ bool Controller::activate() {
 
 vr::VRInputComponentHandle_t Controller::getHapticComponent() { return m_compHaptic; }
 
+bool Controller::isHandTracker() const {
+    return this->device_id == HAND_TRACKER_LEFT_ID || this->device_id == HAND_TRACKER_RIGHT_ID;
+}
+
 void Controller::RegisterButton(uint64_t id) {
     Debug("Controller::RegisterButton deviceID=%llu", this->device_id);
 
+    bool left = this->device_id == HAND_LEFT_ID || this->device_id == HAND_TRACKER_LEFT_ID;
+
+    // A hand tracking device advertises the hand interaction profile, so its components are that
+    // profile's, not the emulated controller's; an id with no entry there creates nothing.
     ButtonInfo buttonInfo;
-    if (device_id == HAND_LEFT_ID) {
+    if (isHandTracker()) {
+        buttonInfo = left ? LEFT_HAND_TRACKER_BUTTON_MAPPING[id]
+                          : RIGHT_HAND_TRACKER_BUTTON_MAPPING[id];
+    } else if (left) {
         buttonInfo = LEFT_CONTROLLER_BUTTON_MAPPING[id];
     } else {
         buttonInfo = RIGHT_CONTROLLER_BUTTON_MAPPING[id];
@@ -146,7 +165,11 @@ void Controller::SetButton(uint64_t id, FfiButtonValue value) {
         return;
     }
 
-    for (auto id : ALVR_TO_STEAMVR_PATH_IDS[id]) {
+    // Resolved against the same table the components were created from, or the update would look
+    // for handles this device never registered.
+    auto& path_ids = isHandTracker() ? ALVR_TO_HAND_TRACKER_PATH_IDS : ALVR_TO_STEAMVR_PATH_IDS;
+
+    for (auto id : path_ids[id]) {
         if (value.type == BUTTON_TYPE_BINARY) {
             vr::VRDriverInput()->UpdateBooleanComponent(
                 m_buttonHandles[id], (bool)value.binary, 0.0
@@ -266,6 +289,28 @@ bool Controller::OnPoseUpdate(uint64_t targetTimestampNs, float predictionS, Ffi
     pose.poseTimeOffset = predictionS;
 
     this->submit_pose(pose);
+
+    // Place the tip at the index knuckle, pointing along the index finger, as an offset from the
+    // device pose in its own frame. Both are computed from joints rigid with the palm, so the ray
+    // does not swing about as the fingers curl.
+    if (m_compTip != vr::k_ulInvalidInputComponentHandle && enabled && handData.hasTipOffset) {
+        const FfiQuat& q = handData.tipOffsetOrientation;
+        vr::HmdMatrix34_t tip = {};
+        tip.m[0][0] = 1.f - 2.f * (q.y * q.y + q.z * q.z);
+        tip.m[0][1] = 2.f * (q.x * q.y - q.z * q.w);
+        tip.m[0][2] = 2.f * (q.x * q.z + q.y * q.w);
+        tip.m[1][0] = 2.f * (q.x * q.y + q.z * q.w);
+        tip.m[1][1] = 1.f - 2.f * (q.x * q.x + q.z * q.z);
+        tip.m[1][2] = 2.f * (q.y * q.z - q.x * q.w);
+        tip.m[2][0] = 2.f * (q.x * q.z - q.y * q.w);
+        tip.m[2][1] = 2.f * (q.y * q.z + q.x * q.w);
+        tip.m[2][2] = 1.f - 2.f * (q.x * q.x + q.y * q.y);
+        tip.m[0][3] = handData.tipOffsetPosition[0];
+        tip.m[1][3] = handData.tipOffsetPosition[1];
+        tip.m[2][3] = handData.tipOffsetPosition[2];
+
+        vr_driver_input->UpdatePoseComponent(m_compTip, &tip, predictionS);
+    }
 
     m_poseTargetTimestampNs = targetTimestampNs;
 

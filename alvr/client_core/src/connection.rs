@@ -16,7 +16,8 @@ use alvr_common::{
 use alvr_packets::{
     AUDIO, ClientConnectionResult, ClientControlPacket, ClientStatistics, ConnectionAcceptedInfo,
     HAPTICS, Haptics, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData,
-    VIDEO, VideoPacketHeader, VideoStreamingCapabilities, VideoStreamingCapabilitiesExt,
+    VIDEO, VIDEO_ALPHA, VideoPacketHeader, VideoStreamingCapabilities,
+    VideoStreamingCapabilitiesExt,
 };
 use alvr_session::{SocketProtocol, settings_schema::Switch};
 use alvr_sockets::{
@@ -37,7 +38,7 @@ use alvr_audio as audio;
 
 const INITIAL_MESSAGE: &str = concat!(
     "Searching for streamer...\n",
-    "Open ALVR on your PC then click \"Trust\"\n",
+    "Open AIVR on your PC then click \"Trust\"\n",
     "next to the device entry",
 );
 const SUCCESS_CONNECT_MESSAGE: &str = "Successful connection!\nPlease wait...";
@@ -64,13 +65,15 @@ pub struct ConnectionContext {
     pub statistics_sender: Mutex<Option<StreamSender<ClientStatistics>>>,
     pub statistics_manager: Mutex<Option<StatisticsManager>>,
     pub decoder_callback: Mutex<Option<Box<DecoderCallback>>>,
+    /// Sink for the companion monochrome alpha stream, used by the 8 bit alpha passthrough mode.
+    pub alpha_decoder_callback: Mutex<Option<Box<DecoderCallback>>>,
     pub global_view_params_queue: Mutex<VecDeque<(Duration, [ViewParams; 2])>>,
     pub max_prediction: RwLock<Duration>,
 }
 
 fn set_hud_message(event_queue: &Mutex<VecDeque<ClientCoreEvent>>, message: &str) {
     let message = format!(
-        "ALVR v{}\nhostname: {}\nIP: {}\n\n{message}",
+        "AIVR v{}\nhostname: {}\nIP: {}\n\n{message}",
         *ALVR_VERSION,
         Config::load().hostname,
         alvr_system_info::local_ip(),
@@ -130,9 +133,36 @@ fn connection_pipeline(
 
     let (mut proto_control_socket, server_ip) = {
         let config = Config::load();
-        let announcer_socket = AnnouncerSocket::new(&config.hostname).to_con()?;
-        let listener_socket =
-            alvr_sockets::get_server_listener(HANDSHAKE_ACTION_TIMEOUT).to_con()?;
+
+        // Only one process per machine can own the well-known control port. Falling back to an
+        // OS-assigned one lets several clients share a machine, which is what makes running more
+        // than one emulated headset possible. The port is advertised over mDNS so the server knows
+        // where to connect; servers that ignore the advertisement still reach clients that got the
+        // well-known port, so ordinary clients are unaffected.
+        let (listener_socket, control_port) =
+            match alvr_sockets::get_server_listener(HANDSHAKE_ACTION_TIMEOUT) {
+                Ok(listener) => (listener, alvr_sockets::CONTROL_PORT),
+                Err(e) => {
+                    info!(
+                        "Could not bind control port {} ({e}), using an OS-assigned one",
+                        alvr_sockets::CONTROL_PORT
+                    );
+
+                    let listener =
+                        alvr_sockets::get_server_listener_on_port(HANDSHAKE_ACTION_TIMEOUT, 0)
+                            .to_con()?;
+                    let port = listener
+                        .local_addr()
+                        .map_err(alvr_common::anyhow::Error::from)
+                        .to_con()?
+                        .port();
+
+                    (listener, port)
+                }
+            };
+
+        let announcer_socket =
+            AnnouncerSocket::new_with_control_port(&config.hostname, control_port).to_con()?;
 
         loop {
             if *lifecycle_state.write() != LifecycleState::Resumed {
@@ -156,9 +186,15 @@ fn connection_pipeline(
 
     *connection_state_lock = ConnectionState::Connecting;
 
+    let audio_enabled = capabilities.audio;
+
     // TODO: Don't fetch cpal sample rate, get directly from AAudio
-    let microphone_sample_rate =
-        alvr_audio::input_sample_rate(&alvr_audio::new_input(None).to_con()?).to_con()?;
+    let microphone_sample_rate = if audio_enabled {
+        alvr_audio::input_sample_rate(&alvr_audio::new_input(None).to_con()?).to_con()?
+    } else {
+        // No microphone is recorded; any valid rate will do.
+        48000
+    };
 
     dbg_connection!("connection_pipeline: Send stream capabilities");
     proto_control_socket
@@ -182,7 +218,11 @@ fn connection_pipeline(
                         prefer_hdr: capabilities.prefer_hdr,
                         ext_str: String::new(),
                     }
-                    .with_ext(VideoStreamingCapabilitiesExt {}),
+                    .with_ext(VideoStreamingCapabilitiesExt {
+                        // The alpha stream needs a second decoder instance; MediaCodec supports
+                        // this on all currently targeted devices.
+                        alpha_stream: true,
+                    }),
                 ),
             },
         )))
@@ -237,17 +277,45 @@ fn connection_pipeline(
     };
 
     dbg_connection!("connection_pipeline: create StreamSocket");
+    let configured_stream_port = settings.connection.stream_port;
+
+    // The client yields the configured stream port whenever it shares a machine with the server.
+    //
+    // Only one of the two can bind it, and it cannot be the client: the client dials the server by
+    // port number, so the server's port is fixed by the protocol while the client's is not. The
+    // client binds first (it is listening before the server connects), so simply trying the
+    // configured port would win the race and leave the server unable to bind at all.
+    //
+    // Across machines this is moot — both sides can hold the same number — so ordinary clients keep
+    // using the configured port and send the original `StreamReady`.
+    let share_machine_with_server =
+        server_ip.is_loopback() || alvr_system_info::local_ip() == server_ip;
+    let requested_stream_port = if share_machine_with_server {
+        info!("Server is on this machine; binding an OS-assigned stream port");
+        0
+    } else {
+        configured_stream_port
+    };
+
     let stream_socket_builder = StreamSocketBuilder::listen_for_server(
         Duration::from_secs(1),
-        settings.connection.stream_port,
+        requested_stream_port,
         stream_protocol,
         settings.connection.dscp,
         settings.connection.client_buffer_config,
     )
     .to_con()?;
+    let local_stream_port = stream_socket_builder.local_port().to_con()?;
 
     dbg_connection!("connection_pipeline: Send StreamReady");
-    if let Err(e) = control_sender.send(&ClientControlPacket::StreamReady) {
+    // Only the newer packet carries the port, so keep sending the original one whenever the
+    // configured port was available: servers that predate the new variant still understand it.
+    let stream_ready = if local_stream_port == configured_stream_port {
+        ClientControlPacket::StreamReady
+    } else {
+        ClientControlPacket::StreamReadyOnPort(local_stream_port)
+    };
+    if let Err(e) = control_sender.send(&stream_ready) {
         info!("Server disconnected. Cause: {e:?}");
         set_hud_message(&event_queue, SERVER_DISCONNECTED_MESSAGE);
         return Ok(());
@@ -263,8 +331,16 @@ fn connection_pipeline(
 
     info!("Connected to server");
 
+    let enable_alpha_stream = negotiated_config
+        .ext()
+        .map(|ext| ext.enable_alpha_stream)
+        .unwrap_or(false);
+
     let mut video_receiver =
         stream_socket.subscribe_to_stream::<VideoPacketHeader>(VIDEO, MAX_UNREAD_PACKETS);
+    let mut alpha_video_receiver = enable_alpha_stream.then(|| {
+        stream_socket.subscribe_to_stream::<VideoPacketHeader>(VIDEO_ALPHA, MAX_UNREAD_PACKETS)
+    });
     let mut game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO, MAX_UNREAD_PACKETS);
     let tracking_sender = stream_socket.request_stream(TRACKING);
     let mut haptics_receiver =
@@ -337,57 +413,103 @@ fn connection_pipeline(
         }
     });
 
-    let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
-        let device = alvr_audio::new_output(None).to_con()?;
+    // The alpha stream is decoded independently and paired with the color frame by timestamp at
+    // render time, so this thread only feeds its decoder.
+    //
+    // It does need to be able to ask for an IDR though: the alpha encoder starts after the color
+    // one and misses the single keyframe emitted at stream start, and an H.264 decoder produces
+    // nothing until it sees one. Requests are rate limited because the server's IDR insertion is
+    // shared with the color stream.
+    let alpha_video_receive_thread = alpha_video_receiver.take().map(|mut receiver| {
         thread::spawn({
             let ctx = Arc::clone(&ctx);
             move || {
+                let mut got_idr = false;
+                let mut last_idr_request = Instant::now() - Duration::from_secs(10);
+
                 while is_streaming(&ctx) {
-                    alvr_common::show_err(audio::play_audio_loop(
-                        || is_streaming(&ctx),
-                        &device,
-                        2,
-                        negotiated_config.game_audio_sample_rate,
-                        config.buffering.clone(),
-                        &mut game_audio_receiver,
-                    ));
+                    let data = match receiver.recv(STREAMING_RECV_TIMEOUT) {
+                        Ok(data) => data,
+                        Err(ConnectionError::TryAgain(_)) => continue,
+                        Err(ConnectionError::Other(_)) => return,
+                    };
+                    let Ok((header, nal)) = data.get() else {
+                        return;
+                    };
+
+                    if header.is_idr {
+                        got_idr = true;
+                    } else if !got_idr && Instant::now() > last_idr_request + Duration::from_secs(1)
+                    {
+                        // No keyframe yet: the decoder cannot output anything until one arrives.
+                        last_idr_request = Instant::now();
+                        if let Some(sender) = &mut *ctx.control_sender.lock() {
+                            sender.send(&ClientControlPacket::RequestIdr).ok();
+                        }
+                    }
+
+                    ctx.alpha_decoder_callback
+                        .lock()
+                        .as_mut()
+                        .map(|callback| callback(header.timestamp, nal));
                 }
             }
         })
-    } else {
-        thread::spawn(|| ())
-    };
+    });
 
-    let microphone_thread = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
-        let device = alvr_audio::new_input(None).to_con()?;
+    let game_audio_thread =
+        if let (true, Switch::Enabled(config)) = (audio_enabled, settings.audio.game_audio) {
+            let device = alvr_audio::new_output(None).to_con()?;
+            thread::spawn({
+                let ctx = Arc::clone(&ctx);
+                move || {
+                    while is_streaming(&ctx) {
+                        alvr_common::show_err(audio::play_audio_loop(
+                            || is_streaming(&ctx),
+                            &device,
+                            2,
+                            negotiated_config.game_audio_sample_rate,
+                            config.buffering.clone(),
+                            &mut game_audio_receiver,
+                        ));
+                    }
+                }
+            })
+        } else {
+            thread::spawn(|| ())
+        };
 
-        let microphone_sender = stream_socket.request_stream(AUDIO);
+    let microphone_thread =
+        if audio_enabled && matches!(settings.audio.microphone, Switch::Enabled(_)) {
+            let device = alvr_audio::new_input(None).to_con()?;
 
-        thread::spawn({
-            let ctx = Arc::clone(&ctx);
-            move || {
-                while is_streaming(&ctx) {
-                    let ctx = Arc::clone(&ctx);
-                    match audio::record_audio_blocking(
-                        Arc::new(move || is_streaming(&ctx)),
-                        microphone_sender.clone(),
-                        &device,
-                        1,
-                        false,
-                    ) {
-                        Ok(()) => break,
-                        Err(e) => {
-                            error!("Audio record error: {e}");
+            let microphone_sender = stream_socket.request_stream(AUDIO);
 
-                            continue;
+            thread::spawn({
+                let ctx = Arc::clone(&ctx);
+                move || {
+                    while is_streaming(&ctx) {
+                        let ctx = Arc::clone(&ctx);
+                        match audio::record_audio_blocking(
+                            Arc::new(move || is_streaming(&ctx)),
+                            microphone_sender.clone(),
+                            &device,
+                            1,
+                            false,
+                        ) {
+                            Ok(()) => break,
+                            Err(e) => {
+                                error!("Audio record error: {e}");
+
+                                continue;
+                            }
                         }
                     }
                 }
-            }
-        })
-    } else {
-        thread::spawn(|| ())
-    };
+            })
+        } else {
+            thread::spawn(|| ())
+        };
 
     let haptics_receive_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
@@ -481,6 +603,7 @@ fn connection_pipeline(
                             .push_back(ClientCoreEvent::DecoderConfig {
                                 codec: config.codec,
                                 config_nal: config.config_buffer,
+                                stream: config.stream,
                             });
                     }
                     Ok(ServerControlPacket::Restarting) => {
@@ -576,6 +699,9 @@ fn connection_pipeline(
     dbg_connection!("connection_pipeline: Destroying streams");
 
     video_receive_thread.join().ok();
+    if let Some(thread) = alpha_video_receive_thread {
+        thread.join().ok();
+    }
     game_audio_thread.join().ok();
     microphone_thread.join().ok();
     haptics_receive_thread.join().ok();

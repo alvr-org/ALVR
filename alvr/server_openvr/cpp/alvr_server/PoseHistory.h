@@ -12,7 +12,8 @@ public:
     struct TrackingHistoryFrame {
         uint64_t targetTimestampNs;
         FfiDeviceMotion motion;
-        vr::HmdMatrix34_t rotationMatrix;
+        // The pose as SteamVR hands it back with a submitted frame: rotation and translation.
+        vr::HmdMatrix34_t poseMatrix;
     };
 
     void OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion);

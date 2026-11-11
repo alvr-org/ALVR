@@ -60,4 +60,12 @@ extern std::map<uint64_t, ButtonInfo> LEFT_CONTROLLER_BUTTON_MAPPING;
 extern std::map<uint64_t, ButtonInfo> RIGHT_CONTROLLER_BUTTON_MAPPING;
 extern std::map<uint64_t, std::vector<uint64_t>> ALVR_TO_STEAMVR_PATH_IDS;
 
+// The separate hand tracking devices advertise SteamVR's hand interaction profile, whose inputs
+// are pinches and a grip rather than a controller's buttons, so the same ALVR button ids have to
+// reach different components on them. Anything absent from these maps creates no component and is
+// simply not published, which is correct: a hand has no thumbstick.
+extern std::map<uint64_t, ButtonInfo> LEFT_HAND_TRACKER_BUTTON_MAPPING;
+extern std::map<uint64_t, ButtonInfo> RIGHT_HAND_TRACKER_BUTTON_MAPPING;
+extern std::map<uint64_t, std::vector<uint64_t>> ALVR_TO_HAND_TRACKER_PATH_IDS;
+
 void init_paths();

@@ -38,6 +38,9 @@ std::set<uint64_t> BODY_IDS;
 std::map<uint64_t, ButtonInfo> LEFT_CONTROLLER_BUTTON_MAPPING;
 std::map<uint64_t, ButtonInfo> RIGHT_CONTROLLER_BUTTON_MAPPING;
 std::map<uint64_t, std::vector<uint64_t>> ALVR_TO_STEAMVR_PATH_IDS;
+std::map<uint64_t, ButtonInfo> LEFT_HAND_TRACKER_BUTTON_MAPPING;
+std::map<uint64_t, ButtonInfo> RIGHT_HAND_TRACKER_BUTTON_MAPPING;
+std::map<uint64_t, std::vector<uint64_t>> ALVR_TO_HAND_TRACKER_PATH_IDS;
 
 void init_paths() {
     HEAD_ID = PathStringToHash("/user/head");
@@ -302,6 +305,38 @@ void init_paths() {
           { { "/input/thumbrest/touch" }, ButtonType::Binary } }
     );
 
+    // The hand tracking devices publish the inputs of the profile they advertise,
+    // svl_hand_interaction_augmented, which are pinches and a grip. The gesture recognition in
+    // server_core already produces those values; it just expresses them as the trigger and squeeze
+    // of an emulated controller, so all that is needed here is to land them on the right
+    // components. Without this the devices create a controller's components, which the profile
+    // does not declare, and no application ever sees an input from a tracked hand.
+    LEFT_HAND_TRACKER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/left/input/trigger/value"),
+          { { "/input/index_pinch/value" }, ButtonType::ScalarOneSided } }
+    );
+    LEFT_HAND_TRACKER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/left/input/squeeze/value"),
+          { { "/input/grip/value" }, ButtonType::ScalarOneSided } }
+    );
+    LEFT_HAND_TRACKER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/left/input/system/click"),
+          { { "/input/system/click" }, ButtonType::Binary } }
+    );
+
+    RIGHT_HAND_TRACKER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/right/input/trigger/value"),
+          { { "/input/index_pinch/value" }, ButtonType::ScalarOneSided } }
+    );
+    RIGHT_HAND_TRACKER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/right/input/squeeze/value"),
+          { { "/input/grip/value" }, ButtonType::ScalarOneSided } }
+    );
+    RIGHT_HAND_TRACKER_BUTTON_MAPPING.insert(
+        { PathStringToHash("/user/hand/right/input/system/click"),
+          { { "/input/system/click" }, ButtonType::Binary } }
+    );
+
     for (auto hand : { LEFT_CONTROLLER_BUTTON_MAPPING, RIGHT_CONTROLLER_BUTTON_MAPPING }) {
         for (auto info : hand) {
             std::vector<uint64_t> ids;
@@ -309,6 +344,16 @@ void init_paths() {
                 ids.push_back(PathStringToHash(path));
             }
             ALVR_TO_STEAMVR_PATH_IDS.insert({ info.first, ids });
+        }
+    }
+
+    for (auto hand : { LEFT_HAND_TRACKER_BUTTON_MAPPING, RIGHT_HAND_TRACKER_BUTTON_MAPPING }) {
+        for (auto info : hand) {
+            std::vector<uint64_t> ids;
+            for (auto path : info.second.steamvr_paths) {
+                ids.push_back(PathStringToHash(path));
+            }
+            ALVR_TO_HAND_TRACKER_PATH_IDS.insert({ info.first, ids });
         }
     }
 }

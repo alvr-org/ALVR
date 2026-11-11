@@ -342,6 +342,12 @@ bool FrameRender::Startup() {
     // BlendState for first layer.
     // Some VR apps (like SteamVR Home beta) submit the texture that alpha is zero on all pixels.
     // So we need to ignore alpha of first layer.
+    //
+    // Exception: the 8 bit alpha passthrough mode relies on the application authoring a real alpha
+    // channel, so there the base layer's alpha is written through instead of masked off. This is
+    // opt-in precisely because it breaks the apps described above.
+    const bool preserveBaseLayerAlpha = Settings_Instance()->m_enableAlphaStream;
+
     D3D11_BLEND_DESC BlendDesc;
     ZeroMemory(&BlendDesc, sizeof(BlendDesc));
     BlendDesc.AlphaToCoverageEnable = FALSE;
@@ -354,8 +360,10 @@ bool FrameRender::Startup() {
         BlendDesc.RenderTarget[i].SrcBlendAlpha = D3D11_BLEND_ONE;
         BlendDesc.RenderTarget[i].DestBlendAlpha = D3D11_BLEND_ZERO;
         BlendDesc.RenderTarget[i].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-        BlendDesc.RenderTarget[i].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_RED
-            | D3D11_COLOR_WRITE_ENABLE_GREEN | D3D11_COLOR_WRITE_ENABLE_BLUE;
+        BlendDesc.RenderTarget[i].RenderTargetWriteMask = preserveBaseLayerAlpha
+            ? D3D11_COLOR_WRITE_ENABLE_ALL
+            : (D3D11_COLOR_WRITE_ENABLE_RED | D3D11_COLOR_WRITE_ENABLE_GREEN
+               | D3D11_COLOR_WRITE_ENABLE_BLUE);
     }
 
     hr = m_pD3DRender->GetDevice()->CreateBlendState(&BlendDesc, &m_pBlendStateFirst);
@@ -443,6 +451,76 @@ bool FrameRender::Startup() {
         m_ffr->Initialize(m_pStagingTexture.Get());
 
         m_pStagingTexture = m_ffr->GetOutputTexture();
+    }
+
+    // Extract alpha before the HDR YUV conversion below, which drops the alpha channel entirely.
+    // Running after FFR means the alpha plane shares the color stream's encoding layout, so the
+    // client can sample both with the same UVs.
+    enableAlphaStream = Settings_Instance()->m_enableAlphaStream;
+    if (enableAlphaStream) {
+        uint32_t alphaWidth, alphaHeight;
+        GetEncodingResolution(&alphaWidth, &alphaHeight);
+
+        // Replicated to RGB because the hardware encoders take RGBA/NV12 input, not R8. The
+        // encoder collapses this to luma, which is what the client samples.
+        // Note: the sampler must be declared with an inline state block, not
+        // `register(s0)`. RenderPipeline::Render never calls PSSetSamplers, so a register-bound
+        // sampler is left unbound and every Sample() returns 0. The other post shaders
+        // (ColorCorrection, rgbtoyuv420) use this same inline form for that reason.
+        static const char* kAlphaExtractionShader = R"(
+Texture2D<float4> sourceTexture;
+
+SamplerState bilinearSampler {
+    Filter = MIN_MAG_LINEAR_MIP_POINT;
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+};
+
+float4 main(float2 uv : TEXCOORD0) : SV_Target {
+    float alpha = sourceTexture.Sample(bilinearSampler, uv).a;
+    return float4(alpha, alpha, alpha, 1.0);
+}
+)";
+
+        ComPtr<ID3DBlob> alphaShaderBlob;
+        ComPtr<ID3DBlob> alphaErrorBlob;
+        HRESULT alphaHr = D3DCompile(
+            kAlphaExtractionShader,
+            strlen(kAlphaExtractionShader),
+            nullptr,
+            nullptr,
+            nullptr,
+            "main",
+            "ps_5_0",
+            0,
+            0,
+            &alphaShaderBlob,
+            &alphaErrorBlob
+        );
+        if (FAILED(alphaHr)) {
+            Error(
+                "Failed to compile alpha extraction shader: %s\n",
+                alphaErrorBlob ? (const char*)alphaErrorBlob->GetBufferPointer() : "unknown"
+            );
+            return false;
+        }
+
+        std::vector<uint8_t> alphaShaderCSO(
+            (uint8_t*)alphaShaderBlob->GetBufferPointer(),
+            (uint8_t*)alphaShaderBlob->GetBufferPointer() + alphaShaderBlob->GetBufferSize()
+        );
+
+        m_pAlphaTexture = CreateTexture(
+            m_pD3DRender->GetDevice(), alphaWidth, alphaHeight, DXGI_FORMAT_R8G8B8A8_UNORM
+        );
+
+        m_alphaExtractionPipeline = std::make_unique<RenderPipeline>(m_pD3DRender->GetDevice());
+        m_alphaExtractionPipeline->Initialize(
+            { m_pStagingTexture.Get() },
+            quadVertexShader.Get(),
+            alphaShaderCSO,
+            m_pAlphaTexture.Get()
+        );
     }
 
     if (Settings_Instance()->m_enableHdr) {
@@ -566,9 +644,14 @@ bool FrameRender::RenderFrame(
 
     m_pD3DRender->GetContext()->OMSetDepthStencilState(m_depthStencilState.Get(), 0);
 
-    // Clear the back buffer
+    // Clear the back buffer. In the 8 bit alpha passthrough mode areas not covered by any layer
+    // must read as fully transparent, otherwise the clear color itself would be composited over
+    // the real world on the headset.
+    static const FLOAT kTransparentClear[4] = { 0.f, 0.f, 0.f, 0.f };
     m_pD3DRender->GetContext()->ClearRenderTargetView(
-        m_pRenderTargetView.Get(), DirectX::Colors::MidnightBlue
+        m_pRenderTargetView.Get(),
+        Settings_Instance()->m_enableAlphaStream ? kTransparentClear
+                                                 : (const FLOAT*)DirectX::Colors::MidnightBlue
     );
 
     // Overlay recentering texture on top of all layers.
@@ -872,6 +955,11 @@ bool FrameRender::RenderFrame(
         m_ffr->Render();
     }
 
+    // Must run before the YUV conversion, which discards alpha.
+    if (enableAlphaStream) {
+        m_alphaExtractionPipeline->Render();
+    }
+
     if (Settings_Instance()->m_enableHdr) {
         m_yuvPipeline->Render();
     }
@@ -882,6 +970,8 @@ bool FrameRender::RenderFrame(
 }
 
 ComPtr<ID3D11Texture2D> FrameRender::GetTexture() { return m_pStagingTexture; }
+
+ComPtr<ID3D11Texture2D> FrameRender::GetAlphaTexture() { return m_pAlphaTexture; }
 
 void FrameRender::GetEncodingResolution(uint32_t* width, uint32_t* height) {
     if (enableFFE) {

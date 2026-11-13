@@ -6,7 +6,7 @@ use crate::{
     logging_backend, tracking::HandType,
 };
 use alvr_common::{
-    AlvrCodecType, AlvrFoveatedEncodingParams, AlvrPose, AlvrViewParams, log,
+    AlvrCodecType, AlvrFoveatedEncodingParams, AlvrPose, AlvrQuat, AlvrViewParams, log,
     parking_lot::{Mutex, RwLock},
 };
 use alvr_packets::{ButtonEntry, ButtonValue, Haptics};
@@ -378,6 +378,22 @@ pub unsafe extern "C" fn alvr_get_hand_skeleton(
             unsafe { *out_skeleton.add(i) = alvr_common::to_capi_pose(joint_pose) };
         }
 
+        true
+    } else {
+        false
+    }
+}
+
+/// Return head-local gaze for an exact retained tracking timestamp, with -Z along the gaze.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn alvr_get_combined_eye_gaze(
+    sample_timestamp_ns: u64,
+    out_gaze: *mut AlvrQuat,
+) -> bool {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read()
+        && let Some(gaze) = context.get_combined_eye_gaze(Duration::from_nanos(sample_timestamp_ns))
+    {
+        unsafe { *out_gaze = alvr_common::to_capi_quat(&gaze) };
         true
     } else {
         false

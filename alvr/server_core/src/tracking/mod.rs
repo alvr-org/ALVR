@@ -53,6 +53,7 @@ pub struct TrackingManager {
     inverse_recentering_origin: Pose, // client's reference space
     device_motions_history: HashMap<u64, VecDeque<(Duration, DeviceMotion)>>,
     hand_skeletons_history: [VecDeque<(Duration, [Pose; 26])>; 2],
+    combined_eye_gaze_history: VecDeque<(Duration, Option<Quat>)>,
     max_history_size: usize,
 }
 
@@ -63,6 +64,7 @@ impl TrackingManager {
             inverse_recentering_origin: Pose::IDENTITY,
             device_motions_history: HashMap::new(),
             hand_skeletons_history: [VecDeque::new(), VecDeque::new()],
+            combined_eye_gaze_history: VecDeque::new(),
             max_history_size,
         }
     }
@@ -254,6 +256,21 @@ impl TrackingManager {
             .map(|(_, skeleton)| skeleton)
     }
 
+    pub fn report_combined_eye_gaze(&mut self, timestamp: Duration, gaze: Option<Quat>) {
+        self.combined_eye_gaze_history.push_back((timestamp, gaze));
+
+        if self.combined_eye_gaze_history.len() > self.max_history_size {
+            self.combined_eye_gaze_history.pop_front();
+        }
+    }
+
+    pub fn get_combined_eye_gaze(&self, sample_timestamp: Duration) -> Option<Quat> {
+        self.combined_eye_gaze_history
+            .iter()
+            .find(|(timestamp, _)| *timestamp == sample_timestamp)
+            .and_then(|(_, gaze)| *gaze)
+    }
+
     pub fn unrecenter_view_params(&self, view_params: &mut [ViewParams; 2]) {
         for params in view_params {
             params.pose = self.inverse_recentering_origin.inverse() * params.pose;
@@ -286,8 +303,9 @@ pub fn tracking_loop(
         .headset
         .face_tracking
         .into_option()
+        .and_then(|config| config.sink.social_presence.into_option())
         .and_then(|config| {
-            FaceTrackingSink::new(config.sink, initial_settings.connection.osc_local_port).ok()
+            FaceTrackingSink::new(config, initial_settings.connection.osc_local_port).ok()
         });
 
     let mut body_tracking_sink = initial_settings
@@ -374,6 +392,8 @@ pub fn tracking_loop(
             if let Some(skeleton) = tracking.hand_skeletons[1] {
                 tracking_manager_lock.report_hand_skeleton(HandType::Right, timestamp, skeleton);
             }
+
+            tracking_manager_lock.report_combined_eye_gaze(timestamp, tracking.face.eyes_combined);
 
             if let Some(sink) = &mut face_tracking_sink {
                 sink.send_tracking(&tracking.face);

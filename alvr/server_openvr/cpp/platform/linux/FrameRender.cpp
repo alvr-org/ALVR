@@ -81,6 +81,11 @@ uint32_t FrameRender::GetEncodingHeight() const { return m_height; }
 void FrameRender::Render(uint32_t index, uint64_t waitValue, uint64_t targetTimestampNs) {
     if (Settings_Instance()->m_enableFoveatedEncoding) {
         // These are the push constants consumed by the FFR pipeline for this frame.
+        const auto gazeCenters = GetEyeTrackedFoveationCenters(targetTimestampNs);
+        const auto& centers = gazeCenters.valid
+            ? gazeCenters.centerShifts
+            : Settings_Instance()->m_foveatedEncoding.centerShifts;
+        m_foveationCenterShifts = { centers[0][0], centers[0][1], centers[1][0], centers[1][1] };
         ReportEncoderFoveationCenters(
             targetTimestampNs,
             m_foveationCenterShifts.leftX,

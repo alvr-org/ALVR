@@ -11,6 +11,7 @@ mod tracking;
 mod web_server;
 
 pub use c_api::*;
+pub use connection::align_foveation_center_shift;
 pub use logging_backend::init_logging;
 pub use tracking::HandType;
 
@@ -18,7 +19,7 @@ use crate::connection::VideoPacket;
 use alvr_common::{
     AlvrFoveatedEncodingParams, ConnectionState, DEVICE_ID_TO_PATH, DeviceMotion, LifecycleState,
     Pose, ViewParams, dbg_server_core, error,
-    glam::{UVec2, Vec2},
+    glam::{Quat, UVec2, Vec2},
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
     warn,
@@ -291,6 +292,16 @@ impl ServerCoreContext {
             .read()
             .get_hand_skeleton(hand_type, timestamp)
             .copied()
+    }
+
+    /// Return head-local gaze for an exact retained tracking timestamp, with -Z along the gaze.
+    pub fn get_combined_eye_gaze(&self, sample_timestamp: Duration) -> Option<Quat> {
+        dbg_server_core!("get_combined_eye_gaze: sample_ts={sample_timestamp:?}");
+
+        self.connection_context
+            .tracking_manager
+            .read()
+            .get_combined_eye_gaze(sample_timestamp)
     }
 
     pub fn get_motion_to_photon_latency(&self) -> Duration {

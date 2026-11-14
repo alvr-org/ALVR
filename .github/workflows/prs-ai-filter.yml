@@ -21,4 +21,5 @@ jobs:
       - uses: peakoss/anti-slop@v0
         with:
           max-failures: 3
+          exempt-author-association: ""
           failure-pr-message: "3 or more anti-AI checks failed and the PR is closed. If you want to have a maintainer look at it, ping them with `@alvr-org/maintainers`."

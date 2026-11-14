@@ -31,4 +31,5 @@ strip = false
 
 [profile.distribution]
 inherits = "release"
+codegen-units = 1
 lto = true

@@ -13,6 +13,12 @@ jobs:
   prs-ai-filter:
     runs-on: ubuntu-latest
     steps:
+      - uses: mshick/add-pr-comment@v3
+        with:
+          message-id: anti-ai-checks
+          message: "Anti-AI checks can be found [here](https://github.com/alvr-org/ALVR/actions/runs/${{ github.run_id }})."
+
       - uses: peakoss/anti-slop@v0
         with:
-          max-failures: 4
+          max-failures: 3
+          failure-pr-message: "3 or more anti-AI checks failed and the PR is closed. If you want to have a maintainer look at it, ping them with `@alvr-org/maintainers`."

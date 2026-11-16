@@ -221,7 +221,6 @@ pub enum FaceExpressions {
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct FaceData {
-    /// Head-local orientation whose -Z axis follows the combined gaze direction.
     /// Can be used for foveated eye tracking
     pub eyes_combined: Option<Quat>,
     // Should be used only for social presence

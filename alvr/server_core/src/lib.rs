@@ -294,7 +294,6 @@ impl ServerCoreContext {
             .copied()
     }
 
-    /// Return head-local gaze for an exact retained tracking timestamp, with -Z along the gaze.
     pub fn get_combined_eye_gaze(&self, sample_timestamp: Duration) -> Option<Quat> {
         dbg_server_core!("get_combined_eye_gaze: sample_ts={sample_timestamp:?}");
 

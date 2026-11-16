@@ -16,10 +16,8 @@ const CENTER_BOUNDARY_EPSILON: f32 = 1e-5;
 pub struct EyeTrackedFoveation {
     pub view_params: Option<[ViewParams; 2]>,
     params: AlvrFoveatedEncodingParams,
-    // Combined width of both edges on each axis, in pixels.
     edge_size: Vec2,
     last_update_timestamp: Option<Duration>,
-    // Tracking timestamp, server processing time, filtered head-local direction.
     last_valid_sample: Option<(Duration, Instant, Vec3)>,
     center_history: VecDeque<(Duration, [[f32; 2]; 2])>,
 }
@@ -38,7 +36,6 @@ impl EyeTrackedFoveation {
         }
     }
 
-    /// Update head-local gaze for a tracking timestamp; `now` is the server processing time.
     pub fn update(&mut self, timestamp: Duration, orientation: Option<Quat>, now: Instant) {
         if self
             .last_update_timestamp
@@ -98,14 +95,11 @@ impl EyeTrackedFoveation {
             .iter()
             .any(|center| center.abs().cmpgt(Vec2::ONE).any())
         {
-            // Constrain a shared ray to keep both eyes' central regions on the same direction.
             let mut boundaries = [(Vec2::ZERO, 0.0); 8];
-            // Solve on the head-local z = -1 plane.
             let ray = direction / -direction.z;
             for (boundaries, view) in boundaries.chunks_exact_mut(4).zip(view_params) {
                 let lower = Vec2::new(view.fov.left.tan(), view.fov.down.tan());
                 let upper = Vec2::new(view.fov.right.tan(), view.fov.up.tan());
-                // Leave room for the full central region inside each eye's FOV.
                 let margin = (upper - lower) * center_size * 0.5;
                 let lower = lower + margin;
                 let upper = upper - margin;
@@ -117,7 +111,6 @@ impl EyeTrackedFoveation {
                     Vec3::new(0.0, -1.0, -upper.y),
                 ]) {
                     let normal = view.pose.orientation * normal;
-                    // Each constraint is normal.xy.dot(correction) >= -normal.dot(ray).
                     *boundary = (normal.truncate(), -normal.dot(ray));
                 }
             }
@@ -136,7 +129,6 @@ impl EyeTrackedFoveation {
                 }
             };
 
-            // The nearest feasible point is a boundary projection or a boundary intersection.
             for (index, (normal, offset)) in boundaries.iter().enumerate() {
                 if normal.length_squared() > f32::EPSILON {
                     consider_correction(*normal * (*offset / normal.length_squared()));
@@ -152,7 +144,6 @@ impl EyeTrackedFoveation {
                 }
             }
 
-            // Without a shared solution, alignment below clamps each eye independently.
             if let Some(correction) = maybe_correction {
                 let corrected = ray + correction.extend(0.0);
                 if let (Some(left), Some(right)) = (
@@ -166,7 +157,6 @@ impl EyeTrackedFoveation {
 
         let [left, right] = centers;
         let [edge_ratio_x, edge_ratio_y] = self.params.edge_ratio;
-        // The packed encoder texture mirrors the right eye horizontally.
         let centers = [left, Vec2::new(-right.x, right.y)].map(|center| {
             [
                 align_foveation_center_shift(center.x, self.edge_size.x, edge_ratio_x),
@@ -179,7 +169,6 @@ impl EyeTrackedFoveation {
         }
     }
 
-    // Keep stored centers available for repeated frames even after gaze expires.
     pub fn centers(&self, timestamp: Duration) -> Option<[[f32; 2]; 2]> {
         self.center_history
             .iter()
@@ -190,7 +179,6 @@ impl EyeTrackedFoveation {
     }
 }
 
-// Project a head-local direction into an eye's unaligned center shift.
 fn project_gaze(direction: Vec3, view: ViewParams, center_size: Vec2) -> Option<Vec2> {
     let direction = view.pose.orientation.inverse() * direction;
     if !direction.is_finite() || direction.z >= -f32::EPSILON {
@@ -204,12 +192,10 @@ fn project_gaze(direction: Vec3, view: ViewParams, center_size: Vec2) -> Option<
         return None;
     }
     let tangent = direction.truncate() / -direction.z;
-    // Image Y points down; eye-local Y points up.
     let uv = Vec2::new(
         (tangent.x - lower.x) / span.x,
         (upper.y - tangent.y) / span.y,
     );
-    // A shift of +/-1 places the central region against a view edge.
     let movable_fraction = Vec2::ONE - center_size;
     let center_shift = Vec2::new(
         if movable_fraction.x > f32::EPSILON {

@@ -384,7 +384,6 @@ pub unsafe extern "C" fn alvr_get_hand_skeleton(
     }
 }
 
-/// Return head-local gaze for an exact retained tracking timestamp, with -Z along the gaze.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn alvr_get_combined_eye_gaze(
     sample_timestamp_ns: u64,

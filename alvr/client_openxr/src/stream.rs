@@ -627,8 +627,11 @@ fn stream_input_loop(
 
         let face = interaction::get_face_data(
             &xr_session,
+            core_ctx.platform(),
             &int_ctx.face_sources,
+            stage_reference_space,
             view_reference_space,
+            head_motion.pose.orientation,
             now,
         );
 

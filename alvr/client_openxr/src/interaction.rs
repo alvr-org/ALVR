@@ -951,25 +951,47 @@ pub fn update_buttons(
     button_entries
 }
 
-// Note: Using the headset view space in order to get heading-independent eye gazes
 pub fn get_face_data(
     xr_session: &xr::Session<xr::OpenGlEs>,
+    platform: Platform,
     sources: &FaceSources,
+    stage_reference_space: &xr::Space,
     view_reference_space: &xr::Space,
+    head_orientation: Quat,
     time: Duration,
 ) -> FaceData {
     let xr_time = crate::to_xr_time(time);
+    // On the tested PICO 4 Pro, locating gaze in VIEW space returned an identity rotation.
+    // For the PICO models below, use STAGE space and remove the head rotation from the
+    // same sampling time to recover head-local gaze.
+    let pico_eye_gaze_workaround = matches!(
+        platform,
+        Platform::PicoNeo3 | Platform::Pico4Pro | Platform::Pico4Enterprise
+    );
 
     let eyes_combined = if let Some((action, space)) = &sources.eyes_combined
         && action
             .is_active(xr_session, xr::Path::NULL)
             .unwrap_or(false)
-        && let Ok(location) = space.locate(view_reference_space, xr_time)
+        && let Ok(location) = space.locate(
+            if pico_eye_gaze_workaround {
+                stage_reference_space
+            } else {
+                view_reference_space
+            },
+            xr_time,
+        )
         && location
             .location_flags
             .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
     {
-        Some(crate::from_xr_quat(location.pose.orientation))
+        let orientation = crate::from_xr_quat(location.pose.orientation);
+
+        Some(if pico_eye_gaze_workaround {
+            head_orientation.inverse() * orientation
+        } else {
+            orientation
+        })
     } else {
         None
     };

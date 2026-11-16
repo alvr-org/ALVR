@@ -465,8 +465,12 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
                 display_name: "VRChat Eye OSC".into(),
                 modifiers: vec![
                     bool_modifier("session_settings.headset.face_tracking.enabled", true),
+                    bool_modifier(
+                        "session_settings.headset.face_tracking.content.sink.social_presence.enabled",
+                        true,
+                    ),
                     string_modifier(
-                        "session_settings.headset.face_tracking.content.sink.variant",
+                        "session_settings.headset.face_tracking.content.sink.social_presence.content.variant",
                         "VrchatEyeOsc",
                     ),
                 ],
@@ -476,8 +480,12 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
                 display_name: "VRCFaceTracking".into(),
                 modifiers: vec![
                     bool_modifier("session_settings.headset.face_tracking.enabled", true),
+                    bool_modifier(
+                        "session_settings.headset.face_tracking.content.sink.social_presence.enabled",
+                        true,
+                    ),
                     string_modifier(
-                        "session_settings.headset.face_tracking.content.sink.variant",
+                        "session_settings.headset.face_tracking.content.sink.social_presence.content.variant",
                         "VrcFaceTracking",
                     ),
                 ],

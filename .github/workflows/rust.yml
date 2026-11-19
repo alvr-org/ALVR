@@ -13,13 +13,9 @@ jobs:
     if: github.event.sender.login != 'pre-commit-ci-lite[bot]'
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
 
       - uses: Swatinem/rust-cache@v2
 
@@ -34,13 +30,10 @@ jobs:
     if: github.event.sender.login != 'pre-commit-ci-lite[bot]'
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
       - uses: Swatinem/rust-cache@v2
 
       - name: Install dependencies
@@ -59,13 +52,9 @@ jobs:
     if: github.event.sender.login != 'pre-commit-ci-lite[bot]'
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
 
       - uses: Swatinem/rust-cache@v2
 
@@ -78,17 +67,13 @@ jobs:
     if: github.event.sender.login != 'pre-commit-ci-lite[bot]'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
 
-      - uses: dtolnay/rust-toolchain@stable
-
-      - run: rustup target add aarch64-linux-android
-
       - uses: Swatinem/rust-cache@v2
 
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: "temurin"
           java-version: "17"
@@ -103,7 +88,9 @@ jobs:
           ndk-version: r26b
 
       - name: Install deps
-        run: cargo install cargo-apk
+        run: | 
+          cargo install cargo-apk
+          rustup target add aarch64-linux-android
 
         # Create folder without content to make the build succeed
       - run: mkdir -p deps/android_openxr/arm64-v8a
@@ -118,10 +105,9 @@ jobs:
     if: github.event.sender.login != 'pre-commit-ci-lite[bot]'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
-      - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
 
@@ -132,11 +118,9 @@ jobs:
     if: github.event.sender.login != 'pre-commit-ci-lite[bot]'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
-
-      - uses: dtolnay/rust-toolchain@stable
 
       - run: cargo xtask check-licenses
 
@@ -154,11 +138,7 @@ jobs:
     if: ${{ !cancelled() && github.event.sender.login != 'pre-commit-ci-lite[bot]' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
+      - uses: actions/checkout@v7
 
       - run: cargo xtask format
 

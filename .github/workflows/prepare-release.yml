@@ -20,8 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: dtolnay/rust-toolchain@stable
-
       - name: Bump version
         id: bump_version
         env:
@@ -52,8 +50,6 @@ jobs:
           ref: ${{ needs.prepare_release.outputs.release_ref }}
           submodules: true
 
-      - uses: dtolnay/rust-toolchain@stable
-
       - uses: crazy-max/ghaction-chocolatey@v4
         with:
           args: install zip unzip pkgconfiglite
@@ -79,8 +75,6 @@ jobs:
         with:
           ref: ${{ needs.prepare_release.outputs.release_ref }}
           submodules: true
-
-      - uses: dtolnay/rust-toolchain@stable
 
       - name: Build and install dependencies
         env:
@@ -138,8 +132,6 @@ jobs:
         with:
           ref: ${{ needs.prepare_release.outputs.release_ref }}
           submodules: true
-
-      - uses: dtolnay/rust-toolchain@stable
 
       - uses: actions/setup-java@v5
         with:

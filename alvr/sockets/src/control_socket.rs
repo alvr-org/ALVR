@@ -116,6 +116,8 @@ fn framed_recv<R: DeserializeOwned>(
             let count = socket.peek(&mut payload_size_bytes).handle_try_again()?;
             if count == FRAMED_PREFIX_LENGTH {
                 break;
+            } else if count == 0 {
+                con_bail!("Connection closed by peer");
             } else if Instant::now() > deadline {
                 return alvr_common::try_again();
             }
@@ -128,9 +130,14 @@ fn framed_recv<R: DeserializeOwned>(
     };
 
     loop {
-        *recv_cursor_ref += socket
+        let count = socket
             .read(&mut buffer[*recv_cursor_ref..])
             .handle_try_again()?;
+        if count == 0 {
+            con_bail!("Connection closed by peer");
+        }
+
+        *recv_cursor_ref += count;
 
         if *recv_cursor_ref == buffer.len() {
             break;

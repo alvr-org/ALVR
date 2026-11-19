@@ -1,8 +1,9 @@
 use super::{
-    MultiplexedSocketReader, MultiplexedSocketWriter, ReconstructedPacket, StreamRecvQueues,
+    MultiplexedSocketReader, MultiplexedSocketWriter, ReconstructedPacket,
+    SHARD_COMMON_PREFIX_SIZE, ShardPrefix, StreamRecvQueues,
 };
 use crate::LOCAL_IP;
-use alvr_common::{ConResult, HandleTryAgain, ToCon, anyhow::Result, con_bail};
+use alvr_common::{ConResult, HandleTryAgain, ToCon, anyhow::Result, con_bail, parking_lot::Mutex};
 use alvr_session::{DscpTos, SocketBufferConfig};
 use socket2::Socket;
 use std::{
@@ -13,9 +14,7 @@ use std::{
     time::Duration,
 };
 
-pub const PACKET_PREFIX_SIZE: usize = mem::size_of::<u16>() // stream ID
-    + mem::size_of::<u32>() // packet index
-    + mem::size_of::<u32>(); // payload size
+pub const SHARD_PREFIX_SIZE: usize = SHARD_COMMON_PREFIX_SIZE + mem::size_of::<u32>(); // shard size
 
 pub fn bind(
     timeout: Duration,
@@ -87,52 +86,72 @@ pub fn connect_to_client(
 }
 
 pub struct MultiplexedTcpWriter {
-    inner: TcpStream,
+    inner: Mutex<TcpStream>,
+    max_packet_size: usize,
 }
 
 impl MultiplexedSocketWriter for MultiplexedTcpWriter {
     fn payload_offset(&self) -> usize {
-        PACKET_PREFIX_SIZE
+        SHARD_PREFIX_SIZE
     }
 
-    // `buffer` contains the payload offset by `payload_offset()`
-    fn send(&mut self, stream_id: u16, packet_index: u32, buffer: &mut Vec<u8>) -> Result<()> {
-        let payload_size = buffer.len() - PACKET_PREFIX_SIZE;
+    fn send(&self, stream_id: u16, packet_index: u32, buffer: &mut Vec<u8>) -> Result<()> {
+        super::send_sharded(
+            buffer,
+            SHARD_PREFIX_SIZE,
+            self.max_packet_size,
+            stream_id,
+            packet_index,
+            |shard| {
+                let shard_size = (shard.len() - SHARD_PREFIX_SIZE) as u32;
+                shard[SHARD_COMMON_PREFIX_SIZE..SHARD_PREFIX_SIZE]
+                    .copy_from_slice(&shard_size.to_le_bytes());
 
-        buffer[0..2].copy_from_slice(&stream_id.to_le_bytes());
-        buffer[2..6].copy_from_slice(&packet_index.to_le_bytes());
-        buffer[6..10].copy_from_slice(&(payload_size as u32).to_le_bytes());
+                self.inner.lock().write_all(shard)?;
 
-        self.inner.write_all(buffer)?;
-
-        Ok(())
+                Ok(())
+            },
+        )
     }
 }
 
+struct RecvState {
+    prefix: ShardPrefix,
+    shard_length: usize,  // contains prefix length itself
+    packet_cursor: usize, // counts also the prefix bytes
+    overwritten_data_backup: Option<[MaybeUninit<u8>; SHARD_PREFIX_SIZE]>,
+    should_discard: bool,
+}
+
 struct InProgressPacket {
-    stream_id: u16,
     packet_index: u32,
-    buffer: Vec<u8>,
-    buffer_size: usize,
-    cursor: usize,
+    buffer: Vec<u8>,    // contains the prefix
+    buffer_size: usize, // size of the packet counting prefix
+    shards_count: usize,
+    received_shards_count: usize,
 }
 
 pub struct MultiplexedTcpReader {
     inner: Socket,
-    in_progress_packet: Option<InProgressPacket>,
+    max_packet_size: usize,
+    shard_recv_state: Option<RecvState>,
+    in_progress_packets: HashMap<u16, InProgressPacket>,
+    discarded_shards_sink: Vec<u8>,
     used_buffers_poll_timeout: Duration,
 }
 
 impl MultiplexedSocketReader for MultiplexedTcpReader {
     fn payload_offset(&self) -> usize {
-        PACKET_PREFIX_SIZE
+        SHARD_PREFIX_SIZE
     }
 
     fn recv(&mut self, stream_queues: &HashMap<u16, StreamRecvQueues>) -> ConResult {
-        let in_progress_packet = if let Some(packet) = &mut self.in_progress_packet {
-            packet
+        let max_shard_data_size = self.max_packet_size - SHARD_PREFIX_SIZE;
+
+        let shard_recv_state_mut = if let Some(state) = &mut self.shard_recv_state {
+            state
         } else {
-            let mut prefix_bytes = [0u8; PACKET_PREFIX_SIZE];
+            let mut prefix_bytes = [0u8; SHARD_PREFIX_SIZE];
 
             loop {
                 let count = self
@@ -141,65 +160,166 @@ impl MultiplexedSocketReader for MultiplexedTcpReader {
                         &mut *(&mut prefix_bytes as *mut [u8] as *mut [MaybeUninit<u8>])
                     })
                     .handle_try_again()?;
-                if count == PACKET_PREFIX_SIZE {
+                if count == SHARD_PREFIX_SIZE {
                     break;
+                } else if count == 0 {
+                    con_bail!("Connection closed by peer");
                 }
             }
 
-            let stream_id = u16::from_le_bytes(prefix_bytes[0..2].try_into().unwrap());
-            let packet_index = u32::from_le_bytes(prefix_bytes[2..6].try_into().unwrap());
-            let payload_size = u32::from_le_bytes(prefix_bytes[6..10].try_into().unwrap()) as usize;
+            let prefix = ShardPrefix::read(&prefix_bytes);
+            let shard_payload_size = u32::from_le_bytes(
+                prefix_bytes[SHARD_COMMON_PREFIX_SIZE..SHARD_PREFIX_SIZE]
+                    .try_into()
+                    .unwrap(),
+            ) as usize;
 
-            let mut buffer = match stream_queues.get(&stream_id) {
-                Some(queue) => queue
-                    .used_buffer_receiver
-                    .recv_timeout(self.used_buffers_poll_timeout)
-                    .handle_try_again()?,
-                None => {
-                    // This is a packet with an invalid stream id, but we must read it anyway. We
-                    // can't obtain a used buffer so we create a new one
-                    vec![]
-                }
-            };
+            if prefix.shard_index >= prefix.shards_count || shard_payload_size > max_shard_data_size
+            {
+                con_bail!(
+                    "Invalid shard {} of {} with size {shard_payload_size}",
+                    prefix.shard_index,
+                    prefix.shards_count
+                );
+            }
 
-            buffer.clear();
-            buffer.reserve(PACKET_PREFIX_SIZE + payload_size);
-
-            self.in_progress_packet.insert(InProgressPacket {
-                stream_id,
-                packet_index,
-                buffer,
-                buffer_size: PACKET_PREFIX_SIZE + payload_size,
-                cursor: 0,
+            self.shard_recv_state.insert(RecvState {
+                prefix,
+                shard_length: SHARD_PREFIX_SIZE + shard_payload_size,
+                packet_cursor: 0,
+                overwritten_data_backup: None,
+                should_discard: false,
             })
         };
 
-        while in_progress_packet.cursor < in_progress_packet.buffer_size {
-            let sub_buffer = &mut in_progress_packet.buffer.spare_capacity_mut()
-                [in_progress_packet.cursor..in_progress_packet.buffer_size];
+        let stream_id = shard_recv_state_mut.prefix.stream_id;
+        let packet_index = shard_recv_state_mut.prefix.packet_index;
+        let shard_index = shard_recv_state_mut.prefix.shard_index;
 
-            in_progress_packet.cursor += self.inner.recv(sub_buffer).handle_try_again()?;
+        if !shard_recv_state_mut.should_discard {
+            if let Some(queues) = stream_queues.get(&stream_id) {
+                let is_new_packet = !self
+                    .in_progress_packets
+                    .get(&stream_id)
+                    .is_some_and(|packet| packet.packet_index == packet_index);
+
+                if is_new_packet {
+                    if shard_index != 0 {
+                        con_bail!("Shard {shard_index} of unknown packet for stream {stream_id}");
+                    }
+
+                    let mut buffer = queues
+                        .used_buffer_receiver
+                        .recv_timeout(self.used_buffers_poll_timeout)
+                        .handle_try_again()?;
+
+                    // The first shard prefix will dictate the actual number of shards of the
+                    // packet. The reserved capacity is an upper bound: we don't know yet the exact
+                    // size, the last shard could be smaller than max_shard_data_size
+                    let shards_count = shard_recv_state_mut.prefix.shards_count;
+                    buffer.clear();
+                    buffer.reserve(SHARD_PREFIX_SIZE + max_shard_data_size * shards_count);
+
+                    if let Some(stale_packet) = self.in_progress_packets.insert(
+                        stream_id,
+                        InProgressPacket {
+                            packet_index,
+                            buffer,
+                            buffer_size: 0,
+                            shards_count,
+                            received_shards_count: 0,
+                        },
+                    ) {
+                        queues.used_buffer_sender.send(stale_packet.buffer).ok();
+                    }
+                }
+            } else {
+                shard_recv_state_mut.should_discard = true;
+            }
         }
 
-        // All writing was done to uninit capacity, here we set the final buffer length
-        unsafe {
-            in_progress_packet
-                .buffer
-                .set_len(in_progress_packet.buffer_size)
+        let (buffer, packet_start_index) = if shard_recv_state_mut.should_discard {
+            self.discarded_shards_sink
+                .reserve(shard_recv_state_mut.shard_length);
+
+            (&mut self.discarded_shards_sink, 0)
+        } else {
+            let Some(packet) = self.in_progress_packets.get_mut(&stream_id) else {
+                con_bail!("Missing in-progress packet for stream {stream_id}");
+            };
+            if packet.received_shards_count != shard_index {
+                con_bail!(
+                    "Out of order shard {shard_index} for stream {stream_id}, expected {}",
+                    packet.received_shards_count
+                );
+            }
+
+            // Note: there is no prefix offset, since we want to write the prefix too.
+            let packet_start_index = packet.buffer_size.saturating_sub(SHARD_PREFIX_SIZE);
+
+            (&mut packet.buffer, packet_start_index)
         };
 
-        if let Some(queues) = stream_queues.get(&in_progress_packet.stream_id) {
-            // Safety: here self.in_progress_packet is always Some
+        // Note: this is a MaybeUninit slice
+        let sub_buffer = &mut buffer.spare_capacity_mut()[packet_start_index..]
+            [..shard_recv_state_mut.shard_length];
+
+        // Backup the small section of bytes that will be overwritten by reading from socket.
+        if shard_recv_state_mut.overwritten_data_backup.is_none() {
+            shard_recv_state_mut.overwritten_data_backup =
+                Some(sub_buffer[..SHARD_PREFIX_SIZE].try_into().unwrap());
+        }
+
+        // This loop may bail out at any time if a timeout is reached. This is correctly handled
+        // by the previous code.
+        while shard_recv_state_mut.packet_cursor < shard_recv_state_mut.shard_length {
+            let size = self
+                .inner
+                .recv(&mut sub_buffer[shard_recv_state_mut.packet_cursor..])
+                .handle_try_again()?;
+            if size == 0 {
+                con_bail!("Connection closed by peer");
+            }
+
+            shard_recv_state_mut.packet_cursor += size;
+        }
+
+        // Restore backed up bytes
+        if let Some(backup) = shard_recv_state_mut.overwritten_data_backup.take() {
+            sub_buffer[..SHARD_PREFIX_SIZE].copy_from_slice(&backup);
+        }
+
+        let shard_end_index = packet_start_index + shard_recv_state_mut.shard_length;
+        let should_discard = shard_recv_state_mut.should_discard;
+
+        // Mark current shard as read and allow for a new shard to be read
+        self.shard_recv_state = None;
+
+        if should_discard {
+            return Ok(());
+        }
+
+        let Some(packet) = self.in_progress_packets.get_mut(&stream_id) else {
+            con_bail!("Missing in-progress packet for stream {stream_id}");
+        };
+        packet.buffer_size = usize::max(packet.buffer_size, shard_end_index);
+        packet.received_shards_count += 1;
+
+        // Check if packet is complete and send
+        if packet.received_shards_count == packet.shards_count
+            && let Some(mut packet) = self.in_progress_packets.remove(&stream_id)
+            && let Some(queues) = stream_queues.get(&stream_id)
+        {
+            // All writing was done to uninit capacity, here we set the final buffer length
+            unsafe { packet.buffer.set_len(packet.buffer_size) };
+
             queues
                 .packet_queue
                 .send(ReconstructedPacket {
-                    index: in_progress_packet.packet_index,
-                    buffer: self.in_progress_packet.take().unwrap().buffer,
+                    index: packet_index,
+                    buffer: packet.buffer,
                 })
-                .to_con()?;
-        } else {
-            // The packet had an invalid stream ID. Discard the buffer
-            self.in_progress_packet.take();
+                .ok();
         }
 
         Ok(())
@@ -208,18 +328,23 @@ impl MultiplexedSocketReader for MultiplexedTcpReader {
 
 pub fn split_multiplexed(
     socket: TcpStream,
+    max_packet_size: usize,
     used_buffers_poll_timeout: Duration,
 ) -> Result<(
-    Box<dyn MultiplexedSocketWriter + Send>,
+    Box<dyn MultiplexedSocketWriter + Send + Sync>,
     Box<dyn MultiplexedSocketReader + Send>,
 )> {
     let writer = MultiplexedTcpWriter {
-        inner: socket.try_clone()?,
+        inner: Mutex::new(socket.try_clone()?),
+        max_packet_size,
     };
 
     let reader = MultiplexedTcpReader {
         inner: socket.into(),
-        in_progress_packet: None,
+        max_packet_size,
+        shard_recv_state: None,
+        in_progress_packets: HashMap::new(),
+        discarded_shards_sink: vec![],
         used_buffers_poll_timeout,
     };
 

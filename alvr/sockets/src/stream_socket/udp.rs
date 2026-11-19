@@ -1,5 +1,6 @@
 use super::{
-    MultiplexedSocketReader, MultiplexedSocketWriter, ReconstructedPacket, StreamRecvQueues,
+    MultiplexedSocketReader, MultiplexedSocketWriter, ReconstructedPacket,
+    SHARD_COMMON_PREFIX_SIZE, ShardPrefix, StreamRecvQueues,
 };
 use crate::LOCAL_IP;
 use alvr_common::{ConResult, HandleTryAgain, ToCon, anyhow::Result};
@@ -9,16 +10,13 @@ use std::ffi::c_int;
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
-    mem::{self, MaybeUninit},
+    mem::MaybeUninit,
     net::{IpAddr, UdpSocket},
     ptr,
     time::Duration,
 };
 
-pub const SHARD_PREFIX_SIZE: usize = mem::size_of::<u16>() // stream ID
-    + mem::size_of::<u32>() // packet index
-    + mem::size_of::<u32>() // shards count
-    + mem::size_of::<u32>(); // shards index
+pub const SHARD_PREFIX_SIZE: usize = SHARD_COMMON_PREFIX_SIZE;
 
 fn socket_peek(socket: &mut Socket, buffer: &mut [u8]) -> ConResult<usize> {
     #[cfg(windows)]
@@ -67,29 +65,19 @@ impl MultiplexedSocketWriter for MultiplexedUdpWriter {
         SHARD_PREFIX_SIZE
     }
 
-    fn send(&mut self, stream_id: u16, packet_index: u32, buffer: &mut Vec<u8>) -> Result<()> {
-        let max_shard_size = self.max_packet_size - SHARD_PREFIX_SIZE;
-        let payload_size = buffer.len() - SHARD_PREFIX_SIZE;
-        // rounding up:
-        let shards_count = payload_size.div_ceil(max_shard_size);
+    fn send(&self, stream_id: u16, packet_index: u32, buffer: &mut Vec<u8>) -> Result<()> {
+        super::send_sharded(
+            buffer,
+            SHARD_PREFIX_SIZE,
+            self.max_packet_size,
+            stream_id,
+            packet_index,
+            |shard| {
+                self.inner.send(shard)?;
 
-        for shard_idx in 0..shards_count {
-            // this overlaps with the previous shard, this is intended behavior and allows to
-            // reduce allocations
-            let shard_start_position = shard_idx * max_shard_size;
-            let shard_size = usize::min(max_shard_size, payload_size - shard_start_position);
-
-            let shard_view = &mut buffer[shard_start_position..][..SHARD_PREFIX_SIZE + shard_size];
-
-            shard_view[0..2].copy_from_slice(&stream_id.to_le_bytes());
-            shard_view[2..6].copy_from_slice(&packet_index.to_le_bytes());
-            shard_view[6..10].copy_from_slice(&(shards_count as u32).to_le_bytes());
-            shard_view[10..14].copy_from_slice(&(shard_idx as u32).to_le_bytes());
-
-            self.inner.send(shard_view)?;
-        }
-
-        Ok(())
+                Ok(())
+            },
+        )
     }
 }
 
@@ -134,11 +122,12 @@ impl MultiplexedSocketReader for MultiplexedUdpReader {
         // The values obtained from the prefix (stream ID, packet index, shards count, shard index)
         // could be corrupted somehow. This method has safety checks against corrupted values and
         // the relative packet would be discarded.
-        let stream_id = u16::from_le_bytes(prefix_bytes[0..2].try_into().unwrap());
-        let packet_index = u32::from_le_bytes(prefix_bytes[2..6].try_into().unwrap());
-        let maybe_shards_count =
-            u32::from_le_bytes(prefix_bytes[6..10].try_into().unwrap()) as usize;
-        let shard_index = u32::from_le_bytes(prefix_bytes[10..14].try_into().unwrap()) as usize;
+        let ShardPrefix {
+            stream_id,
+            packet_index,
+            shards_count: maybe_shards_count,
+            shard_index,
+        } = ShardPrefix::read(&prefix_bytes);
 
         if maybe_shards_count == 0 {
             return discard_and_try_again(&self.inner);
@@ -250,7 +239,7 @@ pub fn split_multiplexed(
     socket: UdpSocket,
     max_packet_size: usize,
 ) -> Result<(
-    Box<dyn MultiplexedSocketWriter + Send>,
+    Box<dyn MultiplexedSocketWriter + Send + Sync>,
     Box<dyn MultiplexedSocketReader + Send>,
 )> {
     let writer = MultiplexedUdpWriter {

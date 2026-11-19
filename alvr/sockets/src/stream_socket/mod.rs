@@ -19,9 +19,7 @@
 mod tcp;
 mod udp;
 
-use alvr_common::{
-    AnyhowToCon, ConResult, HandleTryAgain, ToCon, anyhow::Result, parking_lot::Mutex,
-};
+use alvr_common::{AnyhowToCon, ConResult, HandleTryAgain, ToCon, anyhow::Result};
 use alvr_session::{DscpTos, SocketBufferConfig, SocketProtocol};
 use bincode::config;
 use serde::{Serialize, de::DeserializeOwned};
@@ -36,11 +34,41 @@ use std::{
     time::Duration,
 };
 
+const SHARD_COMMON_PREFIX_SIZE: usize = mem::size_of::<u16>() // stream ID
+    + mem::size_of::<u32>() // packet index
+    + mem::size_of::<u32>() // shards count
+    + mem::size_of::<u32>(); // shards index
+
+struct ShardPrefix {
+    stream_id: u16,
+    packet_index: u32,
+    shards_count: usize,
+    shard_index: usize,
+}
+
+impl ShardPrefix {
+    fn read(bytes: &[u8]) -> Self {
+        Self {
+            stream_id: u16::from_le_bytes(bytes[0..2].try_into().unwrap()),
+            packet_index: u32::from_le_bytes(bytes[2..6].try_into().unwrap()),
+            shards_count: u32::from_le_bytes(bytes[6..10].try_into().unwrap()) as usize,
+            shard_index: u32::from_le_bytes(bytes[10..14].try_into().unwrap()) as usize,
+        }
+    }
+
+    fn write(&self, bytes: &mut [u8]) {
+        bytes[0..2].copy_from_slice(&self.stream_id.to_le_bytes());
+        bytes[2..6].copy_from_slice(&self.packet_index.to_le_bytes());
+        bytes[6..10].copy_from_slice(&(self.shards_count as u32).to_le_bytes());
+        bytes[10..14].copy_from_slice(&(self.shard_index as u32).to_le_bytes());
+    }
+}
+
 trait MultiplexedSocketWriter {
     // Note: consts are not trait-safe, we require a method
     fn payload_offset(&self) -> usize;
 
-    fn send(&mut self, stream_id: u16, packet_index: u32, buffer: &mut Vec<u8>) -> Result<()>;
+    fn send(&self, stream_id: u16, packet_index: u32, buffer: &mut Vec<u8>) -> Result<()>;
 }
 
 struct ReconstructedPacket {
@@ -84,7 +112,7 @@ impl<H> DerefMut for Buffer<H> {
 
 #[derive(Clone)]
 pub struct StreamSender<H> {
-    inner: Arc<Mutex<Box<dyn MultiplexedSocketWriter + Send>>>,
+    inner: Arc<dyn MultiplexedSocketWriter + Send + Sync>,
     stream_id: u16,
     payload_offset: usize,
     next_packet_index: u32,
@@ -97,7 +125,6 @@ impl<H> StreamSender<H> {
     /// The prefix of each shard is written over the previously sent shard to avoid reallocations.
     pub fn send(&mut self, mut buffer: Buffer<H>) -> Result<()> {
         self.inner
-            .lock()
             .send(self.stream_id, self.next_packet_index, &mut buffer.inner)?;
 
         self.used_buffers.push(buffer.inner);
@@ -182,6 +209,42 @@ pub struct StreamReceiver<H> {
     used_buffer_queue: mpsc::Sender<Vec<u8>>,
     last_packet_index: Option<u32>,
     _phantom: PhantomData<H>,
+}
+
+// `buffer` contains the payload offset by `prefix_size`
+fn send_sharded(
+    buffer: &mut [u8],
+    prefix_size: usize,
+    max_packet_size: usize,
+    stream_id: u16,
+    packet_index: u32,
+    mut send_shard: impl FnMut(&mut [u8]) -> Result<()>,
+) -> Result<()> {
+    let max_shard_size = max_packet_size - prefix_size;
+    let payload_size = buffer.len() - prefix_size;
+    // rounding up:
+    let shards_count = usize::max(payload_size.div_ceil(max_shard_size), 1);
+
+    for shard_idx in 0..shards_count {
+        // this overlaps with the previous shard, this is intended behavior and allows to
+        // reduce allocations
+        let shard_start_position = shard_idx * max_shard_size;
+        let shard_size = usize::min(max_shard_size, payload_size - shard_start_position);
+
+        let shard_view = &mut buffer[shard_start_position..][..prefix_size + shard_size];
+
+        ShardPrefix {
+            stream_id,
+            packet_index,
+            shards_count,
+            shard_index: shard_idx,
+        }
+        .write(shard_view);
+
+        send_shard(shard_view)?;
+    }
+
+    Ok(())
 }
 
 // Wrapping comparison for packet indices.
@@ -280,12 +343,12 @@ impl StreamSocketBuilder {
             }
             StreamSocketBuilder::Tcp(listener) => {
                 let socket = tcp::accept_from_server(&listener, Some(server_ip), timeout)?;
-                tcp::split_multiplexed(socket, timeout).to_con()?
+                tcp::split_multiplexed(socket, max_packet_size, timeout).to_con()?
             }
         };
 
         Ok(StreamSocket {
-            send_socket: Arc::new(Mutex::new(send_socket)),
+            send_socket: Arc::from(send_socket),
             receive_socket,
             queues: HashMap::new(),
         })
@@ -309,12 +372,12 @@ impl StreamSocketBuilder {
             }
             SocketProtocol::Tcp => {
                 let socket = tcp::connect_to_client(timeout, &[client_ip], port, buffer_config)?;
-                tcp::split_multiplexed(socket, timeout).to_con()?
+                tcp::split_multiplexed(socket, max_packet_size, timeout).to_con()?
             }
         };
 
         Ok(StreamSocket {
-            send_socket: Arc::new(Mutex::new(send_socket)),
+            send_socket: Arc::from(send_socket),
             receive_socket,
             queues: HashMap::new(),
         })
@@ -322,7 +385,7 @@ impl StreamSocketBuilder {
 }
 
 pub struct StreamSocket {
-    send_socket: Arc<Mutex<Box<dyn MultiplexedSocketWriter + Send>>>,
+    send_socket: Arc<dyn MultiplexedSocketWriter + Send + Sync>,
     receive_socket: Box<dyn MultiplexedSocketReader + Send>,
     queues: HashMap<u16, StreamRecvQueues>,
 }
@@ -332,7 +395,7 @@ impl StreamSocket {
         StreamSender {
             inner: Arc::clone(&self.send_socket),
             stream_id,
-            payload_offset: self.send_socket.lock().payload_offset(),
+            payload_offset: self.send_socket.payload_offset(),
             next_packet_index: 0,
             used_buffers: vec![],
             _phantom: PhantomData,

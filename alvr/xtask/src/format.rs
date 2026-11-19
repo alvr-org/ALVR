@@ -41,12 +41,11 @@ fn files_to_format_paths() -> Vec<PathBuf> {
 pub fn format() {
     let sh = Shell::new().unwrap();
     let dir = sh.push_dir(afs::workspace_dir());
+    let base = cmd!(sh, "git merge-base main HEAD").read().unwrap();
 
     cmd!(sh, "cargo fmt --all").run().unwrap();
 
-    for path in files_to_format_paths() {
-        cmd!(sh, "clang-format -i {path}").run().unwrap();
-    }
+    cmd!(sh, "git clang-format {base}").run().unwrap();
 
     mem::drop(dir);
 }

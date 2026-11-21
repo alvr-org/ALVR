@@ -1341,7 +1341,7 @@ Because of runtime limitations, this option is ignored when body tracking is act
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
 #[schema(gui = "button_group")]
-pub enum SocketProtocol {
+pub enum SocketTransport {
     #[schema(strings(display_name = "UDP"))]
     Udp,
     #[schema(strings(display_name = "TCP"))]
@@ -1387,7 +1387,7 @@ pub struct ConnectionConfig {
         help = r#"UDP: Faster, but less stable than TCP. Try this if your network is well optimized and free of interference.
 TCP: Slower than UDP, but more stable. Pick this if you experience video or audio stutters with UDP."#
     ))]
-    pub stream_protocol: SocketProtocol,
+    pub stream_transport: SocketTransport,
 
     pub client_discovery: Switch<DiscoveryConfig>,
 
@@ -2174,8 +2174,8 @@ pub fn session_settings_default() -> SettingsDefault {
             max_prediction_ms: 100,
         },
         connection: ConnectionConfigDefault {
-            stream_protocol: SocketProtocolDefault {
-                variant: SocketProtocolDefaultVariant::Udp,
+            stream_transport: SocketTransportDefault {
+                variant: SocketTransportDefaultVariant::Udp,
             },
             client_discovery: SwitchDefault {
                 enabled: true,

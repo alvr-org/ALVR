@@ -263,7 +263,7 @@ impl ServerCoreContext {
         let connection_context = Arc::clone(&self.connection_context);
         let lifecycle_state = Arc::clone(&self.lifecycle_state);
         *self.connection_thread.write() = Some(thread::spawn(move || {
-            connection::handshake_loop(connection_context, lifecycle_state);
+            connection::discovery_loop(connection_context, lifecycle_state);
         }));
     }
 

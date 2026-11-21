@@ -18,9 +18,9 @@ use alvr_packets::{
     HAPTICS, Haptics, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData,
     VIDEO, VideoPacketHeader, VideoStreamingCapabilities, VideoStreamingCapabilitiesExt,
 };
-use alvr_session::{SocketProtocol, settings_schema::Switch};
+use alvr_session::{SocketTransport, settings_schema::Switch};
 use alvr_sockets::{
-    ControlSocketSender, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, PeerType, ProtoControlSocket,
+    ControlSocketSender, HandshakeConnection, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, PeerType,
     ServerConnectionResult, SocketConnection, StreamSender, StreamSocketConfig,
 };
 use std::{
@@ -129,7 +129,7 @@ fn connection_pipeline(
 ) -> ConResult {
     dbg_connection!("connection_pipeline: Begin");
 
-    let (mut proto_control_socket, server_ip) = {
+    let (mut handshake_connection, server_ip) = {
         let config = Config::load();
         let announcer_socket = AnnouncerSocket::new(&config.hostname).to_con()?;
         let listener_socket =
@@ -142,7 +142,7 @@ fn connection_pipeline(
 
             announcer_socket.announce().ok();
 
-            if let Ok(pair) = ProtoControlSocket::connect_to(
+            if let Ok(pair) = HandshakeConnection::connect_to(
                 SOCKET_INIT_RETRY_INTERVAL,
                 PeerType::Server(&listener_socket),
             ) {
@@ -162,7 +162,7 @@ fn connection_pipeline(
         alvr_audio::input_sample_rate(&alvr_audio::new_input(None).to_con()?).to_con()?;
 
     dbg_connection!("connection_pipeline: Send stream capabilities");
-    proto_control_socket
+    handshake_connection
         .send(&ClientConnectionResult::ConnectionAccepted(Box::new(
             ConnectionAcceptedInfo {
                 client_protocol_id: alvr_common::protocol_id_u64(),
@@ -189,7 +189,7 @@ fn connection_pipeline(
         )))
         .to_con()?;
     let config_packet =
-        proto_control_socket.recv::<StreamConfigPacket>(HANDSHAKE_ACTION_TIMEOUT)?;
+        handshake_connection.recv::<StreamConfigPacket>(HANDSHAKE_ACTION_TIMEOUT)?;
     dbg_connection!("connection_pipeline: stream config received");
 
     let stream_config = config_packet.to_stream_config().to_con()?;
@@ -205,18 +205,18 @@ fn connection_pipeline(
         settings.connection.statistics_history_size,
     ));
 
-    let stream_protocol = if negotiated_config.wired {
-        SocketProtocol::Tcp
+    let stream_transport = if negotiated_config.wired {
+        SocketTransport::Tcp
     } else {
-        settings.connection.stream_protocol
+        settings.connection.stream_transport
     };
 
     dbg_connection!("connection_pipeline: Finishing handshake");
     let mut socket = match SocketConnection::from_server_connection(
-        proto_control_socket,
+        handshake_connection,
         HANDSHAKE_ACTION_TIMEOUT,
         StreamSocketConfig {
-            protocol: stream_protocol,
+            transport: stream_transport,
             port: settings.connection.stream_port,
             buffer_config: settings.connection.client_buffer_config,
             max_packet_size: settings.connection.packet_size as _,

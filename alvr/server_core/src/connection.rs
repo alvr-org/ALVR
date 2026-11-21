@@ -27,10 +27,10 @@ use alvr_packets::{
 };
 use alvr_session::{
     BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile, Settings,
-    SocketProtocol, SteamvrHmdInitConfig,
+    SocketTransport, SteamvrHmdInitConfig,
 };
 use alvr_sockets::{
-    CONTROL_PORT, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, ProtoControlSocket, SocketConnection,
+    CONTROL_PORT, HandshakeConnection, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, SocketConnection,
     StreamSocketConfig, WIRED_CLIENT_HOSTNAME,
 };
 use std::{
@@ -286,8 +286,8 @@ pub fn compute_restart_settings_hash(
 }
 
 // Alternate connection trials with manual IPs and clients discovered on the local network
-pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<LifecycleState>>) {
-    dbg_connection!("handshake_loop: Begin");
+pub fn discovery_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<LifecycleState>>) {
+    dbg_connection!("discovery_loop: Begin");
 
     let welcome_socket = match WelcomeSocket::new() {
         Ok(socket) => socket,
@@ -300,7 +300,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
     let mut wired_connection = None;
 
     while *lifecycle_state.read() != LifecycleState::ShuttingDown {
-        dbg_connection!("handshake_loop: Try connect to wired device");
+        dbg_connection!("discovery_loop: Try connect to wired device");
 
         let mut wired_client_ips = HashMap::new();
         if SESSION_MANAGER
@@ -366,7 +366,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
 
             #[cfg_attr(not(debug_assertions), expect(unused_variables))]
             if let WiredConnectionStatus::NotReady(s) = status {
-                dbg_connection!("handshake_loop: Wired connection not ready: {s}");
+                dbg_connection!("discovery_loop: Wired connection not ready: {s}");
                 thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                 continue;
             }
@@ -387,7 +387,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
             continue;
         }
 
-        dbg_connection!("handshake_loop: Try connect to manual IPs");
+        dbg_connection!("discovery_loop: Try connect to manual IPs");
 
         let available_manual_client_ips = {
             let mut manual_client_ips = HashMap::new();
@@ -427,7 +427,7 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
             .client_discovery
             .clone();
         if let Switch::Enabled(config) = discovery_config {
-            dbg_connection!("handshake_loop: Discovering clients");
+            dbg_connection!("discovery_loop: Discovering clients");
 
             let clients = match welcome_socket.recv_all() {
                 Ok(clients) => clients,
@@ -492,14 +492,14 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
         }
     }
 
-    alvr_common::dbg_connection!("handshake_loop: Joining connection threads");
+    alvr_common::dbg_connection!("discovery_loop: Joining connection threads");
 
     // At this point, LIFECYCLE_STATE == ShuttingDown, so all threads are already terminating
     for thread in ctx.connection_threads.lock().drain(..) {
         thread.join().ok();
     }
 
-    alvr_common::dbg_connection!("handshake_loop: End");
+    alvr_common::dbg_connection!("discovery_loop: End");
 }
 
 fn try_connect(
@@ -507,9 +507,9 @@ fn try_connect(
     lifecycle_state: Arc<RwLock<LifecycleState>>,
     mut client_ips: HashMap<IpAddr, String>,
 ) -> ConResult {
-    dbg_connection!("try_connect: Finding client and creating control socket");
+    dbg_connection!("try_connect: Finding client and creating handshake connection");
 
-    let (socket, client_ip, connection_result) = alvr_sockets::connect_to_client(
+    let (handshake_connection, client_ip, connection_result) = alvr_sockets::connect_to_client(
         client_ips.keys().cloned().collect(),
         Duration::from_secs(1),
     )?;
@@ -526,7 +526,7 @@ fn try_connect(
             if let Err(e) = connection_pipeline(
                 Arc::clone(&ctx),
                 lifecycle_state,
-                socket,
+                handshake_connection,
                 connection_result,
                 client_hostname.clone(),
                 client_ip,
@@ -555,7 +555,7 @@ fn try_connect(
 fn connection_pipeline(
     ctx: Arc<ConnectionContext>,
     lifecycle_state: Arc<RwLock<LifecycleState>>,
-    socket: ProtoControlSocket,
+    handshake_connection: HandshakeConnection,
     connection_result: ClientConnectionResult,
     client_hostname: String,
     client_ip: IpAddr,
@@ -875,7 +875,7 @@ fn connection_pipeline(
         session.steamvr_hmd_init_config = new_steamvr_hmd_init_config;
         session.restart_settings_hash = new_hash;
 
-        alvr_sockets::send_restart_signal(socket, stream_config_packet)?;
+        alvr_sockets::send_restart_signal(handshake_connection, stream_config_packet)?;
 
         crate::notify_restart_driver();
 
@@ -884,19 +884,19 @@ fn connection_pipeline(
         return Ok(());
     }
 
-    let stream_protocol = if wired {
-        SocketProtocol::Tcp
+    let stream_transport = if wired {
+        SocketTransport::Tcp
     } else {
-        initial_settings.connection.stream_protocol
+        initial_settings.connection.stream_transport
     };
 
     dbg_connection!("connection_pipeline: Finishing handshake");
     let mut socket = SocketConnection::from_client_connection(
-        socket,
+        handshake_connection,
         HANDSHAKE_ACTION_TIMEOUT,
         stream_config_packet,
         StreamSocketConfig {
-            protocol: stream_protocol,
+            transport: stream_transport,
             port: initial_settings.connection.stream_port,
             buffer_config: initial_settings.connection.server_buffer_config,
             max_packet_size: initial_settings.connection.packet_size as _,

@@ -4,12 +4,13 @@ use super::{
 };
 use crate::LOCAL_IP;
 use alvr_common::{ConResult, HandleTryAgain, ToCon, anyhow::Result, con_bail, parking_lot::Mutex};
-use socket2::{SockRef, Socket};
+use socket2::Socket;
 use std::{
     collections::HashMap,
     io::Write,
     mem::{self, MaybeUninit},
     net::{IpAddr, SocketAddr, TcpListener, TcpStream},
+    sync::Arc,
     time::Duration,
 };
 
@@ -71,7 +72,7 @@ pub fn connect_to_client(
 }
 
 pub struct MultiplexedTcpWriter {
-    inner: Mutex<TcpStream>,
+    inner: Mutex<Arc<Socket>>,
     max_packet_size: usize,
 }
 
@@ -92,7 +93,7 @@ impl MultiplexedSocketWriter for MultiplexedTcpWriter {
                 shard[SHARD_COMMON_PREFIX_SIZE..SHARD_PREFIX_SIZE]
                     .copy_from_slice(&shard_size.to_le_bytes());
 
-                self.inner.lock().write_all(shard)?;
+                self.inner.lock().as_ref().write_all(shard)?;
 
                 Ok(())
             },
@@ -117,7 +118,7 @@ struct InProgressPacket {
 }
 
 pub struct MultiplexedTcpReader {
-    inner: Socket,
+    inner: Arc<Socket>,
     max_packet_size: usize,
     shard_recv_state: Option<RecvState>,
     in_progress_packets: HashMap<u16, InProgressPacket>,
@@ -315,15 +316,16 @@ pub fn split_multiplexed(
     socket: TcpStream,
     config: &SocketConnectionConfig,
 ) -> Result<(MultiplexedTcpWriter, MultiplexedTcpReader)> {
-    crate::configure_socket(&SockRef::from(&socket), config)?;
+    let socket = Arc::new(Socket::from(socket));
+    crate::configure_socket(&socket, config)?;
 
     let writer = MultiplexedTcpWriter {
-        inner: Mutex::new(socket.try_clone()?),
+        inner: Mutex::new(Arc::clone(&socket)),
         max_packet_size: config.max_packet_size,
     };
 
     let reader = MultiplexedTcpReader {
-        inner: socket.into(),
+        inner: socket,
         max_packet_size: config.max_packet_size,
         shard_recv_state: None,
         in_progress_packets: HashMap::new(),

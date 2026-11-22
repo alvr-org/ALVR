@@ -12,6 +12,7 @@ use std::{
     mem::MaybeUninit,
     net::{IpAddr, UdpSocket},
     ptr,
+    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -91,7 +92,7 @@ pub fn answer_probes(socket: &UdpSocket, timeout: Duration) -> Result<()> {
 }
 
 pub struct MultiplexedUdpWriter {
-    inner: UdpSocket,
+    inner: Arc<Socket>,
     max_packet_size: usize,
 }
 
@@ -129,7 +130,7 @@ struct InProgressPacket {
 }
 
 pub struct MultiplexedUdpReader {
-    inner: Socket,
+    inner: Arc<Socket>,
     max_packet_size: usize,
     in_progress_packets: HashMap<u16, HashMap<u32, InProgressPacket>>,
 }
@@ -274,15 +275,16 @@ pub fn split_multiplexed(
     socket: UdpSocket,
     config: &SocketConnectionConfig,
 ) -> Result<(MultiplexedUdpWriter, MultiplexedUdpReader)> {
-    crate::configure_socket(&SockRef::from(&socket), config)?;
+    let socket = Arc::new(Socket::from(socket));
+    crate::configure_socket(&socket, config)?;
 
     let writer = MultiplexedUdpWriter {
-        inner: socket.try_clone()?,
+        inner: Arc::clone(&socket),
         max_packet_size: config.max_packet_size,
     };
 
     let reader = MultiplexedUdpReader {
-        inner: socket.into(),
+        inner: socket,
         max_packet_size: config.max_packet_size,
         in_progress_packets: HashMap::new(),
     };

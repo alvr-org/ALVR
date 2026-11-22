@@ -221,7 +221,7 @@ fn connection_pipeline(
             return Ok(());
         }
         Err(e) => {
-            info!("Server disconnected. Cause: {e}");
+            info!("Disconnected from server. Cause: {e}");
             set_hud_message(&event_queue, SERVER_DISCONNECTED_MESSAGE);
             return Ok(());
         }
@@ -433,7 +433,7 @@ fn connection_pipeline(
                     && let Some(sender) = &mut *ctx.control_sender.lock()
                     && let Err(e) = sender.send_header(&packet)
                 {
-                    info!("Server disconnected. Cause: {e:?}");
+                    info!("Disconnected from server. Cause: {e:?}");
                     set_hud_message(&event_queue, SERVER_DISCONNECTED_MESSAGE);
 
                     break;
@@ -541,7 +541,7 @@ fn connection_pipeline(
                     Ok(()) => (),
                     Err(ConnectionError::TryAgain(_)) => continue,
                     Err(e) => {
-                        info!("Client disconnected. Cause: {e}");
+                        info!("Disconnected from server. Cause: {e}");
                         set_hud_message(&event_queue, SERVER_DISCONNECTED_MESSAGE);
                         disconnect_notif.notify_one();
 

@@ -20,11 +20,12 @@ use std::{
     time::Duration,
 };
 
-pub const TRACKING: u16 = 0;
-pub const HAPTICS: u16 = 1;
+pub const CONTROL: u16 = 0;
+pub const VIDEO: u16 = 1;
 pub const AUDIO: u16 = 2;
-pub const VIDEO: u16 = 3;
-pub const STATISTICS: u16 = 4;
+pub const TRACKING: u16 = 3;
+pub const HAPTICS: u16 = 4;
+pub const STATISTICS: u16 = 5;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct VideoStreamingCapabilitiesExt {
@@ -91,7 +92,6 @@ pub struct ClientNegotiatedStreamingConfig {
     pub foveated_encoding: Option<AlvrFoveatedEncodingParams>,
     pub encoding_gamma: f32,
     pub enable_hdr: bool,
-    pub wired: bool,
     pub ext_str: String,
 }
 

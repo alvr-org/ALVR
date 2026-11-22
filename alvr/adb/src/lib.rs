@@ -31,8 +31,7 @@ impl WiredConnection {
 
     pub fn setup(
         &self,
-        control_port: u16,
-        stream_port: u16,
+        client_port: u16,
         client_type: &ClientFlavor,
         client_autolaunch: Option<WiredClientAutoLaunchConfig>,
     ) -> Result<WiredConnectionStatus> {
@@ -46,7 +45,7 @@ impl WiredConnection {
             ));
         };
 
-        let ports = HashSet::from([control_port, stream_port]);
+        let ports = HashSet::from([client_port]);
         let forwarded_ports: HashSet<u16> =
             commands::list_forwarded_ports(&self.adb_path, &device_serial)?
                 .into_iter()

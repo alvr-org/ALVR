@@ -1,89 +1,21 @@
-use crate::{CONTROL_PORT, ControlSocketReceiver, ControlSocketSender, LOCAL_IP};
+use crate::{
+    CLIENT_PORT,
+    tcp::{accept_from_server, bind, connect_to_client},
+};
 use alvr_common::{ConResult, HandleTryAgain, ToCon, anyhow::Result, con_bail};
-use alvr_session::{DscpTos, SocketBufferConfig};
 use bincode::config;
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
     io::{Read, Write},
-    marker::PhantomData,
     mem,
-    net::{IpAddr, SocketAddr, TcpListener, TcpStream},
+    net::{IpAddr, TcpListener, TcpStream},
     time::{Duration, Instant},
 };
 
 // This corresponds to the length of the payload
 const FRAMED_PREFIX_LENGTH: usize = mem::size_of::<u32>();
 
-pub fn bind(
-    timeout: Duration,
-    port: u16,
-    dscp: Option<DscpTos>,
-    buffer_config: SocketBufferConfig,
-) -> Result<TcpListener> {
-    let socket = TcpListener::bind((LOCAL_IP, port))?.into();
-
-    crate::set_socket_buffers(&socket, buffer_config).ok();
-
-    crate::set_dscp(&socket, dscp);
-
-    socket.set_read_timeout(Some(timeout))?;
-
-    Ok(socket.into())
-}
-
-pub fn accept_from_server(
-    listener: &TcpListener,
-    server_ip: Option<IpAddr>,
-    timeout: Duration,
-) -> ConResult<(TcpStream, TcpStream)> {
-    // Uses timeout set during bind()
-    let (socket, server_address) = listener.accept().handle_try_again()?;
-
-    if let Some(ip) = server_ip
-        && server_address.ip() != ip
-    {
-        con_bail!(
-            "Connected to wrong client: Expected: {ip}, Found {}",
-            server_address.ip()
-        );
-    }
-
-    socket.set_read_timeout(Some(timeout)).to_con()?;
-    socket.set_nodelay(true).to_con()?;
-
-    Ok((socket.try_clone().to_con()?, socket))
-}
-
-pub fn connect_to_client(
-    timeout: Duration,
-    client_ips: &[IpAddr],
-    port: u16,
-    buffer_config: SocketBufferConfig,
-) -> ConResult<(TcpStream, TcpStream)> {
-    let split_timeout = timeout / client_ips.len() as u32;
-
-    let mut res = alvr_common::try_again();
-    for ip in client_ips {
-        res = TcpStream::connect_timeout(&SocketAddr::new(*ip, port), split_timeout)
-            .handle_try_again();
-
-        if res.is_ok() {
-            break;
-        }
-    }
-    let socket = res?.into();
-
-    crate::set_socket_buffers(&socket, buffer_config).ok();
-    socket.set_read_timeout(Some(timeout)).to_con()?;
-
-    let socket = TcpStream::from(socket);
-
-    socket.set_nodelay(true).to_con()?;
-
-    Ok((socket.try_clone().to_con()?, socket))
-}
-
-pub(crate) fn framed_send<S: Serialize>(
+fn framed_send<S: Serialize>(
     socket: &mut TcpStream,
     buffer: &mut Vec<u8>,
     packet: &S,
@@ -99,7 +31,7 @@ pub(crate) fn framed_send<S: Serialize>(
     Ok(())
 }
 
-pub(crate) fn framed_recv<R: DeserializeOwned>(
+fn framed_recv<R: DeserializeOwned>(
     socket: &mut TcpStream,
     buffer: &mut Vec<u8>,
     recv_cursor: &mut Option<usize>,
@@ -156,13 +88,11 @@ pub(crate) fn framed_recv<R: DeserializeOwned>(
 }
 
 pub fn get_server_listener(timeout: Duration) -> Result<TcpListener> {
-    let listener = bind(timeout, CONTROL_PORT, None, SocketBufferConfig::default())?;
+    let listener = bind(timeout, CLIENT_PORT)?;
 
     Ok(listener)
 }
 
-// Proto-control-socket that can send and receive any packet. After the split, only the packets of
-// the specified types can be exchanged
 pub struct HandshakeConnection {
     pub(crate) inner: TcpStream,
 }
@@ -175,10 +105,8 @@ pub enum PeerType<'a> {
 impl HandshakeConnection {
     pub fn connect_to(timeout: Duration, peer: PeerType<'_>) -> ConResult<(Self, IpAddr)> {
         let socket = match peer {
-            PeerType::AnyClient(ips) => {
-                connect_to_client(timeout, &ips, CONTROL_PORT, SocketBufferConfig::default())?.0
-            }
-            PeerType::Server(listener) => accept_from_server(listener, None, timeout)?.0,
+            PeerType::AnyClient(ips) => connect_to_client(timeout, &ips, CLIENT_PORT)?,
+            PeerType::Server(listener) => accept_from_server(listener, None, timeout)?,
         };
 
         let peer_ip = socket.peer_addr().to_con()?.ip();
@@ -192,26 +120,5 @@ impl HandshakeConnection {
 
     pub fn recv<R: DeserializeOwned>(&mut self, timeout: Duration) -> ConResult<R> {
         framed_recv(&mut self.inner, &mut vec![], &mut None, timeout)
-    }
-
-    pub fn split<S: Serialize, R: DeserializeOwned>(
-        self,
-        timeout: Duration,
-    ) -> Result<(ControlSocketSender<S>, ControlSocketReceiver<R>)> {
-        self.inner.set_read_timeout(Some(timeout))?;
-
-        Ok((
-            ControlSocketSender {
-                inner: self.inner.try_clone()?,
-                buffer: vec![0; FRAMED_PREFIX_LENGTH],
-                _phantom: PhantomData,
-            },
-            ControlSocketReceiver {
-                inner: self.inner,
-                buffer: vec![0; FRAMED_PREFIX_LENGTH],
-                recv_cursor: None,
-                _phantom: PhantomData,
-            },
-        ))
     }
 }

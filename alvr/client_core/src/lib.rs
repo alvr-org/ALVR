@@ -169,7 +169,7 @@ impl ClientCoreContext {
 
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender
-                .send(&ClientControlPacket::Battery(BatteryInfo {
+                .send_header(&ClientControlPacket::Battery(BatteryInfo {
                     device_id,
                     gauge_value,
                     is_plugged,
@@ -182,7 +182,9 @@ impl ClientCoreContext {
         dbg_client_core!("send_playspace");
 
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
-            sender.send(&ClientControlPacket::PlayspaceSync(area)).ok();
+            sender
+                .send_header(&ClientControlPacket::PlayspaceSync(area))
+                .ok();
         }
     }
 
@@ -196,7 +198,7 @@ impl ClientCoreContext {
 
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender
-                .send(&ClientControlPacket::ActiveInteractionProfile {
+                .send_header(&ClientControlPacket::ActiveInteractionProfile {
                     device_id,
                     profile_id,
                     input_ids,
@@ -209,7 +211,9 @@ impl ClientCoreContext {
         dbg_client_core!("send_buttons");
 
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
-            sender.send(&ClientControlPacket::Buttons(entries)).ok();
+            sender
+                .send_header(&ClientControlPacket::Buttons(entries))
+                .ok();
         }
     }
 
@@ -219,7 +223,7 @@ impl ClientCoreContext {
 
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender
-                .send(&ClientControlPacket::LocalViewParams(views))
+                .send_header(&ClientControlPacket::LocalViewParams(views))
                 .ok();
         }
     }
@@ -239,7 +243,7 @@ impl ClientCoreContext {
     pub fn send_proximity_state(&self, headset_is_worn: bool) {
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender
-                .send(&ClientControlPacket::ProximityState(headset_is_worn))
+                .send_header(&ClientControlPacket::ProximityState(headset_is_worn))
                 .ok();
         }
     }
@@ -264,7 +268,7 @@ impl ClientCoreContext {
         *self.connection_context.decoder_callback.lock() = Some(callback);
 
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
-            sender.send(&ClientControlPacket::RequestIdr).ok();
+            sender.send_header(&ClientControlPacket::RequestIdr).ok();
         }
     }
 

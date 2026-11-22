@@ -14,14 +14,15 @@ use alvr_common::{
     wait_rwlock, warn,
 };
 use alvr_packets::{
-    AUDIO, ClientConnectionResult, ClientControlPacket, ClientStatistics, ConnectionAcceptedInfo,
-    HAPTICS, Haptics, STATISTICS, ServerControlPacket, StreamConfigPacket, TRACKING, TrackingData,
-    VIDEO, VideoPacketHeader, VideoStreamingCapabilities, VideoStreamingCapabilitiesExt,
+    AUDIO, CONTROL, ClientConnectionResult, ClientControlPacket, ClientStatistics,
+    ConnectionAcceptedInfo, HAPTICS, Haptics, STATISTICS, ServerControlPacket, StreamConfigPacket,
+    TRACKING, TrackingData, VIDEO, VideoPacketHeader, VideoStreamingCapabilities,
+    VideoStreamingCapabilitiesExt,
 };
 use alvr_session::{SocketTransport, settings_schema::Switch};
 use alvr_sockets::{
-    ControlSocketSender, HandshakeConnection, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, PeerType,
-    ServerConnectionResult, SocketConnection, StreamSender, StreamSocketConfig,
+    HandshakeConnection, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT, PeerType, ServerConnectionResult,
+    SocketConnection, SocketConnectionConfig, StreamSender,
 };
 use std::{
     collections::VecDeque,
@@ -60,7 +61,7 @@ pub type DecoderCallback = dyn FnMut(Duration, &[u8]) -> bool + Send;
 pub struct ConnectionContext {
     pub state: RwLock<ConnectionState>,
     pub disconnected_notif: Condvar,
-    pub control_sender: Mutex<Option<ControlSocketSender<ClientControlPacket>>>,
+    pub control_sender: Mutex<Option<StreamSender<ClientControlPacket>>>,
     pub tracking_sender: Mutex<Option<StreamSender<TrackingData>>>,
     pub statistics_sender: Mutex<Option<StreamSender<ClientStatistics>>>,
     pub statistics_manager: Mutex<Option<StatisticsManager>>,
@@ -194,10 +195,8 @@ fn connection_pipeline(
 
     let stream_config = config_packet.to_stream_config().to_con()?;
 
-    let streaming_start_event = ClientCoreEvent::StreamingStarted(Box::new(stream_config.clone()));
-
-    let settings = stream_config.settings;
-    let negotiated_config = stream_config.negotiated_config;
+    let settings = stream_config.settings.clone();
+    let negotiated_config = stream_config.negotiated_config.clone();
 
     *ctx.max_prediction.write() = Duration::from_millis(settings.headset.max_prediction_ms);
 
@@ -205,19 +204,11 @@ fn connection_pipeline(
         settings.connection.statistics_history_size,
     ));
 
-    let stream_transport = if negotiated_config.wired {
-        SocketTransport::Tcp
-    } else {
-        settings.connection.stream_transport
-    };
-
     dbg_connection!("connection_pipeline: Finishing handshake");
     let mut socket = match SocketConnection::from_server_connection(
         handshake_connection,
-        HANDSHAKE_ACTION_TIMEOUT,
-        StreamSocketConfig {
-            transport: stream_transport,
-            port: settings.connection.stream_port,
+        SocketConnectionConfig {
+            timeout: HANDSHAKE_ACTION_TIMEOUT,
             buffer_config: settings.connection.client_buffer_config,
             max_packet_size: settings.connection.packet_size as _,
             dscp: settings.connection.dscp,
@@ -240,21 +231,22 @@ fn connection_pipeline(
     set_hud_message(&event_queue, STREAM_STARTING_MESSAGE);
     info!("Connected to server");
 
-    let control_sender = socket.request_reliable_stream()?;
-    let mut control_receiver = socket.subscribe_to_reliable_stream()?;
+    let preferred_transports = settings.connection.preferred_stream_transports;
 
-    let mut video_receiver =
-        socket.subscribe_to_unreliable_stream::<VideoPacketHeader>(VIDEO, MAX_UNREAD_PACKETS);
-    let mut game_audio_receiver = socket.subscribe_to_unreliable_stream(AUDIO, MAX_UNREAD_PACKETS);
-    let tracking_sender = socket.request_unreliable_stream(TRACKING);
-    let mut haptics_receiver =
-        socket.subscribe_to_unreliable_stream::<Haptics>(HAPTICS, MAX_UNREAD_PACKETS);
-    let statistics_sender = socket.request_unreliable_stream(STATISTICS);
+    let (log_channel_sender, log_channel_receiver) = mpsc::channel();
 
-    ctx.video_frame_metadata_queue.lock().clear();
+    // ---------- VIDEO STREAM ----------
 
     let video_receive_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
+
+        ctx.video_frame_metadata_queue.lock().clear();
+
+        let mut video_receiver = socket.subscribe_to_stream::<VideoPacketHeader>(
+            VIDEO,
+            preferred_transports.video,
+            MAX_UNREAD_PACKETS,
+        );
         move || {
             let mut stream_corrupted = true;
             while is_streaming(&ctx) {
@@ -276,7 +268,7 @@ fn connection_pipeline(
                 } else if data.had_packet_loss() {
                     stream_corrupted = true;
                     if let Some(sender) = &mut *ctx.control_sender.lock() {
-                        sender.send(&ClientControlPacket::RequestIdr).ok();
+                        sender.send_header(&ClientControlPacket::RequestIdr).ok();
                     }
                     warn!("Network dropped video packet");
                 }
@@ -307,13 +299,13 @@ fn connection_pipeline(
                     if !submitted {
                         stream_corrupted = true;
                         if let Some(sender) = &mut *ctx.control_sender.lock() {
-                            sender.send(&ClientControlPacket::RequestIdr).ok();
+                            sender.send_header(&ClientControlPacket::RequestIdr).ok();
                         }
                         warn!("Dropped video packet. Reason: Decoder saturation")
                     }
                 } else {
                     if let Some(sender) = &mut *ctx.control_sender.lock() {
-                        sender.send(&ClientControlPacket::RequestIdr).ok();
+                        sender.send_header(&ClientControlPacket::RequestIdr).ok();
                     }
                     warn!("Dropped video packet. Reason: Waiting for IDR frame")
                 }
@@ -321,8 +313,13 @@ fn connection_pipeline(
         }
     });
 
+    // ---------- GAME AUDIO STREAM ----------
+
     let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
         let device = alvr_audio::new_output(None).to_con()?;
+
+        let mut game_audio_receiver =
+            socket.subscribe_to_stream(AUDIO, preferred_transports.game_audio, MAX_UNREAD_PACKETS);
         thread::spawn({
             let ctx = Arc::clone(&ctx);
             move || {
@@ -342,11 +339,12 @@ fn connection_pipeline(
         thread::spawn(|| ())
     };
 
+    // ---------- MICROPHONE STREAM ----------
+
     let microphone_thread = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
         let device = alvr_audio::new_input(None).to_con()?;
 
-        let microphone_sender = socket.request_unreliable_stream(AUDIO);
-
+        let microphone_sender = socket.request_stream(AUDIO, preferred_transports.microphone);
         thread::spawn({
             let ctx = Arc::clone(&ctx);
             move || {
@@ -373,9 +371,22 @@ fn connection_pipeline(
         thread::spawn(|| ())
     };
 
+    // ---------- TRACKING STREAM ----------
+
+    let tracking_sender = socket.request_stream(TRACKING, preferred_transports.tracking);
+    *ctx.tracking_sender.lock() = Some(tracking_sender);
+
+    // ---------- HAPTICS STREAM ----------
+
     let haptics_receive_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
         let event_queue = Arc::clone(&event_queue);
+
+        let mut haptics_receiver = socket.subscribe_to_stream::<Haptics>(
+            HAPTICS,
+            preferred_transports.haptics,
+            MAX_UNREAD_PACKETS,
+        );
         move || {
             while is_streaming(&ctx) {
                 let data = match haptics_receiver.recv(STREAMING_RECV_TIMEOUT) {
@@ -397,12 +408,20 @@ fn connection_pipeline(
         }
     });
 
-    let (log_channel_sender, log_channel_receiver) = mpsc::channel();
+    // ---------- STATISTICS STREAM ----------
+
+    let statistics_sender = socket.request_stream(STATISTICS, preferred_transports.statistics);
+    *ctx.statistics_sender.lock() = Some(statistics_sender);
+
+    // ---------- CONTROL SEND STREAM ----------
 
     let control_send_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
         let event_queue = Arc::clone(&event_queue);
         let disconnect_notif = Arc::clone(&disconnect_notif);
+
+        let control_sender = socket.request_stream(CONTROL, SocketTransport::Tcp);
+        *ctx.control_sender.lock() = Some(control_sender);
         move || {
             let mut keepalive_deadline = Instant::now();
 
@@ -412,7 +431,7 @@ fn connection_pipeline(
             while is_streaming(&ctx) && *lifecycle_state.read() == LifecycleState::Resumed {
                 if let Ok(packet) = log_channel_receiver.recv_timeout(STREAMING_RECV_TIMEOUT)
                     && let Some(sender) = &mut *ctx.control_sender.lock()
-                    && let Err(e) = sender.send(&packet)
+                    && let Err(e) = sender.send_header(&packet)
                 {
                     info!("Server disconnected. Cause: {e:?}");
                     set_hud_message(&event_queue, SERVER_DISCONNECTED_MESSAGE);
@@ -423,7 +442,7 @@ fn connection_pipeline(
                 if Instant::now() > keepalive_deadline
                     && let Some(sender) = &mut *ctx.control_sender.lock()
                 {
-                    sender.send(&ClientControlPacket::KeepAlive).ok();
+                    sender.send_header(&ClientControlPacket::KeepAlive).ok();
 
                     keepalive_deadline = Instant::now() + KEEPALIVE_INTERVAL;
                 }
@@ -433,7 +452,7 @@ fn connection_pipeline(
                     let (gauge_value, is_plugged) = alvr_system_info::get_battery_status();
                     if let Some(sender) = &mut *ctx.control_sender.lock() {
                         sender
-                            .send(&ClientControlPacket::Battery(crate::BatteryInfo {
+                            .send_header(&ClientControlPacket::Battery(crate::BatteryInfo {
                                 device_id: *alvr_common::HEAD_ID,
                                 gauge_value,
                                 is_plugged,
@@ -449,6 +468,10 @@ fn connection_pipeline(
         }
     });
 
+    // ---------- CONTROL RECEIVE STREAM ----------
+
+    let mut control_receiver =
+        socket.subscribe_to_stream(CONTROL, SocketTransport::Tcp, MAX_UNREAD_PACKETS);
     let control_receive_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
         let event_queue = Arc::clone(&event_queue);
@@ -456,7 +479,7 @@ fn connection_pipeline(
         move || {
             let mut disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;
             while is_streaming(&ctx) {
-                let maybe_packet = control_receiver.recv(STREAMING_RECV_TIMEOUT);
+                let maybe_packet = control_receiver.recv_header(STREAMING_RECV_TIMEOUT);
 
                 match maybe_packet {
                     Ok(ServerControlPacket::DecoderConfig(config)) => {
@@ -505,28 +528,43 @@ fn connection_pipeline(
         }
     });
 
-    let stream_receive_thread = thread::spawn({
+    // ---------- SOCKET POLLERS ----------
+
+    let (mut tcp_poller, maybe_udp_poller) = socket.into_pollers();
+    let tcp_receive_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
         let event_queue = Arc::clone(&event_queue);
         let disconnect_notif = Arc::clone(&disconnect_notif);
         move || {
             while is_streaming(&ctx) {
-                match socket.recv_poll() {
+                match tcp_poller.poll() {
                     Ok(()) => (),
                     Err(ConnectionError::TryAgain(_)) => continue,
                     Err(e) => {
                         info!("Client disconnected. Cause: {e}");
                         set_hud_message(&event_queue, SERVER_DISCONNECTED_MESSAGE);
                         disconnect_notif.notify_one();
+
+                        return;
                     }
                 }
             }
         }
     });
+    let maybe_udp_receive_thread = maybe_udp_poller.map(|mut udp_poller| {
+        thread::spawn({
+            let ctx = Arc::clone(&ctx);
+            move || {
+                while is_streaming(&ctx) {
+                    match udp_poller.poll() {
+                        Ok(()) | Err(ConnectionError::TryAgain(_)) => (),
+                        Err(e) => warn!("UDP receive error: {e}"),
+                    }
+                }
+            }
+        })
+    });
 
-    *ctx.control_sender.lock() = Some(control_sender);
-    *ctx.tracking_sender.lock() = Some(tracking_sender);
-    *ctx.statistics_sender.lock() = Some(statistics_sender);
     if let Switch::Enabled(filter_level) = settings.extra.logging.client_log_report_level {
         *LOG_CHANNEL_SENDER.lock() = Some(LogMirrorData {
             sender: log_channel_sender,
@@ -534,7 +572,10 @@ fn connection_pipeline(
             debug_groups_config: settings.extra.logging.debug_groups,
         });
     }
-    event_queue.lock().push_back(streaming_start_event);
+
+    event_queue
+        .lock()
+        .push_back(ClientCoreEvent::StreamingStarted(Box::new(stream_config)));
 
     *connection_state_lock = ConnectionState::Streaming;
 
@@ -565,7 +606,10 @@ fn connection_pipeline(
     haptics_receive_thread.join().ok();
     control_send_thread.join().ok();
     control_receive_thread.join().ok();
-    stream_receive_thread.join().ok();
+    tcp_receive_thread.join().ok();
+    if let Some(thread) = maybe_udp_receive_thread {
+        thread.join().ok();
+    }
 
     dbg_connection!("connection_pipeline: End");
 

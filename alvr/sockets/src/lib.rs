@@ -515,20 +515,25 @@ impl SocketConnection {
             con_bail!("Got unexpected packet waiting for stream ack");
         }
 
-        let maybe_udp_socket = match udp::bind(SERVER_PORT, client_ip, CLIENT_PORT) {
-            Ok(socket) => {
-                if udp::probe_peer(&socket, config.timeout).to_con()? {
-                    Some(socket)
-                } else {
-                    warn!("UDP handshake timed out, falling back to TCP");
+        // is_loopback() check is to skip UDP for wired mode
+        let maybe_udp_socket = if client_ip.is_loopback() {
+            None
+        } else {
+            match udp::bind(SERVER_PORT, client_ip, CLIENT_PORT) {
+                Ok(socket) => {
+                    if udp::probe_peer(&socket, config.timeout).to_con()? {
+                        Some(socket)
+                    } else {
+                        warn!("UDP handshake timed out, falling back to TCP");
+
+                        None
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to create UDP socket, falling back to TCP: {e}");
 
                     None
                 }
-            }
-            Err(e) => {
-                warn!("Failed to create UDP socket, falling back to TCP: {e}");
-
-                None
             }
         };
 
@@ -551,9 +556,13 @@ impl SocketConnection {
             _ => con_bail!("Got unexpected packet waiting for stream start"),
         }
 
-        let maybe_udp_socket = udp::bind(CLIENT_PORT, server_ip, SERVER_PORT)
-            .inspect_err(|e| warn!("Failed to create UDP socket, falling back to TCP: {e}"))
-            .ok();
+        let maybe_udp_socket = if server_ip.is_loopback() {
+            None
+        } else {
+            udp::bind(CLIENT_PORT, server_ip, SERVER_PORT)
+                .inspect_err(|e| warn!("Failed to create UDP socket, falling back to TCP: {e}"))
+                .ok()
+        };
 
         handshake_connection
             .send(&ClientControlPacket::StreamReady)
@@ -578,7 +587,9 @@ impl SocketConnection {
 
             maybe_udp_socket
         } else {
-            warn!("UDP handshake failed, falling back to TCP");
+            if maybe_udp_socket.is_some() {
+                warn!("UDP handshake failed, falling back to TCP");
+            }
 
             None
         };

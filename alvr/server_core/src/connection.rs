@@ -940,9 +940,14 @@ fn connection_pipeline(
         }
     });
 
-    // ---------- GAME AUDIO STREAM ----------
+    // Audio streams (common for all platforms)
+    let mut microphone_receiver =
+        socket.subscribe_to_stream(AUDIO, preferred_transports.microphone, MAX_UNREAD_PACKETS);
+    let game_audio_sender = socket.request_stream(AUDIO, preferred_transports.game_audio);
 
-    #[cfg_attr(target_os = "linux", expect(unused_variables))]
+    // ---------- GAME AUDIO THREAD (NON-LINUX) ----------
+
+    #[cfg(not(target_os = "linux"))]
     let game_audio_thread = if let Switch::Enabled(config) =
         initial_settings.audio.game_audio.clone()
     {
@@ -950,10 +955,7 @@ fn connection_pipeline(
         let ctx = Arc::clone(&ctx);
 
         let client_hostname = client_hostname.clone();
-
-        let game_audio_sender = socket.request_stream(AUDIO, preferred_transports.game_audio);
         thread::spawn(move || {
-            #[cfg(not(target_os = "linux"))]
             while is_streaming(&client_hostname) {
                 {
                     let device = match alvr_audio::new_output(config.device.as_ref()) {
@@ -1016,7 +1018,7 @@ fn connection_pipeline(
         thread::spawn(|| ())
     };
 
-    // ---------- MICROPHONE STREAM ----------
+    // ---------- MICROPHONE THREAD (NON-LINUX) ----------
 
     #[cfg(not(target_os = "linux"))]
     let microphone_thread = if let Switch::Enabled(config) =
@@ -1040,8 +1042,6 @@ fn connection_pipeline(
 
         let client_hostname = client_hostname.clone();
 
-        let mut microphone_receiver =
-            socket.subscribe_to_stream(AUDIO, preferred_transports.microphone, MAX_UNREAD_PACKETS);
         thread::spawn(move || {
             alvr_common::show_err(alvr_audio::play_audio_loop(
                 {
@@ -1059,8 +1059,10 @@ fn connection_pipeline(
         thread::spawn(|| ())
     };
 
+    // ---------- LINUX AUDIO THREAD (GAME AUDIO AND MICROPHONE) ----------
+
     #[cfg(target_os = "linux")]
-    let microphone_thread = {
+    let audio_thread = {
         use alvr_audio::linux::{self, AudioInfo};
         let mic = if let Switch::Enabled(config) = initial_settings.audio.microphone.clone() {
             Some((
@@ -1535,8 +1537,12 @@ fn connection_pipeline(
     // Ensure shutdown of threads
     dbg_connection!("connection_pipeline: Shutdown threads");
     video_send_thread.join().ok();
+    #[cfg(not(target_os = "linux"))]
     game_audio_thread.join().ok();
+    #[cfg(not(target_os = "linux"))]
     microphone_thread.join().ok();
+    #[cfg(target_os = "linux")]
+    audio_thread.join().ok();
     tracking_receive_thread.join().ok();
     statistics_thread.join().ok();
     real_time_update_thread.join().ok();

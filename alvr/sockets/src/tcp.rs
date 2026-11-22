@@ -1,11 +1,10 @@
 use super::{
     MultiplexedSocketReader, MultiplexedSocketWriter, ReconstructedPacket,
-    SHARD_COMMON_PREFIX_SIZE, ShardPrefix, StreamRecvQueues,
+    SHARD_COMMON_PREFIX_SIZE, ShardPrefix, SocketConnectionConfig, StreamRecvQueues,
 };
 use crate::LOCAL_IP;
 use alvr_common::{ConResult, HandleTryAgain, ToCon, anyhow::Result, con_bail, parking_lot::Mutex};
-use alvr_session::{DscpTos, SocketBufferConfig};
-use socket2::Socket;
+use socket2::{SockRef, Socket};
 use std::{
     collections::HashMap,
     io::Write,
@@ -16,17 +15,8 @@ use std::{
 
 pub const SHARD_PREFIX_SIZE: usize = SHARD_COMMON_PREFIX_SIZE + mem::size_of::<u32>(); // shard size
 
-pub fn bind(
-    timeout: Duration,
-    port: u16,
-    dscp: Option<DscpTos>,
-    buffer_config: SocketBufferConfig,
-) -> Result<TcpListener> {
-    let socket = TcpListener::bind((LOCAL_IP, port))?.into();
-
-    crate::set_socket_buffers(&socket, buffer_config).ok();
-
-    crate::set_dscp(&socket, dscp);
+pub fn bind(timeout: Duration, port: u16) -> Result<TcpListener> {
+    let socket: Socket = TcpListener::bind((LOCAL_IP, port))?.into();
 
     socket.set_read_timeout(Some(timeout))?;
 
@@ -60,7 +50,6 @@ pub fn connect_to_client(
     timeout: Duration,
     client_ips: &[IpAddr],
     port: u16,
-    buffer_config: SocketBufferConfig,
 ) -> ConResult<TcpStream> {
     let split_timeout = timeout / client_ips.len() as u32;
 
@@ -73,13 +62,9 @@ pub fn connect_to_client(
             break;
         }
     }
-    let socket = res?.into();
+    let socket = res?;
 
-    crate::set_socket_buffers(&socket, buffer_config).ok();
     socket.set_read_timeout(Some(timeout)).to_con()?;
-
-    let socket = TcpStream::from(socket);
-
     socket.set_nodelay(true).to_con()?;
 
     Ok(socket)
@@ -328,25 +313,23 @@ impl MultiplexedSocketReader for MultiplexedTcpReader {
 
 pub fn split_multiplexed(
     socket: TcpStream,
-    max_packet_size: usize,
-    used_buffers_poll_timeout: Duration,
-) -> Result<(
-    Box<dyn MultiplexedSocketWriter + Send + Sync>,
-    Box<dyn MultiplexedSocketReader + Send>,
-)> {
+    config: &SocketConnectionConfig,
+) -> Result<(MultiplexedTcpWriter, MultiplexedTcpReader)> {
+    crate::configure_socket(&SockRef::from(&socket), config)?;
+
     let writer = MultiplexedTcpWriter {
         inner: Mutex::new(socket.try_clone()?),
-        max_packet_size,
+        max_packet_size: config.max_packet_size,
     };
 
     let reader = MultiplexedTcpReader {
         inner: socket.into(),
-        max_packet_size,
+        max_packet_size: config.max_packet_size,
         shard_recv_state: None,
         in_progress_packets: HashMap::new(),
         discarded_shards_sink: vec![],
-        used_buffers_poll_timeout,
+        used_buffers_poll_timeout: config.timeout,
     };
 
-    Ok((Box::new(writer), Box::new(reader)))
+    Ok((writer, reader))
 }

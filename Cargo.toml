@@ -4,7 +4,7 @@ resolver = "3"
 members = ["alvr/*"]
 
 [workspace.package]
-version = "21.0.0-dev16"
+version = "21.0.0-dev17"
 edition = "2024"
 authors = ["alvr-org"]
 license = "MIT"

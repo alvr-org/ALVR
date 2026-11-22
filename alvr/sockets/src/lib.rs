@@ -13,12 +13,14 @@
 // Note: We can't clone the underlying socket for each StreamSender and the mutex around the socket
 // cannot be removed. This is because we need to make sure at least shards are written whole.
 
-mod control_socket;
 mod handshake;
 mod tcp;
 mod udp;
 
-use alvr_common::{AnyhowToCon, ConResult, HandleTryAgain, ToCon, anyhow::Result, con_bail, info};
+use alvr_common::{
+    AnyhowToCon, ConResult, ConnectionError, HandleTryAgain, ToCon, anyhow::Result, con_bail, info,
+    warn,
+};
 use alvr_packets::{ClientControlPacket, ServerControlPacket};
 use alvr_session::{DscpTos, SocketBufferConfig, SocketBufferSize, SocketTransport};
 use bincode::config;
@@ -29,17 +31,17 @@ use std::{
     collections::HashMap,
     marker::PhantomData,
     mem,
-    net::{IpAddr, Ipv4Addr, TcpListener, UdpSocket},
+    net::{IpAddr, Ipv4Addr, TcpListener, TcpStream, UdpSocket},
     ops::{Deref, DerefMut},
     sync::{Arc, mpsc},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
-pub use control_socket::*;
 pub use handshake::*;
 
 pub const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
-pub const CONTROL_PORT: u16 = 9943;
+pub const SERVER_PORT: u16 = 9943;
+pub const CLIENT_PORT: u16 = 9944;
 pub const KEEPALIVE_INTERVAL: Duration = Duration::from_millis(500);
 pub const KEEPALIVE_TIMEOUT: Duration = Duration::from_secs(2);
 
@@ -54,7 +56,7 @@ const SHARD_COMMON_PREFIX_SIZE: usize = mem::size_of::<u16>() // stream ID
     + mem::size_of::<u32>() // shards count
     + mem::size_of::<u32>(); // shards index
 
-fn set_socket_buffers(socket: &socket2::Socket, buffer_config: SocketBufferConfig) -> Result<()> {
+fn configure_socket(socket: &Socket, config: &SocketConnectionConfig) -> Result<()> {
     info!(
         "Initial socket buffer size: send: {}B, recv: {}B",
         socket.send_buffer_size()?,
@@ -62,7 +64,7 @@ fn set_socket_buffers(socket: &socket2::Socket, buffer_config: SocketBufferConfi
     );
 
     {
-        let maybe_size = match buffer_config.send_size_bytes {
+        let maybe_size = match config.buffer_config.send_size_bytes {
             SocketBufferSize::Default => None,
             SocketBufferSize::Maximum => Some(u32::MAX),
             SocketBufferSize::Custom(size) => Some(size),
@@ -81,7 +83,7 @@ fn set_socket_buffers(socket: &socket2::Socket, buffer_config: SocketBufferConfi
     }
 
     {
-        let maybe_size = match buffer_config.recv_size_bytes {
+        let maybe_size = match config.buffer_config.recv_size_bytes {
             SocketBufferSize::Default => None,
             SocketBufferSize::Maximum => Some(u32::MAX),
             SocketBufferSize::Custom(size) => Some(size),
@@ -99,12 +101,8 @@ fn set_socket_buffers(socket: &socket2::Socket, buffer_config: SocketBufferConfi
         }
     }
 
-    Ok(())
-}
-
-fn set_dscp(socket: &Socket, dscp: Option<DscpTos>) {
     // https://en.wikipedia.org/wiki/Differentiated_services
-    if let Some(dscp) = dscp {
+    if let Some(dscp) = config.dscp {
         let tos = match dscp {
             DscpTos::BestEffort => 0,
             DscpTos::ClassSelector(precedence) => precedence << 3,
@@ -117,6 +115,10 @@ fn set_dscp(socket: &Socket, dscp: Option<DscpTos>) {
 
         socket.set_tos_v4((tos << 2) as u32).ok();
     }
+
+    socket.set_read_timeout(Some(config.timeout))?;
+
+    Ok(())
 }
 
 // connect_to_client should be used on the server side.
@@ -424,101 +426,183 @@ impl<H: DeserializeOwned + Serialize> StreamReceiver<H> {
             _phantom: PhantomData,
         })
     }
-}
 
-pub enum StreamSocketBuilder {
-    Tcp(TcpListener),
-    Udp(UdpSocket),
-}
-
-impl StreamSocketBuilder {
-    pub fn listen_for_server(
-        timeout: Duration,
-        port: u16,
-        transport: SocketTransport,
-        stream_tos_config: Option<DscpTos>,
-        buffer_config: SocketBufferConfig,
-    ) -> Result<Self> {
-        Ok(match transport {
-            SocketTransport::Udp => {
-                StreamSocketBuilder::Udp(udp::bind(port, stream_tos_config, buffer_config)?)
-            }
-            SocketTransport::Tcp => StreamSocketBuilder::Tcp(tcp::bind(
-                timeout,
-                port,
-                stream_tos_config,
-                buffer_config,
-            )?),
-        })
-    }
-
-    pub fn accept_from_server(
-        self,
-        server_ip: IpAddr,
-        port: u16,
-        max_packet_size: usize,
-        timeout: Duration,
-    ) -> ConResult<StreamSocket> {
-        let (send_socket, receive_socket) = match self {
-            StreamSocketBuilder::Udp(socket) => {
-                udp::connect(&socket, server_ip, port, timeout).to_con()?;
-                udp::split_multiplexed(socket, max_packet_size).to_con()?
-            }
-            StreamSocketBuilder::Tcp(listener) => {
-                let socket = tcp::accept_from_server(&listener, Some(server_ip), timeout)?;
-                tcp::split_multiplexed(socket, max_packet_size, timeout).to_con()?
-            }
-        };
-
-        Ok(StreamSocket {
-            send_socket: Arc::from(send_socket),
-            receive_socket,
-            queues: HashMap::new(),
-        })
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn connect_to_client(
-        timeout: Duration,
-        client_ip: IpAddr,
-        port: u16,
-        transport: SocketTransport,
-        dscp: Option<DscpTos>,
-        buffer_config: SocketBufferConfig,
-        max_packet_size: usize,
-    ) -> ConResult<StreamSocket> {
-        let (send_socket, receive_socket) = match transport {
-            SocketTransport::Udp => {
-                let socket = udp::bind(port, dscp, buffer_config).to_con()?;
-                udp::connect(&socket, client_ip, port, timeout).to_con()?;
-                udp::split_multiplexed(socket, max_packet_size).to_con()?
-            }
-            SocketTransport::Tcp => {
-                let socket = tcp::connect_to_client(timeout, &[client_ip], port, buffer_config)?;
-                tcp::split_multiplexed(socket, max_packet_size, timeout).to_con()?
-            }
-        };
-
-        Ok(StreamSocket {
-            send_socket: Arc::from(send_socket),
-            receive_socket,
-            queues: HashMap::new(),
-        })
+    pub fn recv_header(&mut self, timeout: Duration) -> ConResult<H> {
+        self.recv(timeout)?.get_header().to_con()
     }
 }
 
-pub struct StreamSocket {
-    send_socket: Arc<dyn MultiplexedSocketWriter + Send + Sync>,
+pub struct SocketPoller {
     receive_socket: Box<dyn MultiplexedSocketReader + Send>,
     queues: HashMap<u16, StreamRecvQueues>,
 }
 
-impl StreamSocket {
-    pub fn request_stream<T>(&self, stream_id: u16) -> StreamSender<T> {
+impl SocketPoller {
+    pub fn poll(&mut self) -> ConResult {
+        self.receive_socket.recv(&self.queues)
+    }
+}
+
+pub struct SocketConnectionConfig {
+    pub timeout: Duration,
+    pub buffer_config: SocketBufferConfig,
+    pub max_packet_size: usize,
+    pub dscp: Option<DscpTos>,
+}
+
+pub enum ServerConnectionResult {
+    Connected(SocketConnection),
+    Restarting,
+}
+
+pub struct SocketConnection {
+    tcp_writer: Arc<tcp::MultiplexedTcpWriter>,
+    tcp_poller: SocketPoller,
+    maybe_udp_writer: Option<Arc<udp::MultiplexedUdpWriter>>,
+    maybe_udp_poller: Option<SocketPoller>,
+}
+
+impl SocketConnection {
+    fn new(
+        tcp_stream: TcpStream,
+        maybe_udp_socket: Option<UdpSocket>,
+        config: &SocketConnectionConfig,
+    ) -> ConResult<Self> {
+        let (tcp_writer, tcp_reader) = tcp::split_multiplexed(tcp_stream, config).to_con()?;
+
+        let (maybe_udp_writer, maybe_udp_poller) = match maybe_udp_socket {
+            Some(socket) => {
+                let (udp_writer, udp_reader) = udp::split_multiplexed(socket, config).to_con()?;
+
+                (
+                    Some(Arc::new(udp_writer)),
+                    Some(SocketPoller {
+                        receive_socket: Box::new(udp_reader),
+                        queues: HashMap::new(),
+                    }),
+                )
+            }
+            None => (None, None),
+        };
+
+        Ok(Self {
+            tcp_writer: Arc::new(tcp_writer),
+            tcp_poller: SocketPoller {
+                receive_socket: Box::new(tcp_reader),
+                queues: HashMap::new(),
+            },
+            maybe_udp_writer,
+            maybe_udp_poller,
+        })
+    }
+
+    // Note: the timeout resets after each internal operation
+    pub fn from_client_connection(
+        mut handshake_connection: HandshakeConnection,
+        stream_config_packet: impl Serialize,
+        config: SocketConnectionConfig,
+    ) -> ConResult<Self> {
+        let client_ip = handshake_connection.inner.peer_addr().to_con()?.ip();
+
+        handshake_connection.send(&stream_config_packet).to_con()?;
+
+        handshake_connection
+            .send(&ServerControlPacket::StartStream)
+            .to_con()?;
+
+        let signal = handshake_connection.recv(config.timeout)?;
+        if !matches!(signal, ClientControlPacket::StreamReady) {
+            con_bail!("Got unexpected packet waiting for stream ack");
+        }
+
+        let maybe_udp_socket = match udp::bind(SERVER_PORT, client_ip, CLIENT_PORT) {
+            Ok(socket) => {
+                if udp::probe_peer(&socket, config.timeout).to_con()? {
+                    Some(socket)
+                } else {
+                    warn!("UDP handshake timed out, falling back to TCP");
+
+                    None
+                }
+            }
+            Err(e) => {
+                warn!("Failed to create UDP socket, falling back to TCP: {e}");
+
+                None
+            }
+        };
+
+        let udp_available = maybe_udp_socket.is_some();
+        handshake_connection.send(&udp_available).to_con()?;
+
+        Self::new(handshake_connection.inner, maybe_udp_socket, &config)
+    }
+
+    // Note: the timeout resets after each internal operation
+    pub fn from_server_connection(
+        mut handshake_connection: HandshakeConnection,
+        config: SocketConnectionConfig,
+    ) -> ConResult<ServerConnectionResult> {
+        let server_ip = handshake_connection.inner.peer_addr().to_con()?.ip();
+
+        match handshake_connection.recv(config.timeout)? {
+            ServerControlPacket::StartStream => (),
+            ServerControlPacket::Restarting => return Ok(ServerConnectionResult::Restarting),
+            _ => con_bail!("Got unexpected packet waiting for stream start"),
+        }
+
+        let maybe_udp_socket = udp::bind(CLIENT_PORT, server_ip, SERVER_PORT)
+            .inspect_err(|e| warn!("Failed to create UDP socket, falling back to TCP: {e}"))
+            .ok();
+
+        handshake_connection
+            .send(&ClientControlPacket::StreamReady)
+            .to_con()?;
+
+        if let Some(socket) = &maybe_udp_socket {
+            udp::answer_probes(socket, config.timeout).to_con()?;
+        }
+
+        let deadline = Instant::now() + config.timeout * 2;
+        let udp_available = loop {
+            match handshake_connection.recv::<bool>(config.timeout) {
+                Err(ConnectionError::TryAgain(_)) if Instant::now() < deadline => continue,
+                res => break res?,
+            }
+        };
+
+        let maybe_udp_socket = if udp_available {
+            if maybe_udp_socket.is_none() {
+                con_bail!("Server selected UDP but the client UDP socket is unavailable");
+            }
+
+            maybe_udp_socket
+        } else {
+            warn!("UDP handshake failed, falling back to TCP");
+
+            None
+        };
+
+        let connection = Self::new(handshake_connection.inner, maybe_udp_socket, &config)?;
+
+        Ok(ServerConnectionResult::Connected(connection))
+    }
+
+    pub fn request_stream<T>(
+        &self,
+        stream_id: u16,
+        preferred_transport: SocketTransport,
+    ) -> StreamSender<T> {
+        let writer: Arc<dyn MultiplexedSocketWriter + Send + Sync> =
+            match (preferred_transport, &self.maybe_udp_writer) {
+                (SocketTransport::Udp, Some(udp_writer)) => udp_writer.clone(),
+                _ => self.tcp_writer.clone(),
+            };
+
         StreamSender {
-            inner: Arc::clone(&self.send_socket),
+            payload_offset: writer.payload_offset(),
+            inner: writer,
             stream_id,
-            payload_offset: self.send_socket.payload_offset(),
             next_packet_index: 0,
             used_buffers: vec![],
             _phantom: PhantomData,
@@ -531,8 +615,14 @@ impl StreamSocket {
     pub fn subscribe_to_stream<T>(
         &mut self,
         stream_id: u16,
+        preferred_transport: SocketTransport,
         max_concurrent_buffers: usize,
     ) -> StreamReceiver<T> {
+        let poller = match (preferred_transport, &mut self.maybe_udp_poller) {
+            (SocketTransport::Udp, Some(udp_poller)) => udp_poller,
+            _ => &mut self.tcp_poller,
+        };
+
         let (packet_sender, packet_receiver) = mpsc::channel();
         let (used_buffer_sender, used_buffer_receiver) = mpsc::channel();
 
@@ -540,7 +630,7 @@ impl StreamSocket {
             used_buffer_sender.send(vec![]).ok();
         }
 
-        self.queues.insert(
+        poller.queues.insert(
             stream_id,
             StreamRecvQueues {
                 used_buffer_sender: used_buffer_sender.clone(),
@@ -550,7 +640,7 @@ impl StreamSocket {
         );
 
         StreamReceiver {
-            payload_offset: self.receive_socket.payload_offset(),
+            payload_offset: poller.receive_socket.payload_offset(),
             packet_receiver,
             used_buffer_queue: used_buffer_sender,
             last_packet_index: None,
@@ -558,137 +648,7 @@ impl StreamSocket {
         }
     }
 
-    pub fn recv(&mut self) -> ConResult {
-        self.receive_socket.recv(&self.queues)
-    }
-}
-
-pub struct StreamSocketConfig {
-    pub transport: SocketTransport,
-    pub port: u16,
-    pub buffer_config: SocketBufferConfig,
-    pub max_packet_size: usize,
-    pub dscp: Option<DscpTos>,
-}
-
-pub enum ServerConnectionResult {
-    Connected(SocketConnection),
-    Restarting,
-}
-
-pub struct SocketConnection {
-    handshake_connection: HandshakeConnection,
-    stream_socket: StreamSocket,
-}
-
-impl SocketConnection {
-    // Note: the timeout resets after each internal operation
-    pub fn from_client_connection(
-        mut handshake_connection: HandshakeConnection,
-        timeout: Duration,
-        stream_config_packet: impl Serialize,
-        socket_config: StreamSocketConfig,
-    ) -> ConResult<Self> {
-        let client_ip = handshake_connection.inner.peer_addr().to_con()?.ip();
-
-        handshake_connection.send(&stream_config_packet).to_con()?;
-
-        handshake_connection
-            .send(&ServerControlPacket::StartStream)
-            .to_con()?;
-
-        let signal = handshake_connection.recv(timeout)?;
-        if !matches!(signal, ClientControlPacket::StreamReady) {
-            con_bail!("Got unexpected packet waiting for stream ack");
-        }
-
-        let stream_socket = StreamSocketBuilder::connect_to_client(
-            timeout,
-            client_ip,
-            socket_config.port,
-            socket_config.transport,
-            socket_config.dscp,
-            socket_config.buffer_config,
-            socket_config.max_packet_size,
-        )?;
-
-        Ok(Self {
-            handshake_connection,
-            stream_socket,
-        })
-    }
-
-    // Note: the timeout resets after each internal operation
-    pub fn from_server_connection(
-        mut handshake_connection: HandshakeConnection,
-        timeout: Duration,
-        socket_config: StreamSocketConfig,
-    ) -> ConResult<ServerConnectionResult> {
-        let server_ip = handshake_connection.inner.peer_addr().to_con()?.ip();
-
-        match handshake_connection.recv(timeout)? {
-            ServerControlPacket::StartStream => (),
-            ServerControlPacket::Restarting => return Ok(ServerConnectionResult::Restarting),
-            _ => con_bail!("Got unexpected packet waiting for stream start"),
-        }
-
-        let stream_socket_builder = StreamSocketBuilder::listen_for_server(
-            timeout,
-            socket_config.port,
-            socket_config.transport,
-            socket_config.dscp,
-            socket_config.buffer_config,
-        )
-        .to_con()?;
-
-        handshake_connection
-            .send(&ClientControlPacket::StreamReady)
-            .to_con()?;
-
-        let stream_socket = stream_socket_builder.accept_from_server(
-            server_ip,
-            socket_config.port,
-            socket_config.max_packet_size,
-            timeout,
-        )?;
-
-        Ok(ServerConnectionResult::Connected(Self {
-            handshake_connection,
-            stream_socket,
-        }))
-    }
-
-    pub fn request_reliable_stream<T>(&self) -> ConResult<ControlSocketSender<T>> {
-        Ok(ControlSocketSender {
-            inner: self.handshake_connection.inner.try_clone().to_con()?,
-            buffer: vec![],
-            _phantom: PhantomData,
-        })
-    }
-
-    pub fn subscribe_to_reliable_stream<T>(&self) -> ConResult<ControlSocketReceiver<T>> {
-        Ok(ControlSocketReceiver {
-            inner: self.handshake_connection.inner.try_clone().to_con()?,
-            buffer: vec![],
-            recv_cursor: None,
-            _phantom: PhantomData,
-        })
-    }
-
-    pub fn request_unreliable_stream<T>(&self, stream_id: u16) -> StreamSender<T> {
-        self.stream_socket.request_stream(stream_id)
-    }
-
-    pub fn subscribe_to_unreliable_stream<T>(
-        &mut self,
-        stream_id: u16,
-        max_concurrent_buffers: usize,
-    ) -> StreamReceiver<T> {
-        self.stream_socket
-            .subscribe_to_stream(stream_id, max_concurrent_buffers)
-    }
-
-    pub fn recv_poll(&mut self) -> ConResult<()> {
-        self.stream_socket.recv()
+    pub fn into_pollers(self) -> (SocketPoller, Option<SocketPoller>) {
+        (self.tcp_poller, self.maybe_udp_poller)
     }
 }
